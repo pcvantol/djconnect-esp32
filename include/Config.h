@@ -64,6 +64,7 @@ static constexpr uint32_t WifiConnectTimeoutMs = 60000;
 static constexpr uint32_t WifiFailureSleepAfterMs = 120000;
 static constexpr uint64_t LowBatteryWakeCheckUs = 30000000ULL;
 static constexpr uint32_t ProvisioningPortalTimeoutMs = 600000;
+static constexpr uint32_t PairingModeTimeoutMs = 600000;
 static constexpr uint32_t SetupPromptBeepIntervalMs = 30000;
 static constexpr uint32_t SetupPromptBeepDurationMs = 600000;
 static constexpr uint32_t SpeakerSampleRate = 16000;

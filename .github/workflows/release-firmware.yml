@@ -33,9 +33,11 @@ jobs:
         run: pip install platformio
 
       - name: Build firmware
-        run: |
-          pio run \
-            --project-option="build_flags=-DSPOTIFYDJ_VERSION=\"${{ steps.version.outputs.version }}\" -DSPOTIFYDJ_VERSION_TAG=\"v${{ steps.version.outputs.version }}\""
+        env:
+          SPOTIFYDJ_BUILD_FLAGS: >
+            -DSPOTIFYDJ_VERSION=\"${{ steps.version.outputs.version }}\"
+            -DSPOTIFYDJ_VERSION_TAG=\"v${{ steps.version.outputs.version }}\"
+        run: pio run
 
       - name: Prepare release assets
         run: |

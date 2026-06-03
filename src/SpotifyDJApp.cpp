@@ -70,6 +70,7 @@ void SpotifyDJApp::begin() {
     setupHomeAssistantLayer();
     if (!haDevice_.isPaired()) {
       haPairingScreenActive_ = true;
+      haPairingStartedAt_ = millis();
       lastHaPairingScreenAt_ = millis();
       haDevice_.displayPairingCode();
       lastBatteryPollAt_ = millis();
@@ -1529,6 +1530,7 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   if (haDevice_.isPaired()) {
     if (haPairingScreenActive_) {
       haPairingScreenActive_ = false;
+      haPairingStartedAt_ = 0;
       haDevice_.displayPaired();
       delay(700);
       display_.showBootMessage("Authorizing Spotify...", battery_);
@@ -1544,6 +1546,10 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   }
 
   haPairingScreenActive_ = true;
+  if (haPairingStartedAt_ == 0) {
+    haPairingStartedAt_ = millis();
+  }
+  display_.forceBacklightPercent(100);
   webPortal_.handle();
   processPendingWifiSettings();
   haApiServer_.loop();
@@ -1560,7 +1566,14 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
     haDevice_.displayPairingCode();
   }
 
-  updateVisualPower();
+  visualState_.screenOn = display_.isOn();
+  visualState_.screenBrightnessLevel = display_.backlightPercent();
+  visualState_.ledOn = ledRing_.isOn();
+  if (!deepSleepStarted_ && now - haPairingStartedAt_ >= Config::PairingModeTimeoutMs) {
+    display_.showBootMessage("Pair timeout\nSleeping...", battery_);
+    delay(600);
+    enterDeepSleep();
+  }
   recordLoopMetrics(loopStartedAt);
   delay(10);
   return true;

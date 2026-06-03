@@ -220,6 +220,7 @@ private:
   uint32_t lastReconnectAttemptAt_ = 0;
   uint32_t lastLogsRenderAt_ = 0;
   uint32_t lastHaStatusAt_ = 0;
+  uint32_t haPairingStartedAt_ = 0;
   uint32_t lastHaPairingScreenAt_ = 0;
   uint32_t loopMetricsWindowStartedAt_ = 0;
   uint32_t loopMetricsBusyMs_ = 0;

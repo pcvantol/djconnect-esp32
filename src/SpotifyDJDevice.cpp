@@ -91,6 +91,7 @@ void SpotifyDJDevice::displayPairingCode() {
     AppLog.println("[SpotifyDJ] TODO displayPairingCode: display unavailable");
     return;
   }
+  display_->forceBacklightPercent(100);
   if (battery_ != nullptr) {
     display_->showBootMessage("SpotifyDJ\nPAIR " + pairCode_, *battery_);
   } else {
