@@ -91,12 +91,20 @@ void SpotifyDJDevice::displayPairingCode() {
     AppLog.println("[SpotifyDJ] TODO displayPairingCode: display unavailable");
     return;
   }
-  display_->showBootMessage("SpotifyDJ\nPAIR " + pairCode_);
+  if (battery_ != nullptr) {
+    display_->showBootMessage("SpotifyDJ\nPAIR " + pairCode_, *battery_);
+  } else {
+    display_->showBootMessage("SpotifyDJ\nPAIR " + pairCode_);
+  }
 }
 
 void SpotifyDJDevice::displayPaired() {
   if (display_ != nullptr) {
-    display_->showBootMessage("SpotifyDJ\nPaired");
+    if (battery_ != nullptr) {
+      display_->showBootMessage("SpotifyDJ\nPaired", *battery_);
+    } else {
+      display_->showBootMessage("SpotifyDJ\nPaired");
+    }
   }
 }
 

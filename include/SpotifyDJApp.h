@@ -138,6 +138,7 @@ private:
   void processPendingWifiSettings();
   void setupHomeAssistantLayer();
   void sendHomeAssistantStatusIfDue(bool force = false);
+  bool handleHomeAssistantPairingMode(uint32_t loopStartedAt);
   static void applyWebSettingsCallback(void *context, uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs);
   static void applyWebMqttSettingsCallback(void *context, const MqttSettings &settings);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
@@ -205,6 +206,7 @@ private:
   bool lowBatteryTimerWake_ = false;
   bool chargingCompleteSoundPlayed_ = false;
   bool topHoldRestartHintVisible_ = false;
+  bool haPairingScreenActive_ = false;
   uint32_t pendingWifiSettingsRequestedAt_ = 0;
   uint32_t wifiConnectFailedAt_ = 0;
   uint32_t lowBatteryGuardStartedAt_ = 0;
@@ -218,6 +220,7 @@ private:
   uint32_t lastReconnectAttemptAt_ = 0;
   uint32_t lastLogsRenderAt_ = 0;
   uint32_t lastHaStatusAt_ = 0;
+  uint32_t lastHaPairingScreenAt_ = 0;
   uint32_t loopMetricsWindowStartedAt_ = 0;
   uint32_t loopMetricsBusyMs_ = 0;
 };

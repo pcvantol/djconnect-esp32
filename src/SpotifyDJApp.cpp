@@ -68,6 +68,14 @@ void SpotifyDJApp::begin() {
   if (WiFi.status() == WL_CONNECTED) {
     startWebPortalIfNeeded();
     setupHomeAssistantLayer();
+    if (!haDevice_.isPaired()) {
+      haPairingScreenActive_ = true;
+      lastHaPairingScreenAt_ = millis();
+      haDevice_.displayPairingCode();
+      lastBatteryPollAt_ = millis();
+      loopMetricsWindowStartedAt_ = millis();
+      return;
+    }
     display_.showBootMessage("Authorizing Spotify...", battery_);
     if (spotify_.authorize()) {
       showNotice("Spotify authorized");
@@ -112,6 +120,10 @@ void SpotifyDJApp::loop() {
   }
 
   startWebPortalIfNeeded();
+
+  if (handleHomeAssistantPairingMode(loopStartedAt)) {
+    return;
+  }
 
   // Main loop order keeps input responsive, then drains async work, then performs slower polling.
   const InputEvents events = input_.poll();
@@ -1511,6 +1523,47 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
   }
   lastHaStatusAt_ = now;
   haPairing_.sendStatusToHA(battery_, haDevice_.isSpotifyConfigured());
+}
+
+bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
+  if (haDevice_.isPaired()) {
+    if (haPairingScreenActive_) {
+      haPairingScreenActive_ = false;
+      haDevice_.displayPaired();
+      delay(700);
+      display_.showBootMessage("Authorizing Spotify...", battery_);
+      if (spotify_.authorize()) {
+        showNotice("Spotify authorized");
+        lastPlaybackPollAt_ = millis();
+        spotify_.refreshPlayback();
+      }
+      sendHomeAssistantStatusIfDue(true);
+      renderNow();
+    }
+    return false;
+  }
+
+  haPairingScreenActive_ = true;
+  webPortal_.handle();
+  processPendingWifiSettings();
+  haApiServer_.loop();
+  mqttPublisher_.loop();
+
+  const uint32_t now = millis();
+  if (now - lastBatteryPollAt_ >= Config::BatteryPollIntervalMs) {
+    lastBatteryPollAt_ = now;
+    batteryMonitor_.refresh();
+    evaluateBatteryTransition();
+  }
+  if (lastHaPairingScreenAt_ == 0 || now - lastHaPairingScreenAt_ >= 5000) {
+    lastHaPairingScreenAt_ = now;
+    haDevice_.displayPairingCode();
+  }
+
+  updateVisualPower();
+  recordLoopMetrics(loopStartedAt);
+  delay(10);
+  return true;
 }
 
 void SpotifyDJApp::applyWebSettingsCallback(
