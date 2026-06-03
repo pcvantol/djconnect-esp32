@@ -1,0 +1,82 @@
+name: Release firmware
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    env:
+      FIRMWARE_REPO: pcvantol/spotify-dj-firmware
+      DEVICE: lilygo-t-embed-s3
+      PROJECT: spotifydj
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Prepare release assets
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BIN="spotifydj-lilygo-t-embed-s3-v${VERSION}.bin"
+
+          mkdir -p release
+
+          cp .pio/build/*/firmware.bin "release/${BIN}"
+
+          SHA256=$(sha256sum "release/${BIN}" | awk '{print $1}')
+          SIZE=$(stat -c%s "release/${BIN}")
+
+          cat > release/firmware_manifest.json <<EOF
+          {
+            "version": "${VERSION}",
+            "device": "lilygo-t-embed-s3",
+            "channel": "stable",
+            "asset": "${BIN}",
+            "url": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/v${VERSION}/${BIN}",
+            "sha256": "${SHA256}",
+            "size": ${SIZE},
+            "min_ha_integration": "1.0.0",
+            "release_notes": "https://github.com/pcvantol/spotify-dj-firmware/releases/tag/v${VERSION}"
+          }
+          EOF
+
+          echo "${SHA256}  ${BIN}" > "release/${BIN}.sha256"
+
+      - name: Publish GitHub Release to public firmware repo
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ env.FIRMWARE_REPO }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: SpotifyDJ Firmware v${{ steps.version.outputs.version }}
+          body: |
+            SpotifyDJ firmware v${{ steps.version.outputs.version }}
+
+            Device: `lilygo-t-embed-s3`
+
+            Binary:
+            `spotifydj-lilygo-t-embed-s3-v${{ steps.version.outputs.version }}.bin`
+          files: |
+            release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}

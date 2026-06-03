@@ -1,0 +1,159 @@
+// WS2812 LED ring output.
+#include "LedRing.h"
+
+#include "LogicHelpers.h"
+
+namespace {
+constexpr uint8_t SpotifyGreenRed = 0x1D;
+constexpr uint8_t SpotifyGreenGreen = 0xB9;
+constexpr uint8_t SpotifyGreenBlue = 0x54;
+
+CRGB scaledSpotifyGreen(uint8_t level) {
+  return CRGB(
+      (SpotifyGreenRed * level) / 255,
+      (SpotifyGreenGreen * level) / 255,
+      (SpotifyGreenBlue * level) / 255);
+}
+}  // namespace
+
+void LedRing::begin() {
+  FastLED.addLeds<WS2812, Config::Ws2812DataPin, GRB>(leds_, Config::Ws2812LedCount);
+  FastLED.setBrightness(Config::LedRingBrightness);
+  ready_ = true;
+  showVolume(-1, true);
+}
+
+void LedRing::showVolume(int volume, bool force) {
+  if (!ready_) {
+    return;
+  }
+  if (!force && volume == lastVolume_) {
+    return;
+  }
+
+  lastVolume_ = volume;
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+
+  if (volume >= 0) {
+    // Scale across 8 LEDs with fractional brightness on the last active segment.
+    for (uint8_t index = 0; index < Config::Ws2812LedCount; index++) {
+      const int level = Logic::ledSegmentBrightness(
+          volume,
+          index,
+          Config::Ws2812LedCount,
+          Config::MaxSpotifyVolumePercent);
+      leds_[index] = scaledSpotifyGreen(level);
+    }
+  }
+
+  FastLED.show();
+}
+
+void LedRing::showSolid(const CRGB &color, uint8_t brightnessPercent) {
+  if (!ready_) {
+    return;
+  }
+
+  powerPercent_ = constrain(brightnessPercent, 0, 100);
+  FastLED.setBrightness(map(powerPercent_, 0, 100, 0, 255));
+  fill_solid(leds_, Config::Ws2812LedCount, color);
+  lastVolume_ = -999;
+  FastLED.show();
+}
+
+void LedRing::playBootBounce() {
+  if (!ready_) {
+    return;
+  }
+
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+  FastLED.setBrightness(Config::LedRingBrightness);
+
+  // One green lap with a soft trailing pixel gives a quick "alive" cue without delaying boot much.
+  for (uint8_t index = 0; index < Config::Ws2812LedCount; index++) {
+    fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+    leds_[index] = scaledSpotifyGreen(255);
+    leds_[(index + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = scaledSpotifyGreen(70);
+    FastLED.show();
+    delay(45);
+  }
+
+  // Fade/debounce the ring back to fully off so the later connection state owns the LEDs.
+  for (int brightness = Config::LedRingBrightness; brightness >= 0; brightness -= 8) {
+    FastLED.setBrightness(brightness < 0 ? 0 : brightness);
+    FastLED.show();
+    delay(18);
+  }
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+  FastLED.setBrightness(0);
+  FastLED.show();
+  powerPercent_ = 0;
+}
+
+void LedRing::showChargingAnimation() {
+  if (!ready_) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - lastChargingFrameAt_ < 120) {
+    return;
+  }
+  lastChargingFrameAt_ = now;
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+
+  const uint8_t phase = chargingFrame_++ % 24;
+  CRGB color;
+  if (phase < 8) {
+    color = CRGB(255, phase * 16, 0);
+  } else if (phase < 16) {
+    color = CRGB(255 - ((phase - 8) * 12), 128 + ((phase - 8) * 12), 0);
+  } else {
+    color = CRGB(159 - ((phase - 16) * 16), 224, (phase - 16) * 6);
+  }
+
+  FastLED.setBrightness(Config::LedRingBrightness);
+  fill_solid(leds_, Config::Ws2812LedCount, color);
+  FastLED.show();
+}
+
+void LedRing::showSetupRainbowBreath() {
+  if (!ready_) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - lastSetupFrameAt_ < 35) {
+    return;
+  }
+  lastSetupFrameAt_ = now;
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+
+  const uint8_t breath = beatsin8(18, 18, Config::LedRingBrightness);
+  FastLED.setBrightness(breath);
+  fill_rainbow(leds_, Config::Ws2812LedCount, setupFrame_++, 18);
+  FastLED.show();
+}
+
+void LedRing::setPowerPercent(uint8_t percent) {
+  percent = constrain(percent, 0, 100);
+  if (percent == powerPercent_) {
+    return;
+  }
+
+  powerPercent_ = percent;
+  if (!ready_) {
+    return;
+  }
+
+  const uint8_t brightness = (Config::LedRingBrightness * powerPercent_) / 100;
+  FastLED.setBrightness(brightness);
+  FastLED.show();
+}
+
+bool LedRing::isOn() const {
+  return ready_ && powerPercent_ > 0;
+}
