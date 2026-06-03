@@ -2,7 +2,7 @@
 #include "SpotifyDJApiServer.h"
 
 #include <ArduinoJson.h>
-#include <ESP.h>
+#include <Arduino.h>
 #include <WiFi.h>
 
 #include "AppLog.h"
