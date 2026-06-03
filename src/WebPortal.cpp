@@ -566,6 +566,10 @@ bool WebPortal::isRunning() const {
   return running_;
 }
 
+WebServer &WebPortal::server() {
+  return server_;
+}
+
 void WebPortal::configureRoutes() {
   server_.on("/", HTTP_GET, [this]() { handleRoot(); });
   server_.on("/favicon.ico", HTTP_GET, [this]() {

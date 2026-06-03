@@ -2,11 +2,19 @@
 // Keeping these in one namespace makes board or UX tuning changes easy to find.
 #pragma once
 
+#ifndef SPOTIFYDJ_VERSION
+#define SPOTIFYDJ_VERSION "dev"
+#endif
+
+#ifndef SPOTIFYDJ_VERSION_TAG
+#define SPOTIFYDJ_VERSION_TAG "vdev"
+#endif
+
 #include <Arduino.h>
 
 namespace Config {
-static const char *const AppVersion = "v1.1.0";
-static const char *const AppVersionNumber = "1.1.0";
+static const char *const AppVersion = SPOTIFYDJ_VERSION_TAG;
+static const char *const AppVersionNumber = SPOTIFYDJ_VERSION;
 
 // Board power, storage, radio, display, I2C, encoder, and WS2812 pin mapping.
 static constexpr uint8_t BoardUserKeyPin = 6;
@@ -38,6 +46,7 @@ static constexpr uint8_t Bq27220StateOfChargeCommand = 0x2C;
 // Polling, debounce-adjacent, and display animation timings.
 static constexpr uint32_t PlaybackPollIntervalMs = 15000;
 static constexpr uint32_t BatteryPollIntervalMs = 15000;
+static constexpr uint32_t HaStatusIntervalMs = 60000;
 static constexpr uint32_t VolumeFlushDelayMs = 450;
 static constexpr uint32_t SoftResetHoldMs = 10000;
 static constexpr uint32_t HardResetComboHoldMs = 10000;

@@ -89,6 +89,12 @@ bool SpotifyClient::authorize() {
   return refreshAccessToken();
 }
 
+void SpotifyClient::reloadCredentials() {
+  accessToken_ = "";
+  accessTokenExpiresAt_ = 0;
+  loadSpotifyCredentials();
+}
+
 void SpotifyClient::useCredentialsForProvisioning(const String &clientId, const String &refreshToken) {
   clientId_ = clientId;
   refreshToken_ = refreshToken;
@@ -125,9 +131,10 @@ String SpotifyClient::refreshTokenSource() const {
 
 bool SpotifyClient::refreshPlayback() {
   String path = "/me/player";
-  if (strlen(SPOTIFY_MARKET) > 0) {
+  const String market = market_.isEmpty() ? String(SPOTIFY_MARKET) : market_;
+  if (!market.isEmpty()) {
     path += "?market=";
-    path += urlEncode(SPOTIFY_MARKET);
+    path += urlEncode(market);
   }
 
   String payload;
@@ -474,10 +481,27 @@ void SpotifyClient::loadSpotifyCredentials() {
 
   Preferences provision;
   provision.begin("provision", true);
-  clientId_ = provision.getString("sp_client", "");
+  Preferences spotifydj;
+  spotifydj.begin("spotifydj", true);
+  clientId_ = spotifydj.getString("spotify_client_id", "");
+  market_ = spotifydj.getString("spotify_market", "");
+  spotifydj.end();
+
+  if (clientId_.isEmpty()) {
+    clientId_ = provision.getString("sp_client", "");
+  }
+  if (market_.isEmpty()) {
+    market_ = provision.getString("spotify_market", "");
+  }
 
   if (!refreshTokenFromStorage_) {
-    refreshToken_ = provision.getString("sp_refresh", "");
+    Preferences spotifydjToken;
+    spotifydjToken.begin("spotifydj", true);
+    refreshToken_ = spotifydjToken.getString("spotify_refresh_token", "");
+    spotifydjToken.end();
+    if (refreshToken_.isEmpty()) {
+      refreshToken_ = provision.getString("sp_refresh", "");
+    }
     refreshTokenFromStorage_ = !refreshToken_.isEmpty();
     refreshTokenSource_ = refreshTokenFromStorage_ ? "Portal" : "";
   }

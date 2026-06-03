@@ -42,6 +42,8 @@ void SpotifyDJApp::begin() {
   batteryMonitor_.begin();
   batteryMonitor_.refresh();
   evaluateBatteryTransition();
+  haDevice_.begin(&battery_, &display_);
+  haPairing_.begin(haDevice_, &haDiscovery_);
   softResetMonitor_.begin(battery_);
   albumArt_.begin();
   ledRing_.begin();
@@ -65,12 +67,14 @@ void SpotifyDJApp::begin() {
 
   if (WiFi.status() == WL_CONNECTED) {
     startWebPortalIfNeeded();
+    setupHomeAssistantLayer();
     display_.showBootMessage("Authorizing Spotify...", battery_);
     if (spotify_.authorize()) {
       showNotice("Spotify authorized");
       lastPlaybackPollAt_ = millis();
       spotify_.refreshPlayback();
     }
+    sendHomeAssistantStatusIfDue(true);
   }
 
   lastBatteryPollAt_ = millis();
@@ -116,6 +120,7 @@ void SpotifyDJApp::loop() {
   processVolumeResult();
   webPortal_.handle();
   processPendingWifiSettings();
+  haApiServer_.loop();
   mqttPublisher_.loop();
   albumArt_.cleanupIfDue();
 
@@ -145,6 +150,7 @@ void SpotifyDJApp::loop() {
   }
   pollBatteryIfDue();
   pollPlaybackIfDue();
+  sendHomeAssistantStatusIfDue();
 
   recordLoopMetrics(loopStartedAt);
   delay(5);
@@ -298,6 +304,8 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       refreshFromWebCallback,
       hardResetFromWebCallback);
 
+  setupHomeAssistantLayer();
+
   mqttPublisher_.begin(
       mqttSettings_,
       playback_,
@@ -365,9 +373,11 @@ void SpotifyDJApp::runCaptivePortal() {
     const String password = server.arg("password");
     String clientId = server.arg("clientId");
     String refreshToken = server.arg("refreshToken");
+    String spotifyMarket = server.arg("spotifyMarket");
     ssid.trim();
     clientId.trim();
     refreshToken.trim();
+    spotifyMarket.trim();
     MqttSettings submittedMqtt;
     submittedMqtt.host = server.arg("mqttHost");
     submittedMqtt.host.trim();
@@ -390,7 +400,7 @@ void SpotifyDJApp::runCaptivePortal() {
     }
 
     String message;
-    if (testAndSaveProvisioning(ssid, password, clientId, refreshToken, submittedMqtt, message)) {
+    if (testAndSaveProvisioning(ssid, password, clientId, refreshToken, spotifyMarket, submittedMqtt, message)) {
       server.send(200, "text/html", captivePortalPage(message, false));
       delay(1500);
       ESP.restart();
@@ -469,6 +479,7 @@ String SpotifyDJApp::captivePortalPage(const String &message, bool error) const 
   page += F("<label>WiFi password<input name='password' type='password' autocomplete='current-password'></label>");
   page += F("<label>Spotify client ID<input name='clientId' autocomplete='off' required></label>");
   page += F("<label>Spotify refresh token<input name='refreshToken' type='password' autocomplete='off' required></label>");
+  page += F("<label>Spotify market<input name='spotifyMarket' autocomplete='off' value='NL'></label>");
   page += F("<label>MQTT host<input name='mqttHost' autocomplete='off' value='homeassistant.local' placeholder='HA IP or homeassistant.local'></label>");
   page += F("<label>MQTT port<input name='mqttPort' inputmode='numeric' value='1883'></label>");
   page += F("<label>MQTT username<input name='mqttUser' autocomplete='off' value='mqtt'></label>");
@@ -483,6 +494,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
     const String &password,
     const String &clientId,
     const String &refreshToken,
+    const String &spotifyMarket,
     const MqttSettings &mqttSettings,
     String &message) {
   display_.showBootMessage("Testing WiFi...", battery_);
@@ -527,12 +539,20 @@ bool SpotifyDJApp::testAndSaveProvisioning(
   provision.putString("pass", password);
   provision.putString("sp_client", clientId);
   provision.putString("sp_refresh", refreshToken);
+  provision.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
   provision.putString("mqtt_host", mqttSettings.host);
   provision.putUInt("mqtt_port", mqttSettings.port);
   provision.putString("mqtt_user", mqttSettings.username);
   provision.putString("mqtt_pass", mqttSettings.password);
   provision.putBool("setup", false);
   provision.end();
+
+  Preferences spotifydj;
+  spotifydj.begin("spotifydj", false);
+  spotifydj.putString("spotify_client_id", clientId);
+  spotifydj.putString("spotify_refresh_token", refreshToken);
+  spotifydj.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  spotifydj.end();
 
   wifiSsid_ = ssid;
   wifiPassword_ = password;
@@ -1454,6 +1474,43 @@ void SpotifyDJApp::processPendingWifiSettings() {
     WiFi.begin(oldSsid.c_str(), oldPassword.c_str());
   }
   renderNow();
+}
+
+void SpotifyDJApp::setupHomeAssistantLayer() {
+  if (WiFi.status() != WL_CONNECTED || !webPortal_.isRunning()) {
+    return;
+  }
+
+  haDiscovery_.begin(haDevice_);
+  haApiServer_.begin(
+      webPortal_.server(),
+      haDevice_,
+      haPairing_,
+      haDiscovery_,
+      haOta_,
+      spotify_,
+      battery_);
+
+  AppLog.print("[SpotifyDJ] paired: ");
+  AppLog.println(haDevice_.isPaired() ? "true" : "false");
+  if (haDevice_.isPaired()) {
+    AppLog.print("[SpotifyDJ] HA URL: ");
+    AppLog.println(haDevice_.getHaUrl());
+  } else {
+    haDevice_.displayPairingCode();
+  }
+}
+
+void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
+  if (!haDevice_.isPaired() || WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+  const uint32_t now = millis();
+  if (!force && now - lastHaStatusAt_ < Config::HaStatusIntervalMs) {
+    return;
+  }
+  lastHaStatusAt_ = now;
+  haPairing_.sendStatusToHA(battery_, haDevice_.isSpotifyConfigured());
 }
 
 void SpotifyDJApp::applyWebSettingsCallback(

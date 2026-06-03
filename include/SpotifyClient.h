@@ -25,6 +25,9 @@ public:
   // Clears access-token state and the rotated refresh token stored by this client.
   void clearStoredTokens();
 
+  // Reloads client id, refresh token, and market from NVS after external provisioning.
+  void reloadCredentials();
+
   bool isAuthorized() const;
   uint32_t accessTokenExpiresInSeconds() const;
   String refreshTokenSource() const;
@@ -102,6 +105,7 @@ private:
   String accessToken_;
   String clientId_;
   String refreshToken_;
+  String market_;
   bool refreshTokenFromStorage_ = false;
   String refreshTokenSource_ = "Unknown";
   uint32_t accessTokenExpiresAt_ = 0;

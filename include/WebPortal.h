@@ -39,6 +39,9 @@ public:
 
   bool isRunning() const;
 
+  // Exposes the shared HTTP server so feature modules can register extra API routes on port 80.
+  WebServer &server();
+
 private:
   void configureRoutes();
   void handleRoot();

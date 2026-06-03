@@ -13,6 +13,11 @@
 #include "SoundManager.h"
 #include "SoftResetMonitor.h"
 #include "SpotifyClient.h"
+#include "../src/SpotifyDJApiServer.h"
+#include "../src/SpotifyDJDevice.h"
+#include "../src/SpotifyDJDiscovery.h"
+#include "../src/SpotifyDJOTA.h"
+#include "../src/SpotifyDJPairing.h"
 #include "WebPortal.h"
 
 class SpotifyDJApp {
@@ -53,6 +58,7 @@ private:
       const String &password,
       const String &clientId,
       const String &refreshToken,
+      const String &spotifyMarket,
       const MqttSettings &mqttSettings,
       String &message);
 
@@ -130,6 +136,8 @@ private:
   void applyWebMqttSettings(const MqttSettings &settings);
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
+  void setupHomeAssistantLayer();
+  void sendHomeAssistantStatusIfDue(bool force = false);
   static void applyWebSettingsCallback(void *context, uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs);
   static void applyWebMqttSettingsCallback(void *context, const MqttSettings &settings);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
@@ -158,6 +166,11 @@ private:
   SoftResetMonitor softResetMonitor_;
   SpotifyClient spotify_{playback_};
   WebPortal webPortal_;
+  SpotifyDJDevice haDevice_;
+  SpotifyDJDiscovery haDiscovery_;
+  SpotifyDJPairing haPairing_;
+  SpotifyDJApiServer haApiServer_;
+  SpotifyDJOTA haOta_;
   MqttPublisher mqttPublisher_;
   RuntimeDiagnostics diagnostics_;
   VisualState visualState_;
@@ -204,6 +217,7 @@ private:
   uint32_t lastPauseToggleAt_ = 0;
   uint32_t lastReconnectAttemptAt_ = 0;
   uint32_t lastLogsRenderAt_ = 0;
+  uint32_t lastHaStatusAt_ = 0;
   uint32_t loopMetricsWindowStartedAt_ = 0;
   uint32_t loopMetricsBusyMs_ = 0;
 };
