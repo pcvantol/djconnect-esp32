@@ -66,7 +66,8 @@ jobs:
       - name: Publish GitHub Release to public firmware repo
         uses: softprops/action-gh-release@v2
         with:
-          repository: ${{ env.FIRMWARE_REPO }}
+          repository: pcvantol/spotify-dj-firmware
+          token: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
           tag_name: v${{ steps.version.outputs.version }}
           name: SpotifyDJ Firmware v${{ steps.version.outputs.version }}
           body: |
