@@ -29,6 +29,7 @@ public:
       const BatteryState &battery,
       const StatusNotice &notice,
       int displayedVolume,
+      bool homeAssistantConnected,
       bool spotifyConnected,
       bool mqttConnected);
 
@@ -109,6 +110,7 @@ private:
       const BatteryState &battery,
       const StatusNotice &notice,
       int displayedVolume,
+      bool homeAssistantConnected,
       bool spotifyConnected,
       bool mqttConnected);
 

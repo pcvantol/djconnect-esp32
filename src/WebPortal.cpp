@@ -57,6 +57,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .signal.level-1 i:nth-child(-n+1), .signal.level-2 i:nth-child(-n+2) { background:#ff6f61; }
     .signal.level-3 i:nth-child(-n+3) { background:#f3d37b; }
     .signal.level-4 i:nth-child(-n+4) { background:var(--green); }
+    .status-icons { display:inline-flex; gap:5px; margin-left:8px; vertical-align:middle; }
+    .status-dot { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--red); color:var(--red); font-size:11px; font-weight:800; line-height:1; }
+    .status-dot.ok { border-color:var(--green); color:var(--green); }
     .pill { display:inline-flex; align-items:center; min-height:24px; border-radius:999px; padding:2px 10px; background:#173721; color:#9df2b9; font-size:13px; }
     .pill.warn { background:#3b2d14; color:#f3d37b; }
     .pill.bad { background:#421b17; color:#ffb4aa; }
@@ -87,7 +90,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <body>
   <header>
     <h1><img class="brand-icon" src="/icon-192.png" alt="">SpotifyDJ <span id="appVersion" class="sub">v1.1.0</span></h1>
-    <div class="sub"><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="ip">-</span> <span id="wifiState">-</span></div>
+    <div class="sub"><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="ip">-</span> <span id="wifiState">-</span><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span></div>
   </header>
   <main>
     <section class="panel wide">
@@ -292,6 +295,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $(id).className = `signal level-${level}`;
       $(id).title = connected ? `WiFi signal ${rssi} dBm` : "WiFi disconnected";
     }
+    function setStatusDot(id, ok) {
+      const el = $(id);
+      el.className = "status-dot" + (ok ? " ok" : "");
+    }
     let volumeTimer = 0;
     let logsPaused = false;
     let soundOutputLoadedAt = 0;
@@ -328,6 +335,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setWifiSignal("wifiHeaderSignal", data.wifi.connected, data.wifi.rssi);
       text("wifiMac", data.wifi.mac);
       text("spotifyState", data.spotify.authorized ? "Authorized" : "Not authorized");
+      setStatusDot("spotifyHeaderStatus", !!data.spotify.authorized);
       text("spotifyToken", data.spotify.authorized ? `${data.spotify.tokenExpiresInSec}s left` : "-");
       text("spotifyRefresh", data.spotify.refreshTokenSource);
       text("spotifyError", data.spotify.error || "-");
@@ -345,6 +353,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setInput("mqttPort", String(data.mqtt.port || 1883));
       setInput("mqttUser", data.mqtt.username || "");
       text("mqttState", data.mqtt.state || "Disabled");
+      setStatusDot("mqttHeaderStatus", !!data.mqtt.connected);
       text("mqttBroker", data.mqtt.host ? `${data.mqtt.host}:${data.mqtt.port}` : "-");
       text("mqttUsername", data.mqtt.username || "-");
       text("mqttDiscovery", data.mqtt.connected ? "Published after connect" : data.mqtt.enabled ? (data.mqtt.state || "Waiting for broker") : "Disabled");
@@ -362,6 +371,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       try {
         const infoResponse = await fetch("/api/device/info", { cache: "no-store" });
         const info = await infoResponse.json();
+        setStatusDot("haHeaderStatus", !!info.paired);
         text("haPaired", info.paired ? "Paired" : "Pairing mode");
         text("haDeviceId", info.device_id || "-");
         text("haMdnsUrl", info.device_id ? `http://${info.device_id}.local` : "-");
@@ -378,6 +388,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         text("haPairCode", pair.pair_code || "-");
         text("haMdnsUrl", pair.local_url || (pair.device_id ? `http://${pair.device_id}.local` : "-"));
       } catch (error) {
+        setStatusDot("haHeaderStatus", false);
         text("haStatus", "Pairing info unavailable");
       }
     }

@@ -126,6 +126,7 @@ void DisplayManager::renderPlaybackScreen(
     const BatteryState &battery,
     const StatusNotice &notice,
     int displayedVolume,
+    bool homeAssistantConnected,
     bool spotifyConnected,
     bool mqttConnected) {
   // Observing text here lets redraws notice metadata changes without app-level display bookkeeping.
@@ -134,13 +135,13 @@ void DisplayManager::renderPlaybackScreen(
 
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderPlayback(screen_, playback, battery, notice, displayedVolume, spotifyConnected, mqttConnected);
+    renderPlayback(screen_, playback, battery, notice, displayedVolume, homeAssistantConnected, spotifyConnected, mqttConnected);
     screen_.pushSprite(0, 0);
     return;
   }
 
   tft_.fillScreen(TFT_BLACK);
-  renderPlayback(tft_, playback, battery, notice, displayedVolume, spotifyConnected, mqttConnected);
+  renderPlayback(tft_, playback, battery, notice, displayedVolume, homeAssistantConnected, spotifyConnected, mqttConnected);
 }
 
 void DisplayManager::renderMenuList(
@@ -467,6 +468,7 @@ void DisplayManager::renderPlayback(
     const BatteryState &battery,
     const StatusNotice &notice,
     int displayedVolume,
+    bool homeAssistantConnected,
     bool spotifyConnected,
     bool mqttConnected) {
   canvas.setTextDatum(TL_DATUM);
@@ -481,8 +483,9 @@ void DisplayManager::renderPlayback(
     canvas.setTextColor(color, TFT_BLACK);
     canvas.drawString(label, x + 3, 5, 1);
   };
-  drawStatusBadge(180, "S", spotifyConnected);
-  drawStatusBadge(201, "M", mqttConnected);
+  drawStatusBadge(168, "H", homeAssistantConnected);
+  drawStatusBadge(188, "M", mqttConnected);
+  drawStatusBadge(208, "S", spotifyConnected);
   drawWifiIndicator(canvas, 224, 1);
   drawBatteryIndicator(canvas, battery, 250, 5);
   canvas.drawFastHLine(8, 25, 304, TFT_DARKGREY);

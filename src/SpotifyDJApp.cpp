@@ -1187,6 +1187,7 @@ void SpotifyDJApp::renderNow() {
         battery_,
         notice_,
         displayedVolume(),
+        haDevice_.isPaired(),
         spotify_.isAuthorized(),
         mqttSettings_.enabled && mqttPublisher_.connected());
   }
@@ -1749,6 +1750,7 @@ void SpotifyDJApp::renderMenuNow() {
           battery_,
           notice_,
           displayedVolume(),
+          haDevice_.isPaired(),
           spotify_.isAuthorized(),
           mqttSettings_.enabled && mqttPublisher_.connected());
       break;
