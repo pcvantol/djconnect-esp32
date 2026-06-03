@@ -78,6 +78,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .queue-title { font-size:14px; color:var(--text); overflow-wrap:anywhere; }
     .queue-subtitle { margin-top:2px; font-size:12px; color:var(--muted); overflow-wrap:anywhere; }
     .fine { color:var(--muted); font-size:12px; line-height:1.35; }
+    .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px; }
     .status { margin-top:8px; color:#b7c5c1; font-size:13px; min-height:18px; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:#050707; color:#c7d2cf; font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
@@ -183,6 +184,22 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     </section>
 
     <section class="panel">
+      <h2>Home Assistant</h2>
+      <div class="grid">
+        <div class="row"><span class="key">Pairing</span><span id="haPaired" class="value">-</span></div>
+        <div class="row"><span class="key">Pair code</span><span id="haPairCode" class="value mono">-</span></div>
+        <div class="row"><span class="key">Device ID</span><span id="haDeviceId" class="value mono">-</span></div>
+        <div class="row"><span class="key">mDNS URL</span><span id="haMdnsUrl" class="value mono">-</span></div>
+        <div class="row"><span class="key">mDNS service</span><span id="haMdnsService" class="value mono">_spotifydj._tcp</span></div>
+        <div class="row"><span class="key">Firmware</span><span id="haFirmware" class="value">-</span></div>
+        <div class="row"><span class="key">Model</span><span id="haModel" class="value">-</span></div>
+        <div class="row"><span class="key">HA URL</span><span id="haUrl" class="value mono">-</span></div>
+      </div>
+      <div class="fine">Discovery advertises <span class="mono">_spotifydj._tcp</span> with TXT records including device_id, paired, version, api and model.</div>
+      <div id="haStatus" class="status"></div>
+    </section>
+
+    <section class="panel">
       <h2>Spotify</h2>
       <div class="grid">
         <div class="row"><span class="key">Connection</span><span id="spotifyState" class="value">-</span></div>
@@ -279,6 +296,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let logsPaused = false;
     let soundOutputLoadedAt = 0;
     let queueLoadedAt = 0;
+    let pairingInfoLoadedAt = 0;
     function render(data) {
       text("appVersion", data.app.version);
       text("ip", data.wifi.ip || "No IP");
@@ -335,8 +353,33 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     async function refresh() {
       const response = await fetch("/api/status", { cache: "no-store" });
       render(await response.json());
+      if (Date.now() - pairingInfoLoadedAt > 5000) loadPairingInfo();
       if (Date.now() - soundOutputLoadedAt > 15000) loadSoundOutputs();
       if (Date.now() - queueLoadedAt > 15000) loadQueue();
+    }
+    async function loadPairingInfo() {
+      pairingInfoLoadedAt = Date.now();
+      try {
+        const infoResponse = await fetch("/api/device/info", { cache: "no-store" });
+        const info = await infoResponse.json();
+        text("haPaired", info.paired ? "Paired" : "Pairing mode");
+        text("haDeviceId", info.device_id || "-");
+        text("haMdnsUrl", info.device_id ? `http://${info.device_id}.local` : "-");
+        text("haFirmware", info.firmware || "-");
+        text("haModel", info.model || "-");
+        text("haUrl", info.ha_url || "-");
+        text("haStatus", info.spotify_configured ? "Spotify credentials stored" : "Spotify credentials missing");
+        if (info.paired) {
+          text("haPairCode", "-");
+          return;
+        }
+        const pairResponse = await fetch("/api/device/pairing-info", { cache: "no-store" });
+        const pair = await pairResponse.json();
+        text("haPairCode", pair.pair_code || "-");
+        text("haMdnsUrl", pair.local_url || (pair.device_id ? `http://${pair.device_id}.local` : "-"));
+      } catch (error) {
+        text("haStatus", "Pairing info unavailable");
+      }
     }
     async function loadSoundOutputs() {
       const select = $("soundOutputSelect");
@@ -501,6 +544,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("otaStatus").textContent = await response.text();
     });
     refresh();
+    loadPairingInfo();
     loadSoundOutputs();
     loadQueue();
     refreshLogs();
