@@ -1,7 +1,7 @@
 // Home Assistant-facing SpotifyDJ device identity, pairing state, and NVS storage.
 #include "SpotifyDJDevice.h"
 
-#include <ESP.h>
+#include <Arduino.h>
 #include <esp_system.h>
 
 #include "AppLog.h"
