@@ -15,6 +15,7 @@ void SpotifyDJApiServer::begin(
     SpotifyDJOTA &ota,
     SpotifyClient &spotify,
     DisplayManager &display,
+    LedRing &ledRing,
     const BatteryState &battery) {
   if (running_) {
     return;
@@ -26,6 +27,7 @@ void SpotifyDJApiServer::begin(
   ota_ = &ota;
   spotify_ = &spotify;
   display_ = &display;
+  ledRing_ = &ledRing;
   battery_ = &battery;
 
   static const char *headers[] = {"Authorization"};
@@ -179,7 +181,7 @@ void SpotifyDJApiServer::handleOta() {
   sendJson(200, payload);
 
   delay(100);
-  if (ota_->performUpdate(request, battery_, display_, message)) {
+  if (ota_->performUpdate(request, battery_, display_, ledRing_, message)) {
     delay(500);
     ESP.restart();
   }

@@ -28,6 +28,7 @@ bool SpotifyDJOTA::performUpdate(
     const SpotifyDJOTARequest &request,
     const BatteryState *battery,
     DisplayManager *display,
+    LedRing *ledRing,
     String &message) {
   if (request.device != ExpectedModel) {
     message = "Wrong device target";
@@ -87,6 +88,9 @@ bool SpotifyDJOTA::performUpdate(
     } else {
       display->showBootMessage("Firmware update\nin progress..");
     }
+  }
+  if (ledRing != nullptr) {
+    ledRing->showSolid(CRGB::Purple, 100);
   }
 
   const size_t written = Update.writeStream(http.getStream());

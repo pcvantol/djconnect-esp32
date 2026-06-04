@@ -188,6 +188,7 @@ private:
   bool screenBufferReady_ = false;
   uint8_t backlightPercent_ = 100;
   uint8_t activeBrightnessPercent_ = 100;
+  String lastAlbumArtPath_;
   uint32_t dimStartAfterMs_ = Config::DisplayDimStartAfterMs;
   uint32_t dimTargetAfterMs_ = Config::DisplayDimAfterMs;
   uint32_t offAfterMs_ = Config::DisplayOffAfterMs;

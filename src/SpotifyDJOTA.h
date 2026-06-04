@@ -5,6 +5,7 @@
 
 #include "AppState.h"
 #include "DisplayManager.h"
+#include "LedRing.h"
 
 struct SpotifyDJOTARequest {
   String url;
@@ -20,5 +21,6 @@ public:
       const SpotifyDJOTARequest &request,
       const BatteryState *battery,
       DisplayManager *display,
+      LedRing *ledRing,
       String &message);
 };

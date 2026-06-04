@@ -12,13 +12,15 @@
 #include "AppLog.h"
 #include "Config.h"
 #include "LogicHelpers.h"
+#include "assets/spotifydj_favicon_ico.h"
+#include "assets/spotifydj_icon_192_png.h"
 
 #ifndef SPOTIFY_ALLOW_INSECURE_TLS
 #define SPOTIFY_ALLOW_INSECURE_TLS 0
 #endif
 
 namespace {
-static const char *const TopHoldRestartHint = "hold 10s to restart";
+static const char *const TopHoldRestartHint = "press 10s to restart";
 
 String dimTimeoutLabel(uint32_t valueMs) {
   if (valueMs == 30000UL) {
@@ -182,6 +184,7 @@ void SpotifyDJApp::loadProvisioning() {
   screenOffTimeoutMs_ = constrain(preferences.getUInt("screen_off_ms", Config::DisplayOffAfterMs), 30000UL, 240000UL);
   deviceSleepTimeoutMs_ = constrain(preferences.getUInt("sleep_ms", Config::DeviceSleepAfterMs), 300000UL, 3600000UL);
   screenBrightnessPercent_ = constrain(preferences.getUInt("screen_bright", 100), 25UL, 100UL);
+  volumeFeedbackEnabled_ = preferences.getBool("volume_feedback", true);
   setupModeRequested_ = preferences.getBool("setup", false);
   preferences.end();
 
@@ -363,7 +366,7 @@ bool SpotifyDJApp::syncClock() {
 void SpotifyDJApp::runCaptivePortal() {
   display_.wakeForUserActivity();
   display_.forceBacklightPercent(100);
-  display_.showBootMessage(String(Config::ProvisioningApSsid) + "\nWiFi to configure", battery_);
+  display_.showBootMessage("Please complete setup\nConnect to: " + String(Config::ProvisioningApSsid), battery_);
   ledRing_.showSetupRainbowBreath();
 
   WiFi.mode(WIFI_AP);
@@ -379,6 +382,14 @@ void SpotifyDJApp::runCaptivePortal() {
 
   server.on("/", HTTP_GET, [&]() {
     server.send(200, "text/html", captivePortalPage(portalMessage, portalError));
+  });
+
+  server.on("/favicon.ico", HTTP_GET, [&]() {
+    server.send_P(200, "image/x-icon", reinterpret_cast<const char *>(SPOTIFYDJ_FAVICON_ICO), SPOTIFYDJ_FAVICON_ICO_LEN);
+  });
+
+  server.on("/icon-192.png", HTTP_GET, [&]() {
+    server.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
   });
 
   server.on("/submit", HTTP_POST, [&]() {
@@ -451,7 +462,7 @@ void SpotifyDJApp::runCaptivePortal() {
       lastBatteryRefreshAt = now;
       batteryMonitor_.refresh();
       evaluateBatteryTransition();
-      display_.showBootMessage(String(Config::ProvisioningApSsid) + "\nWiFi to configure", battery_);
+      display_.showBootMessage("Please complete setup\nConnect to: " + String(Config::ProvisioningApSsid), battery_);
     }
 
     if (now - setupStartedAt <= Config::SetupPromptBeepDurationMs &&
@@ -474,16 +485,19 @@ String SpotifyDJApp::captivePortalPage(const String &message, bool error) const 
   page.reserve(3900);
   page += F("<!doctype html><html><head><meta charset='utf-8'>");
   page += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
+  page += F("<link rel='icon' href='/favicon.ico' sizes='any'>");
+  page += F("<link rel='icon' type='image/png' sizes='192x192' href='/icon-192.png'>");
+  page += F("<link rel='apple-touch-icon' sizes='192x192' href='/icon-192.png'>");
   page += F("<title>SpotifyDJ Setup</title><style>");
-  page += F("body{margin:0;background:#080b0c;color:#f3f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}");
-  page += F("main{max-width:520px;margin:0 auto;padding:18px}h1{font-size:26px;margin:8px 0 4px}p{color:#9aa6a2;line-height:1.4}");
+  page += F("*{box-sizing:border-box}body{margin:0;background:#080b0c;color:#f3f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}");
+  page += F("main{width:100%;max-width:520px;margin:0 auto;padding:18px}.brand{display:flex;align-items:center;gap:10px;margin:8px 0 4px}.brand img{width:42px;height:42px;border-radius:8px}h1{font-size:26px;margin:0}p{color:#9aa6a2;line-height:1.4}");
   page += F(".box{background:#111718;border:1px solid #233033;border-radius:8px;padding:14px;margin-top:14px}");
   page += F(".msg{border-radius:8px;padding:10px 12px;margin:12px 0;background:");
   page += error ? F("#3a1714;color:#ffd1c9") : F("#173721;color:#baf7ca");
   page += F("}label{display:grid;gap:6px;margin:12px 0;color:#a8b3af;font-size:13px}");
-  page += F("input,button{width:100%;min-height:44px;border-radius:8px;border:1px solid #233033;background:#0c1112;color:#f3f7f5;padding:9px 10px;font-size:16px}");
+  page += F("input,button{display:block;width:100%;max-width:100%;min-height:44px;border-radius:8px;border:1px solid #233033;background:#0c1112;color:#f3f7f5;padding:9px 10px;font-size:16px}");
   page += F("button{background:#173721;border-color:#25593a;color:#baf7ca;font-weight:700;margin-top:8px}");
-  page += F("</style></head><body><main><h1>SpotifyDJ Setup</h1>");
+  page += F("</style></head><body><main><div class='brand'><img src='/icon-192.png' alt=''><h1>SpotifyDJ Setup</h1></div>");
   page += F("<p>Provision WiFi, Spotify and MQTT from your phone. Credentials are saved locally after the device tests them.</p>");
   page += F("<div class='msg'>");
   page += message;
@@ -595,7 +609,7 @@ void SpotifyDJApp::handleInputEvents(const InputEvents &events) {
     display_.wakeForUserActivity();
   }
 
-  const bool shouldShowTopHoldHint = events.topButtonHeld && !isMenuActive();
+  const bool shouldShowTopHoldHint = events.topButtonHeld;
   if (shouldShowTopHoldHint) {
     if (!topHoldRestartHintVisible_) {
       topHoldRestartHintVisible_ = true;
@@ -727,12 +741,6 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         soundOutputSelection_ = 0;
         showNotice("Loading outputs", 1200);
         spotify_.refreshDevices(deviceList_);
-        for (size_t index = 0; index < deviceList_.count; index++) {
-          if (deviceList_.devices[index].active) {
-            soundOutputSelection_ = index;
-            break;
-          }
-        }
         renderNow();
       } else if (rootMenuSelection_ == 2) {
         openScreen(UiScreen::Settings);
@@ -755,15 +763,20 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       } else if (settingsSelection_ == 2) {
         openScreen(UiScreen::SleepTimeout);
       } else if (settingsSelection_ == 3) {
+        volumeFeedbackEnabled_ = !volumeFeedbackEnabled_;
+        saveDisplaySettings();
+        showNotice(String("Audio feedback ") + (volumeFeedbackEnabled_ ? "on" : "off"), 1600);
+        renderNow();
+      } else if (settingsSelection_ == 4) {
         display_.showBootMessage("Turning off...", battery_);
         delay(250);
         enterDeepSleep();
-      } else if (settingsSelection_ == 4) {
+      } else if (settingsSelection_ == 5) {
         sound_.playHardReset();
         display_.showBootMessage("Restarting...", battery_);
         delay(320);
         ESP.restart();
-      } else if (settingsSelection_ == 5) {
+      } else if (settingsSelection_ == 6) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::HardResetConfirm);
       }
@@ -827,13 +840,14 @@ void SpotifyDJApp::saveDisplaySettings() {
   provision.putUInt("screen_off_ms", screenOffTimeoutMs_);
   provision.putUInt("sleep_ms", deviceSleepTimeoutMs_);
   provision.putUInt("screen_bright", screenBrightnessPercent_);
+  provision.putBool("volume_feedback", volumeFeedbackEnabled_);
   provision.end();
 }
 
 void SpotifyDJApp::hardResetToProvisioning() {
   sound_.playHardReset();
   display_.wakeForUserActivity();
-  display_.showBootMessage("Hard reset...", battery_);
+  display_.showBootMessage("Factory reset...", battery_);
   ledRing_.showSolid(CRGB::Yellow, 100);
 
   spotify_.clearStoredTokens();
@@ -865,13 +879,13 @@ size_t SpotifyDJApp::menuItemCount(UiScreen screen) const {
     case UiScreen::Queue:
       return 0;
     case UiScreen::SoundOutputs:
-      return deviceList_.available && deviceList_.count > 0 ? deviceList_.count : 0;
+      return deviceList_.available && deviceList_.count > 0 ? min(deviceList_.count, static_cast<size_t>(7)) + 1 : 2;
     case UiScreen::Logs:
       return 0;
     case UiScreen::RootMenu:
       return 5;
     case UiScreen::Settings:
-      return 6;
+      return SettingsItemCount;
     case UiScreen::DimTimeout:
       return DimTimeoutOptionCount;
     case UiScreen::Brightness:
@@ -954,7 +968,9 @@ uint32_t SpotifyDJApp::sleepTimeoutValueMs(size_t index) const {
 }
 
 void SpotifyDJApp::handleEncoderTurn(int encoderSteps) {
-  sound_.playVolumeTick(encoderSteps);
+  if (volumeFeedbackEnabled_) {
+    sound_.playVolumeTick(encoderSteps);
+  }
   // Show volume instantly while delaying the HTTPS call until the user stops turning.
   int baseVolume = pendingVolume_ >= 0 ? pendingVolume_ : playback_.volume;
   if (baseVolume < 0) {
@@ -1143,23 +1159,24 @@ void SpotifyDJApp::openSoundOutputsScreen() {
   showNotice("Loading outputs", 1200);
   renderNow();
   spotify_.refreshDevices(deviceList_);
-  for (size_t index = 0; index < deviceList_.count; index++) {
-    if (deviceList_.devices[index].active) {
-      soundOutputSelection_ = index;
-      break;
-    }
-  }
   renderNow();
 }
 
 void SpotifyDJApp::transferToSelectedOutput() {
-  if (!deviceList_.available || deviceList_.count == 0 || soundOutputSelection_ >= deviceList_.count) {
+  if (soundOutputSelection_ == 0) {
+    showNotice("No output selected", 1600);
+    renderNow();
+    return;
+  }
+
+  const size_t deviceIndex = soundOutputSelection_ - 1;
+  if (!deviceList_.available || deviceList_.count == 0 || deviceIndex >= deviceList_.count) {
     showNotice("No outputs", 2000);
     renderNow();
     return;
   }
 
-  const SpotifyDeviceState &device = deviceList_.devices[soundOutputSelection_];
+  const SpotifyDeviceState &device = deviceList_.devices[deviceIndex];
   showNotice("Starting " + device.name, 1800);
   renderNow();
   if (spotify_.transferPlayback(device.id, true)) {
@@ -1504,6 +1521,7 @@ void SpotifyDJApp::setupHomeAssistantLayer() {
       haOta_,
       spotify_,
       display_,
+      ledRing_,
       battery_);
 
   AppLog.print("[SpotifyDJ] paired: ");
@@ -1625,15 +1643,18 @@ void SpotifyDJApp::renderMenuNow() {
 
     case UiScreen::SoundOutputs: {
       MenuItemView items[8];
-      size_t itemCount = deviceList_.count;
-      if (!deviceList_.available || itemCount == 0) {
-        items[0].label = deviceList_.error.isEmpty() ? "No outputs" : deviceList_.error;
-        itemCount = 1;
+      items[0].label = "None";
+      size_t itemCount = 1;
+      if (!deviceList_.available || deviceList_.count == 0) {
+        items[1].label = deviceList_.error.isEmpty() ? "No outputs loaded" : deviceList_.error;
+        itemCount = 2;
       } else {
-        for (size_t index = 0; index < itemCount; index++) {
-          items[index].label = deviceList_.devices[index].active ? "* " : "  ";
-          items[index].label += deviceList_.devices[index].name;
+        const size_t maxDevices = min(deviceList_.count, static_cast<size_t>(7));
+        for (size_t index = 0; index < maxDevices; index++) {
+          items[index + 1].label = deviceList_.devices[index].active ? "* " : "  ";
+          items[index + 1].label += deviceList_.devices[index].name;
         }
+        itemCount = maxDevices + 1;
       }
       display_.renderMenuList("Sound outputs", items, itemCount, soundOutputSelection_, notice_);
       break;
@@ -1674,11 +1695,12 @@ void SpotifyDJApp::renderMenuNow() {
           {String("Screen brightness ") + String(screenBrightnessPercent_) + "%"},
           {String("Screen dim timeout ") + dimTimeoutLabel(screenOffTimeoutMs_)},
           {String("Deep sleep after ") + String(deviceSleepTimeoutMs_ / 60000UL) + " min"},
+          {String("Audio feedback ") + (volumeFeedbackEnabled_ ? "on" : "off")},
           {"Turn off device"},
           {"Restart device"},
-          {"Hard reset"},
+          {"Factory reset"},
       };
-      display_.renderMenuList("Settings", items, 6, settingsSelection_, notice_);
+      display_.renderMenuList("Settings", items, SettingsItemCount, settingsSelection_, notice_);
       break;
     }
 
@@ -1741,7 +1763,7 @@ void SpotifyDJApp::renderMenuNow() {
           {"No, go back"},
           {"Yes, wipe setup"},
       };
-      display_.renderMenuList("Hard reset?", items, HardResetOptionCount, hardResetSelection_, notice_);
+      display_.renderMenuList("Factory reset?", items, HardResetOptionCount, hardResetSelection_, notice_);
       break;
     }
 

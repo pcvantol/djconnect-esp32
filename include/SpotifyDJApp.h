@@ -152,6 +152,7 @@ private:
   static constexpr size_t BrightnessOptionCount = 4;
   static constexpr size_t SleepTimeoutOptionCount = 4;
   static constexpr size_t HardResetOptionCount = 2;
+  static constexpr size_t SettingsItemCount = 7;
 
   SpotifyState playback_;
   BatteryState battery_;
@@ -205,6 +206,7 @@ private:
   bool chargingBatteryGuardActive_ = false;
   bool lowBatteryTimerWake_ = false;
   bool chargingCompleteSoundPlayed_ = false;
+  bool volumeFeedbackEnabled_ = true;
   bool topHoldRestartHintVisible_ = false;
   bool haPairingScreenActive_ = false;
   uint32_t pendingWifiSettingsRequestedAt_ = 0;

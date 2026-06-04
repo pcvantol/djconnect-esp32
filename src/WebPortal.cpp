@@ -24,12 +24,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="/favicon.ico">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
   <link rel="manifest" href="/site.webmanifest">
   <title>SpotifyDJ</title>
   <style>
-    :root { color-scheme: dark; --bg:#080b0c; --panel:#111718; --muted:#8a969a; --line:#233033; --green:#1ed760; --yellow:#caa42b; --red:#ff735d; --text:#f3f7f5; }
+    :root { color-scheme: dark; --bg:#080b0c; --panel:#111718; --muted:#8a969a; --line:#233033; --green:#1ed760; --yellow:#caa42b; --orange:#ff9f1a; --red:#ff735d; --text:#f3f7f5; }
     * { box-sizing:border-box; }
     body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
     header { position:sticky; top:0; z-index:2; background:rgba(8,11,12,.94); border-bottom:1px solid var(--line); padding:16px; }
@@ -69,8 +70,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     label { display:grid; gap:5px; color:var(--muted); font-size:13px; }
     select, button, input:not([type]), input[type=text], input[type=password], input[type=file] { width:100%; min-height:42px; border-radius:8px; border:1px solid var(--line); background:#0c1112; color:var(--text); padding:8px 10px; font-size:15px; }
     input[type=range] { width:100%; accent-color:var(--green); }
+    input.volume-slider { accent-color:var(--orange); }
+    .volume-value, .volume-label { color:var(--orange); }
     button { background:#173721; border-color:#25593a; color:#baf7ca; font-weight:700; cursor:pointer; }
     button.secondary { background:#12191a; color:#d6dfdc; }
+    button:disabled, select:disabled, input:disabled { opacity:.45; cursor:not-allowed; }
     .section-action { margin-top:10px; }
     button.danger { background:#3a1714; border-color:#632b25; color:#ffd1c9; }
     .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -90,7 +94,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <body>
   <header>
     <h1><img class="brand-icon" src="/icon-192.png" alt="">SpotifyDJ <span id="appVersion" class="sub">vdev</span></h1>
-    <div class="sub"><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="ip">-</span> <span id="wifiState">-</span><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span></div>
+    <div class="sub"><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="ip">-</span><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span></div>
   </header>
   <main>
     <section class="panel wide">
@@ -115,9 +119,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <select id="soundOutputSelect"><option value="">Loading outputs...</option></select>
       </label>
       <div id="soundOutputStatus" class="status"></div>
-      <div class="row"><span class="key">Volume</span><span id="volume" class="value">-</span></div>
-      <label>Volume
-        <input id="volumeSlider" type="range" min="0" max="60" value="0">
+      <div class="row"><span class="key volume-label">Volume</span><span id="volume" class="value volume-value">-</span></div>
+      <label class="volume-label">Volume
+        <input id="volumeSlider" class="volume-slider" type="range" min="0" max="60" value="0">
       </label>
       <div id="volumeStatus" class="status"></div>
       <div class="row"><span class="key">Battery</span><span id="battery" class="value">-</span></div>
@@ -236,6 +240,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <div class="row"><span class="key">Storage</span><span id="storage" class="value">-</span></div>
         <div class="row"><span class="key">Sketch</span><span id="sketch" class="value">-</span></div>
       </div>
+      <button id="rebootButton" class="danger section-action" type="button">Restart device</button>
     </section>
 
     <section class="panel wide">
@@ -256,8 +261,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       </form>
       <div class="fine">Use the PlatformIO firmware.bin from .pio/build/t_embed_cc1101/firmware.bin.</div>
       <div id="otaStatus" class="status"></div>
-      <button id="rebootButton" class="danger" type="button">Restart device</button>
-      <button id="hardResetButton" class="danger" type="button">Hard reset to setup portal</button>
+      <button id="hardResetButton" class="danger" type="button">Factory reset</button>
     </section>
   </main>
 
@@ -304,10 +308,21 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let soundOutputLoadedAt = 0;
     let queueLoadedAt = 0;
     let pairingInfoLoadedAt = 0;
+    let spotifyControlsEnabled = false;
+    function setSpotifyControlsEnabled(enabled) {
+      spotifyControlsEnabled = !!enabled;
+      for (const id of ["previousButton", "nextButton", "volumeSlider", "soundOutputSelect"]) {
+        $(id).disabled = !spotifyControlsEnabled;
+      }
+      if (!spotifyControlsEnabled) {
+        $("soundOutputStatus").textContent = "Spotify not connected";
+        $("playbackCommandStatus").textContent = "";
+        $("volumeStatus").textContent = "";
+      }
+    }
     function render(data) {
       text("appVersion", data.app.version);
       text("ip", data.wifi.ip || "No IP");
-      text("wifiState", data.wifi.status);
       text("track", data.playback.track || "Nothing playing");
       text("artist", data.playback.artist || data.playback.type || "-");
       const albumArt = $("albumArt");
@@ -336,6 +351,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       text("wifiMac", data.wifi.mac);
       text("spotifyState", data.spotify.authorized ? "Authorized" : "Not authorized");
       setStatusDot("spotifyHeaderStatus", !!data.spotify.authorized);
+      setSpotifyControlsEnabled(!!data.spotify.authorized);
       text("spotifyToken", data.spotify.authorized ? `${data.spotify.tokenExpiresInSec}s left` : "-");
       text("spotifyRefresh", data.spotify.refreshTokenSource);
       text("spotifyError", data.spotify.error || "-");
@@ -363,8 +379,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       const response = await fetch("/api/status", { cache: "no-store" });
       render(await response.json());
       if (Date.now() - pairingInfoLoadedAt > 5000) loadPairingInfo();
-      if (Date.now() - soundOutputLoadedAt > 15000) loadSoundOutputs();
-      if (Date.now() - queueLoadedAt > 15000) loadQueue();
+      if (spotifyControlsEnabled && Date.now() - soundOutputLoadedAt > 15000) loadSoundOutputs();
+      if (spotifyControlsEnabled && Date.now() - queueLoadedAt > 15000) loadQueue();
     }
     async function loadPairingInfo() {
       pairingInfoLoadedAt = Date.now();
@@ -452,6 +468,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       logs.scrollTop = logs.scrollHeight;
     }
     function queueVolumeUpdate() {
+      if (!spotifyControlsEnabled) return;
       clearTimeout(volumeTimer);
       const value = $("volumeSlider").value;
       text("volume", `${value}%`);
@@ -464,6 +481,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     $("volumeSlider").addEventListener("input", queueVolumeUpdate);
     $("soundOutputSelect").addEventListener("change", async () => {
+      if (!spotifyControlsEnabled) return;
       const deviceId = $("soundOutputSelect").value;
       if (!deviceId) return;
       $("soundOutputStatus").textContent = "Switching output...";
@@ -474,6 +492,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       await loadSoundOutputs();
     });
     async function sendPlaybackCommand(action) {
+      if (!spotifyControlsEnabled) return;
       $("playbackCommandStatus").textContent = action === "next" ? "Skipping..." : "Going back...";
       const body = new URLSearchParams({ action });
       const response = await fetch("/api/playback", { method:"POST", body });
@@ -541,7 +560,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("otaStatus").textContent = await (await fetch("/api/reboot", { method:"POST" })).text();
     });
     $("hardResetButton").addEventListener("click", async () => {
-      if (!confirm("Delete local WiFi credentials, tokens and caches, then reboot into setup AP mode?")) return;
+      if (!confirm("Factory reset: delete local WiFi credentials, tokens and caches, then reboot into setup AP mode?")) return;
       $("otaStatus").textContent = await (await fetch("/api/hard-reset", { method:"POST" })).text();
     });
     $("otaForm").addEventListener("submit", async event => {
@@ -825,6 +844,10 @@ void WebPortal::handleVolumePost() {
     server_.send(400, "text/plain", "Missing volume");
     return;
   }
+  if (!spotify_->isAuthorized()) {
+    server_.send(503, "text/plain", "Spotify not connected");
+    return;
+  }
 
   const int volume = constrain(server_.arg("volume").toInt(), 0, Config::MaxSpotifyVolumePercent);
   if (!spotify_->queueVolume(volume)) {
@@ -838,6 +861,10 @@ void WebPortal::handleVolumePost() {
 void WebPortal::handleDevicesJson() {
   if (spotify_ == nullptr) {
     server_.send(503, "application/json", "{\"error\":\"spotify not ready\"}");
+    return;
+  }
+  if (!spotify_->isAuthorized()) {
+    server_.send(503, "application/json", "{\"available\":false,\"error\":\"Spotify not connected\",\"devices\":[]}");
     return;
   }
 
@@ -866,6 +893,10 @@ void WebPortal::handleQueueJson() {
     server_.send(503, "application/json", "{\"error\":\"spotify not ready\"}");
     return;
   }
+  if (!spotify_->isAuthorized()) {
+    server_.send(503, "application/json", "{\"available\":false,\"error\":\"Spotify not connected\",\"items\":[]}");
+    return;
+  }
 
   QueueState queue;
   spotify_->refreshQueue(queue);
@@ -890,6 +921,10 @@ void WebPortal::handleTransferPost() {
     server_.send(400, "text/plain", "Missing output");
     return;
   }
+  if (!spotify_->isAuthorized()) {
+    server_.send(503, "text/plain", "Spotify not connected");
+    return;
+  }
 
   const String deviceId = server_.arg("deviceId");
   if (deviceId.isEmpty()) {
@@ -909,6 +944,10 @@ void WebPortal::handleTransferPost() {
 void WebPortal::handlePlaybackCommandPost() {
   if (spotify_ == nullptr || !server_.hasArg("action")) {
     server_.send(400, "text/plain", "Missing playback action");
+    return;
+  }
+  if (!spotify_->isAuthorized()) {
+    server_.send(503, "text/plain", "Spotify not connected");
     return;
   }
 
@@ -946,7 +985,7 @@ void WebPortal::handleRebootPost() {
 }
 
 void WebPortal::handleHardResetPost() {
-  server_.send(200, "text/plain", "Hard reset requested. Rebooting into setup portal...");
+  server_.send(200, "text/plain", "Factory reset requested. Rebooting into setup portal...");
   delay(250);
   if (hardResetCallback_ != nullptr) {
     hardResetCallback_(callbackContext_);

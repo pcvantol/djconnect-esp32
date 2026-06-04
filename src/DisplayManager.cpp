@@ -16,6 +16,7 @@
 static constexpr uint16_t BrightYellow = 0xFFE0;
 static constexpr uint16_t NeutralLightGrey = 0xC618;
 static constexpr uint16_t SpotifyGreen = 0x1DCB;
+static constexpr uint16_t VolumeOrange = 0xFD20;
 static TFT_eSPI *JpegTarget = nullptr;
 static int16_t JpegClipRight = 0;
 static int16_t JpegClipBottom = 0;
@@ -57,6 +58,9 @@ static uint8_t jpegScaleFor(uint16_t width, uint16_t height) {
 }
 
 void DisplayManager::begin() {
+  pinMode(Config::DisplayBacklightPin, OUTPUT);
+  digitalWrite(Config::DisplayBacklightPin, LOW);
+
   // Power-enable is shared by board peripherals; assert it before display and WS2812 work.
   pinMode(Config::BoardPowerEnablePin, OUTPUT);
   digitalWrite(Config::BoardPowerEnablePin, HIGH);
@@ -230,36 +234,41 @@ void DisplayManager::renderAlbumArtScreen(
     const StatusNotice &notice,
     const String &imagePath,
     const String &albumArtStatus) {
+  (void)albumArtStatus;
   observeText(titleMarquee_, titleText(playback));
   observeText(artistMarquee_, artistText(playback));
 
-  tft_.fillScreen(TFT_BLACK);
   tft_.setTextDatum(TL_DATUM);
 
-  tft_.drawRect(4, 4, 160, 160, TFT_DARKGREY);
-  if (!imagePath.isEmpty() && LittleFS.exists(imagePath)) {
-    uint16_t jpegWidth = 0;
-    uint16_t jpegHeight = 0;
-    TJpgDec.getFsJpgSize(&jpegWidth, &jpegHeight, imagePath, LittleFS);
-    const uint8_t scale = jpegScaleFor(jpegWidth, jpegHeight);
-    const int drawWidth = jpegWidth / scale;
-    const int drawHeight = jpegHeight / scale;
-    const int drawX = 5 + max(0, (158 - drawWidth) / 2);
-    const int drawY = 5 + max(0, (158 - drawHeight) / 2);
+  if (imagePath != lastAlbumArtPath_) {
+    lastAlbumArtPath_ = imagePath;
+    tft_.fillRect(0, 0, 168, 170, TFT_BLACK);
+    tft_.drawRect(4, 4, 160, 160, TFT_DARKGREY);
+    if (!imagePath.isEmpty() && LittleFS.exists(imagePath)) {
+      uint16_t jpegWidth = 0;
+      uint16_t jpegHeight = 0;
+      TJpgDec.getFsJpgSize(&jpegWidth, &jpegHeight, imagePath, LittleFS);
+      const uint8_t scale = jpegScaleFor(jpegWidth, jpegHeight);
+      const int drawWidth = jpegWidth / scale;
+      const int drawHeight = jpegHeight / scale;
+      const int drawX = 5 + max(0, (158 - drawWidth) / 2);
+      const int drawY = 5 + max(0, (158 - drawHeight) / 2);
 
-    JpegTarget = &tft_;
-    JpegClipRight = 164;
-    JpegClipBottom = 164;
-    TJpgDec.setJpgScale(scale);
-    TJpgDec.drawFsJpg(drawX, drawY, imagePath, LittleFS);
-    JpegTarget = nullptr;
-    JpegClipRight = 0;
-    JpegClipBottom = 0;
-  } else {
-    tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft_.drawString("No art", 52, 76, 2);
+      JpegTarget = &tft_;
+      JpegClipRight = 164;
+      JpegClipBottom = 164;
+      TJpgDec.setJpgScale(scale);
+      TJpgDec.drawFsJpg(drawX, drawY, imagePath, LittleFS);
+      JpegTarget = nullptr;
+      JpegClipRight = 0;
+      JpegClipBottom = 0;
+    } else {
+      tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      tft_.drawString("No art", 52, 76, 2);
+    }
   }
 
+  tft_.fillRect(168, 0, 152, 170, TFT_BLACK);
   tft_.setTextColor(BrightYellow, TFT_BLACK);
   tft_.drawString("Current Song", 172, 8, 2);
 
@@ -268,9 +277,6 @@ void DisplayManager::renderAlbumArtScreen(
 
   tft_.setTextColor(NeutralLightGrey, TFT_BLACK);
   drawMarqueeText(tft_, artistMarquee_, artistText(playback), 172, 82, 140, 2, 18);
-
-  tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  tft_.drawString(clippedText(tft_, albumArtStatus, 140, 2), 172, 122, 2);
 
   if (notice.isVisible()) {
     tft_.setTextColor(TFT_GREEN, TFT_BLACK);
@@ -558,9 +564,9 @@ void DisplayManager::renderPlayback(
   if (displayedVolume >= 0) {
     const int volumeFillPercent = (constrain(displayedVolume, 0, Config::MaxSpotifyVolumePercent) * 100) /
                                   Config::MaxSpotifyVolumePercent;
-    canvas.setTextColor(TFT_WHITE, TFT_BLACK);
+    canvas.setTextColor(VolumeOrange, TFT_BLACK);
     canvas.drawString("Vol " + String(displayedVolume) + "%", 8, 137, 2);
-    drawProgressBar(canvas, 70, 142, 242, 5, volumeFillPercent, SpotifyGreen);
+    drawProgressBar(canvas, 70, 142, 242, 5, volumeFillPercent, VolumeOrange);
   } else {
     canvas.setTextColor(TFT_DARKGREY, TFT_BLACK);
     canvas.drawString("Volume unknown", 8, 137, 2);

@@ -15,7 +15,7 @@ Geconsolideerde release van SpotifyDJ firmware voor de LilyGO T-Embed-CC1101 / E
 - Captive portal voor WiFi, Spotify en MQTT provisioning.
 - OTA releaseflow via GitHub tags en firmware assets.
 - WS2812 LED-ring feedback voor volume, status, setup/AP mode, charging en connectivity.
-- Speaker cues voor boot, reset, battery warning, hard reset en charging completed.
+- Speaker cues voor boot, reset, battery warning, factory reset en charging completed.
 - Battery/charging guard schermen, low-battery deep sleep en charger-aware wake gedrag.
 
 ### Gewijzigd

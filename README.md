@@ -17,7 +17,7 @@ Dit is geen Spotify Connect speaker/player. De ESP32 bestuurt via de Spotify Web
 - Bovenknop double press: previous track.
 - Bovenknop long press: menu openen.
 - Bovenknop 10 seconden: restart/soft reset via reset-monitor.
-- Encoderknop + bovenknop 10 seconden: hard reset, afhankelijk van batterijstatus.
+- Encoderknop + bovenknop 10 seconden: factory reset, afhankelijk van batterijstatus.
 - Menu's voor Up Next, Sound Outputs, Settings, About en Logs.
 - Webportal met now playing, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update en OTA upload.
 - Home Assistant pairing met mDNS discovery en device-token auth.
@@ -142,7 +142,7 @@ Als WiFi geconfigureerd is maar Home Assistant nog niet gepaired is:
 
 - Het scherm blijft 10 minuten op 100% brightness.
 - Normale input/playback acties worden niet verwerkt.
-- Soft reset en hard reset blijven beschikbaar via de reset-monitor.
+- Soft reset en factory reset blijven beschikbaar via de reset-monitor.
 - De webportal en device API blijven actief.
 - Na 10 minuten gaat het device naar deep sleep.
 
@@ -362,7 +362,7 @@ Uitzonderingen:
 - Bovenknop double press: previous track.
 - Bovenknop long press: hoofdmenu.
 - Bovenknop 10 seconden: restart/soft reset.
-- Encoderknop + bovenknop 10 seconden: hard reset, als batterijstatus dit toestaat.
+- Encoderknop + bovenknop 10 seconden: factory reset, als batterijstatus dit toestaat.
 
 ## Menus
 
@@ -381,7 +381,7 @@ Settings bevat onder andere:
 - Deep sleep after
 - Turn off device
 - Restart device
-- Hard reset
+- Factory reset
 
 ## Build en upload
 

@@ -48,35 +48,6 @@ bool BatteryMonitor::refresh() {
   state_.voltageMv = reading.voltageMv;
   state_.currentMa = reading.currentMa;
 
-  AppLog.print("Battery: ");
-  AppLog.print(state_.percent);
-  AppLog.print("%");
-  if (state_.percentEstimated) {
-    AppLog.print(" (gauge ");
-    AppLog.print(state_.gaugePercent);
-    AppLog.print("%)");
-  }
-  if (state_.voltageMv > 0) {
-    AppLog.print(" / ");
-    AppLog.print(state_.voltageMv);
-    AppLog.print(" mV");
-  }
-  if (hasCurrent) {
-    AppLog.print(" / ");
-    AppLog.print(state_.currentMa);
-    AppLog.print(" mA");
-  }
-  if (state_.charging) {
-    AppLog.print(" / charging");
-  } else if (state_.full) {
-    AppLog.print(" / full");
-  } else if (state_.discharging) {
-    AppLog.print(" / discharging");
-  }
-  if (state_.percentEstimated) {
-    AppLog.print(" / voltage estimate");
-  }
-  AppLog.println();
   return true;
 }
 

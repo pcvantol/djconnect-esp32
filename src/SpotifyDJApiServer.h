@@ -6,6 +6,7 @@
 
 #include "AppState.h"
 #include "DisplayManager.h"
+#include "LedRing.h"
 #include "SpotifyClient.h"
 #include "SpotifyDJDevice.h"
 #include "SpotifyDJDiscovery.h"
@@ -22,6 +23,7 @@ public:
       SpotifyDJOTA &ota,
       SpotifyClient &spotify,
       DisplayManager &display,
+      LedRing &ledRing,
       const BatteryState &battery);
   void loop();
   bool isRunning() const;
@@ -44,6 +46,7 @@ private:
   SpotifyDJOTA *ota_ = nullptr;
   SpotifyClient *spotify_ = nullptr;
   DisplayManager *display_ = nullptr;
+  LedRing *ledRing_ = nullptr;
   const BatteryState *battery_ = nullptr;
   bool running_ = false;
 };
