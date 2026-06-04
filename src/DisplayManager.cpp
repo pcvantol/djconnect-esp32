@@ -810,7 +810,7 @@ void DisplayManager::drawMenuFooter(Canvas &canvas, const StatusNotice &notice) 
   }
 
   canvas.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  const String backHint = "Top press: back";
+  const String backHint = "Top press = back";
   canvas.drawString(backHint, 312 - canvas.textWidth(backHint, 2), 151, 2);
 }
 
