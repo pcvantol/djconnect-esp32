@@ -366,7 +366,7 @@ bool SpotifyDJApp::syncClock() {
 void SpotifyDJApp::runCaptivePortal() {
   display_.wakeForUserActivity();
   display_.forceBacklightPercent(100);
-  display_.showBootMessage("Please complete setup\nConnect to: " + String(Config::ProvisioningApSsid), battery_);
+  display_.showBootMessage("Setup device\nConnect to WiFi" + String(Config::ProvisioningApSsid), battery_);
   ledRing_.showSetupRainbowBreath();
 
   WiFi.mode(WIFI_AP);
@@ -462,7 +462,7 @@ void SpotifyDJApp::runCaptivePortal() {
       lastBatteryRefreshAt = now;
       batteryMonitor_.refresh();
       evaluateBatteryTransition();
-      display_.showBootMessage("Please complete setup\nConnect to: " + String(Config::ProvisioningApSsid), battery_);
+      display_.showBootMessage("Device setup\nConnect to WiFi \"" + String(Config::ProvisioningApSsid) + "\"", battery_);
     }
 
     if (now - setupStartedAt <= Config::SetupPromptBeepDurationMs &&
