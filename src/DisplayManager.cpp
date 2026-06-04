@@ -285,7 +285,7 @@ void DisplayManager::renderAlbumArtScreen(
   }
 
   tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  tft_.drawString("Encoder press: back", 172, 154, 1);
+  tft_.drawString("Center press = back", 172, 154, 1);
 }
 
 void DisplayManager::resetAlbumArtRenderCache() {
@@ -646,12 +646,11 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
     uint16_t color;
   };
   Row rows[] = {
-      {"WiFi", status.wifiConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
       {"Web", status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE},
-      {"IP", status.ipAddress.isEmpty() ? "-" : status.ipAddress, TFT_WHITE},
-      {"Paired to HA", status.haPaired ? "yes" : "no", static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
-      {"MQTT", status.mqttState, static_cast<uint16_t>(status.mqttConnected ? SpotifyGreen : TFT_ORANGE)},
+      {"WiFi", status.wifiConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
       {"Spotify", status.spotifyConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
+      {"Honme Assistant", status.haPaired ? "yes" : "no", static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
+      {"MQTT", status.mqttState, static_cast<uint16_t>(status.mqttConnected ? SpotifyGreen : TFT_ORANGE)}
   };
 
   const size_t itemCount = sizeof(rows) / sizeof(rows[0]);

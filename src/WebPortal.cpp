@@ -246,8 +246,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <div class="row"><span class="key">Storage</span><span id="storage" class="value">-</span></div>
         <div class="row"><span class="key">Sketch</span><span id="sketch" class="value">-</span></div>
       </div>
-      <button id="rebootButton" class="danger section-action" type="button">Restart device</button>
-      <button id="resetPairingButton" class="secondary section-action" type="button">Reset pairing</button>
+      <button id="rebootButton" class="warning section-action" type="button">Restart device</button>
+      <button id="resetPairingButton" class="danger section-action" type="button">Reset pairing</button>
     </section>
 
     <section class="panel wide">
