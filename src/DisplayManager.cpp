@@ -649,7 +649,7 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
       {"Web", status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE},
       {"WiFi", status.wifiConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
       {"Spotify", status.spotifyConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
-      {"Honme Assistant", status.haPaired ? "yes" : "no", static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
+      {"Home Assistant", status.haPaired ? "Connected" : "Not paired", static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
       {"MQTT", status.mqttState, static_cast<uint16_t>(status.mqttConnected ? SpotifyGreen : TFT_ORANGE)}
   };
 
