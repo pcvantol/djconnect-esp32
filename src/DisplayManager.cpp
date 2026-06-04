@@ -121,6 +121,30 @@ void DisplayManager::showBootMessage(const String &message, const BatteryState &
   renderBoot(tft_, message, &battery);
 }
 
+void DisplayManager::showPairingCode(const String &pairCode) {
+  if (screenBufferReady_) {
+    screen_.fillSprite(TFT_BLACK);
+    renderPairingCode(screen_, pairCode);
+    screen_.pushSprite(0, 0);
+    return;
+  }
+
+  tft_.fillScreen(TFT_BLACK);
+  renderPairingCode(tft_, pairCode);
+}
+
+void DisplayManager::showPairingCode(const String &pairCode, const BatteryState &battery) {
+  if (screenBufferReady_) {
+    screen_.fillSprite(TFT_BLACK);
+    renderPairingCode(screen_, pairCode, &battery);
+    screen_.pushSprite(0, 0);
+    return;
+  }
+
+  tft_.fillScreen(TFT_BLACK);
+  renderPairingCode(tft_, pairCode, &battery);
+}
+
 void DisplayManager::renderPlaybackScreen(
     const SpotifyState &playback,
     const BatteryState &battery,
@@ -462,6 +486,29 @@ void DisplayManager::renderBoot(Canvas &canvas, const String &message, const Bat
 }
 
 template <typename Canvas>
+void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, const BatteryState *battery) {
+  canvas.setTextDatum(TL_DATUM);
+  if (battery != nullptr) {
+    drawBatteryIndicator(canvas, *battery, 228, 5);
+  }
+
+  drawSpotifyDJIcon(canvas, 14, 10, 38);
+  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.drawString("SpotifyDJ", 60, 18, 4);
+
+  canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  canvas.drawString("Pairing code in Home", 14, 62, 2);
+  canvas.drawString("Assistant integration", 14, 82, 2);
+
+  canvas.drawFastHLine(14, 106, 292, TFT_DARKGREY);
+
+  canvas.setTextDatum(MC_DATUM);
+  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.drawString(pairCode, 160, 136, 4);
+  canvas.setTextDatum(TL_DATUM);
+}
+
+template <typename Canvas>
 void DisplayManager::renderPlayback(
     Canvas &canvas,
     const SpotifyState &playback,
@@ -696,7 +743,7 @@ void DisplayManager::drawBatteryIndicator(Canvas &canvas, const BatteryState &ba
       canvas.drawLine(x + 11, y + 8, x + 8, y + 15, TFT_YELLOW);
     }
     canvas.setTextColor(color, TFT_BLACK);
-    const String label = String(battery.percentEstimated ? "~" : "") + String(battery.percent) + "%";
+    const String label = String(battery.percent) + "%";
     canvas.drawString(label, x + 26, y, 2);
   } else {
     canvas.setTextColor(TFT_DARKGREY, TFT_BLACK);

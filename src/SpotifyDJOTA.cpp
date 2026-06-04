@@ -24,7 +24,11 @@ bool SpotifyDJOTA::canUpdate(const BatteryState *battery, String &message) const
   return false;
 }
 
-bool SpotifyDJOTA::performUpdate(const SpotifyDJOTARequest &request, const BatteryState *battery, String &message) {
+bool SpotifyDJOTA::performUpdate(
+    const SpotifyDJOTARequest &request,
+    const BatteryState *battery,
+    DisplayManager *display,
+    String &message) {
   if (request.device != ExpectedModel) {
     message = "Wrong device target";
     return false;
@@ -74,6 +78,15 @@ bool SpotifyDJOTA::performUpdate(const SpotifyDJOTARequest &request, const Batte
     AppLog.println(Update.errorString());
     http.end();
     return false;
+  }
+
+  if (display != nullptr) {
+    display->forceBacklightPercent(100);
+    if (battery != nullptr) {
+      display->showBootMessage("Firmware update\nin progress..", *battery);
+    } else {
+      display->showBootMessage("Firmware update\nin progress..");
+    }
   }
 
   const size_t written = Update.writeStream(http.getStream());

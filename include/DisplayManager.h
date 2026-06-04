@@ -23,6 +23,12 @@ public:
   // Draws a boot/status screen with the current battery and charge state in the header.
   void showBootMessage(const String &message, const BatteryState &battery);
 
+  // Draws the Home Assistant pairing code screen with a large, readable code.
+  void showPairingCode(const String &pairCode);
+
+  // Draws the Home Assistant pairing code screen with battery and charge state in the header.
+  void showPairingCode(const String &pairCode, const BatteryState &battery);
+
   // Renders the current playback screen; future menu screens can be added beside this method.
   void renderPlaybackScreen(
       const SpotifyState &playback,
@@ -102,6 +108,9 @@ private:
 
   template <typename Canvas>
   void renderBoot(Canvas &canvas, const String &message, const BatteryState *battery = nullptr);
+
+  template <typename Canvas>
+  void renderPairingCode(Canvas &canvas, const String &pairCode, const BatteryState *battery = nullptr);
 
   template <typename Canvas>
   void renderPlayback(

@@ -109,45 +109,18 @@ inline bool shouldPlayChargingCompleteCue(bool chargerConnected, int percent, bo
   return chargerConnected && percent > 90 && !alreadyPlayed;
 }
 
-// Rough Li-ion voltage fallback for cases where the BQ27220 SoC register is visibly stale.
+// Voltage-based Li-ion estimate. The BQ27220 SoC register is kept only as diagnostics.
 inline int batteryPercentFromVoltage(int voltageMv) {
-  struct Point {
-    int voltageMv;
-    int percent;
-  };
-
-  static constexpr Point curve[] = {
-      {3300, 0},
-      {3600, 5},
-      {3650, 10},
-      {3700, 20},
-      {3740, 30},
-      {3780, 40},
-      {3820, 50},
-      {3870, 60},
-      {3920, 70},
-      {3980, 80},
-      {4060, 90},
-      {4140, 95},
-      {4200, 100},
-  };
-
-  if (voltageMv <= curve[0].voltageMv) {
-    return curve[0].percent;
-  }
-
-  const size_t pointCount = sizeof(curve) / sizeof(curve[0]);
-  for (size_t index = 1; index < pointCount; index++) {
-    if (voltageMv <= curve[index].voltageMv) {
-      const Point lower = curve[index - 1];
-      const Point upper = curve[index];
-      const int voltageRange = upper.voltageMv - lower.voltageMv;
-      const int percentRange = upper.percent - lower.percent;
-      return lower.percent + ((voltageMv - lower.voltageMv) * percentRange) / voltageRange;
-    }
-  }
-
-  return 100;
+  if (voltageMv >= 4150) return 100;
+  if (voltageMv >= 4100) return 90;
+  if (voltageMv >= 4000) return 80;
+  if (voltageMv >= 3900) return 65;
+  if (voltageMv >= 3800) return 50;
+  if (voltageMv >= 3700) return 35;
+  if (voltageMv >= 3600) return 20;
+  if (voltageMv >= 3500) return 10;
+  if (voltageMv >= 3300) return 5;
+  return 0;
 }
 
 // Estimates the current playback position between Spotify polling calls.
@@ -235,15 +208,8 @@ inline Bq27220Reading interpretBq27220(
   reading.charging = !reading.discharging && !reading.full && hasChargeCurrent;
 
   if (hasVoltage) {
-    const int voltagePercent = batteryPercentFromVoltage(reading.voltageMv);
-    const bool currentLooksIdleOrMissing = !hasCurrent || absoluteCurrent < chargeCurrentThresholdMa;
-    const bool voltageContradictsGauge =
-        voltagePercent >= 85 && voltagePercent - reading.gaugePercent >= 25;
-
-    if (currentLooksIdleOrMissing && voltageContradictsGauge) {
-      reading.percent = voltagePercent;
-      reading.percentEstimated = true;
-    }
+    reading.percent = batteryPercentFromVoltage(reading.voltageMv);
+    reading.percentEstimated = true;
   }
 
   return reading;

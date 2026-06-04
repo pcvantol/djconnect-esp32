@@ -1503,6 +1503,7 @@ void SpotifyDJApp::setupHomeAssistantLayer() {
       haDiscovery_,
       haOta_,
       spotify_,
+      display_,
       battery_);
 
   AppLog.print("[SpotifyDJ] paired: ");

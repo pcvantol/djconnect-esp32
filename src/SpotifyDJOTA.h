@@ -4,6 +4,7 @@
 #include <Arduino.h>
 
 #include "AppState.h"
+#include "DisplayManager.h"
 
 struct SpotifyDJOTARequest {
   String url;
@@ -15,5 +16,9 @@ struct SpotifyDJOTARequest {
 class SpotifyDJOTA {
 public:
   bool canUpdate(const BatteryState *battery, String &message) const;
-  bool performUpdate(const SpotifyDJOTARequest &request, const BatteryState *battery, String &message);
+  bool performUpdate(
+      const SpotifyDJOTARequest &request,
+      const BatteryState *battery,
+      DisplayManager *display,
+      String &message);
 };

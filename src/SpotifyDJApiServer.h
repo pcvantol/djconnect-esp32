@@ -5,6 +5,7 @@
 #include <WebServer.h>
 
 #include "AppState.h"
+#include "DisplayManager.h"
 #include "SpotifyClient.h"
 #include "SpotifyDJDevice.h"
 #include "SpotifyDJDiscovery.h"
@@ -20,6 +21,7 @@ public:
       SpotifyDJDiscovery &discovery,
       SpotifyDJOTA &ota,
       SpotifyClient &spotify,
+      DisplayManager &display,
       const BatteryState &battery);
   void loop();
   bool isRunning() const;
@@ -41,6 +43,7 @@ private:
   SpotifyDJDiscovery *discovery_ = nullptr;
   SpotifyDJOTA *ota_ = nullptr;
   SpotifyClient *spotify_ = nullptr;
+  DisplayManager *display_ = nullptr;
   const BatteryState *battery_ = nullptr;
   bool running_ = false;
 };

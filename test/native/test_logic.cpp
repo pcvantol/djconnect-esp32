@@ -85,9 +85,17 @@ static void testBacklightDutyCurve() {
 }
 
 static void testBatteryVoltageFallbackCurve() {
-  assert(Logic::batteryPercentFromVoltage(3300) == 0);
-  assert(Logic::batteryPercentFromVoltage(4146) == 95);
-  assert(Logic::batteryPercentFromVoltage(4200) == 100);
+  assert(Logic::batteryPercentFromVoltage(3299) == 0);
+  assert(Logic::batteryPercentFromVoltage(3300) == 5);
+  assert(Logic::batteryPercentFromVoltage(3500) == 10);
+  assert(Logic::batteryPercentFromVoltage(3600) == 20);
+  assert(Logic::batteryPercentFromVoltage(3700) == 35);
+  assert(Logic::batteryPercentFromVoltage(3800) == 50);
+  assert(Logic::batteryPercentFromVoltage(3900) == 65);
+  assert(Logic::batteryPercentFromVoltage(4000) == 80);
+  assert(Logic::batteryPercentFromVoltage(4100) == 90);
+  assert(Logic::batteryPercentFromVoltage(4146) == 90);
+  assert(Logic::batteryPercentFromVoltage(4150) == 100);
   assert(Logic::batteryPercentFromVoltage(4300) == 100);
 }
 
@@ -103,7 +111,7 @@ static void testBq27220Interpretation() {
       5);
   assert(stuckReading.available);
   assert(stuckReading.gaugePercent == 40);
-  assert(stuckReading.percent == 95);
+  assert(stuckReading.percent == 90);
   assert(stuckReading.percentEstimated);
   assert(stuckReading.voltageMv == 4146);
   assert(stuckReading.currentMa == 0);
@@ -122,8 +130,8 @@ static void testBq27220Interpretation() {
       5);
   assert(discharging.discharging);
   assert(!discharging.charging);
-  assert(!discharging.percentEstimated);
-  assert(discharging.percent == 75);
+  assert(discharging.percentEstimated);
+  assert(discharging.percent == 65);
   assert(discharging.currentMa == -120);
 
   const auto full = Logic::interpretBq27220(
@@ -137,7 +145,8 @@ static void testBq27220Interpretation() {
       5);
   assert(full.full);
   assert(!full.charging);
-  assert(!full.percentEstimated);
+  assert(full.percentEstimated);
+  assert(full.percent == 100);
 
   const auto charging = Logic::interpretBq27220(
       50,
@@ -150,7 +159,8 @@ static void testBq27220Interpretation() {
       5);
   assert(charging.charging);
   assert(charging.currentMa == 120);
-  assert(!charging.percentEstimated);
+  assert(charging.percentEstimated);
+  assert(charging.percent == 65);
 }
 
 int main() {

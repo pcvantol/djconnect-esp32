@@ -49,9 +49,6 @@ bool BatteryMonitor::refresh() {
   state_.currentMa = reading.currentMa;
 
   AppLog.print("Battery: ");
-  if (state_.percentEstimated) {
-    AppLog.print("~");
-  }
   AppLog.print(state_.percent);
   AppLog.print("%");
   if (state_.percentEstimated) {
@@ -77,7 +74,7 @@ bool BatteryMonitor::refresh() {
     AppLog.print(" / discharging");
   }
   if (state_.percentEstimated) {
-    AppLog.print(" / voltage fallback");
+    AppLog.print(" / voltage estimate");
   }
   AppLog.println();
   return true;

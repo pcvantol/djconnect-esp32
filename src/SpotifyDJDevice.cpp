@@ -81,7 +81,9 @@ void SpotifyDJDevice::ensurePairingCode() {
     return;
   }
   pairCode_ = sixDigitCode(esp_random());
-  AppLog.print("[SpotifyDJ] pairing code generated for ");
+  AppLog.print("[SpotifyDJ] pairing code generated: ");
+  AppLog.print(pairCode_);
+  AppLog.print(" for ");
   AppLog.println(deviceId_);
 }
 
@@ -93,9 +95,9 @@ void SpotifyDJDevice::displayPairingCode() {
   }
   display_->forceBacklightPercent(100);
   if (battery_ != nullptr) {
-    display_->showBootMessage("SpotifyDJ\nPAIR " + pairCode_, *battery_);
+    display_->showPairingCode(pairCode_, *battery_);
   } else {
-    display_->showBootMessage("SpotifyDJ\nPAIR " + pairCode_);
+    display_->showPairingCode(pairCode_);
   }
 }
 

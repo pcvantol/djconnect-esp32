@@ -28,19 +28,28 @@ The current PlatformIO environment is `t_embed_cc1101`.
 - `include/Secrets.h`: optional non-secret build flags only. Do not put WiFi or Spotify credentials here.
 - `include/Secrets.example.h`: template for optional build flags.
 - `src/SpotifyDJDevice.*`, `src/SpotifyDJDiscovery.*`, `src/SpotifyDJPairing.*`, `src/SpotifyDJApiServer.*`, `src/SpotifyDJOTA.*`: Home Assistant device-layer modules.
+- `src/WebPortal.cpp`: embedded mobile web UI, diagnostics, settings, logs and HA pairing panel.
+- `README.md`: user-facing Dutch project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
 
 ## Build And Test Commands
 
 Run native tests first when changing pure logic:
 
 ```sh
-c++ -std=c++17 -Iinclude test/native/test_logic.cpp -o /tmp/spotify_remote_unit_tests
-/tmp/spotify_remote_unit_tests
+c++ -std=c++17 -Iinclude test/native/test_logic.cpp -o /tmp/spotifydj_unit_tests
+/tmp/spotifydj_unit_tests
 ```
 
 Build firmware:
 
 ```sh
+/Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
+```
+
+Build with an explicit release version:
+
+```sh
+SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="1.6.0" -DSPOTIFYDJ_VERSION_TAG="v1.6.0"' \
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
@@ -60,6 +69,8 @@ Keep concerns separated:
 - `WebPortal` owns the existing mobile dashboard and shared port-80 `WebServer`.
 - Home Assistant device-layer code belongs in the `SpotifyDJ*` modules under `src/`.
 - `LogicHelpers.h` is for pure, host-testable calculations.
+- `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
+- `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.
 
@@ -85,6 +96,8 @@ Local ESP endpoints currently include:
 - `POST /api/device/forget`
 
 The local device API registers routes on the existing `WebPortal` `WebServer` instance. Do not start a second port-80 server.
+
+Protected local endpoints must require `Authorization: Bearer <device_token>`. Open endpoints are limited to device info and pairing info unless the user explicitly changes the pairing flow.
 
 mDNS:
 
@@ -131,25 +144,39 @@ Never log:
 - WiFi password
 - Spotify client secret
 
+It is OK to log the six-digit Home Assistant pairing code. It is intentionally short-lived and user-visible on the device.
+
 Do not introduce a Spotify client secret. The firmware should use PKCE/public-client style credentials only.
 
 ## Pairing Mode Rules
 
 When WiFi is configured but Home Assistant is not paired:
 
-- Show pairing code on the display.
+- Show pairing code on the display with SpotifyDJ logo/name, battery indicator, instruction text, and a large readable code.
 - Keep display brightness at 100%.
 - Keep pairing mode active for 10 minutes.
 - After 10 minutes, enter deep sleep.
 - Keep local web/API handling alive.
 - Do not process normal playback/menu button actions.
 - Soft reset and hard reset must remain available through the reset monitor.
+- The pairing code should also be available in Serial logging and the web pairing panel.
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
 
 ## Display And UI Rules
 
 Do not redesign the UI casually. Changes should be targeted.
+
+Display is 320x170 landscape. Before changing text placement, consider the physical bezel and keep important content well inside the edges.
+
+Important current UI details:
+
+- App name is `SpotifyDJ`.
+- Now-playing title color is bright yellow.
+- Artist/show text is light grey.
+- Track progress bar is green.
+- Playing time text and volume bar use the purple accent.
+- Battery percentages are shown without a leading tilde, even when voltage-estimated.
 
 Current statusbar badges:
 
@@ -162,8 +189,10 @@ Green means OK; red means not OK.
 Brightness/power behavior is intentionally nuanced:
 
 - Normal idle dim/off policy is handled by `DisplayManager` and `SpotifyDJApp::updateVisualPower()`.
+- Default idle policy: dim after 10 seconds, reach 50% after 20 seconds, screen off after selected timeout.
 - Setup/AP and HA pairing modes force their own brightness behavior.
 - Low-battery and charging guards override normal UI behavior.
+- When screen-off wake handling changes, first button/encoder action should wake the screen only and not execute the underlying playback/menu action.
 
 ## OTA Rules
 
@@ -181,6 +210,8 @@ Current OTA implementation streams via `Update.h`.
 
 SHA256 verification is currently marked as TODO/log warning if a hash is supplied. Do not claim cryptographic validation is complete until implemented.
 
+During OTA firmware write, show `Firmware update in progress..` on the display at 100% brightness. The HTTP response is sent before the blocking write/reboot flow.
+
 ## MQTT Rules
 
 MQTT is separate from the HA device API. Do not conflate the two.
@@ -188,6 +219,12 @@ MQTT is separate from the HA device API. Do not conflate the two.
 MQTT publishes retained state and Home Assistant discovery for dashboard status. HA pairing/status uses HTTP endpoints and device token auth.
 
 MQTT connection failures should not block Spotify controls or local web UI.
+
+MQTT/HA/Spotify status indicators:
+
+- Device statusbar: `H`, `M`, `S`.
+- Web header mirrors the same indicators.
+- LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup animations.
 
 ## Volume Rules
 
@@ -209,7 +246,23 @@ Respect existing low-battery behavior:
 - Below 10%: critical charge flow and deep sleep.
 - Charging guard blocks normal WiFi/Spotify behavior until battery recovery threshold.
 
+Battery percentage is always voltage-estimated using `LogicHelpers::batteryPercentFromVoltage`. Do not reintroduce BQ27220 state-of-charge as the primary displayed percentage unless the user explicitly asks.
+
 Hard reset is allowed only above the configured battery threshold. Soft reset has its own lower threshold. Check `SoftResetMonitor` before changing reset behavior.
+
+## Web Portal Rules
+
+The web portal is intended to be usable on mobile. Keep controls responsive and avoid layout shifts while polling status.
+
+Current web expectations:
+
+- Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and HA URL/status.
+- Album art is shown when available.
+- Volume slider range is `0-60`.
+- Sound output selection uses a combobox/list without device type suffixes.
+- Logs support pause/resume and copy/select-all behavior.
+- WiFi credentials can be updated from the web UI without hard reset.
+- Do not show a WiFi password placeholder field with masked stored password.
 
 ## Coding Style
 
@@ -222,6 +275,20 @@ Hard reset is allowed only above the configured battery threshold. Soft reset ha
 - Use Arduino/ESP32 style APIs already present in the project.
 - Do not rewrite Spotify/audio/display pipelines when implementing HA-device features.
 - Do not add unrelated refactors.
+
+## Documentation Rules
+
+Keep `README.md` and `AGENTS.md` aligned with implemented behavior.
+
+README should document:
+
+- First-run AP setup and HA pairing.
+- No hardcoded WiFi/Spotify secrets.
+- Spotify refresh token generation via PKCE.
+- Web portal capabilities.
+- MQTT/HA behavior.
+- OTA release flow through the GitHub repo `pcvantol/spotify-dj-firmware` using a git tag.
+- Current build/upload/test commands.
 
 ## Verification Checklist
 
@@ -236,4 +303,3 @@ rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_REFRESH_TOKEN|WIFI_SSID|WIFI_PASSWORD|client_se
 ```
 
 4. Mention any remaining known TODOs, especially OTA SHA256 verification.
-

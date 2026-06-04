@@ -89,7 +89,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <header>
-    <h1><img class="brand-icon" src="/icon-192.png" alt="">SpotifyDJ <span id="appVersion" class="sub">v1.1.0</span></h1>
+    <h1><img class="brand-icon" src="/icon-192.png" alt="">SpotifyDJ <span id="appVersion" class="sub">vdev</span></h1>
     <div class="sub"><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="ip">-</span> <span id="wifiState">-</span><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span></div>
   </header>
   <main>
@@ -1037,7 +1037,7 @@ String WebPortal::batteryLabel() const {
   if (battery_ == nullptr || !battery_->available || battery_->percent < 0) {
     return "--%";
   }
-  return String(battery_->percentEstimated ? "~" : "") + String(battery_->percent) + "%";
+  return String(battery_->percent) + "%";
 }
 
 String WebPortal::formatBytes(uint32_t bytes) const {
