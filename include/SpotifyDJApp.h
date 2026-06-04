@@ -18,6 +18,8 @@
 #include "../src/SpotifyDJDiscovery.h"
 #include "../src/SpotifyDJOTA.h"
 #include "../src/SpotifyDJPairing.h"
+#include "VoiceHttpClient.h"
+#include "VoiceRecorder.h"
 #include "WebPortal.h"
 
 class SpotifyDJApp {
@@ -41,6 +43,7 @@ private:
     DimTimeout,
     Brightness,
     SleepTimeout,
+    ResetPairingConfirm,
     HardResetConfirm,
   };
 
@@ -52,7 +55,14 @@ private:
   bool syncClock();
   void startWebPortalIfNeeded();
   void runCaptivePortal();
-  String captivePortalPage(const String &message, bool error) const;
+  String captivePortalPage(
+      const String &message,
+      bool error,
+      const String &ssid = "",
+      const String &clientId = "",
+      const String &refreshToken = "",
+      const String &spotifyMarket = "NL",
+      const MqttSettings &mqttSettings = MqttSettings()) const;
   bool testAndSaveProvisioning(
       const String &ssid,
       const String &password,
@@ -88,6 +98,7 @@ private:
 
   // Clears local credentials/tokens/caches and reboots into provisioning AP mode.
   void hardResetToProvisioning();
+  void resetHomeAssistantPairing();
   bool isMenuActive() const;
   size_t menuItemCount(UiScreen screen) const;
   size_t selectedIndexForScreen(UiScreen screen) const;
@@ -102,6 +113,8 @@ private:
 
   // Playback commands exposed by the current playback screen.
   void pauseOrResume();
+  void handleVoiceButton();
+  void stopVoiceRecordingAndUpload();
   void goToNextTrack();
   void goToPreviousTrack();
   void refreshPlaybackAndBattery();
@@ -143,6 +156,7 @@ private:
   static void applyWebMqttSettingsCallback(void *context, const MqttSettings &settings);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static void refreshFromWebCallback(void *context);
+  static void resetPairingFromWebCallback(void *context);
   static void hardResetFromWebCallback(void *context);
   void showNotice(const String &message, uint32_t ttlMs = 2500);
   int displayedVolume() const;
@@ -152,7 +166,7 @@ private:
   static constexpr size_t BrightnessOptionCount = 4;
   static constexpr size_t SleepTimeoutOptionCount = 4;
   static constexpr size_t HardResetOptionCount = 2;
-  static constexpr size_t SettingsItemCount = 7;
+  static constexpr size_t SettingsItemCount = 8;
 
   SpotifyState playback_;
   BatteryState battery_;
@@ -165,6 +179,8 @@ private:
   InputController input_;
   LedRing ledRing_;
   SoundManager sound_;
+  VoiceRecorder voiceRecorder_;
+  VoiceHttpClient voiceClient_;
   SoftResetMonitor softResetMonitor_;
   SpotifyClient spotify_{playback_};
   WebPortal webPortal_;
@@ -182,6 +198,7 @@ private:
   size_t menuStackSize_ = 0;
   size_t rootMenuSelection_ = 0;
   size_t settingsSelection_ = 0;
+  size_t aboutSelection_ = 0;
   size_t dimTimeoutSelection_ = 1;
   size_t brightnessSelection_ = 3;
   size_t sleepTimeoutSelection_ = 0;
@@ -207,9 +224,12 @@ private:
   bool lowBatteryTimerWake_ = false;
   bool chargingCompleteSoundPlayed_ = false;
   bool volumeFeedbackEnabled_ = true;
-  bool topHoldRestartHintVisible_ = false;
+  bool voiceRecording_ = false;
+  bool topHoldMenuHintVisible_ = false;
+  bool menuTopHoldActive_ = false;
   bool haPairingScreenActive_ = false;
   uint32_t pendingWifiSettingsRequestedAt_ = 0;
+  uint32_t menuTopHoldStartedAt_ = 0;
   uint32_t wifiConnectFailedAt_ = 0;
   uint32_t lowBatteryGuardStartedAt_ = 0;
   int lastBatteryPercent_ = -1;

@@ -189,16 +189,16 @@ void DisplayManager::renderMenuList(
   renderMenu(tft_, title, items, itemCount, selectedIndex, notice);
 }
 
-void DisplayManager::renderAboutScreen(const StatusNotice &notice, const AboutStatus &status) {
+void DisplayManager::renderAboutScreen(const StatusNotice &notice, const AboutStatus &status, size_t selectedIndex) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderAbout(screen_, notice, status);
+    renderAbout(screen_, notice, status, selectedIndex);
     screen_.pushSprite(0, 0);
     return;
   }
 
   tft_.fillScreen(TFT_BLACK);
-  renderAbout(tft_, notice, status);
+  renderAbout(tft_, notice, status, selectedIndex);
 }
 
 void DisplayManager::renderLowBatteryScreen(const BatteryState &battery, const String &message) {
@@ -240,8 +240,9 @@ void DisplayManager::renderAlbumArtScreen(
 
   tft_.setTextDatum(TL_DATUM);
 
-  if (imagePath != lastAlbumArtPath_) {
+  if (albumArtPaneDirty_ || imagePath != lastAlbumArtPath_) {
     lastAlbumArtPath_ = imagePath;
+    albumArtPaneDirty_ = false;
     tft_.fillRect(0, 0, 168, 170, TFT_BLACK);
     tft_.drawRect(4, 4, 160, 160, TFT_DARKGREY);
     if (!imagePath.isEmpty() && LittleFS.exists(imagePath)) {
@@ -284,7 +285,11 @@ void DisplayManager::renderAlbumArtScreen(
   }
 
   tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  tft_.drawString("Long press: back", 172, 154, 1);
+  tft_.drawString("Encoder press: back", 172, 154, 1);
+}
+
+void DisplayManager::resetAlbumArtRenderCache() {
+  albumArtPaneDirty_ = true;
 }
 
 bool DisplayManager::advanceTitleScrollIfNeeded(const SpotifyState &playback, int maxWidth, uint8_t font) {
@@ -316,31 +321,13 @@ void DisplayManager::forceBacklightPercent(uint8_t percent) {
 void DisplayManager::updateIdleBrightness() {
   // Incoming input calls wakeForUserActivity(); this method only applies the idle policy.
   const uint32_t idleMs = millis() - lastUserActivityAt_;
-  const uint8_t dimBrightnessPercent = min<uint8_t>(
-      activeBrightnessPercent_,
-      Config::DisplayDimBrightnessPercent);
-  setBacklightPercent(Logic::displayPowerPercent(
-      activeBrightnessPercent_,
-      dimBrightnessPercent,
-      dimStartAfterMs_,
-      dimTargetAfterMs_,
-      offAfterMs_,
-      idleMs));
+  setBacklightPercent(offAfterMs_ > 0 && idleMs >= offAfterMs_ ? 0 : activeBrightnessPercent_);
 }
 
 void DisplayManager::configurePowerSaving(uint8_t activeBrightnessPercent, uint32_t offAfterMs) {
   activeBrightnessPercent_ = constrain(activeBrightnessPercent, 10, 100);
   offAfterMs_ = offAfterMs;
-
-  if (offAfterMs_ == 0) {
-    dimStartAfterMs_ = Config::DisplayDimStartAfterMs;
-    dimTargetAfterMs_ = Config::DisplayDimAfterMs;
-  } else {
-    dimStartAfterMs_ = min(Config::DisplayDimStartAfterMs, offAfterMs_ / 3);
-    dimTargetAfterMs_ = min(Config::DisplayDimAfterMs, offAfterMs_ / 2);
-  }
-
-  wakeForUserActivity();
+  setBacklightPercent(backlightPercent_ == 0 ? 0 : activeBrightnessPercent_);
 }
 
 void DisplayManager::setBacklightPercent(uint8_t percent) {
@@ -531,14 +518,12 @@ void DisplayManager::renderPlayback(
 
   auto drawStatusBadge = [&](int x, const char *label, bool ok) {
     const uint16_t color = ok ? SpotifyGreen : TFT_RED;
-    canvas.drawCircle(x + 7, 11, 7, color);
-    canvas.fillCircle(x + 7, 11, 5, TFT_BLACK);
     canvas.setTextColor(color, TFT_BLACK);
-    canvas.drawString(label, x + 3, 5, 1);
+    canvas.drawString(label, x, 5, 2);
   };
-  drawStatusBadge(168, "H", homeAssistantConnected);
-  drawStatusBadge(188, "M", mqttConnected);
-  drawStatusBadge(208, "S", spotifyConnected);
+  drawStatusBadge(156, "H", homeAssistantConnected);
+  drawStatusBadge(176, "M", mqttConnected);
+  drawStatusBadge(196, "S", spotifyConnected);
   drawWifiIndicator(canvas, 224, 1);
   drawBatteryIndicator(canvas, battery, 250, 5);
   canvas.drawFastHLine(8, 25, 304, TFT_DARKGREY);
@@ -644,32 +629,63 @@ void DisplayManager::renderMenu(
 }
 
 template <typename Canvas>
-void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, const AboutStatus &status) {
+void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, const AboutStatus &status, size_t selectedIndex) {
   canvas.setTextDatum(TL_DATUM);
   drawMenuTitle(canvas, "About");
-  drawSpotifyDJIcon(canvas, 18, 40, 64);
+  drawSpotifyDJIcon(canvas, 14, 34, 44);
 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  canvas.drawString("SpotifyDJ", 90, 46, 4);
+  canvas.drawString("SpotifyDJ", 66, 38, 4);
 
   canvas.setTextColor(NeutralLightGrey, TFT_BLACK);
-  canvas.drawString(Config::AppVersion, 94, 78, 2);
+  canvas.drawString(Config::AppVersion, 70, 70, 2);
 
-  const int labelX = 18;
-  const int valueX = 98;
-  const int firstY = 104;
-  const int rowHeight = 16;
-  canvas.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  canvas.drawString("IP", labelX, firstY, 2);
-  canvas.drawString("MQTT", labelX, firstY + rowHeight, 2);
-  canvas.drawString("Spotify", labelX, firstY + (rowHeight * 2), 2);
+  struct Row {
+    const char *label;
+    String value;
+    uint16_t color;
+  };
+  Row rows[] = {
+      {"WiFi", status.wifiConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
+      {"Web", status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE},
+      {"IP", status.ipAddress.isEmpty() ? "-" : status.ipAddress, TFT_WHITE},
+      {"Paired to HA", status.haPaired ? "yes" : "no", static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
+      {"MQTT", status.mqttState, static_cast<uint16_t>(status.mqttConnected ? SpotifyGreen : TFT_ORANGE)},
+      {"Spotify", status.spotifyConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
+  };
 
-  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  canvas.drawString(clippedText(canvas, status.ipAddress.isEmpty() ? "-" : status.ipAddress, 206, 2), valueX, firstY, 2);
-  canvas.setTextColor(status.mqttConnected ? SpotifyGreen : TFT_ORANGE, TFT_BLACK);
-  canvas.drawString(clippedText(canvas, status.mqttState, 206, 2), valueX, firstY + rowHeight, 2);
-  canvas.setTextColor(status.spotifyConnected ? SpotifyGreen : TFT_RED, TFT_BLACK);
-  canvas.drawString(status.spotifyConnected ? "Connected" : "Disconnected", valueX, firstY + (rowHeight * 2), 2);
+  const size_t itemCount = sizeof(rows) / sizeof(rows[0]);
+  const size_t visibleCount = 4;
+  selectedIndex = min(selectedIndex, itemCount - 1);
+  size_t firstVisible = 0;
+  if (selectedIndex >= visibleCount) {
+    firstVisible = selectedIndex - visibleCount + 1;
+  }
+
+  const int rowTop = 92;
+  const int rowHeight = 17;
+  for (size_t visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
+    const size_t index = firstVisible + visibleIndex;
+    const int y = rowTop + (visibleIndex * rowHeight);
+    const bool selected = index == selectedIndex;
+    if (selected) {
+      canvas.fillRoundRect(8, y - 1, 292, rowHeight - 1, 3, TFT_DARKGREEN);
+    }
+    canvas.setTextColor(TFT_WHITE, selected ? TFT_DARKGREEN : TFT_BLACK);
+    canvas.drawString(clippedText(canvas, rows[index].label, 112, 2), 14, y, 2);
+    canvas.setTextColor(rows[index].color, selected ? TFT_DARKGREEN : TFT_BLACK);
+    canvas.drawString(clippedText(canvas, rows[index].value, 170, 2), 136, y, 2);
+  }
+
+  const int trackX = 309;
+  const int trackTop = rowTop;
+  const int trackHeight = static_cast<int>(visibleCount * rowHeight) - 2;
+  const int thumbHeight = max(18, (trackHeight * static_cast<int>(visibleCount)) / static_cast<int>(itemCount));
+  const int maxFirst = static_cast<int>(itemCount - visibleCount);
+  const int thumbTravel = max(1, trackHeight - thumbHeight);
+  const int thumbY = trackTop + (maxFirst > 0 ? (thumbTravel * static_cast<int>(firstVisible)) / maxFirst : 0);
+  canvas.drawRoundRect(trackX, trackTop, 4, trackHeight, 2, TFT_DARKGREY);
+  canvas.fillRoundRect(trackX, thumbY, 4, thumbHeight, 2, TFT_LIGHTGREY);
 
   drawMenuFooter(canvas, notice);
 }
@@ -796,7 +812,7 @@ template <typename Canvas>
 void DisplayManager::drawMenuTitle(Canvas &canvas, const String &title) {
   canvas.setTextColor(TFT_GREEN, TFT_BLACK);
   canvas.drawString(clippedText(canvas, title, 260, 2), 8, 5, 2);
-  canvas.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString("Menu", 270, 5, 2);
   canvas.drawFastHLine(8, 25, 304, TFT_DARKGREY);
 }
@@ -809,7 +825,7 @@ void DisplayManager::drawMenuFooter(Canvas &canvas, const StatusNotice &notice) 
     return;
   }
 
-  canvas.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   const String backHint = "Top press = back";
   canvas.drawString(backHint, 312 - canvas.textWidth(backHint, 2), 151, 2);
 }

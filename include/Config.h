@@ -35,6 +35,8 @@ static constexpr uint8_t EncoderButtonPin = 0;
 static constexpr uint8_t SpeakerBclkPin = 46;
 static constexpr uint8_t SpeakerLrclkPin = 40;
 static constexpr uint8_t SpeakerDataPin = 7;
+static constexpr uint8_t MicrophoneDataPin = 42;
+static constexpr uint8_t MicrophoneClockPin = 39;
 
 // BQ27220 standard command registers used by BatteryMonitor.
 static constexpr uint8_t Bq27220I2cAddress = 0x55;
@@ -68,6 +70,9 @@ static constexpr uint32_t PairingModeTimeoutMs = 600000;
 static constexpr uint32_t SetupPromptBeepIntervalMs = 30000;
 static constexpr uint32_t SetupPromptBeepDurationMs = 600000;
 static constexpr uint32_t SpeakerSampleRate = 16000;
+static constexpr uint32_t VoiceSampleRate = 16000;
+static constexpr uint32_t VoiceMaxRecordMs = 15000;
+static constexpr size_t VoiceMaxWavBytes = 2UL * 1024UL * 1024UL;
 
 // UI tuning constants.
 static constexpr int TitleScrollGapPx = 36;

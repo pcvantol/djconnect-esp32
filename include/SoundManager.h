@@ -14,6 +14,15 @@ public:
   // Short pitch cue for encoder volume changes.
   void playVolumeTick(int direction);
 
+  // Subtle left/right cue for menu cursor movement.
+  void playMenuTick(int direction);
+
+  // Very short cue for the middle encoder button press.
+  void playButtonPress();
+
+  // Gentle confirmation cue for completed UI actions.
+  void playConfirm();
+
   // Lower warning beep used before destructive reset actions.
   void playHardReset();
 
@@ -26,11 +35,18 @@ public:
   // Bright confirmation cue when charging passes the nearly-full threshold.
   void playChargingComplete();
 
+  // Plays a raw WAV stream returned by Home Assistant voice processing.
+  bool playWavStream(Stream &stream, int contentLength);
+
 private:
   enum class Event : uint8_t {
     Startup,
     VolumeUp,
     VolumeDown,
+    MenuLeft,
+    MenuRight,
+    ButtonPress,
+    Confirm,
     HardReset,
     BatteryWarning,
     SetupPrompt,

@@ -49,7 +49,7 @@ Build firmware:
 Build with an explicit release version:
 
 ```sh
-SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="1.6.0" -DSPOTIFYDJ_VERSION_TAG="v1.6.0"' \
+SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="1.7.0" -DSPOTIFYDJ_VERSION_TAG="v1.7.0"' \
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 

@@ -14,6 +14,7 @@ struct InputEvents {
   bool encoderDoubleClick = false;
   bool encoderLongClick = false;
   bool topButtonClick = false;
+  bool topButtonPress = false;
   bool topButtonDoubleClick = false;
   bool topButtonLongClick = false;
   bool topButtonHeld = false;
@@ -32,6 +33,9 @@ public:
   // Clears delayed click/double-click state after a button press only woke the screen.
   void clearPendingButtonActions();
 
+  // Ignores the release-click for a top-button press already handled while the button was down.
+  void consumeTopButtonPress();
+
 private:
   // RotaryEncoder needs ISR ticks for reliable rotation detection.
   static void IRAM_ATTR encoderInterrupt();
@@ -45,6 +49,7 @@ private:
   DebouncedButton topButton_;
   int lastEncoderPosition_ = 0;
   bool topButtonClickPending_ = false;
+  bool ignoreTopReleaseClick_ = false;
   uint32_t topButtonClickPendingAt_ = 0;
   bool encoderClickPending_ = false;
   uint32_t encoderClickPendingAt_ = 0;

@@ -126,11 +126,15 @@ void SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const Strin
 }
 
 void SpotifyDJDevice::clearPairing() {
+  clearHomeAssistantPairing();
+  clearSpotifyCredentials();
+}
+
+void SpotifyDJDevice::clearHomeAssistantPairing() {
   removeKey("ha_url");
   removeKey("device_token");
-  clearSpotifyCredentials();
   pairCode_ = "";
-  AppLog.println("[SpotifyDJ] pairing cleared");
+  AppLog.println("[SpotifyDJ] Home Assistant pairing cleared");
 }
 
 void SpotifyDJDevice::clearSpotifyCredentials() {

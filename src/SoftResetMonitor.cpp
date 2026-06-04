@@ -2,6 +2,7 @@
 #include "SoftResetMonitor.h"
 
 #include <Arduino.h>
+#include <LittleFS.h>
 #include <Preferences.h>
 
 #include "AppLog.h"
@@ -86,11 +87,30 @@ void SoftResetMonitor::hardResetToSetupPortal() {
   spotify.clear();
   spotify.end();
 
+  Preferences spotifyDj;
+  spotifyDj.begin("spotifydj", false);
+  spotifyDj.clear();
+  spotifyDj.end();
+
   Preferences provision;
   provision.begin("provision", false);
   provision.clear();
   provision.putBool("setup", true);
   provision.end();
+
+  if (LittleFS.begin(true)) {
+    fs::File root = LittleFS.open("/");
+    fs::File file = root.openNextFile();
+    while (file) {
+      const String path = file.name();
+      file.close();
+      if (!path.isEmpty()) {
+        LittleFS.remove(path);
+      }
+      file = root.openNextFile();
+    }
+    root.close();
+  }
 
   delay(100);
   ESP.restart();

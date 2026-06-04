@@ -87,6 +87,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .fine { color:var(--muted); font-size:12px; line-height:1.35; }
     .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px; }
     .status { margin-top:8px; color:#b7c5c1; font-size:13px; min-height:18px; }
+    .wifi-grid { margin-bottom:14px; }
+    .header-battery { margin-left:8px; color:#d6dfdc; white-space:nowrap; }
+    .pair-banner { display:none; margin:10px; padding:14px; border:1px solid rgba(255,204,51,.45); border-radius:8px; background:linear-gradient(135deg,rgba(255,204,51,.18),rgba(29,185,84,.12)); color:var(--text); }
+    .pair-banner strong { display:block; font-size:18px; margin-bottom:4px; color:#ffdf5d; }
+    .pair-banner a { color:#fff; font-weight:800; text-decoration:none; }
+    .pair-banner .pair-code { display:inline-block; margin-left:4px; padding:2px 7px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.22); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.08em; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:#050707; color:#c7d2cf; font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
   </style>
@@ -94,8 +100,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <body>
   <header>
     <h1><img class="brand-icon" src="/icon-192.png" alt="">SpotifyDJ <span id="appVersion" class="sub">vdev</span></h1>
-    <div class="sub"><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="ip">-</span><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span></div>
+    <div class="sub"><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="ip">-</span><span id="batteryHeader" class="header-battery">-</span><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span></div>
   </header>
+  <div id="haPairBanner" class="pair-banner">
+    <strong>Device not paired with Home Assistant</strong>
+    <a href="https://my.home-assistant.io/redirect/config_flow_start?domain=spotify_dj">Click here to setup</a>
+    <span>and provide pairing code:</span>
+    <span id="haPairBannerCode" class="pair-code">------</span>
+  </div>
   <main>
     <section class="panel wide">
       <h2>Now Playing</h2>
@@ -114,17 +126,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <button id="nextButton" class="secondary" type="button">Next song</button>
       </div>
       <div id="playbackCommandStatus" class="status"></div>
-      <div class="row"><span class="key">Output</span><span id="device" class="value">-</span></div>
-      <label>Sound output
-        <select id="soundOutputSelect"><option value="">Loading outputs...</option></select>
-      </label>
+      <div class="row"><span class="key">Sound output</span><span id="device" class="value">-</span></div>
+      <select id="soundOutputSelect" aria-label="Sound output"><option value="">Loading outputs...</option></select>
       <div id="soundOutputStatus" class="status"></div>
       <div class="row"><span class="key volume-label">Volume</span><span id="volume" class="value volume-value">-</span></div>
-      <label class="volume-label">Volume
-        <input id="volumeSlider" class="volume-slider" type="range" min="0" max="60" value="0">
-      </label>
+      <input id="volumeSlider" class="volume-slider" type="range" min="0" max="60" value="0" aria-label="Volume">
       <div id="volumeStatus" class="status"></div>
-      <div class="row"><span class="key">Battery</span><span id="battery" class="value">-</span></div>
     </section>
 
     <section class="panel">
@@ -165,13 +172,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         </label>
         <button type="submit">Save settings</button>
       </form>
-      <div class="fine">Idle dim starts after 10s, reaches 50% after 20s. LED ring follows the screen power state.</div>
+      <div class="fine">Screen turns off after the selected idle timeout. LED ring follows the screen power state.</div>
       <div id="settingsStatus" class="status"></div>
     </section>
 
     <section class="panel">
       <h2>WiFi</h2>
-      <div class="grid">
+      <div class="grid wifi-grid">
         <div class="row"><span class="key">State</span><span id="wifiConnected" class="value">-</span></div>
         <div class="row"><span class="key">SSID</span><span id="wifiSsid" class="value">-</span></div>
         <div class="row"><span class="key">RSSI</span><span class="value"><span id="wifiSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="wifiRssi">-</span></span></div>
@@ -184,7 +191,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <label>New WiFi password
           <input id="wifiNewPassword" name="password" type="password" autocomplete="new-password" placeholder="leave blank to keep current">
         </label>
-        <button type="submit">Test WiFi and reboot</button>
+        <button type="submit">Test WiFi &amp; restart device</button>
       </form>
       <div class="fine">The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.</div>
       <div id="wifiSettingsStatus" class="status"></div>
@@ -202,7 +209,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <div class="row"><span class="key">Model</span><span id="haModel" class="value">-</span></div>
         <div class="row"><span class="key">HA URL</span><span id="haUrl" class="value mono">-</span></div>
       </div>
-      <div class="fine">Discovery advertises <span class="mono">_spotifydj._tcp</span> with TXT records including device_id, paired, version, api and model.</div>
       <div id="haStatus" class="status"></div>
     </section>
 
@@ -241,13 +247,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <div class="row"><span class="key">Sketch</span><span id="sketch" class="value">-</span></div>
       </div>
       <button id="rebootButton" class="danger section-action" type="button">Restart device</button>
+      <button id="resetPairingButton" class="secondary section-action" type="button">Reset pairing</button>
     </section>
 
     <section class="panel wide">
       <h2>Logs</h2>
       <div class="two">
         <button id="pauseLogsButton" class="secondary" type="button">Pause logs</button>
-        <button id="copyLogsButton" class="secondary" type="button">Copy all</button>
+        <button id="copyLogsButton" class="secondary" type="button">Select all</button>
       </div>
       <div id="logsStatus" class="status"></div>
       <pre id="logs" class="logs">Loading logs...</pre>
@@ -315,7 +322,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         $(id).disabled = !spotifyControlsEnabled;
       }
       if (!spotifyControlsEnabled) {
-        $("soundOutputStatus").textContent = "Spotify not connected";
+        $("soundOutputStatus").textContent = "";
         $("playbackCommandStatus").textContent = "";
         $("volumeStatus").textContent = "";
       }
@@ -323,8 +330,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     function render(data) {
       text("appVersion", data.app.version);
       text("ip", data.wifi.ip || "No IP");
-      text("track", data.playback.track || "Nothing playing");
-      text("artist", data.playback.artist || data.playback.type || "-");
+      text("track", data.playback.hasPlayback ? (data.playback.track || "-") : "");
+      text("artist", data.playback.hasPlayback ? (data.playback.artist || data.playback.type || "-") : "");
       const albumArt = $("albumArt");
       if (data.playback.albumImageUrl) {
         albumArt.src = data.playback.albumImageUrl;
@@ -341,7 +348,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       text("device", data.device.name || "-");
       text("volume", data.device.volume >= 0 ? `${data.device.volume}%` : "-");
       setInput("volumeSlider", data.device.volume >= 0 ? String(data.device.volume) : "0");
-      text("battery", `${data.battery.label} ${data.battery.charging ? "charging" : data.battery.full ? "full" : data.battery.discharging ? "discharging" : ""}`);
+      text("batteryHeader", `${data.battery.label} ${data.battery.charging ? "charging" : data.battery.full ? "full" : data.battery.discharging ? "discharging" : ""}`);
       text("wifiConnected", data.wifi.connected ? "Connected" : "Disconnected");
       text("wifiSsid", data.wifi.ssid || "-");
       setInput("wifiNewSsid", data.wifi.ssid || "");
@@ -394,16 +401,20 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         text("haFirmware", info.firmware || "-");
         text("haModel", info.model || "-");
         text("haUrl", info.ha_url || "-");
-        text("haStatus", info.spotify_configured ? "Spotify credentials stored" : "Spotify credentials missing");
+        text("haStatus", "");
         if (info.paired) {
+          $("haPairBanner").style.display = "none";
           text("haPairCode", "-");
           return;
         }
         const pairResponse = await fetch("/api/device/pairing-info", { cache: "no-store" });
         const pair = await pairResponse.json();
         text("haPairCode", pair.pair_code || "-");
+        text("haPairBannerCode", pair.pair_code || "------");
+        $("haPairBanner").style.display = "block";
         text("haMdnsUrl", pair.local_url || (pair.device_id ? `http://${pair.device_id}.local` : "-"));
       } catch (error) {
+        $("haPairBanner").style.display = "none";
         setStatusDot("haHeaderStatus", false);
         text("haStatus", "Pairing info unavailable");
       }
@@ -456,7 +467,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         }
         $("queueStatus").textContent = "";
       } catch (error) {
-        list.innerHTML = '<div class="fine">Queue failed</div>';
+        list.innerHTML = '<div class="fine"></div>';
       }
     }
     async function refreshLogs() {
@@ -509,18 +520,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       if (!logsPaused) refreshLogs();
     });
     $("copyLogsButton").addEventListener("click", async () => {
-      const logs = $("logs").textContent || "";
-      try {
-        await navigator.clipboard.writeText(logs);
-        $("logsStatus").textContent = "Logs copied";
-      } catch (error) {
-        const range = document.createRange();
-        range.selectNodeContents($("logs"));
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-        $("logsStatus").textContent = "Logs selected";
-      }
+      const range = document.createRange();
+      range.selectNodeContents($("logs"));
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      $("logsStatus").textContent = "Logs selected";
     });
     $("settingsForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -559,8 +564,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       if (!confirm("Restart SpotifyDJ?")) return;
       $("otaStatus").textContent = await (await fetch("/api/reboot", { method:"POST" })).text();
     });
+    $("resetPairingButton").addEventListener("click", async () => {
+      if (!confirm("Reset Home Assistant pairing and restart to the pairing screen?")) return;
+      $("otaStatus").textContent = await (await fetch("/api/reset-pairing", { method:"POST" })).text();
+    });
     $("hardResetButton").addEventListener("click", async () => {
-      if (!confirm("Factory reset: delete local WiFi credentials, tokens and caches, then reboot into setup AP mode?")) return;
+      if (!confirm("Factory reset SpotifyDJ and open setup mode?")) return;
       $("otaStatus").textContent = await (await fetch("/api/hard-reset", { method:"POST" })).text();
     });
     $("otaForm").addEventListener("submit", async event => {
@@ -591,6 +600,7 @@ void WebPortal::begin(
     const RuntimeDiagnostics &diagnostics,
     const VisualState &visualState,
     SpotifyClient &spotify,
+    LedRing &ledRing,
     MqttPublisher &mqttPublisher,
     const MqttSettings &mqttSettings,
     const uint8_t &screenBrightnessPercent,
@@ -601,12 +611,14 @@ void WebPortal::begin(
     MqttSettingsCallback mqttSettingsCallback,
     WifiSettingsCallback wifiSettingsCallback,
     SimpleCallback refreshCallback,
+    SimpleCallback resetPairingCallback,
     SimpleCallback hardResetCallback) {
   playback_ = &playback;
   battery_ = &battery;
   diagnostics_ = &diagnostics;
   visualState_ = &visualState;
   spotify_ = &spotify;
+  ledRing_ = &ledRing;
   mqttPublisher_ = &mqttPublisher;
   mqttSettings_ = &mqttSettings;
   screenBrightnessPercent_ = &screenBrightnessPercent;
@@ -617,6 +629,7 @@ void WebPortal::begin(
   mqttSettingsCallback_ = mqttSettingsCallback;
   wifiSettingsCallback_ = wifiSettingsCallback;
   refreshCallback_ = refreshCallback;
+  resetPairingCallback_ = resetPairingCallback;
   hardResetCallback_ = hardResetCallback;
 
   if (running_) {
@@ -665,6 +678,7 @@ void WebPortal::configureRoutes() {
   server_.on("/api/transfer", HTTP_POST, [this]() { handleTransferPost(); });
   server_.on("/api/playback", HTTP_POST, [this]() { handlePlaybackCommandPost(); });
   server_.on("/api/refresh", HTTP_POST, [this]() { handleRefreshPost(); });
+  server_.on("/api/reset-pairing", HTTP_POST, [this]() { handleResetPairingPost(); });
   server_.on("/api/reboot", HTTP_POST, [this]() { handleRebootPost(); });
   server_.on("/api/hard-reset", HTTP_POST, [this]() { handleHardResetPost(); });
   server_.on(
@@ -836,7 +850,7 @@ void WebPortal::handleWifiPost() {
   }
 
   wifiSettingsCallback_(callbackContext_, ssid, server_.arg("password"));
-  server_.send(202, "text/plain", "WiFi test started. Device will reboot automatically if the connection succeeds.");
+  server_.send(202, "text/plain", "WiFi test started. Device will restart automatically if the connection succeeds.");
 }
 
 void WebPortal::handleVolumePost() {
@@ -978,14 +992,23 @@ void WebPortal::handleRefreshPost() {
   server_.send(200, "text/plain", "Refresh requested");
 }
 
+void WebPortal::handleResetPairingPost() {
+  server_.send(200, "text/plain", "Reset pairing requested. Restarting to pairing screen...");
+  delay(250);
+  if (resetPairingCallback_ != nullptr) {
+    resetPairingCallback_(callbackContext_);
+  }
+  ESP.restart();
+}
+
 void WebPortal::handleRebootPost() {
-  server_.send(200, "text/plain", "Restarting...");
+  server_.send(200, "text/plain", "Restarting device...");
   delay(250);
   ESP.restart();
 }
 
 void WebPortal::handleHardResetPost() {
-  server_.send(200, "text/plain", "Factory reset requested. Rebooting into setup portal...");
+  server_.send(200, "text/plain", "Factory reset requested. Restarting into setup mode...");
   delay(250);
   if (hardResetCallback_ != nullptr) {
     hardResetCallback_(callbackContext_);
@@ -994,7 +1017,7 @@ void WebPortal::handleHardResetPost() {
 
 void WebPortal::handleOtaFinished() {
   if (otaOk_ && !Update.hasError()) {
-    server_.send(200, "text/plain", "Firmware uploaded. Rebooting...");
+    server_.send(200, "text/plain", "Firmware uploaded. Restarting...");
     delay(500);
     ESP.restart();
     return;
@@ -1007,6 +1030,9 @@ void WebPortal::handleOtaUpload() {
   HTTPUpload &upload = server_.upload();
 
   if (upload.status == UPLOAD_FILE_START) {
+    if (ledRing_ != nullptr) {
+      ledRing_->showSolid(CRGB::Purple, 100);
+    }
     otaOk_ = Update.begin(UPDATE_SIZE_UNKNOWN);
     AppLog.print("OTA upload: ");
     AppLog.println(upload.filename);

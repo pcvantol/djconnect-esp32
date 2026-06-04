@@ -5,6 +5,7 @@
 #include <WebServer.h>
 
 #include "AppState.h"
+#include "LedRing.h"
 #include "MqttPublisher.h"
 #include "SpotifyClient.h"
 
@@ -22,6 +23,7 @@ public:
       const RuntimeDiagnostics &diagnostics,
       const VisualState &visualState,
       SpotifyClient &spotify,
+      LedRing &ledRing,
       MqttPublisher &mqttPublisher,
       const MqttSettings &mqttSettings,
       const uint8_t &screenBrightnessPercent,
@@ -32,6 +34,7 @@ public:
       MqttSettingsCallback mqttSettingsCallback,
       WifiSettingsCallback wifiSettingsCallback,
       SimpleCallback refreshCallback,
+      SimpleCallback resetPairingCallback,
       SimpleCallback hardResetCallback);
 
   // Handles one HTTP client iteration. Call this frequently from the main loop.
@@ -59,6 +62,7 @@ private:
   void handleTransferPost();
   void handlePlaybackCommandPost();
   void handleRefreshPost();
+  void handleResetPairingPost();
   void handleRebootPost();
   void handleHardResetPost();
   void handleOtaFinished();
@@ -77,6 +81,7 @@ private:
   const RuntimeDiagnostics *diagnostics_ = nullptr;
   const VisualState *visualState_ = nullptr;
   SpotifyClient *spotify_ = nullptr;
+  LedRing *ledRing_ = nullptr;
   MqttPublisher *mqttPublisher_ = nullptr;
   const MqttSettings *mqttSettings_ = nullptr;
   const uint8_t *screenBrightnessPercent_ = nullptr;
@@ -87,6 +92,7 @@ private:
   MqttSettingsCallback mqttSettingsCallback_ = nullptr;
   WifiSettingsCallback wifiSettingsCallback_ = nullptr;
   SimpleCallback refreshCallback_ = nullptr;
+  SimpleCallback resetPairingCallback_ = nullptr;
   SimpleCallback hardResetCallback_ = nullptr;
   bool running_ = false;
   bool otaOk_ = false;

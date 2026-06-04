@@ -48,6 +48,7 @@ InputEvents InputController::poll() {
     encoderClickPending_ = false;
   }
 
+  events.topButtonPress = topButton_.wasPressed();
   const bool topButtonClicked = topButton_.wasClicked();
   if (topButtonClickPending_ && now - topButtonClickPendingAt_ > TopButtonDoubleClickWindowMs) {
     topButtonClickPending_ = false;
@@ -55,7 +56,10 @@ InputEvents InputController::poll() {
   }
 
   if (topButtonClicked) {
-    if (topButtonClickPending_ && now - topButtonClickPendingAt_ <= TopButtonDoubleClickWindowMs) {
+    if (ignoreTopReleaseClick_) {
+      ignoreTopReleaseClick_ = false;
+      topButtonClickPending_ = false;
+    } else if (topButtonClickPending_ && now - topButtonClickPendingAt_ <= TopButtonDoubleClickWindowMs) {
       topButtonClickPending_ = false;
       events.topButtonDoubleClick = true;
     } else {
@@ -75,6 +79,7 @@ InputEvents InputController::poll() {
                    events.encoderClick ||
                    events.encoderDoubleClick ||
                    events.encoderLongClick ||
+                   events.topButtonPress ||
                    events.topButtonClick ||
                    events.topButtonDoubleClick ||
                    events.topButtonLongClick ||
@@ -84,9 +89,15 @@ InputEvents InputController::poll() {
 
 void InputController::clearPendingButtonActions() {
   topButtonClickPending_ = false;
+  ignoreTopReleaseClick_ = false;
   encoderClickPending_ = false;
   topButton_.clearEvents();
   encoderButton_.clearEvents();
+}
+
+void InputController::consumeTopButtonPress() {
+  ignoreTopReleaseClick_ = true;
+  topButtonClickPending_ = false;
 }
 
 void IRAM_ATTR InputController::encoderInterrupt() {

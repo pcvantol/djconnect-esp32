@@ -11,7 +11,7 @@ Dit is geen Spotify Connect speaker/player. De ESP32 bestuurt via de Spotify Web
 - Laat lange titel en artiest/show eenmalig scrollen bij trackwissel.
 - Volume via encoder en webinterface, begrensd op `0-60`.
 - LED-ring toont volume als groene segmenten; `60` is volledig vol.
-- Encoder short press: pause/resume.
+- Encoder short press: push-to-talk voice naar Home Assistant wanneer gepaired; zonder HA pairing blijft dit pause/resume.
 - Encoder long press: current song / album-art scherm.
 - Bovenknop short press: menu terug in menu's, anders next track.
 - Bovenknop double press: previous track.
@@ -21,6 +21,7 @@ Dit is geen Spotify Connect speaker/player. De ESP32 bestuurt via de Spotify Web
 - Menu's voor Up Next, Sound Outputs, Settings, About en Logs.
 - Webportal met now playing, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update en OTA upload.
 - Home Assistant pairing met mDNS discovery en device-token auth.
+- Push-to-talk voice upload naar Home Assistant met WAV response playback op de speaker.
 - MQTT/Home Assistant discovery en periodieke status publishing.
 - Battery/charging guards, deep sleep en low-battery schermen.
 - OTA endpoint voor Home Assistant-triggered firmware update.
@@ -217,6 +218,24 @@ POST <ha_url>/api/spotify_dj/status
 
 De status wordt bij boot en daarna elke 60 seconden gestuurd zolang het device gepaired is.
 
+Voice:
+
+```text
+POST <ha_url>/api/spotify_dj/voice
+```
+
+Headers:
+
+```text
+Authorization: Bearer <device_token>
+X-SpotifyDJ-Device-ID: <device_id>
+Content-Type: audio/wav
+```
+
+De request body is raw mono PCM WAV audio van de onboard microfoon. De Home Assistant response moet `audio/wav` zijn; de firmware speelt die response direct af via de bestaande speaker-output.
+
+Tijdens opname stuurt de firmware status naar HA met `recording=true` en `state=recording`. Bij response playback wordt `state=playing_response` gestuurd. Bij fouten wordt `state=error` met `last_error` gestuurd.
+
 ### Spotify provisioning via HA
 
 Endpoint op de ESP:
@@ -256,9 +275,9 @@ Payload:
 
 ```json
 {
-  "url": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/v1.6.0/spotifydj-lilygo-t-embed-s3-v1.6.0.bin",
+  "url": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/v1.7.0/spotifydj-lilygo-t-embed-s3-v1.7.0.bin",
   "sha256": "...",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "device": "lilygo-t-embed-s3"
 }
 ```
@@ -340,8 +359,7 @@ Low battery behavior:
 
 Normale mode:
 
-- Idle dim start na 10 seconden.
-- 50% brightness na 20 seconden.
+- Scherm blijft op de ingestelde brightness.
 - Scherm uit na ingestelde screen dim timeout.
 - Deep sleep na ingestelde `Deep sleep after`.
 
@@ -354,7 +372,7 @@ Uitzonderingen:
 ## Bediening
 
 - Encoder draaien: volume omhoog/omlaag in stappen van 5%, max 60.
-- Encoder short press: pause/resume.
+- Encoder short press: push-to-talk voice als Home Assistant gepaired is; zonder HA pairing pause/resume.
 - Encoder long press: Current Song / album-art.
 - Bovenknop short press:
   - in menu: terug naar vorige scherm
@@ -414,7 +432,7 @@ Als `pio` niet in je PATH staat:
 Build flags voor releaseversies kunnen via environment worden meegegeven:
 
 ```bash
-SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="1.6.0" -DSPOTIFYDJ_VERSION_TAG="v1.6.0"' \
+SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="1.7.0" -DSPOTIFYDJ_VERSION_TAG="v1.7.0"' \
 pio run -e t_embed_cc1101
 ```
 
@@ -437,12 +455,12 @@ Firmware releases worden gepubliceerd via de GitHub Actions workflow in de firmw
 https://github.com/pcvantol/spotify-dj-firmware
 ```
 
-De workflow wordt getriggerd door een git tag. Gebruik semver-tags zoals `v1.6.0`.
+De workflow wordt getriggerd door een git tag. Gebruik semver-tags zoals `v1.7.0`.
 
 ```bash
 git status
-git tag v1.6.0
-git push origin v1.6.0
+git tag v1.7.0
+git push origin v1.7.0
 ```
 
 Na het pushen van de tag bouwt GitHub Actions de firmware en maakt de release asset aan. Controleer daarna:
@@ -455,16 +473,16 @@ https://github.com/pcvantol/spotify-dj-firmware/releases
 De OTA URL voor Home Assistant gebruikt de release asset, bijvoorbeeld:
 
 ```text
-https://github.com/pcvantol/spotify-dj-firmware/releases/download/v1.6.0/spotifydj-lilygo-t-embed-s3-v1.6.0.bin
+https://github.com/pcvantol/spotify-dj-firmware/releases/download/v1.7.0/spotifydj-lilygo-t-embed-s3-v1.7.0.bin
 ```
 
 Als je een tag opnieuw wilt gebruiken na een mislukte release, verwijder hem dan lokaal en remote en push hem opnieuw:
 
 ```bash
-git tag -d v1.6.0
-git push origin :refs/tags/v1.6.0
-git tag v1.6.0
-git push origin v1.6.0
+git tag -d v1.7.0
+git push origin :refs/tags/v1.7.0
+git tag v1.7.0
+git push origin v1.7.0
 ```
 
 ## Pin mapping
@@ -539,6 +557,15 @@ Provision Spotify credentials opnieuw via:
 - Controleer `device` in payload: `lilygo-t-embed-s3`.
 - Controleer batterij: boven 40%, charging of full.
 - Controleer dat de URL direct naar een `.bin` firmware asset wijst.
+
+### Voice upload werkt niet
+
+- Controleer dat Home Assistant pairing actief is; zonder `ha_url` en `device_token` kan `/api/spotify_dj/voice` niet worden aangeroepen.
+- Bij `Unauthorized`: pair opnieuw of wis pairing via factory reset en provision opnieuw.
+- Bij `No HA URL` of `No device token`: controleer NVS/pairing via de webportal Home Assistant sectie.
+- Bij `Audio too large`: opname duur is te lang of HA `max_audio_bytes` is lager dan verwacht.
+- Bij `Voice HTTP timeout` of `Voice HTTP <code>`: controleer bereikbaarheid van Home Assistant en het integration endpoint.
+- Handmatige test: pair met HA, druk encoder kort in, spreek maximaal 10-15 seconden, druk opnieuw kort. Verwacht `Listening...`, daarna `Uploading voice`, en vervolgens speaker-response of foutmelding.
 
 ### TLS
 

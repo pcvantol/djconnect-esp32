@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.6.0
+## v1.7.0
 
 Geconsolideerde release van SpotifyDJ firmware voor de LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -21,7 +21,7 @@ Geconsolideerde release van SpotifyDJ firmware voor de LilyGO T-Embed-CC1101 / E
 ### Gewijzigd
 
 - Appnaam en technische branding zijn `SpotifyDJ`.
-- Release-builds gebruiken `1.6.0` / `v1.6.0`; lokale builds zonder release flags blijven `dev` / `vdev`.
+- Release-builds gebruiken `1.7.0` / `v1.7.0`; lokale builds zonder release flags blijven `dev` / `vdev`.
 - Geen WiFi-, Spotify- of Home Assistant-secrets meer hardcoded in firmware.
 - Spotify credentials worden via setup portal of Home Assistant provisioning opgeslagen in NVS.
 - Batterijpercentage wordt altijd voltage-based geschat en zonder tilde getoond.
@@ -31,7 +31,7 @@ Geconsolideerde release van SpotifyDJ firmware voor de LilyGO T-Embed-CC1101 / E
 - Pairing code staat ook in Serial logging en in de webinterface.
 - Setup/AP en HA pairing mode houden het scherm 10 minuten op 100% brightness en gaan daarna naar deep sleep.
 - Tijdens OTA firmware write toont het display `Firmware update in progress..`.
-- Display idle gedrag: dimmen na 10 seconden, 50% na 20 seconden, uit na de ingestelde timeout.
+- Display idle gedrag: scherm blijft op ingestelde brightness en gaat na de ingestelde timeout direct uit.
 - Eerste knop/encoderactie bij scherm-uit wekt alleen het scherm en voert geen onderliggende actie uit.
 - Webinterface toont H/M/S status bovenin, WiFi signaal als bars en laatste MQTT publish timestamp.
 - Webinterface logs kunnen gepauzeerd en gekopieerd worden.

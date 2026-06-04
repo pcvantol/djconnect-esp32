@@ -31,6 +31,7 @@ public:
     stablePressed_ = raw;
     if (stablePressed_) {
       pressedAt_ = now;
+      pressEvent_ = true;
       longClickFiredForPress_ = false;
       return;
     }
@@ -68,6 +69,15 @@ public:
     return true;
   }
 
+  // Returns true once when the debounced press starts, before the button is released.
+  bool wasPressed() {
+    if (!pressEvent_) {
+      return false;
+    }
+    pressEvent_ = false;
+    return true;
+  }
+
   // Returns true once per completed long click.
   bool wasLongClicked() {
     updateHeldLongClick();
@@ -86,6 +96,7 @@ public:
   // Drops queued click events when a press was consumed by wake-only display behavior.
   void clearEvents() {
     clickEvent_ = false;
+    pressEvent_ = false;
     longClickEvent_ = false;
   }
 
@@ -104,6 +115,7 @@ private:
   bool stablePressed_ = false;
   bool lastRawPressed_ = false;
   bool clickEvent_ = false;
+  bool pressEvent_ = false;
   bool longClickEvent_ = false;
   bool longClickFiredForPress_ = false;
   uint32_t lastRawChangedAt_ = 0;

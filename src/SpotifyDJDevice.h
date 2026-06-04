@@ -30,6 +30,7 @@ public:
 
   void savePairing(const String &haUrl, const String &deviceToken);
   void saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market);
+  void clearHomeAssistantPairing();
   void clearPairing();
   void clearSpotifyCredentials();
 

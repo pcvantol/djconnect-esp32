@@ -48,7 +48,7 @@ public:
       const StatusNotice &notice);
 
   // Renders the static About screen with app name, drawn Spotify icon, and firmware version.
-  void renderAboutScreen(const StatusNotice &notice, const AboutStatus &status);
+  void renderAboutScreen(const StatusNotice &notice, const AboutStatus &status, size_t selectedIndex);
 
   // Renders a blocking charge-required screen for low-battery protection mode.
   void renderLowBatteryScreen(const BatteryState &battery, const String &message);
@@ -62,6 +62,9 @@ public:
       const StatusNotice &notice,
       const String &imagePath,
       const String &albumArtStatus);
+
+  // Forces the next Current Song render to redraw the album-art pane.
+  void resetAlbumArtRenderCache();
 
   // Advances the one-shot title marquee and returns true when the screen should redraw.
   bool advanceTitleScrollIfNeeded(const SpotifyState &playback, int maxWidth = 304, uint8_t font = 4);
@@ -81,10 +84,10 @@ public:
   // Temporarily drives the backlight at a specific level for boot/recovery screens.
   void forceBacklightPercent(uint8_t percent);
 
-  // Dims to 10% after the idle dim timeout and turns the backlight off after the off timeout.
+  // Turns the backlight off after the selected idle timeout.
   void updateIdleBrightness();
 
-  // Applies user-selected active brightness and off timeout while preserving the 10% dim state.
+  // Applies user-selected active brightness and off timeout.
   void configurePowerSaving(uint8_t activeBrightnessPercent, uint32_t offAfterMs);
 
   // Returns the actual backlight output percentage, used to keep the LED ring in visual sync.
@@ -133,7 +136,7 @@ private:
       const StatusNotice &notice);
 
   template <typename Canvas>
-  void renderAbout(Canvas &canvas, const StatusNotice &notice, const AboutStatus &status);
+  void renderAbout(Canvas &canvas, const StatusNotice &notice, const AboutStatus &status, size_t selectedIndex);
 
   template <typename Canvas>
   void renderLogs(Canvas &canvas, const String *lines, size_t lineCount, const StatusNotice &notice);
@@ -189,6 +192,7 @@ private:
   uint8_t backlightPercent_ = 100;
   uint8_t activeBrightnessPercent_ = 100;
   String lastAlbumArtPath_;
+  bool albumArtPaneDirty_ = true;
   uint32_t dimStartAfterMs_ = Config::DisplayDimStartAfterMs;
   uint32_t dimTargetAfterMs_ = Config::DisplayDimAfterMs;
   uint32_t offAfterMs_ = Config::DisplayOffAfterMs;

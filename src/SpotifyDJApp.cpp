@@ -3,6 +3,7 @@
 #include "SpotifyDJApp.h"
 
 #include <DNSServer.h>
+#include <LittleFS.h>
 #include <Preferences.h>
 #include <WebServer.h>
 #include <WiFi.h>
@@ -20,7 +21,7 @@
 #endif
 
 namespace {
-static const char *const TopHoldRestartHint = "press 10s to restart";
+static const char *const TopHoldMenuHint = "hold to open menu";
 
 String dimTimeoutLabel(uint32_t valueMs) {
   if (valueMs == 30000UL) {
@@ -50,6 +51,8 @@ void SpotifyDJApp::begin() {
   albumArt_.begin();
   ledRing_.begin();
   sound_.begin();
+  voiceRecorder_.begin();
+  voiceClient_.begin(haDevice_, sound_);
   sound_.playStartup();
   loadProvisioning();
   spotify_.begin();
@@ -131,6 +134,18 @@ void SpotifyDJApp::loop() {
   // Main loop order keeps input responsive, then drains async work, then performs slower polling.
   const InputEvents events = input_.poll();
   handleInputEvents(events);
+  if (voiceRecording_) {
+    if (!voiceRecorder_.update()) {
+      const String error = voiceRecorder_.error();
+      voiceRecorder_.abort();
+      voiceRecording_ = false;
+      voiceClient_.sendStatus(false, "error", error);
+      showNotice(error, 3000);
+      renderNow();
+    } else if (voiceRecorder_.elapsedMs() >= Config::VoiceMaxRecordMs) {
+      stopVoiceRecordingAndUpload();
+    }
+  }
   flushPendingVolume();
   processVolumeResult();
   webPortal_.handle();
@@ -308,6 +323,7 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       diagnostics_,
       visualState_,
       spotify_,
+      ledRing_,
       mqttPublisher_,
       mqttSettings_,
       screenBrightnessPercent_,
@@ -318,6 +334,7 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       applyWebMqttSettingsCallback,
       applyWebWifiSettingsCallback,
       refreshFromWebCallback,
+      resetPairingFromWebCallback,
       hardResetFromWebCallback);
 
   setupHomeAssistantLayer();
@@ -377,11 +394,19 @@ void SpotifyDJApp::runCaptivePortal() {
   dnsServer.start(53, "*", apIp);
 
   WebServer server(80);
-  String portalMessage = "Connect to this AP and submit WiFi + Spotify details.";
+  String portalMessage = "Please fill in your WiFi credentials and optionally your MQTT configuration.";
   bool portalError = false;
+  String formSsid;
+  String formClientId;
+  String formRefreshToken;
+  String formSpotifyMarket = "NL";
+  MqttSettings formMqtt;
+  formMqtt.host = "homeassistant.local";
+  formMqtt.port = 1883;
+  formMqtt.username = "mqtt";
 
   server.on("/", HTTP_GET, [&]() {
-    server.send(200, "text/html", captivePortalPage(portalMessage, portalError));
+    server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid, formClientId, formRefreshToken, formSpotifyMarket, formMqtt));
   });
 
   server.on("/favicon.ico", HTTP_GET, [&]() {
@@ -402,6 +427,10 @@ void SpotifyDJApp::runCaptivePortal() {
     clientId.trim();
     refreshToken.trim();
     spotifyMarket.trim();
+    formSsid = ssid;
+    formClientId = clientId;
+    formRefreshToken = refreshToken;
+    formSpotifyMarket = spotifyMarket.isEmpty() ? "NL" : spotifyMarket;
     MqttSettings submittedMqtt;
     submittedMqtt.host = server.arg("mqttHost");
     submittedMqtt.host.trim();
@@ -409,23 +438,24 @@ void SpotifyDJApp::runCaptivePortal() {
     submittedMqtt.username = server.arg("mqttUser");
     submittedMqtt.password = server.arg("mqttPass");
     submittedMqtt.enabled = !submittedMqtt.host.isEmpty();
+    formMqtt = submittedMqtt;
 
     if (ssid.isEmpty()) {
       portalMessage = "SSID is required.";
       portalError = true;
-      server.send(200, "text/html", captivePortalPage(portalMessage, portalError));
+      server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid, formClientId, formRefreshToken, formSpotifyMarket, formMqtt));
       return;
     }
-    if (clientId.isEmpty() || refreshToken.isEmpty()) {
-      portalMessage = "Spotify client ID and refresh token are required.";
+    if ((!clientId.isEmpty() && refreshToken.isEmpty()) || (clientId.isEmpty() && !refreshToken.isEmpty())) {
+      portalMessage = "Spotify client ID and refresh token must both be filled, or both left empty.";
       portalError = true;
-      server.send(200, "text/html", captivePortalPage(portalMessage, portalError));
+      server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid, formClientId, formRefreshToken, formSpotifyMarket, formMqtt));
       return;
     }
 
     String message;
     if (testAndSaveProvisioning(ssid, password, clientId, refreshToken, spotifyMarket, submittedMqtt, message)) {
-      server.send(200, "text/html", captivePortalPage(message, false));
+      server.send(200, "text/html", captivePortalPage(message, false, formSsid, formClientId, formRefreshToken, formSpotifyMarket, formMqtt));
       delay(1500);
       ESP.restart();
       return;
@@ -433,7 +463,7 @@ void SpotifyDJApp::runCaptivePortal() {
 
     portalMessage = message;
     portalError = true;
-    server.send(200, "text/html", captivePortalPage(portalMessage, portalError));
+    server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid, formClientId, formRefreshToken, formSpotifyMarket, formMqtt));
   });
 
   server.onNotFound([&]() {
@@ -480,9 +510,23 @@ void SpotifyDJApp::runCaptivePortal() {
   }
 }
 
-String SpotifyDJApp::captivePortalPage(const String &message, bool error) const {
+String SpotifyDJApp::captivePortalPage(
+    const String &message,
+    bool error,
+    const String &ssid,
+    const String &clientId,
+    const String &refreshToken,
+    const String &spotifyMarket,
+    const MqttSettings &mqttSettings) const {
+  auto escaped = [](String value) {
+    value.replace("&", "&amp;");
+    value.replace("\"", "&quot;");
+    value.replace("<", "&lt;");
+    value.replace(">", "&gt;");
+    return value;
+  };
   String page;
-  page.reserve(3900);
+  page.reserve(4600);
   page += F("<!doctype html><html><head><meta charset='utf-8'>");
   page += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
   page += F("<link rel='icon' href='/favicon.ico' sizes='any'>");
@@ -492,26 +536,44 @@ String SpotifyDJApp::captivePortalPage(const String &message, bool error) const 
   page += F("*{box-sizing:border-box}body{margin:0;background:#080b0c;color:#f3f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}");
   page += F("main{width:100%;max-width:520px;margin:0 auto;padding:18px}.brand{display:flex;align-items:center;gap:10px;margin:8px 0 4px}.brand img{width:42px;height:42px;border-radius:8px}h1{font-size:26px;margin:0}p{color:#9aa6a2;line-height:1.4}");
   page += F(".box{background:#111718;border:1px solid #233033;border-radius:8px;padding:14px;margin-top:14px}");
+  page += F(".timeout{border:1px solid #4c3d17;background:#1a1608;color:#ffe28a;border-radius:8px;padding:10px 12px;margin:12px 0}");
   page += F(".msg{border-radius:8px;padding:10px 12px;margin:12px 0;background:");
   page += error ? F("#3a1714;color:#ffd1c9") : F("#173721;color:#baf7ca");
   page += F("}label{display:grid;gap:6px;margin:12px 0;color:#a8b3af;font-size:13px}");
   page += F("input,button{display:block;width:100%;max-width:100%;min-height:44px;border-radius:8px;border:1px solid #233033;background:#0c1112;color:#f3f7f5;padding:9px 10px;font-size:16px}");
   page += F("button{background:#173721;border-color:#25593a;color:#baf7ca;font-weight:700;margin-top:8px}");
   page += F("</style></head><body><main><div class='brand'><img src='/icon-192.png' alt=''><h1>SpotifyDJ Setup</h1></div>");
-  page += F("<p>Provision WiFi, Spotify and MQTT from your phone. Credentials are saved locally after the device tests them.</p>");
+  page += F("<p>Please fill in your WiFi credentials and optionally your MQTT configuration.</p>");
+  page += F("<div class='timeout'>This setup portal stays awake for 10 minutes. After that the device turns off automatically.</div>");
   page += F("<div class='msg'>");
   page += message;
   page += F("</div><form class='box' method='post' action='/submit'>");
-  page += F("<label>WiFi SSID<input name='ssid' autocomplete='off' required></label>");
-  page += F("<label>WiFi password<input name='password' type='password' autocomplete='current-password'></label>");
-  page += F("<label>Spotify client ID<input name='clientId' autocomplete='off' required></label>");
-  page += F("<label>Spotify refresh token<input name='refreshToken' type='password' autocomplete='off' required></label>");
-  page += F("<label>Spotify market<input name='spotifyMarket' autocomplete='off' value='NL'></label>");
-  page += F("<label>MQTT host<input name='mqttHost' autocomplete='off' value='homeassistant.local' placeholder='HA IP or homeassistant.local'></label>");
-  page += F("<label>MQTT port<input name='mqttPort' inputmode='numeric' value='1883'></label>");
-  page += F("<label>MQTT username<input name='mqttUser' autocomplete='off' value='mqtt'></label>");
-  page += F("<label>MQTT password<input name='mqttPass' type='password' autocomplete='off'></label>");
-  page += F("<button type='submit'>Test and save</button></form>");
+  page += F("<label>WiFi SSID<input name='ssid' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' required value=\"");
+  page += escaped(ssid);
+  page += F("\"></label>");
+  page += F("<label>WiFi password<input name='password' type='password' autocomplete='current-password' autocapitalize='none' autocorrect='off' spellcheck='false'></label>");
+  page += F("<label>Spotify client ID<input name='clientId' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
+  page += escaped(clientId);
+  page += F("\"></label>");
+  page += F("<label>Spotify refresh token<input name='refreshToken' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
+  page += escaped(refreshToken);
+  page += F("\"></label>");
+  page += F("<label>Spotify market<input name='spotifyMarket' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
+  page += escaped(spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  page += F("\"></label>");
+  page += F("<label>MQTT host<input name='mqttHost' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' placeholder='HA IP or homeassistant.local' value=\"");
+  page += escaped(mqttSettings.host.isEmpty() ? "homeassistant.local" : mqttSettings.host);
+  page += F("\"></label>");
+  page += F("<label>MQTT port<input name='mqttPort' inputmode='numeric' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
+  page += String(mqttSettings.port == 0 ? 1883 : mqttSettings.port);
+  page += F("\"></label>");
+  page += F("<label>MQTT username<input name='mqttUser' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
+  page += escaped(mqttSettings.username.isEmpty() ? "mqtt" : mqttSettings.username);
+  page += F("\"></label>");
+  page += F("<label>MQTT password<input name='mqttPass' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
+  page += escaped(mqttSettings.password);
+  page += F("\"></label>");
+  page += F("<button type='submit'>Save &amp; Connect</button></form>");
   page += F("</main></body></html>");
   return page;
 }
@@ -552,20 +614,28 @@ bool SpotifyDJApp::testAndSaveProvisioning(
     return false;
   }
 
-  display_.showBootMessage("Testing Spotify...", battery_);
-  spotify_.useCredentialsForProvisioning(clientId, refreshToken);
-  if (!spotify_.authorize()) {
-    message = playback_.error.isEmpty() ? "Spotify authorization failed." : playback_.error;
-    WiFi.disconnect(false);
-    return false;
+  const bool hasSpotifyCredentials = !clientId.isEmpty() && !refreshToken.isEmpty();
+  if (hasSpotifyCredentials) {
+    display_.showBootMessage("Testing Spotify...", battery_);
+    spotify_.useCredentialsForProvisioning(clientId, refreshToken);
+    if (!spotify_.authorize()) {
+      message = playback_.error.isEmpty() ? "Spotify authorization failed." : playback_.error;
+      WiFi.disconnect(false);
+      return false;
+    }
   }
 
   Preferences provision;
   provision.begin("provision", false);
   provision.putString("ssid", ssid);
   provision.putString("pass", password);
-  provision.putString("sp_client", clientId);
-  provision.putString("sp_refresh", refreshToken);
+  if (hasSpotifyCredentials) {
+    provision.putString("sp_client", clientId);
+    provision.putString("sp_refresh", refreshToken);
+  } else {
+    provision.remove("sp_client");
+    provision.remove("sp_refresh");
+  }
   provision.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
   provision.putString("mqtt_host", mqttSettings.host);
   provision.putUInt("mqtt_port", mqttSettings.port);
@@ -576,8 +646,13 @@ bool SpotifyDJApp::testAndSaveProvisioning(
 
   Preferences spotifydj;
   spotifydj.begin("spotifydj", false);
-  spotifydj.putString("spotify_client_id", clientId);
-  spotifydj.putString("spotify_refresh_token", refreshToken);
+  if (hasSpotifyCredentials) {
+    spotifydj.putString("spotify_client_id", clientId);
+    spotifydj.putString("spotify_refresh_token", refreshToken);
+  } else {
+    spotifydj.remove("spotify_client_id");
+    spotifydj.remove("spotify_refresh_token");
+  }
   spotifydj.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
   spotifydj.end();
 
@@ -585,7 +660,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
   wifiPassword_ = password;
   mqttSettings_ = mqttSettings;
   setupModeRequested_ = false;
-  message = "Provisioning successful. Rebooting into normal mode...";
+  message = "Setup successful. Restarting into normal mode...";
   display_.showBootMessage("Setup OK...", battery_);
   return true;
 }
@@ -609,20 +684,30 @@ void SpotifyDJApp::handleInputEvents(const InputEvents &events) {
     display_.wakeForUserActivity();
   }
 
-  const bool shouldShowTopHoldHint = events.topButtonHeld;
-  if (shouldShowTopHoldHint) {
-    if (!topHoldRestartHintVisible_) {
-      topHoldRestartHintVisible_ = true;
-      notice_.show(TopHoldRestartHint, 250);
-      renderNow();
-    } else if (notice_.message == TopHoldRestartHint) {
-      notice_.visibleUntil = millis() + 250;
-    }
-  } else if (topHoldRestartHintVisible_) {
-    topHoldRestartHintVisible_ = false;
-    if (notice_.message == TopHoldRestartHint) {
-      notice_.visibleUntil = 0;
-      renderNow();
+  if (!isMenuActive() && events.topButtonHeld && !topHoldMenuHintVisible_) {
+    topHoldMenuHintVisible_ = true;
+    showNotice(TopHoldMenuHint, 900);
+  } else if (!events.topButtonHeld) {
+    topHoldMenuHintVisible_ = false;
+  }
+
+  if (events.encoderClick && volumeFeedbackEnabled_) {
+    sound_.playButtonPress();
+  }
+
+  if (menuTopHoldActive_) {
+    if (!events.topButtonHeld) {
+      menuTopHoldActive_ = false;
+    } else {
+      if (millis() - menuTopHoldStartedAt_ >= 1500 && activeScreen_ != UiScreen::NowPlaying) {
+        if (volumeFeedbackEnabled_) {
+          sound_.playConfirm();
+        }
+        activeScreen_ = UiScreen::NowPlaying;
+        menuStackSize_ = 0;
+        renderNow();
+      }
+      return;
     }
   }
 
@@ -640,7 +725,7 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
   }
 
   if (events.encoderClick) {
-    pauseOrResume();
+    handleVoiceButton();
   }
 
   if (events.topButtonClick) {
@@ -667,14 +752,37 @@ void SpotifyDJApp::handleMenuInputEvents(const InputEvents &events) {
     moveMenuSelection(events.encoderSteps);
   }
 
+  if (events.topButtonLongClick) {
+    if (volumeFeedbackEnabled_) {
+      sound_.playConfirm();
+    }
+    activeScreen_ = UiScreen::NowPlaying;
+    menuStackSize_ = 0;
+    renderNow();
+    return;
+  }
+
+  if (events.topButtonPress) {
+    input_.consumeTopButtonPress();
+    menuTopHoldActive_ = true;
+    menuTopHoldStartedAt_ = millis();
+    if (volumeFeedbackEnabled_) {
+      sound_.playConfirm();
+    }
+    goBackOneScreen();
+    return;
+  }
+
   if (events.encoderClick) {
+    if (activeScreen_ == UiScreen::AlbumArt) {
+      if (volumeFeedbackEnabled_) {
+        sound_.playConfirm();
+      }
+      goBackOneScreen();
+      return;
+    }
     selectCurrentMenuItem();
   }
-
-  if (events.topButtonClick) {
-    goBackOneScreen();
-  }
-
   // Encoder long press is intentionally unused in menu screens.
   // Holding the top button for 10 seconds keeps its hardware reset role.
 }
@@ -691,6 +799,9 @@ void SpotifyDJApp::openScreen(UiScreen screen) {
     menuStack_[menuStackSize_++] = activeScreen_;
   }
   activeScreen_ = screen;
+  if (volumeFeedbackEnabled_) {
+    sound_.playConfirm();
+  }
   renderNow();
 }
 
@@ -704,6 +815,9 @@ void SpotifyDJApp::goBackOneScreen() {
   } else {
     activeScreen_ = menuStack_[--menuStackSize_];
   }
+  if (volumeFeedbackEnabled_) {
+    sound_.playConfirm();
+  }
   renderNow();
 }
 
@@ -714,11 +828,15 @@ void SpotifyDJApp::moveMenuSelection(int encoderSteps) {
   }
 
   size_t &selection = selectedIndexRefForScreen(activeScreen_);
+  const size_t previousSelection = selection;
   int nextSelection = static_cast<int>(selection) + encoderSteps;
   while (nextSelection < 0) {
     nextSelection += itemCount;
   }
   selection = static_cast<size_t>(nextSelection) % itemCount;
+  if (selection != previousSelection && volumeFeedbackEnabled_) {
+    sound_.playMenuTick(encoderSteps);
+  }
 
   if (activeScreen_ == UiScreen::Brightness) {
     screenBrightnessPercent_ = brightnessValuePercent(brightnessSelection_);
@@ -778,6 +896,9 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         ESP.restart();
       } else if (settingsSelection_ == 6) {
         hardResetSelection_ = 0;
+        openScreen(UiScreen::ResetPairingConfirm);
+      } else if (settingsSelection_ == 7) {
+        hardResetSelection_ = 0;
         openScreen(UiScreen::HardResetConfirm);
       }
       break;
@@ -792,6 +913,14 @@ void SpotifyDJApp::selectCurrentMenuItem() {
 
     case UiScreen::SleepTimeout:
       applySleepTimeoutSelection();
+      break;
+
+    case UiScreen::ResetPairingConfirm:
+      if (hardResetSelection_ == 0) {
+        goBackOneScreen();
+      } else {
+        resetHomeAssistantPairing();
+      }
       break;
 
     case UiScreen::HardResetConfirm:
@@ -850,6 +979,8 @@ void SpotifyDJApp::hardResetToProvisioning() {
   display_.showBootMessage("Factory reset...", battery_);
   ledRing_.showSolid(CRGB::Yellow, 100);
 
+  voiceRecorder_.abort();
+  haDevice_.clearPairing();
   spotify_.clearStoredTokens();
 
   Preferences spotifyPrefs;
@@ -863,8 +994,30 @@ void SpotifyDJApp::hardResetToProvisioning() {
   provision.putBool("setup", true);
   provision.end();
 
+  if (LittleFS.begin(true)) {
+    fs::File root = LittleFS.open("/");
+    fs::File file = root.openNextFile();
+    while (file) {
+      const String path = file.name();
+      file.close();
+      if (!path.isEmpty()) {
+        LittleFS.remove(path);
+      }
+      file = root.openNextFile();
+    }
+    root.close();
+    AppLog.println("[SpotifyDJ] local LittleFS caches cleared");
+  }
+
   WiFi.disconnect(true, true);
   delay(600);
+  ESP.restart();
+}
+
+void SpotifyDJApp::resetHomeAssistantPairing() {
+  display_.showBootMessage("Reset pairing...", battery_);
+  haDevice_.clearHomeAssistantPairing();
+  delay(350);
   ESP.restart();
 }
 
@@ -893,8 +1046,10 @@ size_t SpotifyDJApp::menuItemCount(UiScreen screen) const {
     case UiScreen::SleepTimeout:
       return SleepTimeoutOptionCount;
     case UiScreen::HardResetConfirm:
+    case UiScreen::ResetPairingConfirm:
       return HardResetOptionCount;
     case UiScreen::About:
+      return 6;
     case UiScreen::NowPlaying:
       return 0;
   }
@@ -914,10 +1069,12 @@ size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
     case UiScreen::SleepTimeout:
       return sleepTimeoutSelection_;
     case UiScreen::HardResetConfirm:
+    case UiScreen::ResetPairingConfirm:
       return hardResetSelection_;
     case UiScreen::SoundOutputs:
       return soundOutputSelection_;
     case UiScreen::About:
+      return aboutSelection_;
     case UiScreen::AlbumArt:
     case UiScreen::Queue:
     case UiScreen::Logs:
@@ -940,10 +1097,12 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
     case UiScreen::SleepTimeout:
       return sleepTimeoutSelection_;
     case UiScreen::HardResetConfirm:
+    case UiScreen::ResetPairingConfirm:
       return hardResetSelection_;
     case UiScreen::SoundOutputs:
       return soundOutputSelection_;
     case UiScreen::About:
+      return aboutSelection_;
     case UiScreen::AlbumArt:
     case UiScreen::Queue:
     case UiScreen::Logs:
@@ -1057,6 +1216,55 @@ void SpotifyDJApp::pauseOrResume() {
   renderNow();
 }
 
+void SpotifyDJApp::handleVoiceButton() {
+  if (!haDevice_.isPaired()) {
+    pauseOrResume();
+    return;
+  }
+  if (voiceRecording_) {
+    stopVoiceRecordingAndUpload();
+    return;
+  }
+  if (!voiceRecorder_.start()) {
+    const String error = voiceRecorder_.error();
+    voiceClient_.sendStatus(false, "error", error);
+    showNotice(error, 3000);
+    renderNow();
+    return;
+  }
+  voiceRecording_ = true;
+  voiceClient_.sendStatus(true, "recording");
+  showNotice("Listening...", Config::VoiceMaxRecordMs + 1000);
+  renderNow();
+}
+
+void SpotifyDJApp::stopVoiceRecordingAndUpload() {
+  if (!voiceRecording_) {
+    return;
+  }
+  voiceRecording_ = false;
+  showNotice("Uploading voice", 3000);
+  renderNow();
+  if (!voiceRecorder_.stop()) {
+    const String error = voiceRecorder_.error();
+    voiceClient_.sendStatus(false, "error", error);
+    showNotice(error, 3500);
+    renderNow();
+    return;
+  }
+
+  String message;
+  if (voiceClient_.uploadAndPlay(voiceRecorder_.wavPath(), message)) {
+    voiceClient_.sendStatus(false, "idle");
+    showNotice("Voice response played", 2500);
+  } else {
+    voiceClient_.sendStatus(false, "error", message);
+    showNotice(message, 3500);
+  }
+  voiceRecorder_.abort();
+  renderNow();
+}
+
 void SpotifyDJApp::goToNextTrack() {
   if (spotify_.nextTrack()) {
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
@@ -1137,6 +1345,7 @@ void SpotifyDJApp::pollPlaybackIfDue() {
 void SpotifyDJApp::openAlbumArtScreen() {
   activeScreen_ = UiScreen::AlbumArt;
   menuStackSize_ = 0;
+  display_.resetAlbumArtRenderCache();
   showNotice("Current Song", 900);
   renderNow();
   albumArt_.requestCurrentSongArt(playback_);
@@ -1331,7 +1540,10 @@ bool SpotifyDJApp::connectionHealthy() {
 
 AboutStatus SpotifyDJApp::aboutStatus() {
   AboutStatus status;
-  status.ipAddress = WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : "No WiFi";
+  status.wifiConnected = WiFi.status() == WL_CONNECTED;
+  status.ipAddress = status.wifiConnected ? WiFi.localIP().toString() : "";
+  status.webAddress = status.wifiConnected ? "http://" + WiFi.localIP().toString() : "";
+  status.haPaired = haDevice_.isPaired();
   status.mqttState = mqttPublisher_.connectionState();
   status.mqttConnected = mqttPublisher_.connected();
   status.spotifyConnected = spotify_.isAuthorized();
@@ -1619,6 +1831,10 @@ void SpotifyDJApp::refreshFromWebCallback(void *context) {
   static_cast<SpotifyDJApp *>(context)->refreshPlaybackAndBattery();
 }
 
+void SpotifyDJApp::resetPairingFromWebCallback(void *context) {
+  static_cast<SpotifyDJApp *>(context)->resetHomeAssistantPairing();
+}
+
 void SpotifyDJApp::hardResetFromWebCallback(void *context) {
   static_cast<SpotifyDJApp *>(context)->hardResetToProvisioning();
 }
@@ -1679,7 +1895,7 @@ void SpotifyDJApp::renderMenuNow() {
     }
 
     case UiScreen::About:
-      display_.renderAboutScreen(notice_, aboutStatus());
+      display_.renderAboutScreen(notice_, aboutStatus(), aboutSelection_);
       break;
 
     case UiScreen::Logs: {
@@ -1698,6 +1914,7 @@ void SpotifyDJApp::renderMenuNow() {
           {String("Audio feedback ") + (volumeFeedbackEnabled_ ? "on" : "off")},
           {"Turn off device"},
           {"Restart device"},
+          {"Reset pairing"},
           {"Factory reset"},
       };
       display_.renderMenuList("Settings", items, SettingsItemCount, settingsSelection_, notice_);
@@ -1764,6 +1981,15 @@ void SpotifyDJApp::renderMenuNow() {
           {"Yes, wipe setup"},
       };
       display_.renderMenuList("Factory reset?", items, HardResetOptionCount, hardResetSelection_, notice_);
+      break;
+    }
+
+    case UiScreen::ResetPairingConfirm: {
+      MenuItemView items[HardResetOptionCount] = {
+          {"No"},
+          {"Yes, reset pairing"},
+      };
+      display_.renderMenuList("Reset pairing?", items, HardResetOptionCount, hardResetSelection_, notice_);
       break;
     }
 

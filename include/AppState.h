@@ -87,7 +87,10 @@ struct VolumeResult {
 // Compact status snapshot shown on the About screen.
 struct AboutStatus {
   String ipAddress;
+  String webAddress;
   String mqttState;
+  bool wifiConnected = false;
+  bool haPaired = false;
   bool mqttConnected = false;
   bool spotifyConnected = false;
 };

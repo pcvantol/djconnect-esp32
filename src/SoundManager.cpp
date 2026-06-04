@@ -2,11 +2,13 @@
 #include "SoundManager.h"
 
 #include <driver/i2s.h>
+#include <cstring>
 
 #include "AppLog.h"
 #include "Config.h"
 
-static constexpr i2s_port_t SpeakerI2sPort = I2S_NUM_0;
+// speaker/DAC op I2S_NUM_1
+static constexpr i2s_port_t SpeakerI2sPort = I2S_NUM_1;
 static constexpr uint32_t MinVolumeTickIntervalMs = 90;
 
 void SoundManager::begin() {
@@ -65,6 +67,18 @@ void SoundManager::playVolumeTick(int direction) {
   enqueue(direction >= 0 ? Event::VolumeUp : Event::VolumeDown);
 }
 
+void SoundManager::playMenuTick(int direction) {
+  enqueue(direction >= 0 ? Event::MenuRight : Event::MenuLeft);
+}
+
+void SoundManager::playButtonPress() {
+  enqueue(Event::ButtonPress);
+}
+
+void SoundManager::playConfirm() {
+  enqueue(Event::Confirm);
+}
+
 void SoundManager::playHardReset() {
   enqueue(Event::HardReset);
 }
@@ -79,6 +93,54 @@ void SoundManager::playSetupPrompt() {
 
 void SoundManager::playChargingComplete() {
   enqueue(Event::ChargingComplete);
+}
+
+bool SoundManager::playWavStream(Stream &stream, int contentLength) {
+  if (!ready_) {
+    return false;
+  }
+  if (contentLength > 0 && contentLength < 44) {
+    return false;
+  }
+
+  uint8_t header[44] = {};
+  const size_t headerRead = stream.readBytes(header, sizeof(header));
+  if (headerRead != sizeof(header) ||
+      memcmp(header, "RIFF", 4) != 0 ||
+      memcmp(header + 8, "WAVE", 4) != 0 ||
+      memcmp(header + 12, "fmt ", 4) != 0) {
+    AppLog.println("[SpotifyDJ] voice response is not PCM WAV");
+    return false;
+  }
+
+  const uint16_t audioFormat = header[20] | (header[21] << 8);
+  const uint16_t channels = header[22] | (header[23] << 8);
+  const uint32_t sampleRate = header[24] | (header[25] << 8) | (header[26] << 16) | (header[27] << 24);
+  const uint16_t bitsPerSample = header[34] | (header[35] << 8);
+  uint32_t dataBytes = header[40] | (header[41] << 8) | (header[42] << 16) | (header[43] << 24);
+  if (audioFormat != 1 || channels != 1 || bitsPerSample != 16 || sampleRate == 0) {
+    AppLog.println("[SpotifyDJ] unsupported voice WAV format");
+    return false;
+  }
+  if (contentLength > 0 && dataBytes > static_cast<uint32_t>(contentLength - 44)) {
+    dataBytes = contentLength - 44;
+  }
+
+  i2s_set_clk(SpeakerI2sPort, sampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  uint8_t buffer[512];
+  uint32_t remaining = dataBytes;
+  while (remaining > 0) {
+    const size_t want = min(static_cast<uint32_t>(sizeof(buffer)), remaining);
+    const size_t got = stream.readBytes(buffer, want);
+    if (got == 0) {
+      break;
+    }
+    size_t written = 0;
+    i2s_write(SpeakerI2sPort, buffer, got, &written, pdMS_TO_TICKS(100));
+    remaining -= got;
+  }
+  i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  return remaining == 0;
 }
 
 void SoundManager::soundTask(void *parameter) {
@@ -105,6 +167,18 @@ void SoundManager::runTask() {
         break;
       case Event::VolumeDown:
         playTone(784, 28, 14);
+        break;
+      case Event::MenuRight:
+        playTone(740, 18, 8);
+        break;
+      case Event::MenuLeft:
+        playTone(622, 18, 8);
+        break;
+      case Event::ButtonPress:
+        playTone(880, 20, 9);
+        break;
+      case Event::Confirm:
+        playTone(988, 32, 10);
         break;
       case Event::HardReset:
         // Deliberately unlike startup/soft reset: sharp descending alarm burst.
