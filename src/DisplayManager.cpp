@@ -503,8 +503,8 @@ void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, c
   canvas.drawString("SpotifyDJ", 60, 18, 4);
 
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  canvas.drawString("Pairing code in Home", 14, 62, 2);
-  canvas.drawString("Assistant integration", 14, 82, 2);
+  canvas.drawString("Pairing code", 14, 62, 2);
+  canvas.drawString("Home Assistant", 14, 82, 2);
 
   canvas.drawFastHLine(14, 106, 292, TFT_DARKGREY);
 
