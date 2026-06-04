@@ -157,6 +157,8 @@ bool SpotifyClient::refreshPlayback() {
   filter["device"]["supports_volume"] = true;
   filter["device"]["volume_percent"] = true;
   filter["is_playing"] = true;
+  filter["shuffle_state"] = true;
+  filter["repeat_state"] = true;
   filter["progress_ms"] = true;
   filter["currently_playing_type"] = true;
   filter["item"]["name"] = true;
@@ -176,6 +178,8 @@ bool SpotifyClient::refreshPlayback() {
   applyDevice(doc["device"]);
   state_.hasPlayback = true;
   state_.isPlaying = doc["is_playing"] | false;
+  state_.shuffle = doc["shuffle_state"] | false;
+  state_.repeatState = doc["repeat_state"] | "off";
   state_.progressMs = doc["progress_ms"] | 0;
   state_.progressSyncedAt = millis();
   state_.currentType = doc["currently_playing_type"] | "";
@@ -316,6 +320,13 @@ bool SpotifyClient::refreshQueue(QueueState &queue) {
 
   String payload;
   const int code = apiRequest("GET", "/me/player/queue", &payload);
+  if (code == 204 || (code == 200 && payload.isEmpty())) {
+    // Spotify can return no useful queue body when there is no active queue context.
+    // Treat that as an empty queue so the UI does not show a scary JSON parser error.
+    queue.available = true;
+    AppLog.println("Queue response empty");
+    return true;
+  }
   if (code != 200) {
     queue.error = state_.error.isEmpty() ? "Queue failed " + String(code) : state_.error;
     return false;
@@ -366,6 +377,63 @@ bool SpotifyClient::refreshQueue(QueueState &queue) {
   return true;
 }
 
+bool SpotifyClient::refreshPlaylists(PlaylistListState &playlists) {
+  playlists.available = false;
+  playlists.error = "";
+  playlists.count = 0;
+
+  AppLog.println("Spotify: loading playlists");
+  String payload;
+  const int code = apiRequest("GET", "/me/playlists?limit=8", &payload);
+  if (code != 200) {
+    playlists.error = state_.error.isEmpty() ? "Playlists failed " + String(code) : state_.error;
+    AppLog.print("Spotify: playlists failed HTTP ");
+    AppLog.println(code);
+    return false;
+  }
+  if (payload.isEmpty()) {
+    playlists.available = true;
+    AppLog.println("Spotify: playlists empty response");
+    return true;
+  }
+
+  JsonDocument filter;
+  filter["items"][0]["name"] = true;
+  filter["items"][0]["uri"] = true;
+  filter["items"][0]["owner"]["display_name"] = true;
+
+  JsonDocument doc;
+  const DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
+  if (error) {
+    playlists.error = String("Playlists JSON ") + error.c_str();
+    AppLog.print("Playlists JSON parse failed: ");
+    AppLog.print(error.c_str());
+    AppLog.print(" bytes=");
+    AppLog.println(payload.length());
+    return false;
+  }
+
+  JsonArrayConst items = doc["items"].as<JsonArrayConst>();
+  for (JsonVariantConst item : items) {
+    if (playlists.count >= 8) {
+      break;
+    }
+    PlaylistItemState &target = playlists.items[playlists.count];
+    target.name = item["name"] | "";
+    target.owner = item["owner"]["display_name"] | "";
+    target.uri = item["uri"] | "";
+    if (target.name.isEmpty() || target.uri.isEmpty()) {
+      continue;
+    }
+    playlists.count++;
+  }
+
+  playlists.available = true;
+  AppLog.print("Spotify: playlists loaded count=");
+  AppLog.println(playlists.count);
+  return true;
+}
+
 bool SpotifyClient::pausePlayback() {
   return sendPlayerCommand("PUT", "/me/player/pause" + activeDeviceQuery());
 }
@@ -380,6 +448,68 @@ bool SpotifyClient::nextTrack() {
 
 bool SpotifyClient::previousTrack() {
   return sendPlayerCommand("POST", "/me/player/previous" + activeDeviceQuery());
+}
+
+bool SpotifyClient::startLikedProxyPlaylist() {
+  if (state_.deviceId.isEmpty()) {
+    refreshDevicesOnly();
+  }
+  if (state_.deviceId.isEmpty()) {
+    state_.error = "Select a Spotify output first";
+    AppLog.println("Spotify: cannot start Liked Proxy, no output selected");
+    return false;
+  }
+
+  String playlistUri;
+  if (!findPlaylistUriByName(Config::SpotifyLikedProxyPlaylistName, playlistUri)) {
+    AppLog.println("Spotify: Liked Proxy playlist not found");
+    return false;
+  }
+  return playContextUri(playlistUri);
+}
+
+bool SpotifyClient::startPlaylist(const String &playlistUri) {
+  if (state_.deviceId.isEmpty()) {
+    refreshDevicesOnly();
+  }
+  if (state_.deviceId.isEmpty()) {
+    state_.error = "Select a Spotify output first";
+    AppLog.println("Spotify: cannot start playlist, no output selected");
+    return false;
+  }
+  return playContextUri(playlistUri);
+}
+
+bool SpotifyClient::setPlayMode(const String &mode) {
+  bool targetShuffle = false;
+  String targetRepeat = "off";
+  if (mode == "shuffle") {
+    targetShuffle = true;
+  } else if (mode == "repeat_once") {
+    targetRepeat = "track";
+  } else if (mode == "repeat_infinite") {
+    targetRepeat = "context";
+  } else if (mode != "normal") {
+    state_.error = "Unknown play mode";
+    return false;
+  }
+
+  String deviceQuery = activeDeviceQuery();
+  if (!deviceQuery.isEmpty()) {
+    deviceQuery.replace("?", "&");
+  }
+
+  if (!sendPlayerCommand("PUT", String("/me/player/repeat?state=") + targetRepeat + deviceQuery)) {
+    return false;
+  }
+  if (!sendPlayerCommand("PUT", String("/me/player/shuffle?state=") + (targetShuffle ? "true" : "false") + deviceQuery)) {
+    return false;
+  }
+
+  state_.shuffle = targetShuffle;
+  state_.repeatState = targetRepeat;
+  state_.error = "";
+  return true;
 }
 
 bool SpotifyClient::transferPlayback(const String &deviceId, bool play) {
@@ -426,6 +556,111 @@ bool SpotifyClient::transferPlayback(const String &deviceId, bool play) {
 
   if (code == 204 || code == 200) {
     state_.deviceId = deviceId;
+    state_.error = "";
+    return true;
+  }
+
+  state_.error = spotifyErrorFromPayload(code, payload);
+  return false;
+}
+
+bool SpotifyClient::findPlaylistUriByName(const String &playlistName, String &playlistUri) {
+  playlistUri = "";
+  if (playlistName.isEmpty()) {
+    state_.error = "Playlist name missing";
+    return false;
+  }
+
+  String payload;
+  const String path = String("/search?type=playlist&limit=1&q=") + urlEncode(playlistName);
+  const int code = apiRequest("GET", path, &payload);
+  if (code != 200) {
+    state_.error = state_.error.isEmpty() ? "Playlist search failed " + String(code) : state_.error;
+    return false;
+  }
+  if (payload.isEmpty()) {
+    state_.error = "Playlist search empty";
+    return false;
+  }
+
+  JsonDocument filter;
+  filter["playlists"]["items"][0]["name"] = true;
+  filter["playlists"]["items"][0]["uri"] = true;
+
+  JsonDocument doc;
+  const DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
+  if (error) {
+    state_.error = "Playlist JSON failed";
+    return false;
+  }
+
+  JsonArrayConst items = doc["playlists"]["items"].as<JsonArrayConst>();
+  for (JsonVariantConst item : items) {
+    const char *uri = item["uri"] | "";
+    if (strlen(uri) == 0) {
+      continue;
+    }
+    playlistUri = uri;
+    state_.error = "";
+    return true;
+  }
+
+  state_.error = "Liked Proxy playlist not found";
+  return false;
+}
+
+bool SpotifyClient::playContextUri(const String &contextUri) {
+  if (contextUri.isEmpty()) {
+    state_.error = "Playlist URI missing";
+    return false;
+  }
+
+  JsonDocument doc;
+  doc["context_uri"] = contextUri;
+
+  String body;
+  serializeJson(doc, body);
+
+  String payload;
+  RequestGuard guard(requestMutex_, 5000);
+  if (!guard.isLocked()) {
+    state_.error = "Spotify busy";
+    return false;
+  }
+  if (!ensureAccessToken()) {
+    return false;
+  }
+
+  WiFiClientSecure client;
+  configureTls(client);
+
+  HTTPClient http;
+  http.setConnectTimeout(Config::HttpConnectTimeoutMs);
+  http.setTimeout(Config::HttpIoTimeoutMs);
+  http.setReuse(false);
+  const String path = String("/me/player/play") + activeDeviceQuery();
+  if (!http.begin(client, String(Config::SpotifyApiBaseUrl) + path)) {
+    state_.error = "Playlist HTTP begin failed";
+    return false;
+  }
+
+  http.addHeader("Authorization", String("Bearer ") + accessToken_);
+  http.addHeader("Content-Type", "application/json");
+  AppLog.print("Spotify request: PUT ");
+  AppLog.println(path);
+  const int code = http.PUT(body);
+  payload = http.getString();
+  http.end();
+
+  AppLog.print("Spotify response: ");
+  AppLog.print(code);
+  AppLog.print(" bytes=");
+  AppLog.println(payload.length());
+
+  if (code == 204 || code == 200) {
+    state_.hasPlayback = true;
+    state_.isPlaying = true;
+    state_.progressSyncedAt = millis();
     state_.error = "";
     return true;
   }

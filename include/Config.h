@@ -73,6 +73,7 @@ static constexpr uint32_t SpeakerSampleRate = 16000;
 static constexpr uint32_t VoiceSampleRate = 16000;
 static constexpr uint32_t VoiceMaxRecordMs = 15000;
 static constexpr size_t VoiceMaxWavBytes = 2UL * 1024UL * 1024UL;
+static constexpr size_t VoicePcmChunkBytes = 1024;
 
 // UI tuning constants.
 static constexpr int TitleScrollGapPx = 36;
@@ -87,4 +88,5 @@ static const char *const ProvisioningApSsid = "SpotifyDJ Setup";
 // Spotify endpoints; user credentials are provisioned into NVS, never compiled into firmware.
 static const char *const SpotifyAccountsUrl = "https://accounts.spotify.com/api/token";
 static const char *const SpotifyApiBaseUrl = "https://api.spotify.com/v1";
+static const char *const SpotifyLikedProxyPlaylistName = "SpotifyDJ Liked Proxy";
 }  // namespace Config

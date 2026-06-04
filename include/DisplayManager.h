@@ -63,6 +63,9 @@ public:
       const String &imagePath,
       const String &albumArtStatus);
 
+  // Redraws only the moving Current Song title/artist text to avoid flickering static labels.
+  void renderAlbumArtMarqueeText(const SpotifyState &playback, bool titleChanged, bool artistChanged);
+
   // Forces the next Current Song render to redraw the album-art pane.
   void resetAlbumArtRenderCache();
 

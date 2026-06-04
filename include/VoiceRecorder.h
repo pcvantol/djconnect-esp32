@@ -7,8 +7,11 @@ class VoiceRecorder {
 public:
   bool begin();
   bool start();
+  bool startRaw();
+  bool readPcmChunk(uint8_t *buffer, size_t capacity, size_t &bytesRead);
   bool update();
   bool stop();
+  bool stopRaw();
   bool abort();
 
   bool isRecording() const;

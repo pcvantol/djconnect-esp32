@@ -24,10 +24,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
-  <link rel="manifest" href="/site.webmanifest">
+  <link rel="shortcut icon" href="/favicon.ico?v=2" sizes="any">
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">
+  <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon.png?v=2">
+  <link rel="manifest" href="/site.webmanifest?v=2">
   <title>SpotifyDJ</title>
   <style>
     :root { color-scheme: dark; --bg:#080b0c; --panel:#111718; --muted:#8a969a; --line:#233033; --green:#1ed760; --yellow:#caa42b; --orange:#ff9f1a; --red:#ff735d; --text:#f3f7f5; }
@@ -125,6 +126,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <button id="previousButton" class="secondary" type="button">Previous song</button>
         <button id="nextButton" class="secondary" type="button">Next song</button>
       </div>
+      <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start SpotifyDJ Liked Proxy</button>
       <div id="playbackCommandStatus" class="status"></div>
       <div class="row"><span class="key">Sound output</span><span id="device" class="value">-</span></div>
       <select id="soundOutputSelect" aria-label="Sound output"><option value="">Loading outputs...</option></select>
@@ -138,6 +140,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <h2>Up Next</h2>
       <div id="queueList" class="queue"><div class="fine">Loading queue...</div></div>
       <div id="queueStatus" class="status"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Playlists</h2>
+      <select id="playlistSelect" aria-label="Playlist"><option value="">Loading playlists...</option></select>
+      <button id="startPlaylistButton" class="section-action" type="button">Start playlist</button>
+      <div id="playlistStatus" class="status"></div>
     </section>
 
     <section class="panel">
@@ -158,6 +167,16 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
             <option value="300000">5 min</option><option value="900000">15 min</option><option value="1800000">30 min</option><option value="3600000">60 min</option>
           </select>
         </label>
+        <label>Speaker volume
+          <select id="speakerVolume">
+            <option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option>
+          </select>
+        </label>
+        <label>Spotify play mode
+          <select id="playMode">
+            <option value="normal">No shuffle</option><option value="shuffle">Shuffle</option><option value="repeat_once">Repeat once</option><option value="repeat_infinite">Repeat infinite</option>
+          </select>
+        </label>
         <label>MQTT host
           <input id="mqttHost" name="mqttHost" placeholder="192.168.1.10">
         </label>
@@ -168,7 +187,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
           <input id="mqttUser" name="mqttUser" autocomplete="off">
         </label>
         <label>MQTT password
-          <input id="mqttPass" name="mqttPass" type="password" autocomplete="off" placeholder="leave blank to keep">
+          <input id="mqttPass" name="mqttPass" type="password" autocomplete="off">
         </label>
         <button type="submit">Save settings</button>
       </form>
@@ -209,6 +228,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <div class="row"><span class="key">Model</span><span id="haModel" class="value">-</span></div>
         <div class="row"><span class="key">HA URL</span><span id="haUrl" class="value mono">-</span></div>
       </div>
+      <button id="resetPairingButton" class="danger section-action" type="button">Reset pairing</button>
       <div id="haStatus" class="status"></div>
     </section>
 
@@ -217,7 +237,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div class="grid">
         <div class="row"><span class="key">Connection</span><span id="spotifyState" class="value">-</span></div>
         <div class="row"><span class="key">Token</span><span id="spotifyToken" class="value">-</span></div>
-        <div class="row"><span class="key">Refresh token</span><span id="spotifyRefresh" class="value">-</span></div>
         <div class="row"><span class="key">Error</span><span id="spotifyError" class="value">-</span></div>
       </div>
       <button id="refreshButton" class="secondary section-action" type="button">Refresh Spotify</button>
@@ -247,7 +266,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <div class="row"><span class="key">Sketch</span><span id="sketch" class="value">-</span></div>
       </div>
       <button id="rebootButton" class="warning section-action" type="button">Restart device</button>
-      <button id="resetPairingButton" class="danger section-action" type="button">Reset pairing</button>
     </section>
 
     <section class="panel wide">
@@ -314,11 +332,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let logsPaused = false;
     let soundOutputLoadedAt = 0;
     let queueLoadedAt = 0;
+    let playlistsLoadedAt = 0;
     let pairingInfoLoadedAt = 0;
     let spotifyControlsEnabled = false;
     function setSpotifyControlsEnabled(enabled) {
       spotifyControlsEnabled = !!enabled;
-      for (const id of ["previousButton", "nextButton", "volumeSlider", "soundOutputSelect"]) {
+      for (const id of ["previousButton", "nextButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
         $(id).disabled = !spotifyControlsEnabled;
       }
       if (!spotifyControlsEnabled) {
@@ -343,11 +362,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       const state = data.playback.isPlaying ? "Playing" : data.playback.hasPlayback ? "Paused" : "No playback";
       text("playbackPill", state);
       pill($("playbackPill"), data.playback.isPlaying ? "ok" : data.playback.hasPlayback ? "warn" : "bad");
+      $("startLikedProxyButton").style.display = data.spotify.authorized && !data.playback.hasPlayback ? "block" : "none";
       text("time", `${duration(data.playback.progressMs)} / ${duration(data.playback.durationMs)}`);
       $("progressBar").style.width = `${data.playback.progressPercent || 0}%`;
       text("device", data.device.name || "-");
       text("volume", data.device.volume >= 0 ? `${data.device.volume}%` : "-");
       setInput("volumeSlider", data.device.volume >= 0 ? String(data.device.volume) : "0");
+      $("volumeSlider").disabled = !data.spotify.authorized || !data.playback.hasPlayback || !data.device.supportsVolume;
+      if (!data.playback.hasPlayback || !data.device.supportsVolume) $("volumeStatus").textContent = "";
       text("batteryHeader", `${data.battery.label} ${data.battery.charging ? "charging" : data.battery.full ? "full" : data.battery.discharging ? "discharging" : ""}`);
       text("wifiConnected", data.wifi.connected ? "Connected" : "Disconnected");
       text("wifiSsid", data.wifi.ssid || "-");
@@ -360,7 +382,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setStatusDot("spotifyHeaderStatus", !!data.spotify.authorized);
       setSpotifyControlsEnabled(!!data.spotify.authorized);
       text("spotifyToken", data.spotify.authorized ? `${data.spotify.tokenExpiresInSec}s left` : "-");
-      text("spotifyRefresh", data.spotify.refreshTokenSource);
       text("spotifyError", data.spotify.error || "-");
       text("screenState", `${data.screen.state} (${data.screen.brightnessLevel}%)`);
       text("ledState", data.led.state);
@@ -372,6 +393,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setInput("brightness", String(data.settings.screenBrightnessPercent));
       setInput("offTimeout", String(data.settings.screenOffTimeoutMs));
       setInput("sleepTimeout", String(data.settings.deviceSleepTimeoutMs));
+      setInput("speakerVolume", String(data.settings.speakerVolumePercent));
+      setInput("playMode", data.playback.playMode || "normal");
       setInput("mqttHost", data.mqtt.host || "");
       setInput("mqttPort", String(data.mqtt.port || 1883));
       setInput("mqttUser", data.mqtt.username || "");
@@ -388,6 +411,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       if (Date.now() - pairingInfoLoadedAt > 5000) loadPairingInfo();
       if (spotifyControlsEnabled && Date.now() - soundOutputLoadedAt > 15000) loadSoundOutputs();
       if (spotifyControlsEnabled && Date.now() - queueLoadedAt > 15000) loadQueue();
+      if (spotifyControlsEnabled && Date.now() - playlistsLoadedAt > 30000) loadPlaylists();
     }
     async function loadPairingInfo() {
       pairingInfoLoadedAt = Date.now();
@@ -470,6 +494,28 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         list.innerHTML = '<div class="fine"></div>';
       }
     }
+    async function loadPlaylists() {
+      const select = $("playlistSelect");
+      playlistsLoadedAt = Date.now();
+      try {
+        const response = await fetch("/api/playlists", { cache: "no-store" });
+        const data = await response.json();
+        select.innerHTML = "";
+        if (!data.items || data.items.length === 0) {
+          select.innerHTML = `<option value="">${data.error || "No playlists"}</option>`;
+          return;
+        }
+        for (const playlist of data.items) {
+          const option = document.createElement("option");
+          option.value = playlist.uri;
+          option.textContent = playlist.owner ? `${playlist.name} - ${playlist.owner}` : playlist.name;
+          select.appendChild(option);
+        }
+        $("playlistStatus").textContent = "";
+      } catch (error) {
+        select.innerHTML = '<option value="">Playlists failed</option>';
+      }
+    }
     async function refreshLogs() {
       if (logsPaused) return;
       const response = await fetch("/api/logs", { cache: "no-store" });
@@ -504,7 +550,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     });
     async function sendPlaybackCommand(action) {
       if (!spotifyControlsEnabled) return;
-      $("playbackCommandStatus").textContent = action === "next" ? "Skipping..." : "Going back...";
+      $("playbackCommandStatus").textContent = action === "next" ? "Skipping..." : action === "previous" ? "Going back..." : "Starting Liked Proxy...";
       const body = new URLSearchParams({ action });
       const response = await fetch("/api/playback", { method:"POST", body });
       $("playbackCommandStatus").textContent = await response.text();
@@ -513,6 +559,21 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     $("previousButton").addEventListener("click", () => sendPlaybackCommand("previous"));
     $("nextButton").addEventListener("click", () => sendPlaybackCommand("next"));
+    $("startLikedProxyButton").addEventListener("click", () => sendPlaybackCommand("likedProxy"));
+    $("startPlaylistButton").addEventListener("click", async () => {
+      if (!spotifyControlsEnabled) return;
+      const playlistUri = $("playlistSelect").value;
+      if (!playlistUri) {
+        $("playlistStatus").textContent = "Select a playlist";
+        return;
+      }
+      $("playlistStatus").textContent = "Starting playlist...";
+      const body = new URLSearchParams({ action:"playlist", uri:playlistUri });
+      const response = await fetch("/api/playback", { method:"POST", body });
+      $("playlistStatus").textContent = await response.text();
+      await refresh();
+      await loadQueue();
+    });
     $("pauseLogsButton").addEventListener("click", () => {
       logsPaused = !logsPaused;
       $("pauseLogsButton").textContent = logsPaused ? "Resume logs" : "Pause logs";
@@ -520,12 +581,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       if (!logsPaused) refreshLogs();
     });
     $("copyLogsButton").addEventListener("click", async () => {
+      logsPaused = true;
+      $("pauseLogsButton").textContent = "Resume logs";
       const range = document.createRange();
       range.selectNodeContents($("logs"));
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
-      $("logsStatus").textContent = "Logs selected";
+      $("logsStatus").textContent = "Logs paused and selected";
     });
     $("settingsForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -534,6 +597,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         brightness: $("brightness").value,
         offTimeoutMs: $("offTimeout").value,
         sleepTimeoutMs: $("sleepTimeout").value,
+        speakerVolume: $("speakerVolume").value,
+        playMode: $("playMode").value,
         mqttHost: $("mqttHost").value,
         mqttPort: $("mqttPort").value,
         mqttUser: $("mqttUser").value,
@@ -604,6 +669,7 @@ void WebPortal::begin(
     MqttPublisher &mqttPublisher,
     const MqttSettings &mqttSettings,
     const uint8_t &screenBrightnessPercent,
+    const uint8_t &speakerVolumePercent,
     const uint32_t &screenOffTimeoutMs,
     const uint32_t &deviceSleepTimeoutMs,
     void *callbackContext,
@@ -622,6 +688,7 @@ void WebPortal::begin(
   mqttPublisher_ = &mqttPublisher;
   mqttSettings_ = &mqttSettings;
   screenBrightnessPercent_ = &screenBrightnessPercent;
+  speakerVolumePercent_ = &speakerVolumePercent;
   screenOffTimeoutMs_ = &screenOffTimeoutMs;
   deviceSleepTimeoutMs_ = &deviceSleepTimeoutMs;
   callbackContext_ = callbackContext;
@@ -665,7 +732,31 @@ void WebPortal::configureRoutes() {
   server_.on("/icon-192.png", HTTP_GET, [this]() {
     server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
   });
+  server_.on("/apple-touch-icon.png", HTTP_GET, [this]() {
+    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+  });
+  server_.on("/apple-touch-icon-precomposed.png", HTTP_GET, [this]() {
+    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+  });
+  server_.on("/icons/favicon.ico", HTTP_GET, [this]() {
+    server_.send_P(200, "image/x-icon", reinterpret_cast<const char *>(SPOTIFYDJ_FAVICON_ICO), SPOTIFYDJ_FAVICON_ICO_LEN);
+  });
+  server_.on("/icons/icon-192.png", HTTP_GET, [this]() {
+    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+  });
+  server_.on("/icons/icon-512.png", HTTP_GET, [this]() {
+    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+  });
+  server_.on("/icons/maskable-icon-192.png", HTTP_GET, [this]() {
+    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+  });
+  server_.on("/icons/maskable-icon-512.png", HTTP_GET, [this]() {
+    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+  });
   server_.on("/site.webmanifest", HTTP_GET, [this]() {
+    server_.send_P(200, "application/manifest+json", reinterpret_cast<const char *>(SPOTIFYDJ_SITE_WEBMANIFEST), SPOTIFYDJ_SITE_WEBMANIFEST_LEN);
+  });
+  server_.on("/icons/site.webmanifest", HTTP_GET, [this]() {
     server_.send_P(200, "application/manifest+json", reinterpret_cast<const char *>(SPOTIFYDJ_SITE_WEBMANIFEST), SPOTIFYDJ_SITE_WEBMANIFEST_LEN);
   });
   server_.on("/api/status", HTTP_GET, [this]() { handleStatusJson(); });
@@ -674,6 +765,7 @@ void WebPortal::configureRoutes() {
   server_.on("/api/wifi", HTTP_POST, [this]() { handleWifiPost(); });
   server_.on("/api/volume", HTTP_POST, [this]() { handleVolumePost(); });
   server_.on("/api/devices", HTTP_GET, [this]() { handleDevicesJson(); });
+  server_.on("/api/playlists", HTTP_GET, [this]() { handlePlaylistsJson(); });
   server_.on("/api/queue", HTTP_GET, [this]() { handleQueueJson(); });
   server_.on("/api/transfer", HTTP_POST, [this]() { handleTransferPost(); });
   server_.on("/api/playback", HTTP_POST, [this]() { handlePlaybackCommandPost(); });
@@ -712,6 +804,9 @@ void WebPortal::handleStatusJson() {
   playback["artist"] = playback_->artistName;
   playback["type"] = playback_->currentType;
   playback["albumImageUrl"] = playback_->albumImageUrl;
+  playback["shuffle"] = playback_->shuffle;
+  playback["repeatState"] = playback_->repeatState;
+  playback["playMode"] = Logic::playModeFromSpotifyState(playback_->shuffle, playback_->repeatState.c_str());
   playback["progressMs"] = estimatedProgressMs();
   playback["durationMs"] = playback_->durationMs;
   playback["progressPercent"] = playback_->durationMs > 0
@@ -739,6 +834,7 @@ void WebPortal::handleStatusJson() {
 
   JsonObject settings = doc["settings"].to<JsonObject>();
   settings["screenBrightnessPercent"] = *screenBrightnessPercent_;
+  settings["speakerVolumePercent"] = speakerVolumePercent_ == nullptr ? 100 : *speakerVolumePercent_;
   settings["screenOffTimeoutMs"] = *screenOffTimeoutMs_;
   settings["screenDimStartAfterMs"] = Config::DisplayDimStartAfterMs;
   settings["deviceSleepTimeoutMs"] = deviceSleepTimeoutMs_ == nullptr ? Config::DeviceSleepAfterMs : *deviceSleepTimeoutMs_;
@@ -766,7 +862,6 @@ void WebPortal::handleStatusJson() {
   JsonObject spotify = doc["spotify"].to<JsonObject>();
   spotify["authorized"] = spotify_->isAuthorized();
   spotify["tokenExpiresInSec"] = spotify_->accessTokenExpiresInSeconds();
-  spotify["refreshTokenSource"] = spotify_->refreshTokenSource();
   spotify["error"] = playback_->error;
 
   JsonObject mqtt = doc["mqtt"].to<JsonObject>();
@@ -816,8 +911,30 @@ void WebPortal::handleSettingsPost() {
   const uint8_t brightness = constrain(server_.arg("brightness").toInt(), 25, 100);
   const uint32_t offTimeoutMs = constrain(server_.arg("offTimeoutMs").toInt(), 30000, 240000);
   const uint32_t sleepTimeoutMs = constrain(server_.arg("sleepTimeoutMs").toInt(), 300000, 3600000);
+  const uint8_t speakerVolume = constrain(server_.hasArg("speakerVolume") ? server_.arg("speakerVolume").toInt() : 100, 25, 100);
+  AppLog.print("Web settings: brightness=");
+  AppLog.print(brightness);
+  AppLog.print("% dim=");
+  AppLog.print(offTimeoutMs / 1000UL);
+  AppLog.print("s sleep=");
+  AppLog.print(sleepTimeoutMs / 60000UL);
+  AppLog.print("m speaker=");
+  AppLog.print(speakerVolume);
+  AppLog.println("%");
   if (settingsCallback_ != nullptr) {
-    settingsCallback_(callbackContext_, brightness, offTimeoutMs, sleepTimeoutMs);
+    settingsCallback_(callbackContext_, brightness, offTimeoutMs, sleepTimeoutMs, speakerVolume);
+  }
+
+  String responseText = "Settings saved";
+  if (server_.hasArg("playMode") && spotify_ != nullptr && spotify_->isAuthorized()) {
+    const String playMode = server_.arg("playMode");
+    AppLog.print("Web settings: Spotify play mode ");
+    AppLog.println(playMode);
+    if (!spotify_->setPlayMode(playMode)) {
+      AppLog.print("Web settings: Spotify play mode failed: ");
+      AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
+      responseText = playback_ == nullptr || playback_->error.isEmpty() ? "Settings saved, play mode failed" : playback_->error;
+    }
   }
 
   if (mqttSettingsCallback_ != nullptr) {
@@ -827,13 +944,12 @@ void WebPortal::handleSettingsPost() {
     mqttSettings.port = server_.arg("mqttPort").toInt() > 0 ? server_.arg("mqttPort").toInt() : 1883;
     mqttSettings.username = server_.arg("mqttUser");
     mqttSettings.password = server_.arg("mqttPass");
-    if (mqttSettings.password.isEmpty() && mqttSettings_ != nullptr) {
-      mqttSettings.password = mqttSettings_->password;
-    }
     mqttSettings.enabled = !mqttSettings.host.isEmpty();
+    AppLog.print("Web settings: MQTT ");
+    AppLog.println(mqttSettings.enabled ? "enabled/updated" : "disabled");
     mqttSettingsCallback_(callbackContext_, mqttSettings);
   }
-  server_.send(200, "text/plain", "Settings saved");
+  server_.send(200, "text/plain", responseText);
 }
 
 void WebPortal::handleWifiPost() {
@@ -930,6 +1046,35 @@ void WebPortal::handleQueueJson() {
   server_.send(200, "application/json", body);
 }
 
+void WebPortal::handlePlaylistsJson() {
+  if (spotify_ == nullptr) {
+    server_.send(503, "application/json", "{\"error\":\"spotify not ready\"}");
+    return;
+  }
+  if (!spotify_->isAuthorized()) {
+    server_.send(503, "application/json", "{\"available\":false,\"error\":\"Spotify not connected\",\"items\":[]}");
+    return;
+  }
+
+  PlaylistListState playlists;
+  spotify_->refreshPlaylists(playlists);
+
+  JsonDocument doc;
+  doc["available"] = playlists.available;
+  doc["error"] = playlists.error;
+  JsonArray items = doc["items"].to<JsonArray>();
+  for (size_t index = 0; index < playlists.count; index++) {
+    JsonObject item = items.add<JsonObject>();
+    item["name"] = playlists.items[index].name;
+    item["owner"] = playlists.items[index].owner;
+    item["uri"] = playlists.items[index].uri;
+  }
+
+  String body;
+  serializeJson(doc, body);
+  server_.send(200, "application/json", body);
+}
+
 void WebPortal::handleTransferPost() {
   if (spotify_ == nullptr || !server_.hasArg("deviceId")) {
     server_.send(400, "text/plain", "Missing output");
@@ -946,11 +1091,15 @@ void WebPortal::handleTransferPost() {
     return;
   }
 
+  AppLog.println("Web playback: transfer output requested");
   if (!spotify_->transferPlayback(deviceId, true)) {
+    AppLog.print("Web playback: transfer failed: ");
+    AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
     server_.send(502, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Output switch failed" : playback_->error);
     return;
   }
 
+  AppLog.println("Web playback: output switched");
   spotify_->refreshPlayback();
   server_.send(200, "text/plain", "Output switched");
 }
@@ -966,23 +1115,41 @@ void WebPortal::handlePlaybackCommandPost() {
   }
 
   const String action = server_.arg("action");
+  AppLog.print("Web playback: action ");
+  AppLog.println(action);
   bool ok = false;
   if (action == "next") {
     ok = spotify_->nextTrack();
   } else if (action == "previous") {
     ok = spotify_->previousTrack();
+  } else if (action == "likedProxy") {
+    ok = spotify_->startLikedProxyPlaylist();
+  } else if (action == "playlist") {
+    const String playlistUri = server_.arg("uri");
+    if (playlistUri.isEmpty()) {
+      server_.send(400, "text/plain", "Missing playlist");
+      return;
+    }
+    ok = spotify_->startPlaylist(playlistUri);
   } else {
     server_.send(400, "text/plain", "Unknown playback action");
     return;
   }
 
   if (!ok) {
+    AppLog.print("Web playback: action failed: ");
+    AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
     server_.send(502, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Playback command failed" : playback_->error);
     return;
   }
 
+  AppLog.print("Web playback: action completed ");
+  AppLog.println(action);
   spotify_->refreshPlayback();
-  server_.send(200, "text/plain", action == "next" ? "Next song" : "Previous song");
+  server_.send(
+      200,
+      "text/plain",
+      action == "next" ? "Next song" : action == "previous" ? "Previous song" : action == "playlist" ? "Playlist started" : "Liked Proxy started");
 }
 
 void WebPortal::handleRefreshPost() {
@@ -993,6 +1160,7 @@ void WebPortal::handleRefreshPost() {
 }
 
 void WebPortal::handleResetPairingPost() {
+  AppLog.println("Web action: reset Home Assistant pairing requested");
   server_.send(200, "text/plain", "Reset pairing requested. Restarting to pairing screen...");
   delay(250);
   if (resetPairingCallback_ != nullptr) {
@@ -1002,12 +1170,14 @@ void WebPortal::handleResetPairingPost() {
 }
 
 void WebPortal::handleRebootPost() {
+  AppLog.println("Web action: restart requested");
   server_.send(200, "text/plain", "Restarting device...");
   delay(250);
   ESP.restart();
 }
 
 void WebPortal::handleHardResetPost() {
+  AppLog.println("Web action: factory reset requested");
   server_.send(200, "text/plain", "Factory reset requested. Restarting into setup mode...");
   delay(250);
   if (hardResetCallback_ != nullptr) {

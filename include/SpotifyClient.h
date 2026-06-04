@@ -44,11 +44,17 @@ public:
   // Reads the next songs from Spotify's play queue.
   bool refreshQueue(QueueState &queue);
 
+  // Reads the user's Spotify playlists for device/web selection.
+  bool refreshPlaylists(PlaylistListState &playlists);
+
   // Playback control endpoints used by the current screen actions.
   bool pausePlayback();
   bool resumePlayback();
   bool nextTrack();
   bool previousTrack();
+  bool startLikedProxyPlaylist();
+  bool startPlaylist(const String &playlistUri);
+  bool setPlayMode(const String &mode);
   bool transferPlayback(const String &deviceId, bool play);
 
   // Queues a non-blocking volume command; the worker sends only the latest queued value.
@@ -87,6 +93,8 @@ private:
       bool updatePlaybackError = true);
   bool sendPlayerCommand(const char *method, const String &path);
   VolumeResult sendVolumeToSpotify(const VolumeCommand &command);
+  bool findPlaylistUriByName(const String &playlistName, String &playlistUri);
+  bool playContextUri(const String &contextUri);
 
   // Spotify JSON parsing helpers.
   void applyDevice(JsonVariantConst device);

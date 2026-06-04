@@ -7,7 +7,7 @@
 #include "AppLog.h"
 #include "Config.h"
 
-// speaker/DAC op I2S_NUM_1
+// Speaker/DAC output uses I2S1 so it does not collide with the PDM microphone.
 static constexpr i2s_port_t SpeakerI2sPort = I2S_NUM_1;
 static constexpr uint32_t MinVolumeTickIntervalMs = 90;
 
@@ -54,6 +54,10 @@ void SoundManager::begin() {
   xTaskCreatePinnedToCore(soundTask, "sound", 3072, this, 1, nullptr, 0);
 }
 
+void SoundManager::setVolumePercent(uint8_t percent) {
+  volumePercent_ = constrain(percent, 25, 100);
+}
+
 void SoundManager::playStartup() {
   enqueue(Event::Startup);
 }
@@ -77,6 +81,22 @@ void SoundManager::playButtonPress() {
 
 void SoundManager::playConfirm() {
   enqueue(Event::Confirm);
+}
+
+void SoundManager::playMenuOpen() {
+  enqueue(Event::MenuOpen);
+}
+
+void SoundManager::playBack() {
+  enqueue(Event::Back);
+}
+
+void SoundManager::playPttStart() {
+  enqueue(Event::PttStart);
+}
+
+void SoundManager::playPttStop() {
+  enqueue(Event::PttStop);
 }
 
 void SoundManager::playHardReset() {
@@ -180,6 +200,18 @@ void SoundManager::runTask() {
       case Event::Confirm:
         playTone(988, 32, 10);
         break;
+      case Event::MenuOpen:
+        playTone(1047, 36, 10);
+        break;
+      case Event::Back:
+        playTone(587, 36, 10);
+        break;
+      case Event::PttStart:
+        playTone(1319, 42, 12);
+        break;
+      case Event::PttStop:
+        playTone(880, 42, 12);
+        break;
       case Event::HardReset:
         // Deliberately unlike startup/soft reset: sharp descending alarm burst.
         playTone(988, 90, 24);
@@ -224,7 +256,8 @@ void SoundManager::playTone(uint16_t frequency, uint16_t durationMs, uint8_t amp
 
   const size_t sampleCount = (Config::SpeakerSampleRate * durationMs) / 1000;
   const uint32_t halfPeriod = max<uint32_t>(1, Config::SpeakerSampleRate / (frequency * 2UL));
-  const int16_t level = static_cast<int16_t>(amplitude) * 512;
+  const uint16_t scaledAmplitude = (static_cast<uint16_t>(amplitude) * volumePercent_) / 100;
+  const int16_t level = static_cast<int16_t>(scaledAmplitude) * 512;
   int16_t buffer[128];
   size_t generated = 0;
 

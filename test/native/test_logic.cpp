@@ -161,6 +161,84 @@ static void testBq27220Interpretation() {
   assert(charging.currentMa == 120);
   assert(charging.percentEstimated);
   assert(charging.percent == 65);
+
+  const auto negativeCurrentWithoutDsgBit = Logic::interpretBq27220(
+      50,
+      true,
+      3900,
+      true,
+      0x0000,
+      true,
+      static_cast<uint16_t>(static_cast<int16_t>(-120)),
+      5);
+  assert(!negativeCurrentWithoutDsgBit.charging);
+  assert(!negativeCurrentWithoutDsgBit.discharging);
+  assert(negativeCurrentWithoutDsgBit.currentMa == -120);
+
+  const auto missingCurrent = Logic::interpretBq27220(
+      50,
+      true,
+      3900,
+      true,
+      0x0000,
+      false,
+      0,
+      5);
+  assert(!missingCurrent.charging);
+}
+
+static void testVoiceChunkHelpers() {
+  assert(Logic::voiceAudioPayloadBytes(0, 1024) == 0);
+  assert(Logic::voiceAudioPayloadBytes(256, 1024) == 256);
+  assert(Logic::voiceAudioPayloadBytes(1024, 1024) == 1024);
+  assert(Logic::voiceAudioPayloadBytes(2048, 1024) == 1024);
+  assert(Logic::voiceAudioPayloadBytes(256, 0) == 0);
+
+  assert(Logic::voiceAssistBinaryFrameBytes(0, 1024) == 0);
+  assert(Logic::voiceAssistBinaryFrameBytes(1, 1024) == 2);
+  assert(Logic::voiceAssistBinaryFrameBytes(256, 1024) == 257);
+  assert(Logic::voiceAssistBinaryFrameBytes(1024, 1024) == 1025);
+  assert(Logic::voiceAssistBinaryFrameBytes(2048, 1024) == 1025);
+  assert(Logic::voiceAssistBinaryFrameBytes(2048, 0) == 0);
+
+  assert(!Logic::shouldAutoStopVoiceRecording(0, 15000));
+  assert(!Logic::shouldAutoStopVoiceRecording(14999, 15000));
+  assert(Logic::shouldAutoStopVoiceRecording(15000, 15000));
+  assert(Logic::shouldAutoStopVoiceRecording(15001, 15000));
+  assert(!Logic::shouldAutoStopVoiceRecording(15000, 0));
+
+  assert(!Logic::shouldSendRecognizedVoiceText(0));
+  assert(Logic::shouldSendRecognizedVoiceText(1));
+  assert(Logic::shouldSendRecognizedVoiceText(64));
+}
+
+static void testPlayModeMapping() {
+  assert(std::strcmp(Logic::playModeFromSpotifyState(false, "off"), "normal") == 0);
+  assert(std::strcmp(Logic::playModeFromSpotifyState(true, "off"), "shuffle") == 0);
+  assert(std::strcmp(Logic::playModeFromSpotifyState(false, "track"), "repeat_once") == 0);
+  assert(std::strcmp(Logic::playModeFromSpotifyState(true, "track"), "repeat_once") == 0);
+  assert(std::strcmp(Logic::playModeFromSpotifyState(false, "context"), "repeat_infinite") == 0);
+  assert(std::strcmp(Logic::playModeFromSpotifyState(false, nullptr), "normal") == 0);
+
+  assert(std::strcmp(Logic::playModeLabel("normal"), "No shuffle") == 0);
+  assert(std::strcmp(Logic::playModeLabel("shuffle"), "Shuffle") == 0);
+  assert(std::strcmp(Logic::playModeLabel("repeat_once"), "Repeat once") == 0);
+  assert(std::strcmp(Logic::playModeLabel("repeat_infinite"), "Repeat infinite") == 0);
+  assert(std::strcmp(Logic::playModeLabel("unexpected"), "No shuffle") == 0);
+}
+
+static void testMqttDeviceTopicFormatting() {
+  char buffer[64] = {};
+  assert(Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", "status", buffer, sizeof(buffer)));
+  assert(std::strcmp(buffer, "spotifydj/spotifydj-ABCDEF123456/status") == 0);
+
+  assert(Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", "command", buffer, sizeof(buffer)));
+  assert(std::strcmp(buffer, "spotifydj/spotifydj-ABCDEF123456/command") == 0);
+
+  char tiny[8] = {};
+  assert(!Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", "status", tiny, sizeof(tiny)));
+  assert(!Logic::formatMqttDeviceTopic(nullptr, "status", buffer, sizeof(buffer)));
+  assert(!Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", nullptr, buffer, sizeof(buffer)));
 }
 
 int main() {
@@ -173,5 +251,8 @@ int main() {
   testBacklightDutyCurve();
   testBatteryVoltageFallbackCurve();
   testBq27220Interpretation();
+  testVoiceChunkHelpers();
+  testPlayModeMapping();
+  testMqttDeviceTopicFormatting();
   return 0;
 }

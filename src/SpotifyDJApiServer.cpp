@@ -7,6 +7,27 @@
 
 #include "AppLog.h"
 
+namespace {
+bool mqttSettingsFromJson(JsonVariantConst mqtt, MqttSettings &settings) {
+  if (!mqtt.is<JsonObjectConst>()) {
+    return false;
+  }
+  settings.host = mqtt["host"] | "";
+  settings.host.trim();
+  if (settings.host.isEmpty()) {
+    return false;
+  }
+  settings.port = static_cast<uint16_t>((mqtt["port"] | 1883));
+  if (settings.port == 0) {
+    settings.port = 1883;
+  }
+  settings.username = mqtt["username"] | "";
+  settings.password = mqtt["password"] | "";
+  settings.enabled = true;
+  return true;
+}
+}  // namespace
+
 void SpotifyDJApiServer::begin(
     WebServer &server,
     SpotifyDJDevice &device,
@@ -80,6 +101,7 @@ void SpotifyDJApiServer::handleInfo() {
   doc["model"] = device_->getModel();
   doc["paired"] = device_->isPaired();
   doc["spotify_configured"] = device_->isSpotifyConfigured();
+  doc["assist_pipeline_id"] = device_->getAssistPipelineId();
   doc["battery_percent"] = battery_ == nullptr ? -1 : battery_->percent;
   doc["battery_mv"] = battery_ == nullptr ? 0 : battery_->voltageMv;
   doc["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
@@ -134,12 +156,20 @@ void SpotifyDJApiServer::handleProvisionSpotify() {
   const String clientId = doc["spotify_client_id"] | "";
   const String refreshToken = doc["spotify_refresh_token"] | "";
   const String market = doc["spotify_market"] | "NL";
+  const String assistPipelineId = doc["assist_pipeline_id"] | "";
   if (clientId.isEmpty() || refreshToken.isEmpty()) {
     sendJson(400, "{\"error\":\"spotify credentials missing\"}");
     return;
   }
 
   device_->saveSpotifyCredentials(clientId, refreshToken, market);
+  if (doc["assist_pipeline_id"].is<const char *>()) {
+    device_->saveAssistPipelineId(assistPipelineId);
+  }
+  MqttSettings mqttSettings;
+  if (mqttSettingsFromJson(doc["mqtt"], mqttSettings)) {
+    device_->saveMqttSettings(mqttSettings);
+  }
   spotify_->reloadCredentials();
   AppLog.println("[SpotifyDJ] Spotify provisioning success");
   sendJson(200, "{\"success\":true,\"spotify_configured\":true}");

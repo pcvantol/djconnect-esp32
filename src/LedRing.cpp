@@ -7,12 +7,22 @@ namespace {
 constexpr uint8_t SpotifyGreenRed = 0x1D;
 constexpr uint8_t SpotifyGreenGreen = 0xB9;
 constexpr uint8_t SpotifyGreenBlue = 0x54;
+constexpr uint8_t VolumeOrangeRed = 0xFF;
+constexpr uint8_t VolumeOrangeGreen = 0x8A;
+constexpr uint8_t VolumeOrangeBlue = 0x00;
 
 CRGB scaledSpotifyGreen(uint8_t level) {
   return CRGB(
       (SpotifyGreenRed * level) / 255,
       (SpotifyGreenGreen * level) / 255,
       (SpotifyGreenBlue * level) / 255);
+}
+
+CRGB scaledVolumeOrange(uint8_t level) {
+  return CRGB(
+      (VolumeOrangeRed * level) / 255,
+      (VolumeOrangeGreen * level) / 255,
+      (VolumeOrangeBlue * level) / 255);
 }
 }  // namespace
 
@@ -42,7 +52,7 @@ void LedRing::showVolume(int volume, bool force) {
           index,
           Config::Ws2812LedCount,
           Config::MaxSpotifyVolumePercent);
-      leds_[index] = scaledSpotifyGreen(level);
+      leds_[index] = scaledVolumeOrange(level);
     }
   }
 
@@ -58,6 +68,26 @@ void LedRing::showSolid(const CRGB &color, uint8_t brightnessPercent) {
   FastLED.setBrightness(map(powerPercent_, 0, 100, 0, 255));
   fill_solid(leds_, Config::Ws2812LedCount, color);
   lastVolume_ = -999;
+  FastLED.show();
+}
+
+void LedRing::playPulse(const CRGB &color) {
+  if (!ready_) {
+    return;
+  }
+
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+  FastLED.setBrightness(Config::LedRingBrightness);
+  for (uint8_t index = 0; index < Config::Ws2812LedCount; index++) {
+    fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+    leds_[index] = color;
+    leds_[(index + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = color;
+    leds_[(index + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount].nscale8(80);
+    FastLED.show();
+    delay(28);
+  }
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
   FastLED.show();
 }
 

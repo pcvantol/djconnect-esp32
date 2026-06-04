@@ -10,20 +10,27 @@ Dit is geen Spotify Connect speaker/player. De ESP32 bestuurt via de Spotify Web
 - Toont huidige track/podcast, artiest/show, tracklengte en voortgang.
 - Laat lange titel en artiest/show eenmalig scrollen bij trackwissel.
 - Volume via encoder en webinterface, begrensd op `0-60`.
-- LED-ring toont volume als groene segmenten; `60` is volledig vol.
-- Encoder short press: push-to-talk voice naar Home Assistant wanneer gepaired; zonder HA pairing blijft dit pause/resume.
-- Encoder long press: current song / album-art scherm.
+- Spotify play mode via device settings en webinterface: geen shuffle, shuffle, repeat once of repeat infinite.
+- Playlist-overzicht via device en webinterface om direct een playlist te starten.
+- LED-ring toont volume als oranje segmenten; `60` is volledig vol.
+- Encoder short press vanuit Now Playing: pause/resume.
+- Encoder double press vanuit Now Playing: current song / album-art scherm.
+- Encoder long press vasthouden: push-to-talk voice naar Home Assistant Assist; loslaten stopt de opname.
 - Bovenknop short press: menu terug in menu's, anders next track.
 - Bovenknop double press: previous track.
 - Bovenknop long press: menu openen.
 - Bovenknop 10 seconden: restart/soft reset via reset-monitor.
 - Encoderknop + bovenknop 10 seconden: factory reset, afhankelijk van batterijstatus.
-- Menu's voor Up Next, Sound Outputs, Settings, About en Logs.
+- Menu's voor Up Next, Playlists, Sound Outputs, Settings, About en Logs.
 - Webportal met now playing, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update en OTA upload.
 - Home Assistant pairing met mDNS discovery en device-token auth.
-- Push-to-talk voice upload naar Home Assistant met WAV response playback op de speaker.
+- BLE WiFi provisioning in setup mode voor apps/flows die credentials actief naar het device schrijven.
+- Push-to-talk voice via Home Assistant Assist STT; herkende tekst gaat naar de SpotifyDJ HA integration.
 - MQTT/Home Assistant discovery en periodieke status publishing.
+- MQTT two-way controls voor volume, next/previous, sound output en playlist start.
+- MQTT settings kunnen optioneel via Home Assistant pairing/provisioning worden opgeslagen.
 - Battery/charging guards, deep sleep en low-battery schermen.
+- WiFi-failure boot menu na connect-timeout met retry, hard reset, reset device en turn off.
 - OTA endpoint voor Home Assistant-triggered firmware update.
 
 ## Hardware
@@ -95,8 +102,33 @@ Setup/AP mode:
 - Scherm blijft op 100% brightness.
 - LED-ring toont regenboog-adem animatie.
 - Batterij en charging state blijven zichtbaar.
+- BLE provisioning adverteert tegelijk als `SpotifyDJ xxxx`.
 - Na 10 minuten zonder succesvolle setup gaat het device naar deep sleep.
 - Bij wake start setup/AP opnieuw zolang provisioning niet klaar is.
+
+### BLE WiFi provisioning
+
+iOS deelt het wachtwoord van de huidige iPhone WiFi-verbinding niet automatisch met een ESP32 via BLE. De firmware ondersteunt daarom BLE provisioning waarbij een iPhone-app, Home Assistant flow of BLE tool de credentials actief naar SpotifyDJ schrijft.
+
+Tijdens setup/AP mode:
+
+- BLE naam: `SpotifyDJ xxxx`, waarbij `xxxx` de laatste tekens van het device id zijn.
+- Service UUID: `7f705000-9f8f-4f1a-9b5f-570071fd0001`
+- Write characteristic UUID: `7f705001-9f8f-4f1a-9b5f-570071fd0001`
+- Status read/notify characteristic UUID: `7f705002-9f8f-4f1a-9b5f-570071fd0001`
+
+Schrijf alleen WiFi credentials als JSON naar de characteristic:
+
+```json
+{
+  "ssid": "MyWiFi",
+  "password": "wifi-password"
+}
+```
+
+Na ontvangst test SpotifyDJ de WiFi-credentials via dezelfde flow als de captive portal. Bij succes slaat hij WiFi op in NVS en reboot hij naar normale mode. Spotify en MQTT worden niet via BLE geprovisioned; gebruik daarvoor Home Assistant provisioning, captive portal of web settings.
+
+Voor Home Assistant Bluetooth Proxy kan de custom integration dezelfde GATT-service gebruiken. De proxy moet de JSON naar de write characteristic sturen en kan de status characteristic lezen of op notifications abonneren. Statuswaarden zijn JSON, bijvoorbeeld `{"state":"ready"}`, `{"state":"testing"}`, `{"state":"success"}` of `{"state":"error","message":"..."}`.
 
 ## Spotify app en refresh token
 
@@ -229,12 +261,19 @@ Headers:
 ```text
 Authorization: Bearer <device_token>
 X-SpotifyDJ-Device-ID: <device_id>
-Content-Type: audio/wav
+X-SpotifyDJ-Text: <recognized_text>
+Content-Type: application/json
 ```
 
-De request body is raw mono PCM WAV audio van de onboard microfoon. De Home Assistant response moet `audio/wav` zijn; de firmware speelt die response direct af via de bestaande speaker-output.
+De microfoon-audio gaat niet naar dit endpoint. De firmware streamt raw PCM16 mono 16 kHz naar de officiële Home Assistant Assist WebSocket API (`/api/websocket`) met `assist_pipeline/run` van `stt` naar `stt`. Daarna stuurt de firmware alleen de herkende tekst naar `/api/spotify_dj/voice`, in header `X-SpotifyDJ-Text` en als JSON body:
 
-Tijdens opname stuurt de firmware status naar HA met `recording=true` en `state=recording`. Bij response playback wordt `state=playing_response` gestuurd. Bij fouten wordt `state=error` met `last_error` gestuurd.
+```json
+{
+  "text": "<recognized_text>"
+}
+```
+
+Tijdens opname stuurt de firmware status naar HA met `recording=true` en `state=recording`. Tijdens verwerking gebruikt hij `state=sending_command`. Bij fouten wordt `state=error` met `last_error` gestuurd.
 
 ### Spotify provisioning via HA
 
@@ -275,9 +314,9 @@ Payload:
 
 ```json
 {
-  "url": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/v1.7.0/spotifydj-lilygo-t-embed-s3-v1.7.0.bin",
+  "url": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/v2.1.0/spotifydj-lilygo-t-embed-s3-v2.1.0.bin",
   "sha256": "...",
-  "version": "1.7.0",
+  "version": "2.1.0",
   "device": "lilygo-t-embed-s3"
 }
 ```
@@ -328,6 +367,69 @@ MQTT instellingen worden opgeslagen in NVS:
 
 MQTT brokerproblemen blokkeren Spotify, display, webportal of HA device API niet.
 
+MQTT provisioning:
+
+- De captive portal MQTT velden zijn optioneel. Leeg laten betekent: geen MQTT config wijzigen of proberen.
+- De Home Assistant SpotifyDJ integration kan MQTT settings meesturen in `pair`, `provision_spotify` of status responses:
+
+```json
+{
+  "mqtt": {
+    "host": "core-mosquitto",
+    "port": 1883,
+    "username": "user",
+    "password": "pass"
+  }
+}
+```
+
+- Als `mqtt.host` ontbreekt of leeg is, blijft bestaande MQTT config behouden.
+- HA-provisioned MQTT settings worden opgeslagen in NVS namespace `spotifydj` en hebben voorrang op legacy captive-portal MQTT settings uit `provision`.
+- Het MQTT password wordt nooit gelogd.
+
+Two-way MQTT controls via Home Assistant discovery:
+
+- Next song en previous song als MQTT buttons.
+- Spotify volume als MQTT number, begrensd op `0-60`.
+- Sound output als MQTT select met laatst bekende Spotify Connect outputs.
+- Playlist start als MQTT select met laatst bekende playlists.
+
+Command topics:
+
+```text
+spotifydj/<device_id>/command
+spotifydj/<device_id>/command/action
+spotifydj/<device_id>/command/volume/set
+spotifydj/<device_id>/command/output/set
+spotifydj/<device_id>/command/playlist/set
+```
+
+De MQTT callback voert geen Spotify HTTPS-calls uit. Commands worden eerst in de app-loop gezet en daarna via de bestaande Spotify control code verwerkt.
+
+Device status wordt retained gepubliceerd op:
+
+```text
+spotifydj/<device_id>/status
+```
+
+Een JSON command naar `spotifydj/<device_id>/command` met `{ "command": "status" }` publiceert direct een statusupdate.
+
+Events worden non-retained gepubliceerd op:
+
+```text
+spotifydj/<device_id>/event
+```
+
+Bij push-to-talk start wordt bijvoorbeeld gepubliceerd:
+
+```json
+{
+  "type": "button",
+  "button": "middle",
+  "event": "push_to_talk_start"
+}
+```
+
 ## Batterij en charging
 
 Het getoonde batterijpercentage is altijd een voltage-based estimate. De BQ27220 SoC/gauge waarde blijft alleen diagnostisch zichtbaar.
@@ -372,8 +474,9 @@ Uitzonderingen:
 ## Bediening
 
 - Encoder draaien: volume omhoog/omlaag in stappen van 5%, max 60.
-- Encoder short press: push-to-talk voice als Home Assistant gepaired is; zonder HA pairing pause/resume.
-- Encoder long press: Current Song / album-art.
+- Encoder short press: pause/resume.
+- Encoder double press: Current Song / album-art.
+- Encoder long press vasthouden: push-to-talk voice; loslaten stopt de opname.
 - Bovenknop short press:
   - in menu: terug naar vorige scherm
   - in now playing: next track
@@ -382,15 +485,23 @@ Uitzonderingen:
 - Bovenknop 10 seconden: restart/soft reset.
 - Encoderknop + bovenknop 10 seconden: factory reset, als batterijstatus dit toestaat.
 
+WiFi-failure boot menu:
+
+- Verschijnt als WiFi na de connect-timeout niet verbonden is.
+- Encoder draaien: keuze wisselen tussen `Retry connect`, `Hard reset`, `Reset device` en `Turn off`.
+- Encoder short press: geselecteerde actie uitvoeren.
+- Zonder actie gaat het device na de ingestelde WiFi-failure timeout naar deep sleep.
+
 ## Menus
 
 Hoofdmenu volgorde:
 
 1. Up Next
-2. Sound outputs
-3. Settings
-4. About
-5. Logs
+2. Playlists
+3. Sound outputs
+4. Settings
+5. About
+6. Logs
 
 Settings bevat onder andere:
 
@@ -432,7 +543,7 @@ Als `pio` niet in je PATH staat:
 Build flags voor releaseversies kunnen via environment worden meegegeven:
 
 ```bash
-SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="1.7.0" -DSPOTIFYDJ_VERSION_TAG="v1.7.0"' \
+SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="2.1.0" -DSPOTIFYDJ_VERSION_TAG="v2.1.0"' \
 pio run -e t_embed_cc1101
 ```
 
@@ -455,12 +566,12 @@ Firmware releases worden gepubliceerd via de GitHub Actions workflow in de firmw
 https://github.com/pcvantol/spotify-dj-firmware
 ```
 
-De workflow wordt getriggerd door een git tag. Gebruik semver-tags zoals `v1.7.0`.
+De workflow wordt getriggerd door een git tag. Gebruik semver-tags zoals `v2.1.0`.
 
 ```bash
 git status
-git tag v1.7.0
-git push origin v1.7.0
+git tag v2.1.0
+git push origin v2.1.0
 ```
 
 Na het pushen van de tag bouwt GitHub Actions de firmware en maakt de release asset aan. Controleer daarna:
@@ -473,16 +584,16 @@ https://github.com/pcvantol/spotify-dj-firmware/releases
 De OTA URL voor Home Assistant gebruikt de release asset, bijvoorbeeld:
 
 ```text
-https://github.com/pcvantol/spotify-dj-firmware/releases/download/v1.7.0/spotifydj-lilygo-t-embed-s3-v1.7.0.bin
+https://github.com/pcvantol/spotify-dj-firmware/releases/download/v2.1.0/spotifydj-lilygo-t-embed-s3-v2.1.0.bin
 ```
 
 Als je een tag opnieuw wilt gebruiken na een mislukte release, verwijder hem dan lokaal en remote en push hem opnieuw:
 
 ```bash
-git tag -d v1.7.0
-git push origin :refs/tags/v1.7.0
-git tag v1.7.0
-git push origin v1.7.0
+git tag -d v2.1.0
+git push origin :refs/tags/v2.1.0
+git tag v2.1.0
+git push origin v2.1.0
 ```
 
 ## Pin mapping
@@ -504,7 +615,7 @@ git push origin v1.7.0
 - `DisplayManager`: schermweergave, menu-rendering, title/artist scrolling, progress/time en backlight.
 - `InputController`: rotary encoder en knoppen als high-level events.
 - `BatteryMonitor`: BQ27220 reads en voltage-based estimate.
-- `LedRing`: groene WS2812 volume-indicator en setup/charging animaties.
+- `LedRing`: oranje WS2812 volume-indicator en setup/charging/PTT animaties.
 - `WebPortal`: mobile dashboard en bestaande port-80 `WebServer`.
 - `MqttPublisher`: MQTT state en Home Assistant MQTT discovery.
 - `SpotifyDJDevice`: device identity, NVS keys, pairing code.
@@ -530,6 +641,11 @@ Belangrijke `spotifydj` keys:
 - `spotify_refresh_token`
 - `spotify_market`
 - `firmware_channel`
+- `assist_pipeline_id`
+- `mqtt_host`
+- `mqtt_port`
+- `mqtt_username`
+- `mqtt_password`
 
 ## Troubleshooting
 
@@ -558,14 +674,15 @@ Provision Spotify credentials opnieuw via:
 - Controleer batterij: boven 40%, charging of full.
 - Controleer dat de URL direct naar een `.bin` firmware asset wijst.
 
-### Voice upload werkt niet
+### Push-to-talk voice werkt niet
 
-- Controleer dat Home Assistant pairing actief is; zonder `ha_url` en `device_token` kan `/api/spotify_dj/voice` niet worden aangeroepen.
+- Controleer dat Home Assistant pairing actief is; zonder `ha_url` en `device_token` kan de Assist websocket en `/api/spotify_dj/voice` niet worden aangeroepen.
 - Bij `Unauthorized`: pair opnieuw of wis pairing via factory reset en provision opnieuw.
 - Bij `No HA URL` of `No device token`: controleer NVS/pairing via de webportal Home Assistant sectie.
-- Bij `Audio too large`: opname duur is te lang of HA `max_audio_bytes` is lager dan verwacht.
-- Bij `Voice HTTP timeout` of `Voice HTTP <code>`: controleer bereikbaarheid van Home Assistant en het integration endpoint.
-- Handmatige test: pair met HA, druk encoder kort in, spreek maximaal 10-15 seconden, druk opnieuw kort. Verwacht `Listening...`, daarna `Uploading voice`, en vervolgens speaker-response of foutmelding.
+- Bij `Assist auth_invalid`: het opgeslagen device token wordt niet geaccepteerd voor Home Assistant websocket auth.
+- Bij `Assist STT timeout` of `No speech recognized`: controleer of er een Assist pipeline met STT-provider actief is.
+- Bij `Voice HTTP <code>`: controleer bereikbaarheid van de SpotifyDJ integration en het endpoint `/api/spotify_dj/voice`.
+- Handmatige test: pair met HA, houd de encoderknop ingedrukt, spreek maximaal 10-15 seconden en laat los. Verwacht `Luistert...`, daarna `Verwerken...`, en vervolgens de herkende tekst of foutmelding.
 
 ### TLS
 

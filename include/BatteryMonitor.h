@@ -23,5 +23,11 @@ private:
   // Clears stale display state when the gauge is unavailable.
   void markUnavailable();
 
+  // Requires charging to stay true across spaced reads, preventing boot-time gauge noise in the UI.
+  bool stableChargingState(bool rawCharging);
+
   BatteryState &state_;
+  bool lastRawCharging_ = false;
+  uint8_t chargingConfirmCount_ = 0;
+  uint32_t lastChargingSampleAt_ = 0;
 };

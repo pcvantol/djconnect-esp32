@@ -10,6 +10,9 @@
 struct InputEvents {
   // Positive steps mean clockwise rotation should increase volume.
   int encoderSteps = 0;
+  bool encoderPress = false;
+  bool encoderRelease = false;
+  bool encoderHeld = false;
   bool encoderClick = false;
   bool encoderDoubleClick = false;
   bool encoderLongClick = false;
@@ -50,6 +53,7 @@ private:
   int lastEncoderPosition_ = 0;
   bool topButtonClickPending_ = false;
   bool ignoreTopReleaseClick_ = false;
+  bool lastEncoderButtonPressed_ = false;
   uint32_t topButtonClickPendingAt_ = 0;
   bool encoderClickPending_ = false;
   uint32_t encoderClickPendingAt_ = 0;

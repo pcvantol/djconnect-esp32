@@ -24,6 +24,8 @@ public:
 private:
   void appendChar(char value);
   void commitCurrentLine();
+  String linePrefix() const;
+  String normalizedLine(const String &line) const;
 
   String lines_[MaxLines];
   String currentLine_;

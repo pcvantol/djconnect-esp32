@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
 namespace Logic {
 
@@ -18,7 +19,7 @@ inline int clampPercent(int value) {
   return value;
 }
 
-// Computes one LED's green brightness for the volume ring.
+// Computes one LED's brightness for the volume ring, independent of the final UI color.
 // Each LED represents 1/8 of the configured range, with the active edge LED partially lit.
 inline int ledSegmentBrightness(int volumePercent, int segmentIndex, int segmentCount, int maxVolumePercent = 100) {
   if (segmentIndex < 0 || segmentIndex >= segmentCount || segmentCount <= 0) {
@@ -165,6 +166,64 @@ inline bool formatTrackTime(int ms, char *buffer, size_t bufferSize) {
   return written >= 0 && static_cast<size_t>(written) < bufferSize;
 }
 
+// Voice chunks sent to HA Assist are prefixed later with the one-byte STT handler id.
+inline size_t voiceAudioPayloadBytes(size_t availableBytes, size_t maxChunkBytes) {
+  if (availableBytes == 0 || maxChunkBytes == 0) {
+    return 0;
+  }
+  return availableBytes < maxChunkBytes ? availableBytes : maxChunkBytes;
+}
+
+// HA Assist binary audio frames include one handler-id byte before PCM payload bytes.
+inline size_t voiceAssistBinaryFrameBytes(size_t availableBytes, size_t maxChunkBytes) {
+  const size_t payloadBytes = voiceAudioPayloadBytes(availableBytes, maxChunkBytes);
+  return payloadBytes == 0 ? 0 : payloadBytes + 1;
+}
+
+// Centralizes the "recording too long" boundary used by push-to-talk.
+inline bool shouldAutoStopVoiceRecording(uint32_t elapsedMs, uint32_t maxRecordMs) {
+  return maxRecordMs > 0 && elapsedMs >= maxRecordMs;
+}
+
+// Prevents empty STT results from reaching the SpotifyDJ integration endpoint.
+inline bool shouldSendRecognizedVoiceText(size_t textLength) {
+  return textLength > 0;
+}
+
+// Formats the HA-provisioned per-device MQTT topics without depending on Arduino String.
+inline bool formatMqttDeviceTopic(const char *deviceId, const char *suffix, char *buffer, size_t bufferSize) {
+  if (deviceId == nullptr || suffix == nullptr || buffer == nullptr || bufferSize == 0) {
+    return false;
+  }
+  const int written = snprintf(buffer, bufferSize, "spotifydj/%s/%s", deviceId, suffix);
+  return written >= 0 && static_cast<size_t>(written) < bufferSize;
+}
+
+// Converts Spotify's shuffle/repeat fields into the four UI modes exposed in settings.
+inline const char *playModeFromSpotifyState(bool shuffle, const char *repeatState) {
+  if (repeatState != nullptr && strcmp(repeatState, "track") == 0) {
+    return "repeat_once";
+  }
+  if (repeatState != nullptr && strcmp(repeatState, "context") == 0) {
+    return "repeat_infinite";
+  }
+  return shuffle ? "shuffle" : "normal";
+}
+
+// Labels stay centralized so the device menu, web UI defaults, and tests agree.
+inline const char *playModeLabel(const char *mode) {
+  if (mode != nullptr && strcmp(mode, "shuffle") == 0) {
+    return "Shuffle";
+  }
+  if (mode != nullptr && strcmp(mode, "repeat_once") == 0) {
+    return "Repeat once";
+  }
+  if (mode != nullptr && strcmp(mode, "repeat_infinite") == 0) {
+    return "Repeat infinite";
+  }
+  return "No shuffle";
+}
+
 struct Bq27220Reading {
   bool available = false;
   bool charging = false;
@@ -203,8 +262,7 @@ inline Bq27220Reading interpretBq27220(
     reading.currentMa = static_cast<int16_t>(currentRaw);
   }
 
-  const int absoluteCurrent = reading.currentMa < 0 ? -reading.currentMa : reading.currentMa;
-  const bool hasChargeCurrent = !hasCurrent || absoluteCurrent >= chargeCurrentThresholdMa;
+  const bool hasChargeCurrent = hasCurrent && reading.currentMa >= chargeCurrentThresholdMa;
   reading.charging = !reading.discharging && !reading.full && hasChargeCurrent;
 
   if (hasVoltage) {

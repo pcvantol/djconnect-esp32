@@ -4,6 +4,7 @@
 
 #include "AppState.h"
 #include "AlbumArtManager.h"
+#include "BleWifiProvisioning.h"
 #include "BatteryMonitor.h"
 #include "Config.h"
 #include "DisplayManager.h"
@@ -13,6 +14,7 @@
 #include "SoundManager.h"
 #include "SoftResetMonitor.h"
 #include "SpotifyClient.h"
+#include "../src/SpotifyDJAssistClient.h"
 #include "../src/SpotifyDJApiServer.h"
 #include "../src/SpotifyDJDevice.h"
 #include "../src/SpotifyDJDiscovery.h"
@@ -20,6 +22,7 @@
 #include "../src/SpotifyDJPairing.h"
 #include "VoiceHttpClient.h"
 #include "VoiceRecorder.h"
+#include "VoiceState.h"
 #include "WebPortal.h"
 
 class SpotifyDJApp {
@@ -35,6 +38,7 @@ private:
     NowPlaying,
     AlbumArt,
     Queue,
+    Playlists,
     SoundOutputs,
     Logs,
     RootMenu,
@@ -42,6 +46,8 @@ private:
     Settings,
     DimTimeout,
     Brightness,
+    SpeakerVolume,
+    PlayMode,
     SleepTimeout,
     ResetPairingConfirm,
     HardResetConfirm,
@@ -52,6 +58,8 @@ private:
   bool shouldStartProvisioningPortal() const;
   bool connectWiFi(uint32_t timeoutMs = Config::WifiConnectTimeoutMs, bool bootScreen = false);
   void handleWifiConnectFailureLoop(uint32_t loopStartedAt);
+  void renderWifiConnectFailureMenu();
+  void applyWifiConnectFailureSelection();
   bool syncClock();
   void startWebPortalIfNeeded();
   void runCaptivePortal();
@@ -71,6 +79,7 @@ private:
       const String &spotifyMarket,
       const MqttSettings &mqttSettings,
       String &message);
+  bool handleBleProvisioningPayload(const String &payload, String &message);
 
   // Routes physical input events to the Spotify actions or refresh commands they trigger.
   void handleInputEvents(const InputEvents &events);
@@ -90,6 +99,12 @@ private:
   // Applies selected active screen brightness and persists it to NVS.
   void applyBrightnessSelection();
 
+  // Applies selected on-board speaker cue volume and persists it to NVS.
+  void applySpeakerVolumeSelection();
+
+  // Applies selected Spotify shuffle/repeat play mode.
+  void applyPlayModeSelection();
+
   // Applies selected deep-sleep idle timeout and persists it to NVS.
   void applySleepTimeoutSelection();
 
@@ -105,21 +120,32 @@ private:
   size_t &selectedIndexRefForScreen(UiScreen screen);
   uint32_t dimTimeoutValueMs(size_t index) const;
   uint8_t brightnessValuePercent(size_t index) const;
+  uint8_t speakerVolumeValuePercent(size_t index) const;
+  String playModeValue(size_t index) const;
+  String currentPlayModeValue() const;
+  String playModeLabel(const String &mode) const;
   uint32_t sleepTimeoutValueMs(size_t index) const;
 
   // Sends the latest encoder volume change after the user stops turning the knob.
   void flushPendingVolume();
   void processVolumeResult();
+  void processMqttCommands();
+  void handleMqttCommand(const MqttCommand &command);
+  bool transferToOutputByNameOrId(const String &output);
+  bool startPlaylistByNameOrUri(const String &playlist);
 
   // Playback commands exposed by the current playback screen.
   void pauseOrResume();
+  void startLikedProxyPlaylist();
   void handleVoiceButton();
-  void stopVoiceRecordingAndUpload();
+  void stopVoiceRecordingAndSendText();
   void goToNextTrack();
   void goToPreviousTrack();
   void refreshPlaybackAndBattery();
+  void refreshMqttControlLists();
   void openAlbumArtScreen();
   void openQueueScreen();
+  void startSelectedPlaylist();
   void openSoundOutputsScreen();
   void transferToSelectedOutput();
 
@@ -145,14 +171,20 @@ private:
   void enterDeepSleep();
   void recordLoopMetrics(uint32_t loopStartedAt);
   // Applies settings posted from the web dashboard and persists them.
-  void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs);
+  void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent);
   void applyWebMqttSettings(const MqttSettings &settings);
+  void syncHomeAssistantMqttSettings();
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
   void setupHomeAssistantLayer();
   void sendHomeAssistantStatusIfDue(bool force = false);
   bool handleHomeAssistantPairingMode(uint32_t loopStartedAt);
-  static void applyWebSettingsCallback(void *context, uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs);
+  static void applyWebSettingsCallback(
+      void *context,
+      uint8_t brightnessPercent,
+      uint32_t offTimeoutMs,
+      uint32_t sleepTimeoutMs,
+      uint8_t speakerVolumePercent);
   static void applyWebMqttSettingsCallback(void *context, const MqttSettings &settings);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static void refreshFromWebCallback(void *context);
@@ -164,22 +196,28 @@ private:
   static constexpr size_t MenuStackCapacity = 5;
   static constexpr size_t DimTimeoutOptionCount = 4;
   static constexpr size_t BrightnessOptionCount = 4;
+  static constexpr size_t SpeakerVolumeOptionCount = 4;
+  static constexpr size_t PlayModeOptionCount = 4;
   static constexpr size_t SleepTimeoutOptionCount = 4;
   static constexpr size_t HardResetOptionCount = 2;
-  static constexpr size_t SettingsItemCount = 8;
+  static constexpr size_t WifiFailureOptionCount = 4;
+  static constexpr size_t SettingsItemCount = 10;
 
   SpotifyState playback_;
   BatteryState battery_;
   QueueState queue_;
+  PlaylistListState playlists_;
   DeviceListState deviceList_;
   StatusNotice notice_;
   DisplayManager display_;
   BatteryMonitor batteryMonitor_{battery_};
   AlbumArtManager albumArt_;
+  BleWifiProvisioning bleProvisioning_;
   InputController input_;
   LedRing ledRing_;
   SoundManager sound_;
   VoiceRecorder voiceRecorder_;
+  SpotifyDJAssistClient assistClient_;
   VoiceHttpClient voiceClient_;
   SoftResetMonitor softResetMonitor_;
   SpotifyClient spotify_{playback_};
@@ -198,15 +236,20 @@ private:
   size_t menuStackSize_ = 0;
   size_t rootMenuSelection_ = 0;
   size_t settingsSelection_ = 0;
+  size_t playlistSelection_ = 0;
   size_t aboutSelection_ = 0;
   size_t dimTimeoutSelection_ = 1;
   size_t brightnessSelection_ = 3;
+  size_t speakerVolumeSelection_ = 3;
+  size_t playModeSelection_ = 0;
   size_t sleepTimeoutSelection_ = 0;
   size_t hardResetSelection_ = 0;
+  size_t wifiFailureSelection_ = 0;
   size_t soundOutputSelection_ = 0;
   uint32_t screenOffTimeoutMs_ = Config::DisplayOffAfterMs;
   uint32_t deviceSleepTimeoutMs_ = Config::DeviceSleepAfterMs;
   uint8_t screenBrightnessPercent_ = 100;
+  uint8_t speakerVolumePercent_ = 100;
   String wifiSsid_;
   String wifiPassword_;
   String pendingWifiSsid_;
@@ -225,6 +268,7 @@ private:
   bool chargingCompleteSoundPlayed_ = false;
   bool volumeFeedbackEnabled_ = true;
   bool voiceRecording_ = false;
+  VoiceState voiceState_ = VoiceState::Idle;
   bool topHoldMenuHintVisible_ = false;
   bool menuTopHoldActive_ = false;
   bool haPairingScreenActive_ = false;
@@ -242,6 +286,7 @@ private:
   uint32_t lastReconnectAttemptAt_ = 0;
   uint32_t lastLogsRenderAt_ = 0;
   uint32_t lastHaStatusAt_ = 0;
+  uint32_t lastMqttProvisioningSyncAt_ = 0;
   uint32_t haPairingStartedAt_ = 0;
   uint32_t lastHaPairingScreenAt_ = 0;
   uint32_t loopMetricsWindowStartedAt_ = 0;

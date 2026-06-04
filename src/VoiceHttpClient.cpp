@@ -1,16 +1,15 @@
-// Sends push-to-talk WAV audio to Home Assistant and plays the WAV response.
+// Sends recognized push-to-talk text to the SpotifyDJ Home Assistant integration.
 #include "VoiceHttpClient.h"
 
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
-#include <LittleFS.h>
 #include <WiFi.h>
 
 #include "AppLog.h"
+#include "LogicHelpers.h"
 
-void VoiceHttpClient::begin(SpotifyDJDevice &device, SoundManager &sound) {
+void VoiceHttpClient::begin(SpotifyDJDevice &device) {
   device_ = &device;
-  sound_ = &sound;
 }
 
 bool VoiceHttpClient::sendStatus(bool recording, const String &state, const String &lastError) {
@@ -49,8 +48,8 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   return code >= 200 && code < 300;
 }
 
-bool VoiceHttpClient::uploadAndPlay(const String &wavPath, String &message) {
-  if (device_ == nullptr || sound_ == nullptr || !device_->isPaired()) {
+bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &message) {
+  if (device_ == nullptr || !device_->isPaired()) {
     message = "No HA pairing";
     return false;
   }
@@ -68,56 +67,52 @@ bool VoiceHttpClient::uploadAndPlay(const String &wavPath, String &message) {
     message = "No HA URL";
     return false;
   }
+  if (!Logic::shouldSendRecognizedVoiceText(recognizedText.length())) {
+    message = "No speech recognized";
+    return false;
+  }
 
-  fs::File file = LittleFS.open(wavPath, "r");
-  if (!file) {
-    message = "Voice file missing";
-    return false;
-  }
-  const size_t size = file.size();
-  if (size == 0 || size > 2UL * 1024UL * 1024UL) {
-    file.close();
-    message = "Audio too large";
-    return false;
-  }
+  JsonDocument doc;
+  doc["text"] = recognizedText;
+  String body;
+  serializeJson(doc, body);
 
   HTTPClient http;
   http.setConnectTimeout(5000);
   http.setTimeout(30000);
   if (!http.begin(url)) {
-    file.close();
     message = "Voice HTTP begin failed";
     return false;
   }
-  http.addHeader("Content-Type", "audio/wav");
+  http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
   http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
+  http.addHeader("X-SpotifyDJ-Text", recognizedText);
 
-  AppLog.print("[SpotifyDJ] voice upload bytes: ");
-  AppLog.println(size);
-  const int code = http.sendRequest("POST", &file, size);
-  file.close();
-  AppLog.print("[SpotifyDJ] voice response: ");
+  AppLog.print("[SpotifyDJ] voice text command: ");
+  AppLog.println(recognizedText);
+  const int code = http.POST(body);
+  AppLog.print("[SpotifyDJ] voice command response: ");
   AppLog.println(code);
+  const String response = http.getString();
+  http.end();
   if (code < 200 || code >= 300) {
     message = "Voice HTTP " + String(code);
-    const String body = http.getString();
-    if (!body.isEmpty()) {
-      AppLog.println(body.substring(0, 96));
+    if (!response.isEmpty()) {
+      AppLog.println(response.substring(0, 128));
     }
-    http.end();
     return false;
   }
 
-  sendStatus(false, "playing_response");
-  WiFiClient *stream = http.getStreamPtr();
-  const bool played = stream != nullptr && sound_->playWavStream(*stream, http.getSize());
-  http.end();
-  if (!played) {
-    message = "Voice playback failed";
-    return false;
+  JsonDocument responseDoc;
+  if (!response.isEmpty() && !deserializeJson(responseDoc, response)) {
+    const char *responseText = responseDoc["text"] | "";
+    if (strlen(responseText) > 0) {
+      message = responseText;
+      return true;
+    }
   }
-  message = "Voice response played";
+  message = "Voice command sent";
   return true;
 }
 

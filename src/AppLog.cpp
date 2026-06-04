@@ -4,6 +4,8 @@
 #include <esp_log.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 AppLogger AppLog;
 
@@ -19,6 +21,8 @@ int appLogVprintf(const char *format, va_list args) {
 }  // namespace
 
 void AppLogger::begin() {
+  setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
+  tzset();
   currentLine_ = "";
   nextLine_ = 0;
   lineCount_ = 0;
@@ -27,13 +31,11 @@ void AppLogger::begin() {
 }
 
 size_t AppLogger::write(uint8_t value) {
-  Serial.write(value);
   appendChar(static_cast<char>(value));
   return 1;
 }
 
 size_t AppLogger::write(const uint8_t *buffer, size_t size) {
-  Serial.write(buffer, size);
   for (size_t index = 0; index < size; index++) {
     appendChar(static_cast<char>(buffer[index]));
   }
@@ -49,7 +51,7 @@ String AppLogger::text() const {
     output += '\n';
   }
   if (!currentLine_.isEmpty()) {
-    output += currentLine_;
+    output += linePrefix() + normalizedLine(currentLine_);
   }
   return output;
 }
@@ -70,7 +72,7 @@ size_t AppLogger::newestLines(String *target, size_t maxLines) const {
       const size_t lineIndex = (firstStored + sourceIndex) % MaxLines;
       target[index] = lines_[lineIndex];
     } else {
-      target[index] = currentLine_;
+      target[index] = linePrefix() + normalizedLine(currentLine_);
     }
   }
   return count;
@@ -95,10 +97,39 @@ void AppLogger::appendChar(char value) {
 }
 
 void AppLogger::commitCurrentLine() {
-  lines_[nextLine_] = currentLine_;
+  if (currentLine_.isEmpty()) {
+    return;
+  }
+  const String line = linePrefix() + normalizedLine(currentLine_);
+  Serial.println(line);
+  lines_[nextLine_] = line;
   currentLine_ = "";
   nextLine_ = (nextLine_ + 1) % MaxLines;
   if (lineCount_ < MaxLines) {
     lineCount_++;
   }
+}
+
+String AppLogger::linePrefix() const {
+  time_t now = time(nullptr);
+  struct tm local = {};
+  char buffer[32] = {};
+  if (now >= 1704067200 && localtime_r(&now, &local) != nullptr) {
+    strftime(buffer, sizeof(buffer), "[%d-%m-%Y %H:%M:%S] ", &local);
+  } else {
+    snprintf(buffer, sizeof(buffer), "[00-00-0000 00:00:00] ");
+  }
+  return String(buffer) + "[SpotifyDJ] ";
+}
+
+String AppLogger::normalizedLine(const String &line) const {
+  String value = line;
+  value.trim();
+  if (value.startsWith("[SpotifyDJ] ")) {
+    value.remove(0, 12);
+  } else if (value.startsWith("[SpotifyDJ]")) {
+    value.remove(0, 11);
+    value.trim();
+  }
+  return value;
 }

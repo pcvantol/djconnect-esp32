@@ -11,7 +11,12 @@
 
 class WebPortal {
 public:
-  using SettingsCallback = void (*)(void *context, uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs);
+  using SettingsCallback = void (*)(
+      void *context,
+      uint8_t brightnessPercent,
+      uint32_t offTimeoutMs,
+      uint32_t sleepTimeoutMs,
+      uint8_t speakerVolumePercent);
   using MqttSettingsCallback = void (*)(void *context, const MqttSettings &settings);
   using WifiSettingsCallback = void (*)(void *context, const String &ssid, const String &password);
   using SimpleCallback = void (*)(void *context);
@@ -27,6 +32,7 @@ public:
       MqttPublisher &mqttPublisher,
       const MqttSettings &mqttSettings,
       const uint8_t &screenBrightnessPercent,
+      const uint8_t &speakerVolumePercent,
       const uint32_t &screenOffTimeoutMs,
       const uint32_t &deviceSleepTimeoutMs,
       void *callbackContext,
@@ -58,6 +64,7 @@ private:
   void handleWifiPost();
   void handleVolumePost();
   void handleDevicesJson();
+  void handlePlaylistsJson();
   void handleQueueJson();
   void handleTransferPost();
   void handlePlaybackCommandPost();
@@ -85,6 +92,7 @@ private:
   MqttPublisher *mqttPublisher_ = nullptr;
   const MqttSettings *mqttSettings_ = nullptr;
   const uint8_t *screenBrightnessPercent_ = nullptr;
+  const uint8_t *speakerVolumePercent_ = nullptr;
   const uint32_t *screenOffTimeoutMs_ = nullptr;
   const uint32_t *deviceSleepTimeoutMs_ = nullptr;
   void *callbackContext_ = nullptr;

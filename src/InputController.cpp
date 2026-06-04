@@ -11,6 +11,7 @@ void InputController::begin() {
   attachInterrupt(digitalPinToInterrupt(Config::EncoderPinA), encoderInterrupt, CHANGE);
   attachInterrupt(digitalPinToInterrupt(Config::EncoderPinB), encoderInterrupt, CHANGE);
   lastEncoderPosition_ = encoder_.getPosition();
+  lastEncoderButtonPressed_ = encoderButton_.isPressed();
 }
 
 InputEvents InputController::poll() {
@@ -28,6 +29,11 @@ InputEvents InputController::poll() {
   }
 
   const uint32_t now = millis();
+  const bool encoderPressedNow = encoderButton_.isPressed();
+  events.encoderPress = encoderButton_.wasPressed();
+  events.encoderRelease = lastEncoderButtonPressed_ && !encoderPressedNow;
+  events.encoderHeld = encoderPressedNow;
+  lastEncoderButtonPressed_ = encoderPressedNow;
   const bool encoderClicked = encoderButton_.wasClicked();
   if (encoderClickPending_ && now - encoderClickPendingAt_ > EncoderDoubleClickWindowMs) {
     encoderClickPending_ = false;
@@ -73,9 +79,11 @@ InputEvents InputController::poll() {
     topButtonClickPending_ = false;
   }
   events.topButtonHeld = topButton_.isPressed();
-  events.buttonHeld = encoderButton_.isPressed() || events.topButtonHeld;
+  events.buttonHeld = events.encoderHeld || events.topButtonHeld;
   // A held button also counts as activity so a long press wakes the dimmed display immediately.
   events.touched = events.encoderSteps != 0 ||
+                   events.encoderPress ||
+                   events.encoderRelease ||
                    events.encoderClick ||
                    events.encoderDoubleClick ||
                    events.encoderLongClick ||

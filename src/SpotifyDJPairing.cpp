@@ -14,6 +14,25 @@ String joinUrl(const String &base, const char *path) {
   }
   return base + path;
 }
+
+bool mqttSettingsFromJson(JsonVariantConst mqtt, MqttSettings &settings) {
+  if (!mqtt.is<JsonObjectConst>()) {
+    return false;
+  }
+  settings.host = mqtt["host"] | "";
+  settings.host.trim();
+  if (settings.host.isEmpty()) {
+    return false;
+  }
+  settings.port = static_cast<uint16_t>((mqtt["port"] | 1883));
+  if (settings.port == 0) {
+    settings.port = 1883;
+  }
+  settings.username = mqtt["username"] | "";
+  settings.password = mqtt["password"] | "";
+  settings.enabled = true;
+  return true;
+}
 }  // namespace
 
 void SpotifyDJPairing::begin(SpotifyDJDevice &device, SpotifyDJDiscovery *discovery) {
@@ -62,12 +81,20 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   }
   const bool success = response["success"] | false;
   const char *deviceToken = response["device_token"] | "";
+  const char *assistPipelineId = response["assist_pipeline_id"] | "";
   if (!success || strlen(deviceToken) == 0) {
     AppLog.println("[SpotifyDJ] HA pair missing token");
     return false;
   }
 
   device_->savePairing(haUrl, deviceToken);
+  if (strlen(assistPipelineId) > 0) {
+    device_->saveAssistPipelineId(assistPipelineId);
+  }
+  MqttSettings mqttSettings;
+  if (mqttSettingsFromJson(response["mqtt"], mqttSettings)) {
+    device_->saveMqttSettings(mqttSettings);
+  }
   if (discovery_ != nullptr) {
     discovery_->updateTxtRecords();
   }
@@ -109,9 +136,19 @@ bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyC
   http.addHeader("Authorization", "Bearer " + token);
   http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
   const int code = http.POST(body);
+  const String payload = http.getString();
   http.end();
 
   AppLog.print("[SpotifyDJ] HA status response: ");
   AppLog.println(code);
+  if (code >= 200 && code < 300 && !payload.isEmpty()) {
+    JsonDocument response;
+    if (!deserializeJson(response, payload)) {
+      MqttSettings mqttSettings;
+      if (mqttSettingsFromJson(response["mqtt"], mqttSettings)) {
+        device_->saveMqttSettings(mqttSettings);
+      }
+    }
+  }
   return code >= 200 && code < 300;
 }

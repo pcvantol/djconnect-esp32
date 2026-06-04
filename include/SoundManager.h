@@ -8,6 +8,9 @@ public:
   // Initializes I2S output and starts the tiny audio worker task.
   void begin();
 
+  // Sets the global level for generated on-board speaker cues.
+  void setVolumePercent(uint8_t percent);
+
   // Friendly startup arpeggio played after hardware init.
   void playStartup();
 
@@ -22,6 +25,18 @@ public:
 
   // Gentle confirmation cue for completed UI actions.
   void playConfirm();
+
+  // Single bleep when opening the menu.
+  void playMenuOpen();
+
+  // Single bleep when navigating back.
+  void playBack();
+
+  // Distinct cue when push-to-talk starts listening.
+  void playPttStart();
+
+  // Distinct cue when push-to-talk stops and begins processing.
+  void playPttStop();
 
   // Lower warning beep used before destructive reset actions.
   void playHardReset();
@@ -47,6 +62,10 @@ private:
     MenuRight,
     ButtonPress,
     Confirm,
+    MenuOpen,
+    Back,
+    PttStart,
+    PttStop,
     HardReset,
     BatteryWarning,
     SetupPrompt,
@@ -61,5 +80,6 @@ private:
 
   QueueHandle_t queue_ = nullptr;
   bool ready_ = false;
+  uint8_t volumePercent_ = 100;
   uint32_t lastVolumeTickAt_ = 0;
 };

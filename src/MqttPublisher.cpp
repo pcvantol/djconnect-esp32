@@ -11,23 +11,29 @@
 
 static const char *DeviceId = "spotifydj";
 static const char *DeviceName = "SpotifyDJ";
-static const char *StateTopic = "spotifydj/state";
-static const char *AvailabilityTopic = "spotifydj/availability";
 static constexpr uint32_t PublishIntervalMs = 30000;
 static constexpr uint32_t EventPublishMinIntervalMs = 2000;
 static constexpr uint32_t ReconnectIntervalMs = 5000;
 
+MqttPublisher *activeMqttPublisher = nullptr;
+
 void MqttPublisher::begin(
+    const String &deviceId,
     const MqttSettings &settings,
     const SpotifyState &playback,
     const BatteryState &battery,
+    const DeviceListState &deviceList,
+    const PlaylistListState &playlists,
     const RuntimeDiagnostics &diagnostics,
     const VisualState &visualState,
     const uint8_t &screenBrightnessPercent,
     const uint32_t &screenOffTimeoutMs) {
+  deviceId_ = deviceId.isEmpty() ? "spotifydj" : deviceId;
   settings_ = &settings;
   playback_ = &playback;
   battery_ = &battery;
+  deviceList_ = &deviceList;
+  playlists_ = &playlists;
   diagnostics_ = &diagnostics;
   visualState_ = &visualState;
   screenBrightnessPercent_ = &screenBrightnessPercent;
@@ -35,12 +41,29 @@ void MqttPublisher::begin(
   started_ = true;
   discoveryPublished_ = false;
   publishRequested_ = true;
+  statusPublishRequested_ = true;
+  commandPending_ = false;
+  discoveryOptionSignature_ = "";
+  lastPlaylistCommand_ = "";
+  lastConnectCode_ = 0;
+  lastConnectAttemptAt_ = 0;
+  lastPublishAt_ = 0;
 
-  client_.setBufferSize(1536);
+  activeMqttPublisher = this;
+  client_.setCallback(mqttCallback);
+  client_.setBufferSize(3072);
+  if (client_.connected()) {
+    publishAvailability(false);
+    client_.disconnect();
+  }
 }
 
 void MqttPublisher::loop() {
   if (!started_ || settings_ == nullptr || !settings_->enabled || settings_->host.isEmpty()) {
+    if (client_.connected()) {
+      publishAvailability(false);
+      client_.disconnect();
+    }
     return;
   }
   if (WiFi.status() != WL_CONNECTED) {
@@ -51,6 +74,7 @@ void MqttPublisher::loop() {
   }
 
   client_.loop();
+  updateDiscoveryOptionSignature();
   publishDiscoveryIfNeeded();
 
   const uint32_t now = millis();
@@ -58,11 +82,55 @@ void MqttPublisher::loop() {
   const bool eventDue = publishRequested_ && now - lastPublishAt_ >= EventPublishMinIntervalMs;
   if (periodicDue || eventDue) {
     publishState();
+    publishDeviceStatus();
+  } else if (statusPublishRequested_) {
+    publishDeviceStatus();
   }
 }
 
 void MqttPublisher::requestPublish() {
   publishRequested_ = true;
+  statusPublishRequested_ = true;
+}
+
+void MqttPublisher::requestStatusPublish() {
+  statusPublishRequested_ = true;
+}
+
+void MqttPublisher::setDeviceFlags(bool paired, bool spotifyConfigured) {
+  if (paired_ != paired || spotifyConfigured_ != spotifyConfigured) {
+    paired_ = paired;
+    spotifyConfigured_ = spotifyConfigured;
+    requestStatusPublish();
+  } else {
+    paired_ = paired;
+    spotifyConfigured_ = spotifyConfigured;
+  }
+}
+
+void MqttPublisher::publishEvent(const char *type, const char *button, const char *event) {
+  if (!client_.connected()) {
+    return;
+  }
+  JsonDocument doc;
+  doc["type"] = type == nullptr ? "" : type;
+  doc["button"] = button == nullptr ? "" : button;
+  doc["event"] = event == nullptr ? "" : event;
+  String payload;
+  serializeJson(doc, payload);
+  if (!client_.publish(deviceEventTopic().c_str(), payload.c_str(), false)) {
+    AppLog.println("MQTT event publish failed");
+  }
+}
+
+bool MqttPublisher::pollCommand(MqttCommand &command) {
+  if (!commandPending_) {
+    return false;
+  }
+  command = pendingCommand_;
+  pendingCommand_ = MqttCommand();
+  commandPending_ = false;
+  return true;
 }
 
 void MqttPublisher::prepareForSleep() {
@@ -113,7 +181,7 @@ bool MqttPublisher::connectIfNeeded() {
   lastConnectAttemptAt_ = now;
 
   client_.setServer(settings_->host.c_str(), settings_->port);
-  const String clientId = String(DeviceId) + "-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+  const String clientId = deviceId_;
 
   AppLog.print("MQTT connecting to ");
   AppLog.print(settings_->host);
@@ -145,6 +213,12 @@ bool MqttPublisher::connectIfNeeded() {
     AppLog.println("MQTT connected");
     lastConnectCode_ = 0;
     publishAvailability(true);
+    client_.subscribe(deviceCommandTopic().c_str());
+    client_.subscribe(commandTopic("action").c_str());
+    client_.subscribe(commandTopic("volume/set").c_str());
+    client_.subscribe(commandTopic("output/set").c_str());
+    client_.subscribe(commandTopic("playlist/set").c_str());
+    AppLog.println("MQTT command topics subscribed");
     discoveryPublished_ = false;
     publishRequested_ = true;
   } else {
@@ -174,8 +248,55 @@ void MqttPublisher::publishDiscoveryIfNeeded() {
   publishSensorDiscovery("led_state", "LED state", "{{ value_json.led.state }}");
   publishSensorDiscovery("heap_free", "Free heap", "{{ value_json.system.heap_free }}", "B");
   publishSensorDiscovery("loop_load", "Loop load", "{{ value_json.system.loop_load }}", "%");
+  publishButtonDiscovery("next", "Next song", "next");
+  publishButtonDiscovery("previous", "Previous song", "previous");
+  publishNumberDiscovery("volume_control", "Volume", commandTopic("volume/set").c_str(), 0, Config::MaxSpotifyVolumePercent);
+
+  String outputOptions[8];
+  size_t outputCount = 0;
+  if (deviceList_ != nullptr && deviceList_->available) {
+    for (size_t index = 0; index < deviceList_->count && outputCount < 8; index++) {
+      if (!deviceList_->devices[index].name.isEmpty()) {
+        outputOptions[outputCount++] = deviceList_->devices[index].name;
+      }
+    }
+  }
+  publishSelectDiscovery("sound_output", "Sound output", commandTopic("output/set").c_str(), outputOptions, outputCount, "{{ value_json.device.name }}");
+
+  String playlistOptions[8];
+  size_t playlistCount = 0;
+  if (playlists_ != nullptr && playlists_->available) {
+    for (size_t index = 0; index < playlists_->count && playlistCount < 8; index++) {
+      if (!playlists_->items[index].name.isEmpty()) {
+        playlistOptions[playlistCount++] = playlists_->items[index].name;
+      }
+    }
+  }
+  publishSelectDiscovery("playlist_start", "Start playlist", commandTopic("playlist/set").c_str(), playlistOptions, playlistCount, "{{ value_json.playback.last_playlist_command }}");
 
   discoveryPublished_ = true;
+}
+
+void MqttPublisher::updateDiscoveryOptionSignature() {
+  String signature;
+  if (deviceList_ != nullptr && deviceList_->available) {
+    signature += "outputs:";
+    for (size_t index = 0; index < deviceList_->count && index < 8; index++) {
+      signature += deviceList_->devices[index].name;
+      signature += "|";
+    }
+  }
+  if (playlists_ != nullptr && playlists_->available) {
+    signature += "playlists:";
+    for (size_t index = 0; index < playlists_->count && index < 8; index++) {
+      signature += playlists_->items[index].name;
+      signature += "|";
+    }
+  }
+  if (signature != discoveryOptionSignature_) {
+    discoveryOptionSignature_ = signature;
+    discoveryPublished_ = false;
+  }
 }
 
 void MqttPublisher::publishState() {
@@ -196,6 +317,7 @@ void MqttPublisher::publishState() {
       playback_->progressSyncedAt,
       millis());
   playback["duration_ms"] = playback_->durationMs;
+  playback["last_playlist_command"] = lastPlaylistCommand_;
 
   JsonObject device = doc["device"].to<JsonObject>();
   device["name"] = playback_->deviceName;
@@ -236,9 +358,35 @@ void MqttPublisher::publishState() {
 
   String payload;
   serializeJson(doc, payload);
-  client_.publish(stateTopic().c_str(), payload.c_str(), true);
+  const bool ok = client_.publish(stateTopic().c_str(), payload.c_str(), true);
+  if (!ok) {
+    AppLog.println("MQTT state publish failed");
+  }
   lastPublishAt_ = millis();
   publishRequested_ = false;
+}
+
+void MqttPublisher::publishDeviceStatus() {
+  if (!client_.connected() || battery_ == nullptr) {
+    return;
+  }
+
+  JsonDocument doc;
+  doc["device_id"] = deviceId_;
+  doc["firmware"] = Config::AppVersionNumber;
+  doc["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  doc["battery_percent"] = battery_->percent;
+  doc["charging"] = battery_->charging || battery_->full;
+  doc["paired"] = paired_;
+  doc["spotify_configured"] = spotifyConfigured_;
+
+  String payload;
+  serializeJson(doc, payload);
+  const bool ok = client_.publish(deviceStatusTopic().c_str(), payload.c_str(), true);
+  if (!ok) {
+    AppLog.println("MQTT status publish failed");
+  }
+  statusPublishRequested_ = false;
 }
 
 void MqttPublisher::publishAvailability(bool online) {
@@ -274,19 +422,206 @@ void MqttPublisher::publishSensorDiscovery(
 
   String payload;
   serializeJson(doc, payload);
-  client_.publish(discoveryTopic(objectId).c_str(), payload.c_str(), true);
+  if (!client_.publish(discoveryTopic("sensor", objectId).c_str(), payload.c_str(), true)) {
+    AppLog.print("MQTT discovery publish failed: ");
+    AppLog.println(objectId);
+  }
+}
+
+void MqttPublisher::publishButtonDiscovery(const char *objectId, const char *name, const char *payload) {
+  JsonDocument doc;
+  doc["name"] = name;
+  doc["unique_id"] = String(DeviceId) + "_" + objectId;
+  doc["command_topic"] = commandTopic("action");
+  doc["payload_press"] = payload;
+  doc["availability_topic"] = availabilityTopic();
+  JsonObject device = doc["device"].to<JsonObject>();
+  device["identifiers"][0] = DeviceId;
+  device["name"] = DeviceName;
+  device["manufacturer"] = "LilyGO";
+  device["model"] = "T-Embed-CC1101";
+  device["sw_version"] = Config::AppVersionNumber;
+
+  String config;
+  serializeJson(doc, config);
+  if (!client_.publish(discoveryTopic("button", objectId).c_str(), config.c_str(), true)) {
+    AppLog.print("MQTT button discovery publish failed: ");
+    AppLog.println(objectId);
+  }
+}
+
+void MqttPublisher::publishNumberDiscovery(const char *objectId, const char *name, const char *topic, int minValue, int maxValue) {
+  JsonDocument doc;
+  doc["name"] = name;
+  doc["unique_id"] = String(DeviceId) + "_" + objectId;
+  doc["state_topic"] = stateTopic();
+  doc["command_topic"] = topic;
+  doc["availability_topic"] = availabilityTopic();
+  doc["value_template"] = "{{ value_json.device.volume }}";
+  doc["min"] = minValue;
+  doc["max"] = maxValue;
+  doc["step"] = Config::VolumeStepPercent;
+  doc["unit_of_measurement"] = "%";
+  JsonObject device = doc["device"].to<JsonObject>();
+  device["identifiers"][0] = DeviceId;
+  device["name"] = DeviceName;
+  device["manufacturer"] = "LilyGO";
+  device["model"] = "T-Embed-CC1101";
+  device["sw_version"] = Config::AppVersionNumber;
+
+  String config;
+  serializeJson(doc, config);
+  if (!client_.publish(discoveryTopic("number", objectId).c_str(), config.c_str(), true)) {
+    AppLog.print("MQTT number discovery publish failed: ");
+    AppLog.println(objectId);
+  }
+}
+
+void MqttPublisher::publishSelectDiscovery(
+    const char *objectId,
+    const char *name,
+    const char *topic,
+    const String *options,
+    size_t optionCount,
+    const char *valueTemplate) {
+  JsonDocument doc;
+  doc["name"] = name;
+  doc["unique_id"] = String(DeviceId) + "_" + objectId;
+  doc["state_topic"] = stateTopic();
+  doc["command_topic"] = topic;
+  doc["availability_topic"] = availabilityTopic();
+  doc["value_template"] = valueTemplate;
+  JsonArray optionArray = doc["options"].to<JsonArray>();
+  if (optionCount == 0) {
+    optionArray.add("none");
+  } else {
+    for (size_t index = 0; index < optionCount; index++) {
+      optionArray.add(options[index]);
+    }
+  }
+  JsonObject device = doc["device"].to<JsonObject>();
+  device["identifiers"][0] = DeviceId;
+  device["name"] = DeviceName;
+  device["manufacturer"] = "LilyGO";
+  device["model"] = "T-Embed-CC1101";
+  device["sw_version"] = Config::AppVersionNumber;
+
+  String config;
+  serializeJson(doc, config);
+  if (!client_.publish(discoveryTopic("select", objectId).c_str(), config.c_str(), true)) {
+    AppLog.print("MQTT select discovery publish failed: ");
+    AppLog.println(objectId);
+  }
+}
+
+void MqttPublisher::handleMessage(char *topic, uint8_t *payload, unsigned int length) {
+  String topicText = topic == nullptr ? "" : String(topic);
+  String body;
+  for (unsigned int index = 0; index < length; index++) {
+    body += static_cast<char>(payload[index]);
+  }
+  body.trim();
+
+  MqttCommand command;
+  if (topicText == deviceCommandTopic()) {
+    JsonDocument doc;
+    if (deserializeJson(doc, body)) {
+      AppLog.println("MQTT device command JSON failed");
+      return;
+    }
+    const String name = doc["command"] | "";
+    AppLog.print("MQTT device command received: ");
+    AppLog.println(name);
+    if (name == "status") {
+      command.type = MqttCommandType::Status;
+    } else if (name == "ota") {
+      command.type = MqttCommandType::Ota;
+    }
+  } else if (topicText == commandTopic("action")) {
+    if (body == "next") {
+      command.type = MqttCommandType::Next;
+    } else if (body == "previous") {
+      command.type = MqttCommandType::Previous;
+    }
+  } else if (topicText == commandTopic("volume/set")) {
+    command.type = MqttCommandType::Volume;
+    command.numericValue = constrain(body.toInt(), 0, Config::MaxSpotifyVolumePercent);
+  } else if (topicText == commandTopic("output/set")) {
+    command.type = MqttCommandType::TransferOutput;
+    command.value = body;
+  } else if (topicText == commandTopic("playlist/set")) {
+    command.type = MqttCommandType::StartPlaylist;
+    command.value = body;
+    lastPlaylistCommand_ = body;
+  }
+
+  if (command.type == MqttCommandType::None) {
+    AppLog.print("MQTT command ignored topic=");
+    AppLog.print(topicText);
+    AppLog.print(" payload=");
+    AppLog.println(body);
+    return;
+  }
+  enqueueCommand(command);
+}
+
+void MqttPublisher::enqueueCommand(const MqttCommand &command) {
+  pendingCommand_ = command;
+  commandPending_ = true;
+  AppLog.println("MQTT command queued");
+}
+
+void MqttPublisher::mqttCallback(char *topic, uint8_t *payload, unsigned int length) {
+  if (activeMqttPublisher != nullptr) {
+    activeMqttPublisher->handleMessage(topic, payload, length);
+  }
 }
 
 String MqttPublisher::stateTopic() const {
-  return StateTopic;
+  char buffer[96] = {};
+  return Logic::formatMqttDeviceTopic(deviceId_.c_str(), "state", buffer, sizeof(buffer))
+             ? String(buffer)
+             : String("spotifydj/") + deviceId_ + "/state";
 }
 
 String MqttPublisher::availabilityTopic() const {
-  return AvailabilityTopic;
+  char buffer[96] = {};
+  return Logic::formatMqttDeviceTopic(deviceId_.c_str(), "availability", buffer, sizeof(buffer))
+             ? String(buffer)
+             : String("spotifydj/") + deviceId_ + "/availability";
 }
 
 String MqttPublisher::discoveryTopic(const char *objectId) const {
-  return String("homeassistant/sensor/") + DeviceId + "/" + objectId + "/config";
+  return discoveryTopic("sensor", objectId);
+}
+
+String MqttPublisher::commandTopic(const char *suffix) const {
+  return String("spotifydj/") + deviceId_ + "/command/" + suffix;
+}
+
+String MqttPublisher::deviceCommandTopic() const {
+  char buffer[96] = {};
+  return Logic::formatMqttDeviceTopic(deviceId_.c_str(), "command", buffer, sizeof(buffer))
+             ? String(buffer)
+             : String("spotifydj/") + deviceId_ + "/command";
+}
+
+String MqttPublisher::deviceStatusTopic() const {
+  char buffer[96] = {};
+  return Logic::formatMqttDeviceTopic(deviceId_.c_str(), "status", buffer, sizeof(buffer))
+             ? String(buffer)
+             : String("spotifydj/") + deviceId_ + "/status";
+}
+
+String MqttPublisher::deviceEventTopic() const {
+  char buffer[96] = {};
+  return Logic::formatMqttDeviceTopic(deviceId_.c_str(), "event", buffer, sizeof(buffer))
+             ? String(buffer)
+             : String("spotifydj/") + deviceId_ + "/event";
+}
+
+String MqttPublisher::discoveryTopic(const char *component, const char *objectId) const {
+  return String("homeassistant/") + component + "/" + DeviceId + "/" + objectId + "/config";
 }
 
 String MqttPublisher::connectCodeText(int code) const {

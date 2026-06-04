@@ -39,7 +39,7 @@ bool BatteryMonitor::refresh() {
       currentRaw,
       Config::BatteryChargeCurrentThresholdMa);
   state_.available = reading.available;
-  state_.charging = reading.charging;
+  state_.charging = stableChargingState(reading.charging);
   state_.discharging = reading.discharging;
   state_.full = reading.full;
   state_.percentEstimated = reading.percentEstimated;
@@ -79,4 +79,30 @@ void BatteryMonitor::markUnavailable() {
   state_.gaugePercent = -1;
   state_.voltageMv = 0;
   state_.currentMa = 0;
+  lastRawCharging_ = false;
+  chargingConfirmCount_ = 0;
+  lastChargingSampleAt_ = 0;
+}
+
+bool BatteryMonitor::stableChargingState(bool rawCharging) {
+  const uint32_t now = millis();
+  if (!rawCharging) {
+    lastRawCharging_ = false;
+    chargingConfirmCount_ = 0;
+    lastChargingSampleAt_ = now;
+    return false;
+  }
+
+  if (!lastRawCharging_) {
+    lastRawCharging_ = true;
+    chargingConfirmCount_ = 1;
+    lastChargingSampleAt_ = now;
+    return false;
+  }
+
+  if (now - lastChargingSampleAt_ >= 1000 && chargingConfirmCount_ < 2) {
+    chargingConfirmCount_++;
+    lastChargingSampleAt_ = now;
+  }
+  return chargingConfirmCount_ >= 2;
 }

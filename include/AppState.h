@@ -22,6 +22,8 @@ struct SpotifyState {
   bool hasPlayback = false;
   bool isPlaying = false;
   bool supportsVolume = false;
+  bool shuffle = false;
+  String repeatState = "off";
 
   // Volume and track timing are kept in Spotify units: percent and milliseconds.
   int volume = -1;
@@ -107,6 +109,19 @@ struct QueueState {
   QueueItemState items[5];
 };
 
+struct PlaylistItemState {
+  String name;
+  String owner;
+  String uri;
+};
+
+struct PlaylistListState {
+  bool available = false;
+  String error;
+  size_t count = 0;
+  PlaylistItemState items[8];
+};
+
 struct SpotifyDeviceState {
   String id;
   String name;
@@ -145,4 +160,21 @@ struct MqttSettings {
   uint16_t port = 1883;
   String username;
   String password;
+};
+
+enum class MqttCommandType {
+  None,
+  Next,
+  Previous,
+  Status,
+  Ota,
+  Volume,
+  TransferOutput,
+  StartPlaylist,
+};
+
+struct MqttCommand {
+  MqttCommandType type = MqttCommandType::None;
+  String value;
+  int numericValue = 0;
 };

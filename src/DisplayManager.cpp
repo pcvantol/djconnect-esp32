@@ -17,6 +17,12 @@ static constexpr uint16_t BrightYellow = 0xFFE0;
 static constexpr uint16_t NeutralLightGrey = 0xC618;
 static constexpr uint16_t SpotifyGreen = 0x1DCB;
 static constexpr uint16_t VolumeOrange = 0xFD20;
+static constexpr int AlbumTextX = 172;
+static constexpr int AlbumTextWidth = 140;
+static constexpr int AlbumTitleY = 34;
+static constexpr int AlbumTitleHeight = 38;
+static constexpr int AlbumArtistY = 82;
+static constexpr int AlbumArtistHeight = 30;
 static TFT_eSPI *JpegTarget = nullptr;
 static int16_t JpegClipRight = 0;
 static int16_t JpegClipBottom = 0;
@@ -271,21 +277,35 @@ void DisplayManager::renderAlbumArtScreen(
 
   tft_.fillRect(168, 0, 152, 170, TFT_BLACK);
   tft_.setTextColor(BrightYellow, TFT_BLACK);
-  tft_.drawString("Current Song", 172, 8, 2);
+  tft_.drawString("Current Song", AlbumTextX, 8, 2);
 
   tft_.setTextColor(TFT_WHITE, TFT_BLACK);
-  drawMarqueeText(tft_, titleMarquee_, titleText(playback), 172, 34, 140, 4, 38);
+  drawMarqueeText(tft_, titleMarquee_, titleText(playback), AlbumTextX, AlbumTitleY, AlbumTextWidth, 4, AlbumTitleHeight);
 
   tft_.setTextColor(NeutralLightGrey, TFT_BLACK);
-  drawMarqueeText(tft_, artistMarquee_, artistText(playback), 172, 82, 140, 2, 18);
+  drawMarqueeText(tft_, artistMarquee_, artistText(playback), AlbumTextX, AlbumArtistY, AlbumTextWidth, 4, AlbumArtistHeight);
 
   if (notice.isVisible()) {
     tft_.setTextColor(TFT_GREEN, TFT_BLACK);
-    tft_.drawString(clippedText(tft_, notice.message, 140, 2), 172, 140, 2);
+    tft_.drawString(clippedText(tft_, notice.message, AlbumTextWidth, 2), AlbumTextX, 140, 2);
   }
 
-  tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  tft_.drawString("Center press = back", 172, 154, 1);
+  tft_.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft_.drawString("Center press = back", AlbumTextX, 154, 1);
+}
+
+void DisplayManager::renderAlbumArtMarqueeText(const SpotifyState &playback, bool titleChanged, bool artistChanged) {
+  tft_.setTextDatum(TL_DATUM);
+  if (titleChanged) {
+    tft_.fillRect(168, AlbumTitleY, 152, AlbumTitleHeight + 4, TFT_BLACK);
+    tft_.setTextColor(TFT_WHITE, TFT_BLACK);
+    drawMarqueeText(tft_, titleMarquee_, titleText(playback), AlbumTextX, AlbumTitleY, AlbumTextWidth, 4, AlbumTitleHeight);
+  }
+  if (artistChanged) {
+    tft_.fillRect(168, AlbumArtistY, 152, AlbumArtistHeight + 4, TFT_BLACK);
+    tft_.setTextColor(NeutralLightGrey, TFT_BLACK);
+    drawMarqueeText(tft_, artistMarquee_, artistText(playback), AlbumTextX, AlbumArtistY, AlbumTextWidth, 4, AlbumArtistHeight);
+  }
 }
 
 void DisplayManager::resetAlbumArtRenderCache() {
@@ -412,10 +432,16 @@ void DisplayManager::restartMarquee(TextMarqueeState &marquee) {
 }
 
 String DisplayManager::titleText(const SpotifyState &playback) const {
+  if (!playback.hasPlayback) {
+    return "No Playback";
+  }
   return playback.trackName.isEmpty() ? "Nothing playing" : playback.trackName;
 }
 
 String DisplayManager::artistText(const SpotifyState &playback) const {
+  if (!playback.hasPlayback) {
+    return "";
+  }
   return playback.artistName.isEmpty() ? playback.currentType : playback.artistName;
 }
 
@@ -528,33 +554,34 @@ void DisplayManager::renderPlayback(
   drawBatteryIndicator(canvas, battery, 250, 5);
   canvas.drawFastHLine(8, 25, 304, TFT_DARKGREY);
 
-  // Body: output device, scrolling title, scrolling artist/show, and volume.
-  const String device = playback.deviceName.isEmpty() ? "No active device" : playback.deviceName;
-  canvas.setTextColor(TFT_CYAN, TFT_BLACK);
-  canvas.drawString(clippedText(canvas, device, 304, 2), 8, 32, 2);
+  // Body: only show output and volume controls when Spotify reports an active playback context.
+  if (playback.hasPlayback) {
+    const String device = playback.deviceName.isEmpty() ? "No active device" : playback.deviceName;
+    canvas.setTextColor(TFT_CYAN, TFT_BLACK);
+    canvas.drawString(clippedText(canvas, device, 304, 2), 8, 32, 2);
+  }
 
   const String title = titleText(playback);
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  drawMarqueeText(canvas, titleMarquee_, title, 8, 56, 304, 4, 34);
+  drawMarqueeText(canvas, titleMarquee_, title, 8, playback.hasPlayback ? 56 : 62, 304, 4, 34);
 
   const String artist = artistText(playback);
-  canvas.setTextColor(NeutralLightGrey, TFT_BLACK);
-  drawMarqueeText(canvas, artistMarquee_, artist, 8, 91, 304, 4, 30);
+  if (!artist.isEmpty()) {
+    canvas.setTextColor(NeutralLightGrey, TFT_BLACK);
+    drawMarqueeText(canvas, artistMarquee_, artist, 8, 91, 304, 4, 30);
+  }
 
-  if (playback.durationMs > 0) {
+  if (playback.hasPlayback && playback.durationMs > 0) {
     const int percent = (estimatedProgressMs(playback) * 100) / playback.durationMs;
     drawProgressBar(canvas, 8, 124, 304, 8, percent, SpotifyGreen);
   }
 
-  if (displayedVolume >= 0) {
+  if (playback.hasPlayback && playback.supportsVolume && displayedVolume >= 0) {
     const int volumeFillPercent = (constrain(displayedVolume, 0, Config::MaxSpotifyVolumePercent) * 100) /
                                   Config::MaxSpotifyVolumePercent;
     canvas.setTextColor(VolumeOrange, TFT_BLACK);
     canvas.drawString("Vol " + String(displayedVolume) + "%", 8, 137, 2);
     drawProgressBar(canvas, 70, 142, 242, 5, volumeFillPercent, VolumeOrange);
-  } else {
-    canvas.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    canvas.drawString("Volume unknown", 8, 137, 2);
   }
 
   // Footer prefers actionable errors/notices, otherwise it shows play state and track time.
@@ -565,6 +592,9 @@ void DisplayManager::renderPlayback(
   } else if (notice.isVisible()) {
     footer = notice.message;
     canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  } else if (!playback.hasPlayback) {
+    footer = "Center: start Liked Proxy";
+    canvas.setTextColor(VolumeOrange, TFT_BLACK);
   } else {
     footer = playback.isPlaying ? "Playing" : "Paused";
     const String timeText = playbackTimeText(playback);
@@ -825,7 +855,7 @@ void DisplayManager::drawMenuFooter(Canvas &canvas, const StatusNotice &notice) 
   }
 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  const String backHint = "Top press = back";
+  const String backHint = "Back = top button press";
   canvas.drawString(backHint, 312 - canvas.textWidth(backHint, 2), 151, 2);
 }
 

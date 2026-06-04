@@ -76,6 +76,23 @@ String SpotifyDJDevice::getSpotifyMarket() const {
   return readString("spotify_market", "NL");
 }
 
+String SpotifyDJDevice::getAssistPipelineId() const {
+  return readString("assist_pipeline_id");
+}
+
+MqttSettings SpotifyDJDevice::getMqttSettings() const {
+  MqttSettings settings;
+  settings.host = readString("mqtt_host");
+  settings.port = static_cast<uint16_t>(readString("mqtt_port", "1883").toInt());
+  if (settings.port == 0) {
+    settings.port = 1883;
+  }
+  settings.username = readString("mqtt_username");
+  settings.password = readString("mqtt_password");
+  settings.enabled = !settings.host.isEmpty();
+  return settings;
+}
+
 void SpotifyDJDevice::ensurePairingCode() {
   if (!pairCode_.isEmpty()) {
     return;
@@ -123,6 +140,29 @@ void SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const Strin
   writeString("spotify_refresh_token", refreshToken);
   writeString("spotify_market", market.isEmpty() ? "NL" : market);
   AppLog.println("[SpotifyDJ] Spotify credentials saved to NVS");
+}
+
+void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
+  if (pipelineId.isEmpty()) {
+    removeKey("assist_pipeline_id");
+  } else {
+    writeString("assist_pipeline_id", pipelineId);
+  }
+  AppLog.println("[SpotifyDJ] Assist pipeline setting saved");
+}
+
+void SpotifyDJDevice::saveMqttSettings(const MqttSettings &settings) {
+  if (settings.host.isEmpty()) {
+    return;
+  }
+  writeString("mqtt_host", settings.host);
+  writeString("mqtt_port", String(settings.port == 0 ? 1883 : settings.port));
+  writeString("mqtt_username", settings.username);
+  writeString("mqtt_password", settings.password);
+  AppLog.print("[SpotifyDJ] MQTT settings saved host=");
+  AppLog.print(settings.host);
+  AppLog.print(" port=");
+  AppLog.println(settings.port == 0 ? 1883 : settings.port);
 }
 
 void SpotifyDJDevice::clearPairing() {

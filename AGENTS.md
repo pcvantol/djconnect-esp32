@@ -28,7 +28,9 @@ The current PlatformIO environment is `t_embed_cc1101`.
 - `include/Secrets.h`: optional non-secret build flags only. Do not put WiFi or Spotify credentials here.
 - `include/Secrets.example.h`: template for optional build flags.
 - `src/SpotifyDJDevice.*`, `src/SpotifyDJDiscovery.*`, `src/SpotifyDJPairing.*`, `src/SpotifyDJApiServer.*`, `src/SpotifyDJOTA.*`: Home Assistant device-layer modules.
+- `src/SpotifyDJAssistClient.*`, `include/VoiceRecorder.h`, `src/VoiceRecorder.cpp`, `include/VoiceHttpClient.h`, `src/VoiceHttpClient.cpp`: push-to-talk Assist STT and recognized-text command flow.
 - `src/WebPortal.cpp`: embedded mobile web UI, diagnostics, settings, logs and HA pairing panel.
+- `include/SoundManager.h`, `src/SoundManager.cpp`: generated built-in speaker cues and cue volume scaling.
 - `README.md`: user-facing Dutch project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
 
 ## Build And Test Commands
@@ -49,7 +51,7 @@ Build firmware:
 Build with an explicit release version:
 
 ```sh
-SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="1.7.0" -DSPOTIFYDJ_VERSION_TAG="v1.7.0"' \
+SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="2.1.0" -DSPOTIFYDJ_VERSION_TAG="v2.1.0"' \
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
@@ -123,7 +125,7 @@ Credentials are provisioned and stored in NVS.
 
 NVS namespaces:
 
-- `provision`: existing device provisioning/settings.
+- `provision`: existing device provisioning/settings, including display timeouts/brightness, speaker cue volume, WiFi and MQTT.
 - `spotify`: rotated Spotify token cache.
 - `spotifydj`: Home Assistant device-layer storage.
 
@@ -136,6 +138,7 @@ NVS namespaces:
 - `spotify_refresh_token`
 - `spotify_market`
 - `firmware_channel`
+- `assist_pipeline_id`
 
 Never log:
 
@@ -147,6 +150,19 @@ Never log:
 It is OK to log the six-digit Home Assistant pairing code. It is intentionally short-lived and user-visible on the device.
 
 Do not introduce a Spotify client secret. The firmware should use PKCE/public-client style credentials only.
+
+## Voice / Assist Rules
+
+Push-to-talk uses Route B:
+
+- The ESP streams raw PCM16 mono 16 kHz microphone chunks to Home Assistant Assist over `/api/websocket`.
+- Start the HA pipeline with `assist_pipeline/run`, `start_stage=stt`, `end_stage=stt`.
+- Binary audio frames must be prefixed with the `stt_binary_handler_id` from the HA `run-start` event.
+- End audio by sending a binary frame containing only the `stt_binary_handler_id`.
+- Do not upload WAV audio to `/api/spotify_dj/voice` for STT.
+- `/api/spotify_dj/voice` receives recognized text only, via `X-SpotifyDJ-Text` and JSON body `{ "text": "..." }`.
+- Do not call OpenAI directly from ESP firmware.
+- Keep `SPOTIFYDJ_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.
 
 ## Pairing Mode Rules
 
@@ -162,6 +178,10 @@ When WiFi is configured but Home Assistant is not paired:
 - The pairing code should also be available in Serial logging and the web pairing panel.
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
+
+If configured WiFi cannot connect during boot, keep the screen at 100% and show the WiFi-failure menu. Rotary selects between retry connect, hard reset, reset device, and turn off; center press executes the selected action. Do not start normal playback/menu handling while this recovery menu is active.
+
+BLE setup mode is active only while the captive portal is active. iOS cannot automatically expose the currently connected WiFi password to the ESP32; BLE provisioning requires an app/flow to write JSON WiFi credentials to the SpotifyDJ BLE characteristic. Home Assistant Bluetooth Proxy flows should write to `7f705001-9f8f-4f1a-9b5f-570071fd0001` and read/subscribe to status characteristic `7f705002-9f8f-4f1a-9b5f-570071fd0001`. Keep BLE provisioning WiFi-only; Spotify and MQTT stay in Home Assistant provisioning, captive portal, or web settings. Do not claim automatic iPhone credential extraction is possible.
 
 ## Display And UI Rules
 
@@ -220,6 +240,16 @@ MQTT publishes retained state and Home Assistant discovery for dashboard status.
 
 MQTT connection failures should not block Spotify controls or local web UI.
 
+MQTT is two-way:
+
+- Device status publishes retained to `spotifydj/<device_id>/status`.
+- Commands are subscribed on `spotifydj/<device_id>/command` plus specific command topics under `spotifydj/<device_id>/command/`.
+- Do not perform blocking Spotify HTTPS work inside the MQTT callback; queue an `MqttCommand` and let `SpotifyDJApp::loop()` execute it.
+- Keep Home Assistant MQTT discovery aligned with command topics for buttons, number and selects.
+- HA-provisioned MQTT settings live in `spotifydj` NVS keys `mqtt_host`, `mqtt_port`, `mqtt_username`, `mqtt_password` and take precedence over legacy `provision` MQTT settings.
+- Captive portal MQTT settings are optional. Empty host means keep existing config and do not attempt MQTT setup.
+- Never log MQTT passwords.
+
 MQTT/HA/Spotify status indicators:
 
 - Device statusbar: `H`, `M`, `S`.
@@ -234,6 +264,21 @@ Spotify volume is intentionally capped:
 - Encoder volume commands clamp to `Config::MaxSpotifyVolumePercent`.
 - Web slider max is `60`.
 - LED ring treats `60` as full.
+- Disable Spotify volume controls when there is no active playback or the active output does not support volume.
+
+Spotify play mode is controlled through `SpotifyClient::setPlayMode()`:
+
+- `normal`: shuffle off, repeat off.
+- `shuffle`: shuffle on, repeat off.
+- `repeat_once`: shuffle off, repeat track.
+- `repeat_infinite`: shuffle off, repeat context.
+- Keep device menu and web settings labels aligned when changing these modes.
+
+Built-in speaker cue volume is separate from Spotify volume:
+
+- Settings expose 25%, 50%, 75% and 100%.
+- The value is stored in `provision` and cleared by factory reset.
+- Apply it to all generated speaker cues, including startup after settings have loaded.
 
 Do not restore `0-100` behavior unless the user explicitly asks.
 
@@ -259,6 +304,7 @@ Current web expectations:
 - Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and HA URL/status.
 - Album art is shown when available.
 - Volume slider range is `0-60`.
+- Volume slider is disabled when no track/playback is active.
 - Sound output selection uses a combobox/list without device type suffixes.
 - Logs support pause/resume and copy/select-all behavior.
 - WiFi credentials can be updated from the web UI without hard reset.

@@ -8,7 +8,7 @@
 #include "Config.h"
 
 namespace {
-// PDM mic altijd op I2S_NUM_0
+// The PDM microphone is isolated on I2S0 so speaker playback can use I2S1.
 constexpr i2s_port_t MicI2sPort = I2S_NUM_0;
 const char *VoiceWavPath = "/voice_ptt.wav";
 constexpr size_t WavHeaderBytes = 44;
@@ -56,14 +56,72 @@ bool VoiceRecorder::begin() {
       .data_in_num = Config::MicrophoneDataPin,
   };
 
-  if (i2s_driver_install(MicI2sPort, &i2sConfig, 0, nullptr) != ESP_OK ||
-      i2s_set_pin(MicI2sPort, &pinConfig) != ESP_OK) {
+  esp_err_t result = i2s_driver_install(MicI2sPort, &i2sConfig, 0, nullptr);
+  if (result != ESP_OK) {
     error_ = "Mic I2S init failed";
+    AppLog.print(error_);
+    AppLog.print(": ");
+    AppLog.println(esp_err_to_name(result));
+    return false;
+  }
+  result = i2s_set_pin(MicI2sPort, &pinConfig);
+  if (result != ESP_OK) {
+    i2s_driver_uninstall(MicI2sPort);
+    error_ = "Mic I2S pin failed";
+    AppLog.print(error_);
+    AppLog.print(": ");
+    AppLog.println(esp_err_to_name(result));
+    return false;
+  }
+  result = i2s_set_clk(MicI2sPort, Config::VoiceSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  if (result != ESP_OK) {
+    i2s_driver_uninstall(MicI2sPort);
+    error_ = "Mic I2S clock failed";
     AppLog.println(error_);
     return false;
   }
   i2s_zero_dma_buffer(MicI2sPort);
   ready_ = true;
+  return true;
+}
+
+bool VoiceRecorder::startRaw() {
+  if (!ready_ && !begin()) {
+    return false;
+  }
+  dataBytes_ = 0;
+  startedAt_ = millis();
+  recording_ = true;
+  error_ = "";
+  i2s_zero_dma_buffer(MicI2sPort);
+  AppLog.println("[SpotifyDJ] voice PCM recording started");
+  return true;
+}
+
+bool VoiceRecorder::readPcmChunk(uint8_t *buffer, size_t capacity, size_t &bytesRead) {
+  bytesRead = 0;
+  if (!recording_) {
+    return true;
+  }
+  if (!ready_) {
+    error_ = "Mic unavailable";
+    return false;
+  }
+  const esp_err_t result = i2s_read(MicI2sPort, buffer, capacity, &bytesRead, 0);
+  if (result != ESP_OK) {
+    error_ = "Mic read failed";
+    AppLog.print(error_);
+    AppLog.print(": ");
+    AppLog.println(esp_err_to_name(result));
+    return false;
+  }
+  if (bytesRead > 0) {
+    dataBytes_ += bytesRead;
+  }
+  if (dataBytes_ > Config::VoiceMaxWavBytes) {
+    error_ = "Audio too large";
+    return false;
+  }
   return true;
 }
 
@@ -137,6 +195,20 @@ bool VoiceRecorder::stop() {
   }
   AppLog.print("[SpotifyDJ] voice WAV bytes: ");
   AppLog.println(wavSize());
+  return true;
+}
+
+bool VoiceRecorder::stopRaw() {
+  if (!recording_) {
+    return false;
+  }
+  recording_ = false;
+  AppLog.print("[SpotifyDJ] voice PCM bytes: ");
+  AppLog.println(dataBytes_);
+  if (dataBytes_ == 0) {
+    error_ = "No audio recorded";
+    return false;
+  }
   return true;
 }
 

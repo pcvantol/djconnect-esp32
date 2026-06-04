@@ -1,4 +1,4 @@
-// Drives the on-board WS2812 ring as a green volume meter.
+// Drives the on-board WS2812 ring as volume meter and status feedback.
 #pragma once
 
 #include <Arduino.h>
@@ -11,11 +11,14 @@ public:
   // Initializes the 8 on-board WS2812 LEDs on IO14.
   void begin();
 
-  // Shows volume as green segments around the ring; partially lit LEDs represent partial steps.
+  // Shows volume as orange segments around the ring; partially lit LEDs represent partial steps.
   void showVolume(int volume, bool force = false);
 
   // Shows all LEDs as one solid color, used for setup/provisioning states.
   void showSolid(const CRGB &color, uint8_t brightnessPercent = 100);
+
+  // Plays one short color lap for transient actions such as push-to-talk state changes.
+  void playPulse(const CRGB &color);
 
   // Plays one short Spotify-green chase around the ring and fades back to off during normal boot.
   void playBootBounce();
