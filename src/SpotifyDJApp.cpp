@@ -899,12 +899,6 @@ void SpotifyDJApp::handleInputEvents(const InputEvents &events) {
     return;
   }
 
-  if (activeScreen_ == UiScreen::AlbumArt && events.encoderLongClick) {
-    AppLog.println("voice: encoder long press from current song");
-    handleVoiceButton();
-    return;
-  }
-
   if (menuTopHoldActive_) {
     if (!events.topButtonHeld) {
       menuTopHoldActive_ = false;

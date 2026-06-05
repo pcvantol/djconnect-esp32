@@ -17,7 +17,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - Playlist browser on the device and web portal to start playlists directly.
 - Current Song menu screen with album art download/cache.
 - Encoder short press on Now Playing: pause/resume.
-- Encoder long press: push-to-talk through Home Assistant Assist; release stops listening.
+- Encoder long press on Now Playing: push-to-talk through Home Assistant Assist; release stops listening.
 - Top button short press: back in menus, otherwise next track.
 - Top button double press: previous track.
 - Top button long press: open the menu.
@@ -222,9 +222,9 @@ If OAuth credentials become invalid, the web portal Spotify panel includes a man
 
 ## Push-To-Talk Voice Flow
 
-Physical PTT:
+Physical PTT, from the Now Playing screen:
 
-1. Hold the encoder button.
+1. Hold the encoder button on the Now Playing screen.
 2. The device records mono PCM16 audio as a WAV file on LittleFS.
 3. Release the encoder button.
 4. The ESP uploads the raw WAV body to the SpotifyDJ HA integration at `/api/spotify_dj/voice` with the paired device token.
@@ -232,6 +232,8 @@ Physical PTT:
 6. The HA integration returns DJ text and an optional WAV or MP3 `audio_url`.
 7. The ESP displays the DJ text briefly, detects the audio type from `Content-Type` or magic bytes, and plays compatible WAV/MP3 audio through the built-in speaker.
 8. The UI returns to Now Playing.
+
+The Current Song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
 Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require Spotify credentials, an active Spotify playback session or browser microphone permission.
 
@@ -354,7 +356,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.3 --dry-run` validates the release plan without touching files. Both `2.9.3` and `v2.9.3` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.4 --dry-run` validates the release plan without touching files. Both `2.9.4` and `v2.9.4` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
