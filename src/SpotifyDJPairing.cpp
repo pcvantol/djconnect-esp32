@@ -178,6 +178,7 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(const BatterySta
 
   JsonDocument request;
   request["device_id"] = device_->getDeviceId();
+  request["state"] = "online";
   request["battery_percent"] = battery.percent;
   request["battery_mv"] = battery.voltageMv;
   request["charging"] = battery.charging || battery.full;
