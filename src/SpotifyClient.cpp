@@ -4,6 +4,7 @@
 
 #include "AppLog.h"
 
+#include <Preferences.h>
 #include <WiFi.h>
 
 #include "Config.h"
@@ -106,7 +107,6 @@ void SpotifyClient::useCredentialsForProvisioning(const String &clientId, const 
 }
 
 void SpotifyClient::clearStoredTokens() {
-  preferences_.remove("refresh");
   clientId_ = "";
   refreshToken_ = "";
   accessToken_ = "";
@@ -712,18 +712,16 @@ void SpotifyClient::configureTls(WiFiClientSecure &client) {
 }
 
 void SpotifyClient::loadSpotifyCredentials() {
-  preferences_.begin("spotify", false);
-  refreshToken_ = preferences_.getString("refresh", "");
-  refreshTokenFromStorage_ = !refreshToken_.isEmpty();
-  refreshTokenSource_ = refreshTokenFromStorage_ ? "NVS" : "";
-
   Preferences provision;
   provision.begin("provision", true);
   Preferences spotifydj;
   spotifydj.begin("spotifydj", true);
   clientId_ = spotifydj.getString("spotify_client_id", "");
   market_ = spotifydj.getString("spotify_market", "");
+  refreshToken_ = spotifydj.getString("spotify_refresh_token", "");
   spotifydj.end();
+  refreshTokenFromStorage_ = !refreshToken_.isEmpty();
+  refreshTokenSource_ = refreshTokenFromStorage_ ? "SpotifyDJ NVS" : "";
 
   if (clientId_.isEmpty()) {
     clientId_ = provision.getString("sp_client", "");
@@ -733,13 +731,7 @@ void SpotifyClient::loadSpotifyCredentials() {
   }
 
   if (!refreshTokenFromStorage_) {
-    Preferences spotifydjToken;
-    spotifydjToken.begin("spotifydj", true);
-    refreshToken_ = spotifydjToken.getString("spotify_refresh_token", "");
-    spotifydjToken.end();
-    if (refreshToken_.isEmpty()) {
-      refreshToken_ = provision.getString("sp_refresh", "");
-    }
+    refreshToken_ = provision.getString("sp_refresh", "");
     refreshTokenFromStorage_ = !refreshToken_.isEmpty();
     refreshTokenSource_ = refreshTokenFromStorage_ ? "Portal" : "";
   }
@@ -760,14 +752,18 @@ void SpotifyClient::saveRefreshToken(const String &newRefreshToken) {
     return;
   }
 
-  if (preferences_.putString("refresh", newRefreshToken) == 0) {
-    AppLog.println("Failed to save rotated refresh token");
+  Preferences spotifydj;
+  spotifydj.begin("spotifydj", false);
+  const bool spotifydjSaved = spotifydj.putString("spotify_refresh_token", newRefreshToken) > 0;
+  spotifydj.end();
+  if (!spotifydjSaved) {
+    AppLog.println("Failed to save rotated refresh token to SpotifyDJ NVS");
     return;
   }
 
   refreshToken_ = newRefreshToken;
   refreshTokenFromStorage_ = true;
-  refreshTokenSource_ = "NVS";
+  refreshTokenSource_ = "SpotifyDJ NVS";
   AppLog.println("Saved rotated refresh token to NVS");
 }
 

@@ -72,6 +72,10 @@ String SpotifyDJDevice::getLocalUrl() const {
   return "http://" + deviceId_ + ".local";
 }
 
+String SpotifyDJDevice::getSpotifyClientId() const {
+  return readString("spotify_client_id");
+}
+
 String SpotifyDJDevice::getSpotifyMarket() const {
   return readString("spotify_market", "NL");
 }
@@ -159,9 +163,15 @@ void SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const Strin
   writeString("spotify_client_id", clientId);
   writeString("spotify_refresh_token", refreshToken);
   writeString("spotify_market", market.isEmpty() ? "NL" : market);
+
   AppLog.print("[SpotifyDJ] Spotify credentials provisioned: client_id=");
   AppLog.print(clientId.isEmpty() ? "missing" : "present");
   AppLog.println(", refresh_token=present");
+}
+
+void SpotifyDJDevice::saveSpotifyRefreshToken(const String &refreshToken) {
+  writeString("spotify_refresh_token", refreshToken);
+  AppLog.println("[SpotifyDJ] Spotify refresh token provisioned manually");
 }
 
 void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {

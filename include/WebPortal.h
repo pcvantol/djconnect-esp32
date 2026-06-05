@@ -22,6 +22,12 @@ public:
   using MqttSettingsCallback = void (*)(void *context, const MqttSettings &settings);
   using WifiSettingsCallback = void (*)(void *context, const String &ssid, const String &password);
   using VoiceTextCallback = bool (*)(void *context, const String &text, String &message, String &audioUrl);
+  using SpotifyCredentialsCallback = bool (*)(
+      void *context,
+      const String &clientId,
+      const String &refreshToken,
+      const String &market,
+      String &message);
   using SimpleCallback = void (*)(void *context);
 
   // Starts the HTTP server and binds it to the live app state snapshots.
@@ -36,6 +42,7 @@ public:
       const MqttSettings &mqttSettings,
       const uint8_t &screenBrightnessPercent,
       const uint8_t &speakerVolumePercent,
+      const bool &homeAssistantPaired,
       const String &languageCode,
       const String &themeCode,
       const uint32_t &screenOffTimeoutMs,
@@ -45,6 +52,7 @@ public:
       MqttSettingsCallback mqttSettingsCallback,
       WifiSettingsCallback wifiSettingsCallback,
       VoiceTextCallback voiceTextCallback,
+      SpotifyCredentialsCallback spotifyCredentialsCallback,
       SimpleCallback refreshCallback,
       SimpleCallback resetPairingCallback,
       SimpleCallback hardResetCallback);
@@ -75,6 +83,7 @@ private:
   void handleTransferPost();
   void handlePlaybackCommandPost();
   void handleVoiceTextPost();
+  void handleSpotifyCredentialsPost();
   void handleRefreshPost();
   void handleResetPairingPost();
   void handleRebootPost();
@@ -83,10 +92,17 @@ private:
   void handleOtaUpload();
   void handleNotFound();
 
+  // Shared helpers for Spotify-only routes so unavailable playback never looks like a portal error.
+  void sendSpotifyUnavailableText();
+  void sendSpotifyUnavailableJson(const char *arrayKey);
+
   String maskedSecret(const char *value) const;
   String wifiStatusText() const;
   String batteryLabel() const;
   String formatBytes(uint32_t bytes) const;
+
+  // Keeps small portal strings localized without pulling the full device i18n table into HTML.
+  String localizedText(const char *en, const char *nl) const;
   uint32_t estimatedProgressMs() const;
 
   WebServer server_{80};
@@ -100,6 +116,7 @@ private:
   const MqttSettings *mqttSettings_ = nullptr;
   const uint8_t *screenBrightnessPercent_ = nullptr;
   const uint8_t *speakerVolumePercent_ = nullptr;
+  const bool *homeAssistantPaired_ = nullptr;
   const String *languageCode_ = nullptr;
   const String *themeCode_ = nullptr;
   const uint32_t *screenOffTimeoutMs_ = nullptr;
@@ -109,6 +126,7 @@ private:
   MqttSettingsCallback mqttSettingsCallback_ = nullptr;
   WifiSettingsCallback wifiSettingsCallback_ = nullptr;
   VoiceTextCallback voiceTextCallback_ = nullptr;
+  SpotifyCredentialsCallback spotifyCredentialsCallback_ = nullptr;
   SimpleCallback refreshCallback_ = nullptr;
   SimpleCallback resetPairingCallback_ = nullptr;
   SimpleCallback hardResetCallback_ = nullptr;

@@ -232,6 +232,18 @@ inline const char *languageCodeOrDefault(const char *code) {
   return (strcmp(code, "nl") == 0 || strcmp(code, "NL") == 0) ? "nl" : "en";
 }
 
+// Validates manual Spotify credential repair input before it touches NVS.
+inline bool spotifyRepairCredentialsValid(const char *storedClientId, const char *submittedClientId, const char *submittedRefreshToken) {
+  const bool hasStoredClientId = storedClientId != nullptr && storedClientId[0] != '\0';
+  const bool hasSubmittedClientId = submittedClientId != nullptr && submittedClientId[0] != '\0';
+  const bool hasRefreshToken = submittedRefreshToken != nullptr && submittedRefreshToken[0] != '\0';
+  return hasRefreshToken && (hasStoredClientId || hasSubmittedClientId);
+}
+
+inline const char *spotifyMarketOrDefault(const char *market) {
+  return market != nullptr && market[0] != '\0' ? market : "NL";
+}
+
 struct Bq27220Reading {
   bool available = false;
   bool charging = false;

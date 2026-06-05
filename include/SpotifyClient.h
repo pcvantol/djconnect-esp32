@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
-#include <Preferences.h>
 #include <WiFiClientSecure.h>
 
 #include "AppState.h"
@@ -22,7 +21,7 @@ public:
   // Temporarily uses submitted Spotify credentials for captive-portal authorization testing.
   void useCredentialsForProvisioning(const String &clientId, const String &refreshToken);
 
-  // Clears access-token state and the rotated refresh token stored by this client.
+  // Clears in-memory Spotify auth state without deleting provisioned credentials.
   void clearStoredTokens();
 
   // Reloads client id, refresh token, and market from NVS after external provisioning.
@@ -106,7 +105,6 @@ private:
   String spotifyErrorFromPayload(int code, const String &payload) const;
 
   SpotifyState &state_;
-  Preferences preferences_;
   QueueHandle_t volumeCommandQueue_ = nullptr;
   QueueHandle_t volumeResultQueue_ = nullptr;
   SemaphoreHandle_t requestMutex_ = nullptr;

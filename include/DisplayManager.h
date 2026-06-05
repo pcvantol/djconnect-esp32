@@ -66,6 +66,9 @@ public:
   // Redraws only the moving Current Song title/artist text to avoid flickering static labels.
   void renderAlbumArtMarqueeText(const SpotifyState &playback, bool titleChanged, bool artistChanged);
 
+  // Draws a temporary full-screen DJ response overlay above the current UI.
+  void renderDjResponseOverlay(const String &text);
+
   // Forces the next Current Song render to redraw the album-art pane.
   void resetAlbumArtRenderCache();
 

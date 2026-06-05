@@ -80,7 +80,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
     button.warning { background:#a57912; border-color:#d6a329; color:#fff3c4; }
     button.firmware { background:#6f3bd8; border-color:#9b72ff; color:#f4edff; }
-    button.ptt { min-height:56px; background:#d3a018; border-color:#f1c34b; color:#201600; font-size:16px; }
+    button.ptt { width:auto; min-width:160px; min-height:40px; justify-self:start; background:#243238; border-color:#d3a018; color:#ffe4a0; font-size:14px; }
     button.ptt.recording { background:#2f7fe8; border-color:#78b4ff; color:#eef6ff; }
     button:disabled, select:disabled, input:disabled { opacity:.45; cursor:not-allowed; }
     .section-action { margin-top:10px; }
@@ -104,6 +104,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .pair-banner .pair-code { display:inline-block; margin-left:4px; padding:2px 7px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.22); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.08em; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--log-bg); color:var(--log-text); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
+    @media (max-width:420px) { button.ptt { width:100%; } }
   </style>
 </head>
 <body>
@@ -142,7 +143,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div class="row"><span class="key volume-label" data-i18n="volume">Volume</span><span id="volume" class="value volume-value">-</span></div>
       <input id="volumeSlider" class="volume-slider" type="range" min="0" max="60" value="0" aria-label="Volume">
       <div id="volumeStatus" class="status"></div>
-      <button id="webPttButton" class="ptt section-action" type="button" data-i18n="webPttHold">Hold to talk</button>
+      <button id="webPttButton" class="ptt section-action" type="button" data-i18n="webPttHold">Test DJ response</button>
       <div id="webPttTranscript" class="fine"></div>
       <div id="webPttStatus" class="status"></div>
     </section>
@@ -262,6 +263,20 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       </div>
       <button id="refreshButton" data-i18n="refreshSpotify" class="secondary section-action" type="button">Refresh Spotify</button>
       <div id="refreshStatus" class="status"></div>
+      <form id="spotifyCredentialForm" class="controls section-action">
+        <label data-i18n-label="spotifyClientIdRepair">Spotify client ID (optional)
+          <input id="spotifyRepairClientId" name="clientId" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-i18n-placeholder="spotifyClientIdRepairPlaceholder" placeholder="leave blank to keep current">
+        </label>
+        <label data-i18n-label="spotifyRefreshRepair">New Spotify refresh token
+          <input id="spotifyRepairRefreshToken" name="refreshToken" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+        </label>
+        <label data-i18n-label="spotifyMarketRepair">Spotify market
+          <input id="spotifyRepairMarket" name="market" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="NL">
+        </label>
+        <button data-i18n="saveSpotifyToken" class="secondary" type="submit">Save token &amp; test</button>
+      </form>
+      <div class="fine" data-i18n="spotifyTokenFine">The refresh token is saved and tested immediately. It is never shown after submission.</div>
+      <div id="spotifyCredentialStatus" class="status"></div>
     </section>
 
     <section class="panel">
@@ -341,8 +356,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       en: {
         deviceNotPaired:"Device not paired with Home Assistant", setup:"Click here to setup", providePair:"and provide pairing code:",
         nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", liked:"Start SpotifyDJ Liked Proxy",
-        webPttHold:"Hold to talk", webPttListening:"Listening...", webPttProcessing:"Sending voice command...", webPttUnsupported:"Browser speech recognition is not available.", webPttNoSpeech:"No speech recognized",
-        webPttFailed:"Voice command failed",
+        webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
+        webPttFailed:"Voice command failed", webPttTestCommand:"Test the SpotifyDJ response flow", spotifyUnavailable:"Spotify not connected",
         output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", loadingQueue:"Loading queue...",
         playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", settings:"Settings",
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
@@ -354,7 +369,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.",
         wifiPasswordPlaceholder:"leave blank to keep current",
         ha:"Home Assistant", pairing:"Pairing", pairCode:"Pair code", firmware:"Firmware", model:"Model", resetPairing:"Reset pairing",
-        spotify:"Spotify", connection:"Connection", token:"Token", error:"Error", refreshSpotify:"Refresh Spotify", broker:"Broker",
+        spotify:"Spotify", connection:"Connection", token:"Token", error:"Error", refreshSpotify:"Refresh Spotify", spotifyClientIdRepair:"Spotify client ID (optional)",
+        spotifyClientIdRepairPlaceholder:"leave blank to keep current", spotifyRefreshRepair:"New Spotify refresh token", spotifyMarketRepair:"Spotify market",
+        saveSpotifyToken:"Save token & test", spotifyTokenFine:"The refresh token is saved and tested immediately. It is never shown after submission.", broker:"Broker",
         username:"Username", discovery:"HA discovery", lastPublished:"Last published", diagnostics:"Diagnostics", screen:"Screen",
         ledRing:"LED ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Storage", sketch:"Sketch", restart:"Restart device",
         logs:"Logs", pauseLogs:"Pause logs", selectAll:"Select all", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -378,8 +395,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       nl: {
         deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om te koppelen", providePair:"en vul koppelcode in:",
         nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", liked:"Start SpotifyDJ Liked Proxy",
-        webPttHold:"Houd vast om te praten", webPttListening:"Luisteren...", webPttProcessing:"Voice command versturen...", webPttUnsupported:"Browser spraakherkenning is niet beschikbaar.", webPttNoSpeech:"Geen spraak herkend",
-        webPttFailed:"Voice command mislukt",
+        webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
+        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de SpotifyDJ response flow", spotifyUnavailable:"Spotify niet verbonden",
         output:"Geluidsuitgang", loadingOutputs:"Outputs laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
@@ -391,7 +408,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"Het device test de nieuwe WiFi nadat deze pagina antwoord krijgt. Bij succes worden credentials opgeslagen en herstart het device.",
         wifiPasswordPlaceholder:"leeg laten om huidige te behouden",
         ha:"Home Assistant", pairing:"Koppeling", pairCode:"Koppelcode", firmware:"Firmware", model:"Model", resetPairing:"Home Assistant koppeling resetten",
-        spotify:"Spotify", connection:"Verbinding", token:"Token", error:"Fout", refreshSpotify:"Spotify verversen", broker:"Broker",
+        spotify:"Spotify", connection:"Verbinding", token:"Token", error:"Fout", refreshSpotify:"Spotify verversen", spotifyClientIdRepair:"Spotify client ID (optioneel)",
+        spotifyClientIdRepairPlaceholder:"leeg laten om huidige te behouden", spotifyRefreshRepair:"Nieuwe Spotify refresh token", spotifyMarketRepair:"Spotify market",
+        saveSpotifyToken:"Token opslaan & testen", spotifyTokenFine:"De refresh token wordt opgeslagen en direct getest. Hij wordt na verzenden nooit getoond.", broker:"Broker",
         username:"Gebruikersnaam", discovery:"HA discovery", lastPublished:"Laatst gepubliceerd", diagnostics:"Diagnostiek", screen:"Scherm",
         ledRing:"LED-ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Opslag", sketch:"Sketch", restart:"Device herstarten",
         logs:"Logs", pauseLogs:"Pauzeer logs", selectAll:"Selecteer alles", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -428,11 +447,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("previousButton").textContent = tr("previous");
       $("nextButton").textContent = tr("next");
       $("startLikedProxyButton").textContent = tr("liked");
-      if (!webPttRecording) $("webPttButton").textContent = tr("webPttHold");
+      if (!webPttRunning) $("webPttButton").textContent = tr("webPttHold");
       const outputOption = $("soundOutputSelect").querySelector("option");
-      if (outputOption && outputOption.value === "") outputOption.textContent = tr("loadingOutputs");
+      if (spotifyControlsEnabled && outputOption && outputOption.value === "") outputOption.textContent = tr("loadingOutputs");
       const playlistOption = $("playlistSelect").querySelector("option");
-      if (playlistOption && playlistOption.value === "") playlistOption.textContent = tr("loadingPlaylists");
+      if (spotifyControlsEnabled && playlistOption && playlistOption.value === "") playlistOption.textContent = tr("loadingPlaylists");
     }
     const dirtyInputs = new Set();
     function setInput(id, value) {
@@ -465,77 +484,28 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let playlistsLoadedAt = 0;
     let pairingInfoLoadedAt = 0;
     let spotifyControlsEnabled = false;
-    let webPttRecognition = null;
-    let webPttRecording = false;
-    let webPttText = "";
-    function speechRecognitionCtor() {
-      return window.SpeechRecognition || window.webkitSpeechRecognition || null;
-    }
-    function ensureWebPttRecognition() {
-      const Ctor = speechRecognitionCtor();
-      if (!Ctor) return null;
-      if (webPttRecognition) return webPttRecognition;
-      const recognition = new Ctor();
-      recognition.lang = currentLanguage === "nl" ? "nl-NL" : "en-US";
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.onresult = event => {
-        let transcript = "";
-        for (let index = 0; index < event.results.length; index++) {
-          transcript += event.results[index][0].transcript;
-        }
-        webPttText = transcript.trim();
-        $("webPttTranscript").textContent = webPttText;
-      };
-      recognition.onerror = event => {
-        if (webPttRecording) $("webPttStatus").textContent = event.error || "Speech recognition error";
-      };
-      recognition.onend = () => {
-        if (webPttRecording) {
-          try { recognition.start(); } catch (error) {}
-        }
-      };
-      webPttRecognition = recognition;
-      return recognition;
-    }
-    function startWebPtt() {
+    let webPttRunning = false;
+    async function startWebPtt() {
       if ($("webPttButton").disabled) return;
-      const recognition = ensureWebPttRecognition();
-      if (!recognition) {
-        $("webPttStatus").textContent = tr("webPttUnsupported");
-        return;
-      }
-      webPttText = "";
-      $("webPttTranscript").textContent = "";
-      $("webPttStatus").textContent = tr("webPttListening");
+      if (webPttRunning) return;
+      webPttRunning = true;
+      $("webPttTranscript").textContent = tr("webPttTestCommand");
+      $("webPttStatus").textContent = tr("webPttProcessing");
       $("webPttButton").textContent = tr("webPttListening");
       $("webPttButton").classList.add("recording");
-      webPttRecording = true;
-      recognition.lang = currentLanguage === "nl" ? "nl-NL" : "en-US";
-      try { recognition.start(); } catch (error) {}
-    }
-    async function stopWebPtt() {
-      if (!webPttRecording) return;
-      webPttRecording = false;
-      $("webPttButton").classList.remove("recording");
-      $("webPttButton").textContent = tr("webPttHold");
-      if (webPttRecognition) {
-        try { webPttRecognition.stop(); } catch (error) {}
+      try {
+        const body = new URLSearchParams({ text: tr("webPttTestCommand") });
+        const response = await fetch("/api/voice-text", { method:"POST", body });
+        const payload = await response.json();
+        $("webPttStatus").textContent = payload.message || (payload.success ? "OK" : tr("webPttFailed"));
+        refresh();
+      } catch (error) {
+        $("webPttStatus").textContent = tr("webPttFailed");
+      } finally {
+        webPttRunning = false;
+        $("webPttButton").classList.remove("recording");
+        $("webPttButton").textContent = tr("webPttHold");
       }
-      const textValue = webPttText.trim();
-      if (!textValue) {
-        $("webPttStatus").textContent = tr("webPttNoSpeech");
-        return;
-      }
-      $("webPttStatus").textContent = tr("webPttProcessing");
-      const body = new URLSearchParams({ text: textValue });
-      const response = await fetch("/api/voice-text", { method:"POST", body });
-      const payload = await response.json();
-      $("webPttStatus").textContent = payload.message || (payload.success ? "OK" : tr("webPttFailed"));
-      if (payload.audio_url) {
-        try { await new Audio(payload.audio_url).play(); } catch (error) { $("webPttStatus").textContent += " / audio playback blocked"; }
-      }
-      refresh();
     }
     function setSpotifyControlsEnabled(enabled) {
       spotifyControlsEnabled = !!enabled;
@@ -546,6 +516,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         $("soundOutputStatus").textContent = "";
         $("playbackCommandStatus").textContent = "";
         $("volumeStatus").textContent = "";
+        $("soundOutputSelect").innerHTML = `<option value="">${tr("spotifyUnavailable")}</option>`;
+        $("playlistSelect").innerHTML = `<option value="">${tr("spotifyUnavailable")}</option>`;
+        $("queueList").innerHTML = '<div class="fine"></div>';
       }
     }
     function render(data) {
@@ -768,19 +741,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     $("previousButton").addEventListener("click", () => sendPlaybackCommand("previous"));
     $("nextButton").addEventListener("click", () => sendPlaybackCommand("next"));
     $("startLikedProxyButton").addEventListener("click", () => sendPlaybackCommand("likedProxy"));
-    $("webPttButton").addEventListener("pointerdown", event => {
+    $("webPttButton").addEventListener("click", event => {
       event.preventDefault();
       startWebPtt();
     });
-    $("webPttButton").addEventListener("pointerup", event => {
-      event.preventDefault();
-      stopWebPtt();
-    });
-    $("webPttButton").addEventListener("pointercancel", event => {
-      event.preventDefault();
-      stopWebPtt();
-    });
-    $("webPttButton").addEventListener("lostpointercapture", () => stopWebPtt());
     $("startPlaylistButton").addEventListener("click", async () => {
       if (!spotifyControlsEnabled) return;
       const playlistUri = $("playlistSelect").value;
@@ -849,9 +813,27 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("refreshStatus").textContent = await response.text();
       refresh();
     });
+    $("spotifyCredentialForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      $("spotifyCredentialStatus").textContent = tr("saving");
+      const body = new URLSearchParams({
+        clientId: $("spotifyRepairClientId").value,
+        refreshToken: $("spotifyRepairRefreshToken").value,
+        market: $("spotifyRepairMarket").value
+      });
+      try {
+        const response = await fetch("/api/spotify-credentials", { method:"POST", body });
+        $("spotifyCredentialStatus").textContent = await response.text();
+      } finally {
+        $("spotifyRepairClientId").value = "";
+        $("spotifyRepairRefreshToken").value = "";
+      }
+      refresh();
+    });
     $("rebootButton").addEventListener("click", async () => {
       if (!confirm(tr("restartConfirm"))) return;
-      $("otaStatus").textContent = await (await fetch("/api/reboot", { method:"POST" })).text();
+      $("otaStatus").textContent = "";
+      await fetch("/api/reboot", { method:"POST" });
     });
     $("resetPairingButton").addEventListener("click", async () => {
       if (!confirm(tr("resetPairingConfirm"))) return;
@@ -894,6 +876,7 @@ void WebPortal::begin(
     const MqttSettings &mqttSettings,
     const uint8_t &screenBrightnessPercent,
     const uint8_t &speakerVolumePercent,
+    const bool &homeAssistantPaired,
     const String &languageCode,
     const String &themeCode,
     const uint32_t &screenOffTimeoutMs,
@@ -903,6 +886,7 @@ void WebPortal::begin(
     MqttSettingsCallback mqttSettingsCallback,
     WifiSettingsCallback wifiSettingsCallback,
     VoiceTextCallback voiceTextCallback,
+    SpotifyCredentialsCallback spotifyCredentialsCallback,
     SimpleCallback refreshCallback,
     SimpleCallback resetPairingCallback,
     SimpleCallback hardResetCallback) {
@@ -916,6 +900,7 @@ void WebPortal::begin(
   mqttSettings_ = &mqttSettings;
   screenBrightnessPercent_ = &screenBrightnessPercent;
   speakerVolumePercent_ = &speakerVolumePercent;
+  homeAssistantPaired_ = &homeAssistantPaired;
   languageCode_ = &languageCode;
   themeCode_ = &themeCode;
   screenOffTimeoutMs_ = &screenOffTimeoutMs;
@@ -925,6 +910,7 @@ void WebPortal::begin(
   mqttSettingsCallback_ = mqttSettingsCallback;
   wifiSettingsCallback_ = wifiSettingsCallback;
   voiceTextCallback_ = voiceTextCallback;
+  spotifyCredentialsCallback_ = spotifyCredentialsCallback;
   refreshCallback_ = refreshCallback;
   resetPairingCallback_ = resetPairingCallback;
   hardResetCallback_ = hardResetCallback;
@@ -1000,6 +986,7 @@ void WebPortal::configureRoutes() {
   server_.on("/api/transfer", HTTP_POST, [this]() { handleTransferPost(); });
   server_.on("/api/playback", HTTP_POST, [this]() { handlePlaybackCommandPost(); });
   server_.on("/api/voice-text", HTTP_POST, [this]() { handleVoiceTextPost(); });
+  server_.on("/api/spotify-credentials", HTTP_POST, [this]() { handleSpotifyCredentialsPost(); });
   server_.on("/api/refresh", HTTP_POST, [this]() { handleRefreshPost(); });
   server_.on("/api/reset-pairing", HTTP_POST, [this]() { handleResetPairingPost(); });
   server_.on("/api/reboot", HTTP_POST, [this]() { handleRebootPost(); });
@@ -1098,7 +1085,10 @@ void WebPortal::handleStatusJson() {
   spotify["error"] = playback_->error;
 
   JsonObject voice = doc["voice"].to<JsonObject>();
-  voice["available"] = voiceTextCallback_ != nullptr && wifiConnected;
+  voice["available"] = voiceTextCallback_ != nullptr &&
+                       wifiConnected &&
+                       homeAssistantPaired_ != nullptr &&
+                       *homeAssistantPaired_;
 
   JsonObject mqtt = doc["mqtt"].to<JsonObject>();
   mqtt["enabled"] = mqttSettings_ != nullptr && mqttSettings_->enabled;
@@ -1215,7 +1205,9 @@ void WebPortal::handleWifiPost() {
   }
 
   wifiSettingsCallback_(callbackContext_, ssid, server_.arg("password"));
-  server_.send(202, "text/plain", "WiFi test started. Device will restart automatically if the connection succeeds.");
+  server_.send(202, "text/plain", localizedText(
+                                     "WiFi test started. Device will restart automatically if the connection succeeds.",
+                                     "WiFi-test gestart. Het device herstart automatisch als de verbinding lukt."));
 }
 
 void WebPortal::handleVolumePost() {
@@ -1224,7 +1216,7 @@ void WebPortal::handleVolumePost() {
     return;
   }
   if (!spotify_->isAuthorized()) {
-    server_.send(503, "text/plain", "Spotify not connected");
+    sendSpotifyUnavailableText();
     return;
   }
 
@@ -1243,7 +1235,7 @@ void WebPortal::handleDevicesJson() {
     return;
   }
   if (!spotify_->isAuthorized()) {
-    server_.send(503, "application/json", "{\"available\":false,\"error\":\"Spotify not connected\",\"devices\":[]}");
+    sendSpotifyUnavailableJson("devices");
     return;
   }
 
@@ -1273,7 +1265,7 @@ void WebPortal::handleQueueJson() {
     return;
   }
   if (!spotify_->isAuthorized()) {
-    server_.send(503, "application/json", "{\"available\":false,\"error\":\"Spotify not connected\",\"items\":[]}");
+    sendSpotifyUnavailableJson("items");
     return;
   }
 
@@ -1301,7 +1293,7 @@ void WebPortal::handlePlaylistsJson() {
     return;
   }
   if (!spotify_->isAuthorized()) {
-    server_.send(503, "application/json", "{\"available\":false,\"error\":\"Spotify not connected\",\"items\":[]}");
+    sendSpotifyUnavailableJson("items");
     return;
   }
 
@@ -1330,7 +1322,7 @@ void WebPortal::handleTransferPost() {
     return;
   }
   if (!spotify_->isAuthorized()) {
-    server_.send(503, "text/plain", "Spotify not connected");
+    sendSpotifyUnavailableText();
     return;
   }
 
@@ -1359,7 +1351,7 @@ void WebPortal::handlePlaybackCommandPost() {
     return;
   }
   if (!spotify_->isAuthorized()) {
-    server_.send(503, "text/plain", "Spotify not connected");
+    sendSpotifyUnavailableText();
     return;
   }
 
@@ -1430,6 +1422,30 @@ void WebPortal::handleVoiceTextPost() {
   server_.send(ok ? 200 : 502, "application/json", payload);
 }
 
+void WebPortal::handleSpotifyCredentialsPost() {
+  if (spotifyCredentialsCallback_ == nullptr || !server_.hasArg("refreshToken")) {
+    server_.send(400, "text/plain", localizedText("Missing refresh token", "Refresh token ontbreekt"));
+    return;
+  }
+
+  String clientId = server_.arg("clientId");
+  String refreshToken = server_.arg("refreshToken");
+  String market = server_.arg("market");
+  clientId.trim();
+  refreshToken.trim();
+  market.trim();
+  if (refreshToken.isEmpty()) {
+    server_.send(400, "text/plain", localizedText("Missing refresh token", "Refresh token ontbreekt"));
+    return;
+  }
+
+  AppLog.print("Web Spotify repair: submitted client_id=");
+  AppLog.println(clientId.isEmpty() ? "keep-current" : "present");
+  String message;
+  const bool ok = spotifyCredentialsCallback_(callbackContext_, clientId, refreshToken, market, message);
+  server_.send(ok ? 200 : 502, "text/plain", message);
+}
+
 void WebPortal::handleRefreshPost() {
   if (refreshCallback_ != nullptr) {
     refreshCallback_(callbackContext_);
@@ -1439,7 +1455,9 @@ void WebPortal::handleRefreshPost() {
 
 void WebPortal::handleResetPairingPost() {
   AppLog.println("Web action: reset Home Assistant pairing requested");
-  server_.send(200, "text/plain", "Reset pairing requested. Restarting to pairing screen...");
+  server_.send(200, "text/plain", localizedText(
+                                      "Reset pairing requested. Restarting to pairing screen...",
+                                      "Koppeling resetten aangevraagd. Herstarten naar koppelscherm..."));
   delay(250);
   if (resetPairingCallback_ != nullptr) {
     resetPairingCallback_(callbackContext_);
@@ -1449,14 +1467,16 @@ void WebPortal::handleResetPairingPost() {
 
 void WebPortal::handleRebootPost() {
   AppLog.println("Web action: restart requested");
-  server_.send(200, "text/plain", "Restarting device...");
+  server_.send(200, "text/plain", localizedText("Restarting device...", "Device herstarten..."));
   delay(250);
   ESP.restart();
 }
 
 void WebPortal::handleHardResetPost() {
   AppLog.println("Web action: factory reset requested");
-  server_.send(200, "text/plain", "Factory reset requested. Restarting into setup mode...");
+  server_.send(200, "text/plain", localizedText(
+                                      "Factory reset requested. Restarting into setup mode...",
+                                      "Fabrieksreset aangevraagd. Herstarten naar setupmodus..."));
   delay(250);
   if (hardResetCallback_ != nullptr) {
     hardResetCallback_(callbackContext_);
@@ -1465,7 +1485,7 @@ void WebPortal::handleHardResetPost() {
 
 void WebPortal::handleOtaFinished() {
   if (otaOk_ && !Update.hasError()) {
-    server_.send(200, "text/plain", "Firmware uploaded. Restarting...");
+    server_.send(200, "text/plain", localizedText("Firmware uploaded. Restarting...", "Firmware geupload. Herstarten..."));
     delay(500);
     ESP.restart();
     return;
@@ -1561,6 +1581,24 @@ String WebPortal::formatBytes(uint32_t bytes) const {
     return String(bytes / 1024.0f, 1) + " KB";
   }
   return String(bytes) + " B";
+}
+
+String WebPortal::localizedText(const char *en, const char *nl) const {
+  return languageCode_ != nullptr && *languageCode_ == "nl" ? String(nl) : String(en);
+}
+
+void WebPortal::sendSpotifyUnavailableText() {
+  server_.send(503, "text/plain", localizedText("Spotify not connected", "Spotify niet verbonden"));
+}
+
+void WebPortal::sendSpotifyUnavailableJson(const char *arrayKey) {
+  JsonDocument doc;
+  doc["available"] = false;
+  doc["error"] = localizedText("Spotify not connected", "Spotify niet verbonden");
+  doc[arrayKey].to<JsonArray>();
+  String body;
+  serializeJson(doc, body);
+  server_.send(503, "application/json", body);
 }
 
 uint32_t WebPortal::estimatedProgressMs() const {

@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.4.0
+## v2.5.0
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -37,9 +37,11 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.4.0` / `v2.4.0`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.5.0` / `v2.5.0`; local builds without release flags remain `dev` / `vdev`.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
 - Spotify credentials are provisioned through the setup portal or Home Assistant and stored in NVS.
+- The web portal can manually repair Spotify OAuth credentials with a one-shot refresh-token submit field, immediately testing authorization and clearing the submitted fields from the page.
+- Spotify refresh tokens now live only in the `spotifydj` NVS namespace; the old `spotify/refresh` legacy namespace is no longer read or written.
 - Spotify OAuth credentials can be parsed from Home Assistant pairing/status/provision payloads, both top-level and nested under `spotify`, without logging refresh tokens.
 - Battery percentage is always voltage-estimated and displayed without a tilde.
 - Spotify volume is limited to `0-60`; the LED ring treats `60` as full scale and uses orange segments.
@@ -64,7 +66,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - The old WAV upload path to `/api/spotify_dj/voice` was removed from the voice command client.
 - Voice status messages use `recording`, `sending_command` and `error`.
 - DJ responses are displayed locally, optionally played, published as `last_dj_text` in runtime state and emitted as MQTT events.
-- Web portal PTT uses browser speech recognition, sends recognized text through the ESP to Home Assistant and can play an optional HA `audio_url` through the browser speaker.
+- Web portal PTT is now a compact DJ-response simulation button that sends a fixed localized test command through the ESP to Home Assistant; it requires HA pairing but not Spotify credentials, active playback or browser microphone access.
 - When no music is playing, the device and web portal offer an action to start the `SpotifyDJ Liked Proxy` playlist.
 - Volume control is disabled when there is no active playback.
 - WiFi boot label is `Connecting to WiFi...`.
@@ -86,6 +88,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Settings such as brightness, screen dim timeout, speaker volume and turn-off timeout persist after reboot.
 - Web interface no longer clears input fields during status polling.
 - Web interface no longer overwrites MQTT settings while the user is typing.
+- Web interface sound-output and playlist comboboxes no longer stay on loading text when Spotify is not connected.
 - Sound output types are no longer appended to output names.
 - Improved JPEG album art rendering and Current Song text scrolling.
 - Pairing mode blocks normal playback/menu input while keeping reset controls and the local API available.

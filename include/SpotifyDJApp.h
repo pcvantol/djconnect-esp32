@@ -134,6 +134,9 @@ private:
 
   // Updates the display and LED ring from the current state snapshot.
   void renderNow();
+
+  // Hides the temporary DJ response overlay when it times out or the user acknowledges it.
+  bool dismissDjResponseOverlay();
   bool connectionHealthy();
   void renderMenuNow();
   bool chargerConnected() const;
@@ -158,11 +161,16 @@ private:
   // Applies settings posted from the web dashboard and persists them.
   void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode);
   void applyWebMqttSettings(const MqttSettings &settings);
+  bool repairSpotifyCredentialsFromWeb(const String &clientId, const String &refreshToken, const String &market, String &message);
   void syncHomeAssistantMqttSettings();
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
+
+  // Shows HA DJ response text and optionally plays the HA-generated PCM WAV response URL.
   bool handleDjResponseText(const String &text, const String &audioUrl, bool &spoken);
   bool playDjResponseAudioUrl(const String &audioUrl);
+
+  // Applies credentials and language pushed by Home Assistant without touching local fallbacks.
   void applyProvisionedLanguage(const String &languageCode);
   void applyProvisionedSpotifyCredentials();
   void setupHomeAssistantLayer();
@@ -179,6 +187,7 @@ private:
   static void applyWebMqttSettingsCallback(void *context, const MqttSettings &settings);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
+  static bool repairSpotifyCredentialsFromWebCallback(void *context, const String &clientId, const String &refreshToken, const String &market, String &message);
   static void refreshFromWebCallback(void *context);
   static void resetPairingFromWebCallback(void *context);
   static void hardResetFromWebCallback(void *context);
@@ -242,6 +251,7 @@ private:
   Language language_ = Language::English;
   String languageCode_ = "en";
   String themeCode_ = "dark";
+  bool homeAssistantPaired_ = false;
   String wifiSsid_;
   String wifiPassword_;
   String pendingWifiSsid_;
@@ -252,6 +262,7 @@ private:
   bool deepSleepStarted_ = false;
   bool pendingWifiSettings_ = false;
   bool pendingWifiPasswordProvided_ = false;
+  bool djResponseOverlayVisible_ = false;
   bool wifiConnectFailed_ = false;
   bool lowBatteryGuardActive_ = false;
   bool criticalBatteryGuardActive_ = false;
@@ -281,8 +292,13 @@ private:
   uint32_t lastMqttProvisioningSyncAt_ = 0;
   uint32_t haPairingStartedAt_ = 0;
   uint32_t lastHaPairingScreenAt_ = 0;
+  uint32_t djResponseOverlayUntil_ = 0;
   uint32_t loopMetricsWindowStartedAt_ = 0;
   uint32_t loopMetricsBusyMs_ = 0;
   uint32_t lastHeapLogAt_ = 0;
   uint32_t lastSlowLoopLogAt_ = 0;
+  uint32_t heapTrendBaselineMinFree_ = 0;
+  uint32_t heapTrendBaselineLargestBlock_ = 0;
+  uint32_t heapTrendPreviousMinFree_ = 0;
+  uint32_t heapTrendPreviousLargestBlock_ = 0;
 };

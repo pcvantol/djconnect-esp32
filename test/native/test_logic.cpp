@@ -322,6 +322,17 @@ static void testSpotifyProvisioningMissingRefreshToken() {
   assert(credentials.refreshToken == nullptr);
 }
 
+static void testSpotifyCredentialRepairValidation() {
+  assert(Logic::spotifyRepairCredentialsValid("stored-client", "", "new-refresh"));
+  assert(Logic::spotifyRepairCredentialsValid("", "submitted-client", "new-refresh"));
+  assert(!Logic::spotifyRepairCredentialsValid("", "", "new-refresh"));
+  assert(!Logic::spotifyRepairCredentialsValid("stored-client", "", ""));
+  assert(!Logic::spotifyRepairCredentialsValid(nullptr, nullptr, "new-refresh"));
+  assert(std::strcmp(Logic::spotifyMarketOrDefault("BE"), "BE") == 0);
+  assert(std::strcmp(Logic::spotifyMarketOrDefault(""), "NL") == 0);
+  assert(std::strcmp(Logic::spotifyMarketOrDefault(nullptr), "NL") == 0);
+}
+
 static void testSpotifyDJMenuItemCounts() {
   MenuCountInput input;
   assert(!SpotifyDJMenuModel::isMenuScreen(UiScreen::NowPlaying));
@@ -402,6 +413,7 @@ int main() {
   testSpotifyProvisioningCompatTopLevel();
   testSpotifyProvisioningNestedPriority();
   testSpotifyProvisioningMissingRefreshToken();
+  testSpotifyCredentialRepairValidation();
   testSpotifyDJMenuItemCounts();
   testSpotifyDJMenuOptionValues();
   testNetworkActivityLogicWithFakeHttp();

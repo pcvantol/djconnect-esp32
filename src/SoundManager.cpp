@@ -117,35 +117,105 @@ void SoundManager::playChargingComplete() {
 
 bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   if (!ready_) {
+    AppLog.println("[SpotifyDJ] voice response audio skipped: speaker not ready");
     return false;
   }
-  if (contentLength > 0 && contentLength < 44) {
+  if (contentLength > 0 && contentLength < 12) {
     return false;
   }
 
-  uint8_t header[44] = {};
-  const size_t headerRead = stream.readBytes(header, sizeof(header));
-  if (headerRead != sizeof(header) ||
-      memcmp(header, "RIFF", 4) != 0 ||
-      memcmp(header + 8, "WAVE", 4) != 0 ||
-      memcmp(header + 12, "fmt ", 4) != 0) {
+  auto readExact = [&](uint8_t *target, size_t length) -> bool {
+    return stream.readBytes(target, length) == length;
+  };
+  auto readLe16 = [](const uint8_t *data) -> uint16_t {
+    return data[0] | (data[1] << 8);
+  };
+  auto readLe32 = [](const uint8_t *data) -> uint32_t {
+    return data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
+  };
+
+  uint8_t riff[12] = {};
+  if (!readExact(riff, sizeof(riff)) ||
+      memcmp(riff, "RIFF", 4) != 0 ||
+      memcmp(riff + 8, "WAVE", 4) != 0) {
     AppLog.println("[SpotifyDJ] voice response is not PCM WAV");
     return false;
   }
 
-  const uint16_t audioFormat = header[20] | (header[21] << 8);
-  const uint16_t channels = header[22] | (header[23] << 8);
-  const uint32_t sampleRate = header[24] | (header[25] << 8) | (header[26] << 16) | (header[27] << 24);
-  const uint16_t bitsPerSample = header[34] | (header[35] << 8);
-  uint32_t dataBytes = header[40] | (header[41] << 8) | (header[42] << 16) | (header[43] << 24);
+  uint16_t audioFormat = 0;
+  uint16_t channels = 0;
+  uint32_t sampleRate = 0;
+  uint16_t bitsPerSample = 0;
+  uint32_t dataBytes = 0;
+  bool foundFormat = false;
+  bool foundData = false;
+  uint32_t consumed = sizeof(riff);
+
+  // Parse RIFF chunks instead of assuming the data block starts at byte 44.
+  // HA-generated TTS WAV files may include extra metadata chunks before audio.
+  while (contentLength <= 0 || consumed + 8 <= static_cast<uint32_t>(contentLength)) {
+    uint8_t chunkHeader[8] = {};
+    if (!readExact(chunkHeader, sizeof(chunkHeader))) {
+      break;
+    }
+    consumed += sizeof(chunkHeader);
+    const uint32_t chunkSize = readLe32(chunkHeader + 4);
+
+    if (memcmp(chunkHeader, "fmt ", 4) == 0) {
+      uint8_t fmt[16] = {};
+      if (chunkSize < sizeof(fmt) || !readExact(fmt, sizeof(fmt))) {
+        AppLog.println("[SpotifyDJ] invalid voice WAV fmt chunk");
+        return false;
+      }
+      consumed += sizeof(fmt);
+      audioFormat = readLe16(fmt);
+      channels = readLe16(fmt + 2);
+      sampleRate = readLe32(fmt + 4);
+      bitsPerSample = readLe16(fmt + 14);
+      foundFormat = true;
+      for (uint32_t skip = sizeof(fmt); skip < chunkSize; skip++) {
+        if (stream.read() < 0) {
+          return false;
+        }
+        consumed++;
+      }
+    } else if (memcmp(chunkHeader, "data", 4) == 0) {
+      dataBytes = chunkSize;
+      foundData = true;
+      break;
+    } else {
+      for (uint32_t skip = 0; skip < chunkSize; skip++) {
+        if (stream.read() < 0) {
+          return false;
+        }
+      }
+      consumed += chunkSize;
+    }
+
+    if (chunkSize % 2 != 0) {
+      if (stream.read() < 0) {
+        return false;
+      }
+      consumed++;
+    }
+  }
+
+  if (!foundFormat || !foundData) {
+    AppLog.println("[SpotifyDJ] voice WAV missing fmt/data chunk");
+    return false;
+  }
   if (audioFormat != 1 || channels != 1 || bitsPerSample != 16 || sampleRate == 0) {
     AppLog.println("[SpotifyDJ] unsupported voice WAV format");
     return false;
   }
-  if (contentLength > 0 && dataBytes > static_cast<uint32_t>(contentLength - 44)) {
-    dataBytes = contentLength - 44;
+  if (contentLength > 0 && consumed + dataBytes > static_cast<uint32_t>(contentLength)) {
+    dataBytes = static_cast<uint32_t>(contentLength) - consumed;
   }
 
+  AppLog.print("[SpotifyDJ] voice WAV playback: sample_rate=");
+  AppLog.print(sampleRate);
+  AppLog.print(" bytes=");
+  AppLog.println(dataBytes);
   i2s_set_clk(SpeakerI2sPort, sampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
   uint8_t buffer[512];
   uint32_t remaining = dataBytes;

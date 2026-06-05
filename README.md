@@ -51,7 +51,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - A Spotify Connect playback context or available Spotify Connect output is required.
 - Some Spotify Connect outputs do not support volume control through the Web API.
 - OTA through `/api/device/ota` uses `Update.h`; streaming SHA256 verification is still a TODO.
-- Browser push-to-talk depends on browser speech recognition support. Safari/Chrome-like browsers are more likely to work than Firefox.
+- Web portal DJ-response test runs through the ESP and Home Assistant pairing; it does not require browser microphone access.
 
 ## License
 
@@ -212,6 +212,8 @@ Home Assistant can provision Spotify credentials through pairing/status/provisio
 
 Nested Spotify fields have priority. If client ID or refresh token is missing, existing stored credentials are kept. Refresh tokens are never logged.
 
+If OAuth credentials become invalid, the web portal Spotify panel includes a manual repair form. Submit a new refresh token and, only when the device has no stored client ID, a client ID. The device stores the values in the `spotifydj` NVS namespace, immediately tests Spotify authorization, and clears the submitted fields from the page after the request.
+
 ## Push-To-Talk Voice Flow
 
 Physical PTT:
@@ -225,7 +227,7 @@ Physical PTT:
 7. The ESP displays the DJ text briefly and plays compatible PCM WAV audio through the built-in speaker.
 8. The UI returns to Now Playing.
 
-Web portal PTT uses browser speech recognition, sends recognized text to `/api/voice-text`, forwards it through the ESP to Home Assistant and can play an optional HA `audio_url` through the browser speaker.
+Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require Spotify credentials, an active Spotify playback session or browser microphone permission.
 
 ## MQTT
 
@@ -243,7 +245,7 @@ Supported MQTT command categories include status request, next/previous, volume,
 
 ## Web Portal
 
-The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, browser push-to-talk, album art, volume, sound output selection, queue, playlists, Home Assistant status, MQTT settings, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support.
+The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, sound output selection, queue, playlists, Home Assistant status, MQTT settings, Spotify refresh-token repair, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support.
 
 Spotify controls are disabled when Spotify is not connected or when there is no active playback where that action would not make sense.
 
@@ -296,7 +298,7 @@ Skip GitHub release creation when you only want the commit/tag/push steps:
 ./release.sh X.Y.Z --no-gh-release
 ```
 
-For example, `./release.sh 2.4.0 --dry-run` validates the release plan without touching files. Both `2.4.0` and `v2.4.0` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.5.0 --dry-run` validates the release plan without touching files. Both `2.5.0` and `v2.5.0` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
@@ -328,7 +330,7 @@ Run release-script checks:
 bash test/native/test_release.sh
 ```
 
-The native test binary covers pure logic such as battery estimation, menu option counts/values, Spotify provisioning parsing and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
+The native test binary covers pure logic such as battery estimation, menu option counts/values, Spotify provisioning parsing, Spotify credential repair validation and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
 
 ## Security Checklist
 

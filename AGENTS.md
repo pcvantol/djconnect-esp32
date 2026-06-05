@@ -177,6 +177,8 @@ HA may provision UI language through `device_language` with `language` as fallba
 
 HA may provision Spotify OAuth credentials during pairing, status responses, or `POST /api/device/provision_spotify`. Use `SpotifyProvisioning::parseCredentials()` for every path. Support top-level `spotify_client_id`/`spotify_refresh_token`/`spotify_market`, compat top-level `client_id`/`refresh_token`/`market`, and nested `spotify` equivalents. Prefer nested `spotify.spotify_refresh_token`, then `spotify.refresh_token`, then top-level `spotify_refresh_token`, then top-level `refresh_token`; client id follows the same priority. If either client id or refresh token is missing, leave existing stored credentials untouched. Never log refresh tokens.
 
+The web portal may repair Spotify OAuth credentials manually. Keep the refresh token write-only in the UI: do not render existing tokens, clear submitted fields after the request, store credentials in the `spotifydj` NVS namespace only, and immediately run an authorization test. Do not reintroduce the old `spotify/refresh` NVS namespace.
+
 mDNS:
 
 - Hostname: `spotifydj-lilygo-XXXXXXXXXXXX`
@@ -240,7 +242,7 @@ Push-to-talk uses Route B:
 - The HA integration is responsible for Spotify command handling, `dj_text`, and optional backend TTS generation.
 - HA pushes DJ response text plus optional PCM WAV `audio_url` back to the ESP with `POST /api/device/dj_response`.
 - The ESP displays the DJ text, plays compatible PCM WAV through `SoundManager::playWavStream()`, and then returns to the normal UI.
-- Web portal PTT uses browser speech recognition and sends recognized text to the ESP `/api/voice-text` proxy. Do not upload browser WAV audio to the ESP. If HA returns `audio_url` in the `/api/spotify_dj/voice` response, the browser may play it through the laptop/phone speaker.
+- Web portal PTT is a compact simulation button: it sends a fixed localized test command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on Spotify credentials or active playback. Do not upload browser WAV audio to the ESP.
 - Do not call OpenAI directly from ESP firmware.
 - Keep `SPOTIFYDJ_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.
 

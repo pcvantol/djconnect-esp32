@@ -64,6 +64,22 @@ static uint8_t jpegScaleFor(uint16_t width, uint16_t height) {
   return 1;
 }
 
+static String localizedStatusText(const String &text) {
+  if (text == "Refresh token missing") {
+    return I18n::text("refresh_token_missing");
+  }
+  if (text == "Spotify not connected" || text == "Not connected") {
+    return I18n::text("spotify_not_connected");
+  }
+  if (text == "Spotify connected" || text == "Spotify authorized") {
+    return I18n::text("spotify_connected");
+  }
+  if (text == "WiFi disconnected") {
+    return I18n::text("wifi_disconnected");
+  }
+  return text;
+}
+
 void DisplayManager::begin() {
   pinMode(Config::DisplayBacklightPin, OUTPUT);
   digitalWrite(Config::DisplayBacklightPin, LOW);
@@ -314,6 +330,52 @@ void DisplayManager::renderAlbumArtMarqueeText(const SpotifyState &playback, boo
     tft_.fillRect(168, AlbumArtistY, 152, AlbumArtistHeight + 4, TFT_BLACK);
     tft_.setTextColor(NeutralLightGrey, TFT_BLACK);
     drawMarqueeText(tft_, artistMarquee_, artistText(playback), AlbumTextX, AlbumArtistY, AlbumTextWidth, 4, AlbumArtistHeight);
+  }
+}
+
+void DisplayManager::renderDjResponseOverlay(const String &text) {
+  tft_.fillScreen(TFT_BLACK);
+  tft_.setTextDatum(TL_DATUM);
+
+  const int micX = 28;
+  const int micY = 20;
+  tft_.drawRoundRect(micX + 14, micY, 34, 54, 16, SpotifyGreen);
+  tft_.drawRoundRect(micX + 18, micY + 5, 26, 44, 13, SpotifyGreen);
+  tft_.drawLine(micX + 31, micY + 54, micX + 31, micY + 76, SpotifyGreen);
+  tft_.drawLine(micX + 18, micY + 76, micX + 44, micY + 76, SpotifyGreen);
+  tft_.drawArc(micX + 31, micY + 42, 34, 30, 25, 155, SpotifyGreen, TFT_BLACK);
+
+  tft_.setTextColor(SpotifyGreen, TFT_BLACK);
+  tft_.drawString("DJ", 92, 22, 4);
+
+  String remaining = text;
+  remaining.trim();
+  const int x = 18;
+  int y = 86;
+  const int maxWidth = 286;
+  const int lineHeight = 30;
+  const uint8_t font = remaining.length() > 58 ? 2 : 4;
+  const int actualLineHeight = font == 4 ? lineHeight : 22;
+
+  while (!remaining.isEmpty() && y < 166) {
+    String line;
+    while (!remaining.isEmpty()) {
+      int space = remaining.indexOf(' ');
+      String word = space < 0 ? remaining : remaining.substring(0, space);
+      String candidate = line.isEmpty() ? word : line + " " + word;
+      if (!line.isEmpty() && tft_.textWidth(candidate, font) > maxWidth) {
+        break;
+      }
+      line = candidate;
+      remaining = space < 0 ? "" : remaining.substring(space + 1);
+      remaining.trim();
+    }
+    if (line.isEmpty()) {
+      line = remaining;
+      remaining = "";
+    }
+    tft_.drawString(line, x, y, font);
+    y += actualLineHeight;
   }
 }
 
@@ -602,10 +664,10 @@ void DisplayManager::renderPlayback(
   // Footer prefers actionable errors/notices, otherwise it shows play state and track time.
   String footer;
   if (!playback.error.isEmpty()) {
-    footer = playback.error;
+    footer = localizedStatusText(playback.error);
     canvas.setTextColor(TFT_RED, TFT_BLACK);
   } else if (notice.isVisible()) {
-    footer = notice.message;
+    footer = localizedStatusText(notice.message);
     canvas.setTextColor(TFT_GREEN, TFT_BLACK);
   } else if (!playback.hasPlayback) {
     footer = I18n::text("center_liked_proxy");

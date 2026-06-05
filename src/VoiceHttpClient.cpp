@@ -109,7 +109,7 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
 
   JsonDocument responseDoc;
   if (!response.isEmpty() && !deserializeJson(responseDoc, response)) {
-    const char *responseText = responseDoc["text"] | "";
+    const char *responseText = responseDoc["text"] | responseDoc["dj_text"] | "";
     const char *responseAudioUrl = responseDoc["audio_url"] | "";
     if (audioUrl != nullptr) {
       *audioUrl = responseAudioUrl;

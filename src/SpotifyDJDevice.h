@@ -22,6 +22,7 @@ public:
   String getModel() const;
   String getPairCode() const;
   String getLocalUrl() const;
+  String getSpotifyClientId() const;
   String getSpotifyMarket() const;
   String getAssistPipelineId() const;
   MqttSettings getMqttSettings() const;
@@ -35,6 +36,7 @@ public:
 
   void savePairing(const String &haUrl, const String &deviceToken);
   void saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market);
+  void saveSpotifyRefreshToken(const String &refreshToken);
   void saveAssistPipelineId(const String &pipelineId);
   void saveMqttSettings(const MqttSettings &settings);
   void clearHomeAssistantPairing();

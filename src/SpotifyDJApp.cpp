@@ -80,6 +80,7 @@ void SpotifyDJApp::begin() {
   voiceRecorder_.begin();
   assistClient_.begin(haDevice_);
   voiceClient_.begin(haDevice_);
+  homeAssistantPaired_ = haDevice_.isPaired();
   loadProvisioning();
   sound_.playStartup();
   spotify_.begin();
@@ -111,7 +112,7 @@ void SpotifyDJApp::begin() {
     }
     display_.showBootMessage("Authorizing Spotify...", battery_);
     if (spotify_.authorize()) {
-      showNotice("Spotify authorized");
+      showNotice(I18n::text("spotify_connected"));
       lastPlaybackPollAt_ = millis();
       spotify_.refreshPlayback();
       refreshMqttControlLists();
@@ -155,6 +156,7 @@ void SpotifyDJApp::loop() {
   }
 
   startWebPortalIfNeeded();
+  homeAssistantPaired_ = haDevice_.isPaired();
 
   if (handleHomeAssistantPairingMode(loopStartedAt)) {
     return;
@@ -163,6 +165,10 @@ void SpotifyDJApp::loop() {
   // Main loop order keeps input responsive, then drains async work, then performs slower polling.
   const InputEvents events = input_.poll();
   handleInputEvents(events);
+  if (djResponseOverlayVisible_ && static_cast<int32_t>(millis() - djResponseOverlayUntil_) >= 0) {
+    djResponseOverlayVisible_ = false;
+    renderNow();
+  }
   if (voiceRecording_) {
     uint8_t audioChunk[Config::VoicePcmChunkBytes];
     size_t bytesRead = 0;
@@ -350,7 +356,7 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
       startWebPortalIfNeeded();
       display_.showBootMessage("Authorizing Spotify...", battery_);
       if (spotify_.authorize()) {
-        showNotice("Spotify authorized");
+        showNotice(I18n::text("spotify_connected"));
         lastPlaybackPollAt_ = millis();
         spotify_.refreshPlayback();
         refreshMqttControlLists();
@@ -370,14 +376,14 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
 
   if (wifiFailureSelection_ == 2) {
     AppLog.println("WiFi recovery: restart selected");
-    display_.showBootMessage("Restarting...", battery_);
+    display_.showBootMessage(I18n::text("restarting"), battery_);
     responsiveDelay(300);
     ESP.restart();
     return;
   }
 
   AppLog.println("WiFi recovery: turn off selected");
-  display_.showBootMessage("Turning off...", battery_);
+  display_.showBootMessage(I18n::text("turning_off"), battery_);
   responsiveDelay(300);
   enterDeepSleep();
 }
@@ -422,7 +428,7 @@ bool SpotifyDJApp::connectWiFi(uint32_t timeoutMs, bool bootScreen) {
     wifiConnectFailedAt_ = 0;
     return true;
   } else {
-    playback_.error = "Not connected";
+    playback_.error = I18n::text("spotify_not_connected");
     showNotice(playback_.error, 5000);
     wifiConnectFailed_ = true;
     wifiConnectFailedAt_ = millis();
@@ -451,6 +457,7 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       mqttSettings_,
       screenBrightnessPercent_,
       speakerVolumePercent_,
+      homeAssistantPaired_,
       languageCode_,
       themeCode_,
       screenOffTimeoutMs_,
@@ -460,6 +467,7 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       applyWebMqttSettingsCallback,
       applyWebWifiSettingsCallback,
       sendWebVoiceTextCallback,
+      repairSpotifyCredentialsFromWebCallback,
       refreshFromWebCallback,
       resetPairingFromWebCallback,
       hardResetFromWebCallback);
@@ -827,7 +835,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
     haDevice_.saveMqttSettings(mqttSettings);
   }
   setupModeRequested_ = false;
-  message = "Setup successful. Restarting into normal mode...";
+  message = I18n::text("setup_success_restart");
   display_.showBootMessage("Setup OK...", battery_);
   return true;
 }
@@ -849,6 +857,11 @@ void SpotifyDJApp::handleInputEvents(const InputEvents &events) {
       return;
     }
     display_.wakeForUserActivity();
+  }
+
+  if (events.encoderClick && dismissDjResponseOverlay()) {
+    input_.clearPendingButtonActions();
+    return;
   }
 
   if (!isMenuActive() && events.topButtonHeld && !topHoldMenuHintVisible_) {
@@ -896,6 +909,9 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
     stopVoiceRecordingAndSendText();
     return;
   }
+  if (haDevice_.isPaired() && events.encoderRelease && !voiceRecording_ && voiceState_ == VoiceState::Idle) {
+    AppLog.println("[SpotifyDJ] voice: encoder released without active PTT");
+  }
 
   if (events.encoderClick) {
     if (playback_.hasPlayback) {
@@ -923,6 +939,7 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
   }
 
   if (events.encoderLongClick) {
+    AppLog.println("[SpotifyDJ] voice: encoder long press");
     handleVoiceButton();
   }
 
@@ -1110,12 +1127,12 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         }
         openScreen(UiScreen::PlayMode);
       } else if (settingsSelection_ == 8) {
-        display_.showBootMessage("Turning off...", battery_);
+        display_.showBootMessage(I18n::text("turning_off"), battery_);
         responsiveDelay(250);
         enterDeepSleep();
       } else if (settingsSelection_ == 9) {
         sound_.playHardReset();
-        display_.showBootMessage("Restarting...", battery_);
+        display_.showBootMessage(I18n::text("restarting"), battery_);
         responsiveDelay(320);
         ESP.restart();
       } else if (settingsSelection_ == 10) {
@@ -1149,7 +1166,7 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       saveDisplaySettings();
       showNotice(String(I18n::text("theme")) + " " + themeLabel(themeCode_), 2000);
       renderNow();
-      display_.showBootMessage("Restarting...", battery_);
+      display_.showBootMessage(I18n::text("restarting"), battery_);
       responsiveDelay(450);
       ESP.restart();
       break;
@@ -1274,11 +1291,6 @@ void SpotifyDJApp::hardResetToProvisioning() {
   voiceRecorder_.abort();
   haDevice_.clearPairing();
   spotify_.clearStoredTokens();
-
-  Preferences spotifyPrefs;
-  spotifyPrefs.begin("spotify", false);
-  spotifyPrefs.clear();
-  spotifyPrefs.end();
 
   provisioning_.requestSetupMode();
 
@@ -1733,7 +1745,7 @@ void SpotifyDJApp::handleVoiceButton() {
   String message;
   voiceState_ = VoiceState::Connecting;
   AppLog.println("[SpotifyDJ] voice: connecting Assist websocket");
-  showNotice("Verbinden...", 3000);
+  showNotice(I18n::text("voice_connecting"), 3000);
   renderNow();
   if (!assistClient_.start(message)) {
     AppLog.print("[SpotifyDJ] voice: Assist start failed: ");
@@ -1764,7 +1776,10 @@ void SpotifyDJApp::handleVoiceButton() {
   ledRing_.playPulse(CRGB::Yellow);
   voiceClient_.sendStatus(true, "recording");
   mqttPublisher_.publishEvent("button", "middle", "push_to_talk_start");
-  showNotice("Luistert...", Config::VoiceMaxRecordMs + 1000);
+  diagnostics_.lastDjText = I18n::text("voice_listening");
+  djResponseOverlayVisible_ = true;
+  djResponseOverlayUntil_ = millis() + Config::VoiceMaxRecordMs + 1000;
+  showNotice(I18n::text("voice_listening"), Config::VoiceMaxRecordMs + 1000);
   renderNow();
 }
 
@@ -1779,7 +1794,10 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
     sound_.playPttStop();
   }
   ledRing_.playPulse(CRGB::Blue);
-  showNotice("Verwerken...", 3000);
+  diagnostics_.lastDjText = I18n::text("voice_processing");
+  djResponseOverlayVisible_ = true;
+  djResponseOverlayUntil_ = millis() + 3000;
+  showNotice(I18n::text("voice_processing"), 3000);
   renderNow();
   if (!voiceRecorder_.stopRaw()) {
     const String error = voiceRecorder_.error();
@@ -1812,12 +1830,21 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   voiceClient_.sendStatus(false, "sending_command");
   showNotice("SpotifyDJ...", 2500);
   renderNow();
-  if (voiceClient_.sendRecognizedText(recognizedText, message)) {
+  String audioUrl;
+  if (voiceClient_.sendRecognizedText(recognizedText, message, &audioUrl)) {
     voiceState_ = VoiceState::Done;
     AppLog.println("[SpotifyDJ] voice: command accepted");
     ledRing_.playPulse(CRGB::Green);
     voiceClient_.sendStatus(false, "idle");
-    showNotice(recognizedText, 3500);
+    bool spoken = false;
+    if (message != "Voice command sent") {
+      handleDjResponseText(message, audioUrl, spoken);
+    } else if (!audioUrl.isEmpty()) {
+      spoken = playDjResponseAudioUrl(audioUrl);
+      showNotice(spoken ? "Voice response played" : "Voice response audio failed", 3500);
+    } else {
+      showNotice(recognizedText, 3500);
+    }
   } else {
     voiceState_ = VoiceState::Error;
     AppLog.print("[SpotifyDJ] voice: command failed: ");
@@ -2082,6 +2109,9 @@ void SpotifyDJApp::transferToSelectedOutput() {
 void SpotifyDJApp::renderNow() {
   if (lowBatteryGuardActive_ || criticalBatteryGuardActive_) {
     renderLowBatteryGuard();
+    if (djResponseOverlayVisible_) {
+      display_.renderDjResponseOverlay(diagnostics_.lastDjText);
+    }
     return;
   }
 
@@ -2113,7 +2143,19 @@ void SpotifyDJApp::renderNow() {
   visualState_.screenOn = display_.isOn();
   visualState_.screenBrightnessLevel = display_.backlightPercent();
   visualState_.ledOn = ledRing_.isOn();
+  if (djResponseOverlayVisible_) {
+    display_.renderDjResponseOverlay(diagnostics_.lastDjText);
+  }
   mqttPublisher_.requestPublish();
+}
+
+bool SpotifyDJApp::dismissDjResponseOverlay() {
+  if (!djResponseOverlayVisible_) {
+    return false;
+  }
+  djResponseOverlayVisible_ = false;
+  renderNow();
+  return true;
 }
 
 bool SpotifyDJApp::chargerConnected() const {
@@ -2153,7 +2195,7 @@ bool SpotifyDJApp::updateLowBatteryGuard() {
   const bool low = battery_.percent < 20;
   const bool chargedEnough = battery_.percent >= 21;
   if (chargingBatteryGuardActive_ && chargedEnough) {
-    display_.showBootMessage("Battery OK\nRestarting...", battery_);
+    display_.showBootMessage(I18n::text("battery_ok_restart"), battery_);
     responsiveDelay(800);
     ESP.restart();
   }
@@ -2289,12 +2331,53 @@ void SpotifyDJApp::logHeapIfDue() {
   }
   lastHeapLogAt_ = now;
 
+  const uint32_t freeHeap = ESP.getFreeHeap();
+  const uint32_t minFreeHeap = ESP.getMinFreeHeap();
+  const uint32_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  if (heapTrendBaselineMinFree_ == 0 || heapTrendBaselineLargestBlock_ == 0) {
+    heapTrendBaselineMinFree_ = minFreeHeap;
+    heapTrendBaselineLargestBlock_ = largestBlock;
+    heapTrendPreviousMinFree_ = minFreeHeap;
+    heapTrendPreviousLargestBlock_ = largestBlock;
+  }
+
+  const int32_t minFreeDelta = static_cast<int32_t>(minFreeHeap) - static_cast<int32_t>(heapTrendPreviousMinFree_);
+  const int32_t largestBlockDelta = static_cast<int32_t>(largestBlock) - static_cast<int32_t>(heapTrendPreviousLargestBlock_);
+  const int32_t minFreeSinceBoot = static_cast<int32_t>(minFreeHeap) - static_cast<int32_t>(heapTrendBaselineMinFree_);
+  const int32_t largestBlockSinceBoot = static_cast<int32_t>(largestBlock) - static_cast<int32_t>(heapTrendBaselineLargestBlock_);
+
   AppLog.print("Memory: free_heap=");
-  AppLog.print(ESP.getFreeHeap());
+  AppLog.print(freeHeap);
   AppLog.print(" min_free_heap=");
-  AppLog.print(ESP.getMinFreeHeap());
+  AppLog.print(minFreeHeap);
+  AppLog.print(" min_delta=");
+  AppLog.print(minFreeDelta);
+  AppLog.print(" min_since_baseline=");
+  AppLog.print(minFreeSinceBoot);
   AppLog.print(" largest_block=");
-  AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+  AppLog.print(largestBlock);
+  AppLog.print(" largest_delta=");
+  AppLog.print(largestBlockDelta);
+  AppLog.print(" largest_since_baseline=");
+  AppLog.println(largestBlockSinceBoot);
+
+  if (minFreeDelta < 0 || largestBlockDelta < 0) {
+    AppLog.print("Memory trend warning: ");
+    if (minFreeDelta < 0) {
+      AppLog.print("min_free_heap down ");
+      AppLog.print(-minFreeDelta);
+      AppLog.print("B ");
+    }
+    if (largestBlockDelta < 0) {
+      AppLog.print("largest_block down ");
+      AppLog.print(-largestBlockDelta);
+      AppLog.print("B");
+    }
+    AppLog.println();
+  }
+
+  heapTrendPreviousMinFree_ = minFreeHeap;
+  heapTrendPreviousLargestBlock_ = largestBlock;
 }
 
 void SpotifyDJApp::enterDeepSleep() {
@@ -2396,7 +2479,7 @@ void SpotifyDJApp::applyWebSettings(
   saveDisplaySettings();
   showNotice("Web settings saved", 1800);
   renderNow();
-  display_.showBootMessage("Restarting...", battery_);
+  display_.showBootMessage(I18n::text("restarting"), battery_);
   responsiveDelay(450);
   ESP.restart();
 }
@@ -2427,6 +2510,48 @@ void SpotifyDJApp::applyWebMqttSettings(const MqttSettings &settings) {
       screenOffTimeoutMs_,
       deviceSleepTimeoutMs_);
   mqttPublisher_.requestPublish();
+}
+
+bool SpotifyDJApp::repairSpotifyCredentialsFromWeb(
+    const String &clientId,
+    const String &refreshToken,
+    const String &market,
+    String &message) {
+  String submittedClientId = clientId;
+  String submittedRefreshToken = refreshToken;
+  String submittedMarket = market;
+  submittedClientId.trim();
+  submittedRefreshToken.trim();
+  submittedMarket.trim();
+
+  const String storedClientId = haDevice_.getSpotifyClientId();
+  if (!Logic::spotifyRepairCredentialsValid(storedClientId.c_str(), submittedClientId.c_str(), submittedRefreshToken.c_str())) {
+    message = storedClientId.isEmpty()
+                  ? "Spotify client ID and refresh token are required"
+                  : "Spotify refresh token is required";
+    return false;
+  }
+
+  const String effectiveClientId = submittedClientId.isEmpty() ? storedClientId : submittedClientId;
+  const String effectiveMarket = Logic::spotifyMarketOrDefault(submittedMarket.c_str());
+  AppLog.print("Web Spotify repair: client_id=");
+  AppLog.print(effectiveClientId.isEmpty() ? "missing" : "present");
+  AppLog.print(" market=");
+  AppLog.println(effectiveMarket);
+
+  haDevice_.saveSpotifyCredentials(effectiveClientId, submittedRefreshToken, effectiveMarket);
+  spotify_.reloadCredentials();
+  if (!spotify_.authorize()) {
+    message = playback_.error.isEmpty() ? "Spotify authorization failed" : playback_.error;
+    return false;
+  }
+
+  spotify_.refreshPlayback();
+  refreshMqttControlLists();
+  showNotice(I18n::text("spotify_connected"), 2500);
+  renderNow();
+  message = "Spotify refresh token saved and authorization OK";
+  return true;
 }
 
 void SpotifyDJApp::applyProvisionedLanguage(const String &languageCode) {
@@ -2542,7 +2667,7 @@ void SpotifyDJApp::processPendingWifiSettings() {
     AppLog.print("Web WiFi test OK, IP: ");
     AppLog.println(WiFi.localIP());
     provisioning_.saveWifiCredentials(pendingWifiSsid_, targetPassword);
-    display_.showBootMessage("WiFi OK. Restarting...", battery_);
+    display_.showBootMessage(I18n::text("wifi_ok_restart"), battery_);
     responsiveDelay(900);
     ESP.restart();
     return;
@@ -2603,6 +2728,7 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
 
 bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   if (haDevice_.isPaired()) {
+    homeAssistantPaired_ = true;
     if (haPairingScreenActive_) {
       haPairingScreenActive_ = false;
       haPairingStartedAt_ = 0;
@@ -2610,7 +2736,7 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
       responsiveDelay(700);
       display_.showBootMessage("Authorizing Spotify...", battery_);
       if (spotify_.authorize()) {
-        showNotice("Spotify authorized");
+        showNotice(I18n::text("spotify_connected"));
         lastPlaybackPollAt_ = millis();
         spotify_.refreshPlayback();
         refreshMqttControlLists();
@@ -2622,6 +2748,7 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   }
 
   haPairingScreenActive_ = true;
+  homeAssistantPaired_ = false;
   if (haPairingStartedAt_ == 0) {
     haPairingStartedAt_ = millis();
   }
@@ -2690,8 +2817,29 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
   AppLog.println(text.length());
   app->voiceClient_.sendStatus(false, "sending_command");
   const bool ok = app->voiceClient_.sendRecognizedText(text, message, &audioUrl);
+  if (ok) {
+    bool spoken = false;
+    if (message != "Voice command sent") {
+      app->handleDjResponseText(message, audioUrl, spoken);
+    } else if (!audioUrl.isEmpty()) {
+      spoken = app->playDjResponseAudioUrl(audioUrl);
+    }
+  }
   app->voiceClient_.sendStatus(false, ok ? "idle" : "error", ok ? "" : message);
   return ok;
+}
+
+bool SpotifyDJApp::repairSpotifyCredentialsFromWebCallback(
+    void *context,
+    const String &clientId,
+    const String &refreshToken,
+    const String &market,
+    String &message) {
+  if (context == nullptr) {
+    message = "App unavailable";
+    return false;
+  }
+  return static_cast<SpotifyDJApp *>(context)->repairSpotifyCredentialsFromWeb(clientId, refreshToken, market, message);
 }
 
 void SpotifyDJApp::refreshFromWebCallback(void *context) {
@@ -2730,13 +2878,16 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   diagnostics_.lastDjText = text;
   AppLog.print("[SpotifyDJ] DJ response displayed chars=");
   AppLog.println(text.length());
+  djResponseOverlayVisible_ = true;
+  djResponseOverlayUntil_ = millis() + 6000;
+  display_.wakeForUserActivity();
+  renderNow();
   if (!audioUrl.isEmpty()) {
     spoken = playDjResponseAudioUrl(audioUrl);
   }
   if (!spoken && volumeFeedbackEnabled_) {
     sound_.playConfirm();
   }
-  showNotice(text, 6000);
   renderNow();
   mqttPublisher_.requestPublish();
   mqttPublisher_.publishDjResponseEvent(spoken, true);
