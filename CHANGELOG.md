@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.7.8
+## v2.7.9
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -41,7 +41,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.7.8` / `v2.7.8`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.7.9` / `v2.7.9`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
