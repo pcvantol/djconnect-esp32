@@ -29,6 +29,9 @@ public:
   // Advances the AP/setup portal rainbow breathing animation.
   void showSetupRainbowBreath();
 
+  // Advances a fast purple chase used while OTA firmware is being written.
+  void showFirmwareUpdateAnimation();
+
   // Matches the ring brightness to the display power state; 0 fully hides the ring.
   void setPowerPercent(uint8_t percent);
 
@@ -45,4 +48,6 @@ private:
   uint8_t chargingFrame_ = 0;
   uint32_t lastSetupFrameAt_ = 0;
   uint8_t setupFrame_ = 0;
+  uint32_t lastFirmwareFrameAt_ = 0;
+  uint8_t firmwareFrame_ = 0;
 };

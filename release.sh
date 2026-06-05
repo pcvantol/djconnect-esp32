@@ -4,8 +4,8 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  ./release.sh 2.3.0 [--dry-run] [--publish-firmware-repo <path>] [--no-gh-release]
-  ./release.sh v2.3.0 [--dry-run] [--publish-firmware-repo <path>] [--no-gh-release]
+  ./release.sh 2.3.0 [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
+  ./release.sh v2.3.0 [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
 
 Environment:
   PIO_BIN                 PlatformIO executable override.
@@ -103,7 +103,7 @@ EOF
 
 VERSION_ARG=""
 DRY_RUN=false
-NO_GH_RELEASE=false
+GH_RELEASE=false
 PUBLISH_FIRMWARE_REPO=""
 MIN_HA_INTEGRATION="1.0.0"
 
@@ -113,8 +113,12 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    --gh-release)
+      GH_RELEASE=true
+      shift
+      ;;
     --no-gh-release)
-      NO_GH_RELEASE=true
+      GH_RELEASE=false
       shift
       ;;
     --publish-firmware-repo)
@@ -180,8 +184,9 @@ if [[ "$DRY_RUN" == "true" ]]; then
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
     echo "Would publish assets to firmware repo path: $PUBLISH_FIRMWARE_REPO."
   fi
-  if [[ "$NO_GH_RELEASE" == "false" ]]; then
-    echo "Would create GitHub release in $FIRMWARE_RELEASE_REPO if gh is available."
+  echo "Would push tag $TAG; GitHub Actions will build/publish the public firmware release."
+  if [[ "$GH_RELEASE" == "true" ]]; then
+    echo "Would also create GitHub release in $FIRMWARE_RELEASE_REPO locally because --gh-release was passed."
   fi
   exit 0
 fi
@@ -220,7 +225,7 @@ if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
   run_in_dir "$PUBLISH_FIRMWARE_REPO" git push origin "$TAG"
 fi
 
-if [[ "$NO_GH_RELEASE" == "false" ]]; then
+if [[ "$GH_RELEASE" == "true" ]]; then
   if command -v gh >/dev/null 2>&1; then
     run gh release create "$TAG" \
       --repo "$FIRMWARE_RELEASE_REPO" \
@@ -229,6 +234,8 @@ if [[ "$NO_GH_RELEASE" == "false" ]]; then
   else
     echo "gh not found; skipping GitHub release creation"
   fi
+else
+  echo "Skipping local GitHub release creation; pushed tag $TAG will let GitHub Actions publish firmware assets."
 fi
 
 echo "Release prepared: $TAG"

@@ -226,6 +226,12 @@ void SpotifyDJDevice::clearSpotifyCredentials() {
   removeKey(SpotifyClientIdKey);
   removeKey(SpotifyRefreshKey);
   removeKey(SpotifyMarketKey);
+  Preferences provision;
+  provision.begin("provision", false);
+  provision.remove("sp_client");
+  provision.remove("sp_refresh");
+  provision.remove("spotify_market");
+  provision.end();
   AppLog.println("[SpotifyDJ] Spotify credentials cleared");
 }
 

@@ -73,6 +73,22 @@ void ProvisioningController::saveMqttSettings(const MqttSettings &settings) cons
   provision.end();
 }
 
+void ProvisioningController::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &spotifyMarket) const {
+  Preferences provision;
+  provision.begin("provision", false);
+  provision.putString("sp_client", clientId);
+  provision.putString("sp_refresh", refreshToken);
+  provision.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  provision.end();
+
+  Preferences spotifydj;
+  spotifydj.begin("spotifydj", false);
+  spotifydj.putString("sp_client", clientId);
+  spotifydj.putString("sp_refresh", refreshToken);
+  spotifydj.putString("sp_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  spotifydj.end();
+}
+
 void ProvisioningController::saveSetupProvisioning(
     const String &ssid,
     const String &password,

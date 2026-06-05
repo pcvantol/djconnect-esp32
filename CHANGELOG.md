@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.7.5
+## v2.7.6
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -40,7 +40,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.7.5` / `v2.7.5`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.7.6` / `v2.7.6`; local builds without release flags remain `dev` / `vdev`.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
 - Spotify credentials are provisioned through the setup portal or Home Assistant and stored in NVS.
 - The web portal can manually repair Spotify OAuth credentials with a one-shot refresh-token submit field, immediately testing authorization and clearing the submitted fields from the page.

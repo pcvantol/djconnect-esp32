@@ -25,8 +25,9 @@ public:
 private:
   void appendChar(char value);
   void commitCurrentLine();
-  String linePrefix() const;
+  String linePrefix(const String &severity) const;
   String normalizedLine(const String &line) const;
+  String severityForLine(const String &line) const;
 
   char lines_[MaxLines][MaxLineLength] = {};
   char currentLine_[MaxLineLength] = {};

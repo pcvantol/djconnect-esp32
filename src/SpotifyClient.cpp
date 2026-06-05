@@ -897,6 +897,10 @@ void SpotifyClient::saveRefreshToken(const String &newRefreshToken) {
   spotifydj.begin("spotifydj", false);
   const bool spotifydjSaved = spotifydj.putString("sp_refresh", newRefreshToken) > 0;
   spotifydj.end();
+  Preferences provision;
+  provision.begin("provision", false);
+  provision.putString("sp_refresh", newRefreshToken);
+  provision.end();
   if (!spotifydjSaved) {
     AppLog.println("Failed to save rotated refresh token to SpotifyDJ NVS");
     return;

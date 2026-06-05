@@ -124,7 +124,7 @@ bool SpotifyDJOTA::performUpdate(
     }
   }
   if (ledRing != nullptr) {
-    ledRing->showSolid(CRGB::Purple, 100);
+    ledRing->showFirmwareUpdateAnimation();
   }
 
   uint8_t buffer[1024];
@@ -144,6 +144,9 @@ bool SpotifyDJOTA::performUpdate(
   }
   while (stream != nullptr && (contentLength <= 0 || written < static_cast<size_t>(contentLength))) {
     const int available = stream->available();
+    if (ledRing != nullptr) {
+      ledRing->showFirmwareUpdateAnimation();
+    }
     if (available <= 0) {
       if (!http.connected() && contentLength <= 0) {
         break;

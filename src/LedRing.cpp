@@ -168,6 +168,28 @@ void LedRing::showSetupRainbowBreath() {
   FastLED.show();
 }
 
+void LedRing::showFirmwareUpdateAnimation() {
+  if (!ready_) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - lastFirmwareFrameAt_ < 28) {
+    return;
+  }
+  lastFirmwareFrameAt_ = now;
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+  FastLED.setBrightness(Config::LedRingBrightness);
+
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+  const uint8_t head = firmwareFrame_++ % Config::Ws2812LedCount;
+  leds_[head] = CRGB::Purple;
+  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = CRGB(80, 0, 110);
+  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = CRGB(30, 0, 50);
+  FastLED.show();
+}
+
 void LedRing::setPowerPercent(uint8_t percent) {
   percent = constrain(percent, 0, 100);
   if (percent == powerPercent_) {

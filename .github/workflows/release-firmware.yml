@@ -33,16 +33,23 @@ jobs:
         run: pip install platformio
 
       - name: Build firmware
-        env:
-          SPOTIFYDJ_BUILD_FLAGS: >
-            -DSPOTIFYDJ_VERSION=\"${{ steps.version.outputs.version }}\"
-            -DSPOTIFYDJ_VERSION_TAG=\"v${{ steps.version.outputs.version }}\"
-        run: pio run
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          export SPOTIFYDJ_BUILD_FLAGS="-DSPOTIFYDJ_VERSION=\\\"${VERSION}\\\" -DSPOTIFYDJ_VERSION_TAG=\\\"v${VERSION}\\\""
+          pio run -e t_embed_cc1101
+
+      - name: Verify embedded firmware version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! strings .pio/build/t_embed_cc1101/firmware.elf | grep -q "v${VERSION}"; then
+            echo "Firmware does not contain expected version tag v${VERSION}" >&2
+            exit 1
+          fi
 
       - name: Prepare release assets
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          BIN="spotifydj-lilygo-t-embed-s3-v${VERSION}.bin"
+          BIN="spotifydj-device-v${VERSION}.bin"
 
           mkdir -p release
 
@@ -80,7 +87,7 @@ jobs:
             Device: `lilygo-t-embed-s3`
 
             Binary:
-            `spotifydj-lilygo-t-embed-s3-v${{ steps.version.outputs.version }}.bin`
+            `spotifydj-device-v${{ steps.version.outputs.version }}.bin`
           files: |
             release/*
         env:

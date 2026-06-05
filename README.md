@@ -319,7 +319,7 @@ During firmware write, the display shows `Firmware update in progress..`, the LE
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/spotify-dj-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates `release/spotifydj-device-vX.Y.Z.bin`, writes `release/firmware_manifest.json`, commits, tags and pushes:
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates `release/spotifydj-device-vX.Y.Z.bin`, writes `release/firmware_manifest.json`, commits, tags and pushes. The pushed git tag then triggers the GitHub Action, which builds and publishes the public firmware release in `pcvantol/spotify-dj-firmware`.
 
 Old public firmware releases can be reviewed and pruned with the separate dry-run first cleanup helper:
 
@@ -344,13 +344,13 @@ Publish the generated firmware asset and manifest into the public firmware relea
 ./release.sh X.Y.Z --publish-firmware-repo ../spotify-dj-firmware
 ```
 
-Skip GitHub release creation when you only want the commit/tag/push steps:
+Create the public GitHub release locally instead of waiting for GitHub Actions only when you explicitly need that fallback:
 
 ```bash
-./release.sh X.Y.Z --no-gh-release
+./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.7.5 --dry-run` validates the release plan without touching files. Both `2.7.5` and `v2.7.5` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.7.6 --dry-run` validates the release plan without touching files. Both `2.7.6` and `v2.7.6` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

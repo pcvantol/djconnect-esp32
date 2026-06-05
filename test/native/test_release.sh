@@ -12,6 +12,7 @@ echo "$dry_run_output" | grep -q "version: 98.76.54"
 echo "$dry_run_output" | grep -q "tag:     v98.76.54"
 echo "$dry_run_output" | grep -q "Would build with SPOTIFYDJ_VERSION=98.76.54"
 echo "$dry_run_output" | grep -q "Would commit, tag and push source repo"
+echo "$dry_run_output" | grep -q "GitHub Actions will build/publish"
 
 set +e
 invalid_output="$(./release.sh 98.76 --dry-run 2>&1)"

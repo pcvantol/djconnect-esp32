@@ -2687,6 +2687,7 @@ bool SpotifyDJApp::repairSpotifyCredentialsFromWeb(
     message = "Spotify credentials could not be saved to NVS";
     return false;
   }
+  provisioning_.saveSpotifyCredentials(effectiveClientId, submittedRefreshToken, effectiveMarket);
   spotify_.reloadCredentials();
   if (!spotify_.authorize()) {
     message = playback_.error.isEmpty() ? I18n::text("spotify_authorization_failed") : playback_.error;

@@ -36,6 +36,7 @@ public:
 
   void saveWifiCredentials(const String &ssid, const String &password) const;
   void saveMqttSettings(const MqttSettings &settings) const;
+  void saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &spotifyMarket) const;
   void saveSetupProvisioning(
       const String &ssid,
       const String &password,
