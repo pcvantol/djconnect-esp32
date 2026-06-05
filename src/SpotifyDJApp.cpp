@@ -3040,6 +3040,9 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
   app->voiceState_ = VoiceState::Idle;
   app->voiceRecording_ = false;
   app->notice_.visibleUntil = 0;
+  app->djResponseOverlayVisible_ = false;
+  app->display_.resetDjResponseOverlayCache();
+  app->renderNow();
   app->voiceClient_.sendStatus(false, ok ? "idle" : "error", ok ? "" : message);
   return ok;
 }
