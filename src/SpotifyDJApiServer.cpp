@@ -6,6 +6,7 @@
 #include <WiFi.h>
 
 #include "AppLog.h"
+#include "SpotifyProvisioning.h"
 
 namespace {
 bool mqttSettingsFromJson(JsonVariantConst mqtt, MqttSettings &settings) {
@@ -37,7 +38,11 @@ void SpotifyDJApiServer::begin(
     SpotifyClient &spotify,
     DisplayManager &display,
     LedRing &ledRing,
-    const BatteryState &battery) {
+    const BatteryState &battery,
+    const RuntimeDiagnostics &diagnostics,
+    void *callbackContext,
+    DjResponseCallback djResponseCallback,
+    LanguageProvisionedCallback languageProvisionedCallback) {
   if (running_) {
     return;
   }
@@ -50,6 +55,10 @@ void SpotifyDJApiServer::begin(
   display_ = &display;
   ledRing_ = &ledRing;
   battery_ = &battery;
+  diagnostics_ = &diagnostics;
+  callbackContext_ = callbackContext;
+  djResponseCallback_ = djResponseCallback;
+  languageProvisionedCallback_ = languageProvisionedCallback;
 
   static const char *headers[] = {"Authorization"};
   server_->collectHeaders(headers, 1);
@@ -59,6 +68,7 @@ void SpotifyDJApiServer::begin(
   server_->on("/api/device/pair", HTTP_POST, [this]() { handlePair(); });
   server_->on("/api/device/provision_spotify", HTTP_POST, [this]() { handleProvisionSpotify(); });
   server_->on("/api/device/ota", HTTP_POST, [this]() { handleOta(); });
+  server_->on("/api/device/dj_response", HTTP_POST, [this]() { handleDjResponse(); });
   server_->on("/api/device/reboot", HTTP_POST, [this]() { handleReboot(); });
   server_->on("/api/device/forget", HTTP_POST, [this]() { handleForget(); });
   running_ = true;
@@ -106,6 +116,7 @@ void SpotifyDJApiServer::handleInfo() {
   doc["battery_mv"] = battery_ == nullptr ? 0 : battery_->voltageMv;
   doc["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   doc["ha_url"] = device_->getHaUrl();
+  doc["last_dj_text"] = diagnostics_ == nullptr ? "" : diagnostics_->lastDjText;
   String payload;
   serializeJson(doc, payload);
   sendJson(200, payload);
@@ -153,18 +164,29 @@ void SpotifyDJApiServer::handleProvisionSpotify() {
     sendJson(400, "{\"error\":\"invalid json\"}");
     return;
   }
-  const String clientId = doc["spotify_client_id"] | "";
-  const String refreshToken = doc["spotify_refresh_token"] | "";
-  const String market = doc["spotify_market"] | "NL";
+  const SpotifyProvisioningCredentials credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
   const String assistPipelineId = doc["assist_pipeline_id"] | "";
-  if (clientId.isEmpty() || refreshToken.isEmpty()) {
+  if (!credentials.complete()) {
     sendJson(400, "{\"error\":\"spotify credentials missing\"}");
     return;
   }
 
-  device_->saveSpotifyCredentials(clientId, refreshToken, market);
+  device_->saveSpotifyCredentials(
+      credentials.clientId,
+      credentials.refreshToken,
+      credentials.market == nullptr ? "NL" : credentials.market);
   if (doc["assist_pipeline_id"].is<const char *>()) {
     device_->saveAssistPipelineId(assistPipelineId);
+  }
+  String language = doc["device_language"] | "";
+  if (language.isEmpty()) {
+    language = doc["language"] | "";
+  }
+  const String normalizedLanguage = SpotifyDJDevice::normalizedLanguageCode(language);
+  if (!normalizedLanguage.isEmpty() &&
+      SpotifyDJDevice::saveProvisionedLanguage(normalizedLanguage) &&
+      languageProvisionedCallback_ != nullptr) {
+    languageProvisionedCallback_(callbackContext_, normalizedLanguage);
   }
   MqttSettings mqttSettings;
   if (mqttSettingsFromJson(doc["mqtt"], mqttSettings)) {
@@ -217,6 +239,45 @@ void SpotifyDJApiServer::handleOta() {
   }
   AppLog.print("[SpotifyDJ] OTA failed after response: ");
   AppLog.println(message);
+}
+
+void SpotifyDJApiServer::handleDjResponse() {
+  if (!validateBearerToken()) {
+    return;
+  }
+
+  JsonDocument doc;
+  if (deserializeJson(doc, server_->arg("plain"))) {
+    sendJson(400, "{\"error\":\"invalid json\"}");
+    return;
+  }
+
+  String text = doc["text"] | "";
+  const String audioUrl = doc["audio_url"] | "";
+  text.trim();
+  if (text.isEmpty()) {
+    sendJson(400, "{\"error\":\"text missing\"}");
+    return;
+  }
+
+  AppLog.print("[SpotifyDJ] DJ response received chars=");
+  AppLog.println(text.length());
+  bool displayed = false;
+  bool spoken = false;
+  if (djResponseCallback_ != nullptr) {
+    displayed = djResponseCallback_(callbackContext_, text, audioUrl, spoken);
+  }
+  if (!displayed) {
+    sendJson(500, "{\"success\":false,\"error\":\"dj response display failed\"}");
+    return;
+  }
+  if (spoken) {
+    sendJson(200, "{\"success\":true,\"spoken\":true,\"displayed\":true}");
+  } else {
+    sendJson(
+        202,
+        "{\"success\":true,\"spoken\":false,\"displayed\":true,\"message\":\"DJ response displayed; no playable TTS audio supplied\"}");
+  }
 }
 
 void SpotifyDJApiServer::handleReboot() {

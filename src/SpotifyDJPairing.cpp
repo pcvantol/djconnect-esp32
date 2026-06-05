@@ -6,6 +6,10 @@
 #include <WiFi.h>
 
 #include "AppLog.h"
+#include "Config.h"
+#include "I18n.h"
+#include "NetworkActivity.h"
+#include "SpotifyProvisioning.h"
 
 namespace {
 String joinUrl(const String &base, const char *path) {
@@ -40,6 +44,55 @@ void SpotifyDJPairing::begin(SpotifyDJDevice &device, SpotifyDJDiscovery *discov
   discovery_ = discovery;
 }
 
+void SpotifyDJPairing::setLanguageProvisionedCallback(
+    void (*callback)(void *context, const String &languageCode),
+    void *context) {
+  languageProvisionedCallback_ = callback;
+  languageProvisionedContext_ = context;
+}
+
+void SpotifyDJPairing::setSpotifyProvisionedCallback(
+    void (*callback)(void *context),
+    void *context) {
+  spotifyProvisionedCallback_ = callback;
+  spotifyProvisionedContext_ = context;
+}
+
+void SpotifyDJPairing::applyProvisionedLanguage(JsonVariantConst payload) {
+  if (!payload.is<JsonObjectConst>()) {
+    return;
+  }
+  String language = payload["device_language"] | "";
+  if (language.isEmpty()) {
+    language = payload["language"] | "";
+  }
+  const String normalized = SpotifyDJDevice::normalizedLanguageCode(language);
+  if (normalized.isEmpty()) {
+    return;
+  }
+  if (SpotifyDJDevice::saveProvisionedLanguage(normalized) &&
+      languageProvisionedCallback_ != nullptr) {
+    languageProvisionedCallback_(languageProvisionedContext_, normalized);
+  }
+}
+
+void SpotifyDJPairing::applyProvisionedSpotifyCredentials(JsonVariantConst payload) {
+  if (device_ == nullptr) {
+    return;
+  }
+  const SpotifyProvisioningCredentials credentials = SpotifyProvisioning::parseCredentials(payload);
+  if (!credentials.complete()) {
+    return;
+  }
+  device_->saveSpotifyCredentials(
+      credentials.clientId,
+      credentials.refreshToken,
+      credentials.market == nullptr ? "NL" : credentials.market);
+  if (spotifyProvisionedCallback_ != nullptr) {
+    spotifyProvisionedCallback_(spotifyProvisionedContext_);
+  }
+}
+
 bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   if (device_ == nullptr || haUrl.isEmpty()) {
     return false;
@@ -53,20 +106,25 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   request["firmware"] = device_->getFirmwareVersion();
   request["model"] = device_->getModel();
   request["local_url"] = device_->getLocalUrl();
+  request["language"] = I18n::languageCode();
 
   String body;
   serializeJson(request, body);
 
   HTTPClient http;
+  NetworkActivity activity("ha_pair", Config::HttpLongIoTimeoutMs);
+  NetworkActivity::configureLongHttp(http);
   const String url = joinUrl(haUrl, "/api/spotify_dj/pair");
   if (!http.begin(url)) {
     AppLog.println("[SpotifyDJ] HA pair HTTP begin failed");
+    activity.finishError("begin failed");
     return false;
   }
   http.addHeader("Content-Type", "application/json");
   const int code = http.POST(body);
   const String payload = http.getString();
   http.end();
+  activity.finish(code);
 
   AppLog.print("[SpotifyDJ] HA pair response: ");
   AppLog.println(code);
@@ -91,6 +149,8 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   if (strlen(assistPipelineId) > 0) {
     device_->saveAssistPipelineId(assistPipelineId);
   }
+  applyProvisionedLanguage(response.as<JsonVariantConst>());
+  applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());
   MqttSettings mqttSettings;
   if (mqttSettingsFromJson(response["mqtt"], mqttSettings)) {
     device_->saveMqttSettings(mqttSettings);
@@ -119,6 +179,7 @@ bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyC
   request["charging"] = battery.charging || battery.full;
   request["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   request["firmware"] = device_->getFirmwareVersion();
+  request["language"] = I18n::languageCode();
   request["spotify_configured"] = spotifyConfigured;
   request["free_heap"] = ESP.getFreeHeap();
   request["uptime_ms"] = millis();
@@ -127,9 +188,12 @@ bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyC
   serializeJson(request, body);
 
   HTTPClient http;
+  NetworkActivity activity("ha_status", Config::HttpLongIoTimeoutMs);
+  NetworkActivity::configureLongHttp(http);
   const String url = joinUrl(haUrl, "/api/spotify_dj/status");
   if (!http.begin(url)) {
     AppLog.println("[SpotifyDJ] HA status HTTP begin failed");
+    activity.finishError("begin failed");
     return false;
   }
   http.addHeader("Content-Type", "application/json");
@@ -138,6 +202,7 @@ bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyC
   const int code = http.POST(body);
   const String payload = http.getString();
   http.end();
+  activity.finish(code);
 
   AppLog.print("[SpotifyDJ] HA status response: ");
   AppLog.println(code);
@@ -148,6 +213,8 @@ bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyC
       if (mqttSettingsFromJson(response["mqtt"], mqttSettings)) {
         device_->saveMqttSettings(mqttSettings);
       }
+      applyProvisionedLanguage(response.as<JsonVariantConst>());
+      applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());
     }
   }
   return code >= 200 && code < 300;

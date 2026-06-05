@@ -2,6 +2,7 @@
 #include "AppLog.h"
 
 #include <esp_log.h>
+#include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +24,9 @@ int appLogVprintf(const char *format, va_list args) {
 void AppLogger::begin() {
   setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
   tzset();
-  currentLine_ = "";
+  currentLine_[0] = '\0';
+  currentLength_ = 0;
+  memset(lines_, 0, sizeof(lines_));
   nextLine_ = 0;
   lineCount_ = 0;
   ready_ = true;
@@ -44,14 +47,15 @@ size_t AppLogger::write(const uint8_t *buffer, size_t size) {
 
 String AppLogger::text() const {
   String output;
+  output.reserve((lineCount_ + (currentLength_ == 0 ? 0 : 1)) * 80);
   const size_t first = lineCount_ == MaxLines ? nextLine_ : 0;
   for (size_t index = 0; index < lineCount_; index++) {
     const size_t lineIndex = (first + index) % MaxLines;
     output += lines_[lineIndex];
     output += '\n';
   }
-  if (!currentLine_.isEmpty()) {
-    output += linePrefix() + normalizedLine(currentLine_);
+  if (currentLength_ > 0) {
+    output += linePrefix() + normalizedLine(String(currentLine_));
   }
   return output;
 }
@@ -61,7 +65,7 @@ size_t AppLogger::newestLines(String *target, size_t maxLines) const {
     return 0;
   }
 
-  const size_t available = lineCount_ + (currentLine_.isEmpty() ? 0 : 1);
+  const size_t available = lineCount_ + (currentLength_ == 0 ? 0 : 1);
   const size_t count = min(maxLines, available);
   const size_t firstVisible = available - count;
   const size_t firstStored = lineCount_ == MaxLines ? nextLine_ : 0;
@@ -72,7 +76,7 @@ size_t AppLogger::newestLines(String *target, size_t maxLines) const {
       const size_t lineIndex = (firstStored + sourceIndex) % MaxLines;
       target[index] = lines_[lineIndex];
     } else {
-      target[index] = linePrefix() + normalizedLine(currentLine_);
+      target[index] = linePrefix() + normalizedLine(String(currentLine_));
     }
   }
   return count;
@@ -90,20 +94,25 @@ void AppLogger::appendChar(char value) {
     return;
   }
 
-  currentLine_ += value;
-  if (currentLine_.length() >= 120) {
+  if (currentLength_ + 1 >= MaxLineLength) {
+    commitCurrentLine();
+  }
+  currentLine_[currentLength_++] = value;
+  currentLine_[currentLength_] = '\0';
+  if (currentLength_ >= 120) {
     commitCurrentLine();
   }
 }
 
 void AppLogger::commitCurrentLine() {
-  if (currentLine_.isEmpty()) {
+  if (currentLength_ == 0) {
     return;
   }
-  const String line = linePrefix() + normalizedLine(currentLine_);
+  const String line = linePrefix() + normalizedLine(String(currentLine_));
   Serial.println(line);
-  lines_[nextLine_] = line;
-  currentLine_ = "";
+  snprintf(lines_[nextLine_], MaxLineLength, "%s", line.c_str());
+  currentLine_[0] = '\0';
+  currentLength_ = 0;
   nextLine_ = (nextLine_ + 1) % MaxLines;
   if (lineCount_ < MaxLines) {
     lineCount_++;
@@ -119,7 +128,7 @@ String AppLogger::linePrefix() const {
   } else {
     snprintf(buffer, sizeof(buffer), "[00-00-0000 00:00:00] ");
   }
-  return String(buffer) + "[SpotifyDJ] ";
+  return String(buffer);
 }
 
 String AppLogger::normalizedLine(const String &line) const {

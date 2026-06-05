@@ -26,6 +26,9 @@ public:
   String getAssistPipelineId() const;
   MqttSettings getMqttSettings() const;
 
+  static bool saveProvisionedLanguage(const String &languageCode);
+  static String normalizedLanguageCode(const String &languageCode);
+
   void ensurePairingCode();
   void displayPairingCode();
   void displayPaired();

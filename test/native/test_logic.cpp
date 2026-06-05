@@ -4,7 +4,30 @@
 #include <cassert>
 #include <cstring>
 
+#include <ArduinoJson.h>
+
 #include "LogicHelpers.h"
+#include "NetworkActivityLogic.h"
+#include "SpotifyDJMenuModel.h"
+#include "SpotifyProvisioning.h"
+
+struct FakeHttpClient {
+  uint32_t connectTimeout = 0;
+  uint32_t ioTimeout = 0;
+  bool reuse = true;
+
+  void setConnectTimeout(uint32_t value) {
+    connectTimeout = value;
+  }
+
+  void setTimeout(uint32_t value) {
+    ioTimeout = value;
+  }
+
+  void setReuse(bool value) {
+    reuse = value;
+  }
+};
 
 static void testTrackTimeFormatting() {
   char buffer[12] = {};
@@ -241,6 +264,126 @@ static void testMqttDeviceTopicFormatting() {
   assert(!Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", nullptr, buffer, sizeof(buffer)));
 }
 
+static void testLanguageCodeNormalization() {
+  assert(std::strcmp(Logic::languageCodeOrDefault("en"), "en") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("nl"), "nl") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("NL"), "nl") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("de"), "en") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault(nullptr), "en") == 0);
+}
+
+static void testSpotifyProvisioningTopLevel() {
+  JsonDocument doc;
+  doc["spotify_client_id"] = "client-a";
+  doc["spotify_refresh_token"] = "refresh-a";
+  doc["spotify_market"] = "NL";
+  const auto credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
+  assert(credentials.complete());
+  assert(std::strcmp(credentials.clientId, "client-a") == 0);
+  assert(std::strcmp(credentials.refreshToken, "refresh-a") == 0);
+  assert(std::strcmp(credentials.market, "NL") == 0);
+}
+
+static void testSpotifyProvisioningCompatTopLevel() {
+  JsonDocument doc;
+  doc["client_id"] = "client-b";
+  doc["refresh_token"] = "refresh-b";
+  doc["market"] = "BE";
+  const auto credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
+  assert(credentials.complete());
+  assert(std::strcmp(credentials.clientId, "client-b") == 0);
+  assert(std::strcmp(credentials.refreshToken, "refresh-b") == 0);
+  assert(std::strcmp(credentials.market, "BE") == 0);
+}
+
+static void testSpotifyProvisioningNestedPriority() {
+  JsonDocument doc;
+  doc["spotify_client_id"] = "top-client";
+  doc["spotify_refresh_token"] = "top-refresh";
+  JsonObject spotify = doc["spotify"].to<JsonObject>();
+  spotify["client_id"] = "nested-compat-client";
+  spotify["refresh_token"] = "nested-compat-refresh";
+  spotify["spotify_client_id"] = "nested-client";
+  spotify["spotify_refresh_token"] = "nested-refresh";
+  spotify["market"] = "DE";
+  const auto credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
+  assert(credentials.complete());
+  assert(std::strcmp(credentials.clientId, "nested-client") == 0);
+  assert(std::strcmp(credentials.refreshToken, "nested-refresh") == 0);
+  assert(std::strcmp(credentials.market, "DE") == 0);
+}
+
+static void testSpotifyProvisioningMissingRefreshToken() {
+  JsonDocument doc;
+  doc["spotify_client_id"] = "client-only";
+  const auto credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
+  assert(!credentials.complete());
+  assert(std::strcmp(credentials.clientId, "client-only") == 0);
+  assert(credentials.refreshToken == nullptr);
+}
+
+static void testSpotifyDJMenuItemCounts() {
+  MenuCountInput input;
+  assert(!SpotifyDJMenuModel::isMenuScreen(UiScreen::NowPlaying));
+  assert(SpotifyDJMenuModel::isMenuScreen(UiScreen::Settings));
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::NowPlaying, input) == 0);
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::RootMenu, input) == SpotifyDJMenuModel::RootMenuItemCount);
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::Settings, input) == SpotifyDJMenuModel::SettingsItemCount);
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::About, input) == SpotifyDJMenuModel::AboutItemCount);
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::Playlists, input) == 1);
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 2);
+
+  input.playlistsAvailable = true;
+  input.playlistCount = 3;
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::Playlists, input) == 3);
+
+  input.devicesAvailable = true;
+  input.deviceCount = 3;
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 4);
+
+  input.deviceCount = 99;
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == SpotifyDJMenuModel::MaxVisibleOutputs + 1);
+}
+
+static void testSpotifyDJMenuOptionValues() {
+  assert(SpotifyDJMenuModel::dimTimeoutValueMs(0) == 30000UL);
+  assert(SpotifyDJMenuModel::dimTimeoutValueMs(1) == 60000UL);
+  assert(SpotifyDJMenuModel::dimTimeoutValueMs(2) == 120000UL);
+  assert(SpotifyDJMenuModel::dimTimeoutValueMs(3) == 240000UL);
+  assert(SpotifyDJMenuModel::dimTimeoutValueMs(99) == 60000UL);
+
+  assert(SpotifyDJMenuModel::brightnessValuePercent(0) == 25);
+  assert(SpotifyDJMenuModel::brightnessValuePercent(3) == 100);
+  assert(SpotifyDJMenuModel::brightnessValuePercent(99) == 100);
+
+  assert(SpotifyDJMenuModel::speakerVolumeValuePercent(0) == 25);
+  assert(SpotifyDJMenuModel::speakerVolumeValuePercent(3) == 100);
+  assert(SpotifyDJMenuModel::speakerVolumeValuePercent(99) == 100);
+
+  assert(std::strcmp(SpotifyDJMenuModel::themeValue(0), "dark") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::themeValue(1), "light") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::themeValue(2), "auto") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::themeValue(99), "dark") == 0);
+
+  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(0), "normal") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(1), "shuffle") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(2), "repeat_once") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(3), "repeat_infinite") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(99), "normal") == 0);
+}
+
+static void testNetworkActivityLogicWithFakeHttp() {
+  FakeHttpClient http;
+  NetworkActivityLogic::configureHttp(http, 1234, 5678);
+  assert(http.connectTimeout == 1234);
+  assert(http.ioTimeout == 5678);
+  assert(!http.reuse);
+
+  assert(!NetworkActivityLogic::isSlow(999, 1000));
+  assert(NetworkActivityLogic::isSlow(1000, 1000));
+  assert(NetworkActivityLogic::isSlow(1001, 1000));
+}
+
 int main() {
   testTrackTimeFormatting();
   testProgressEstimation();
@@ -254,5 +397,13 @@ int main() {
   testVoiceChunkHelpers();
   testPlayModeMapping();
   testMqttDeviceTopicFormatting();
+  testLanguageCodeNormalization();
+  testSpotifyProvisioningTopLevel();
+  testSpotifyProvisioningCompatTopLevel();
+  testSpotifyProvisioningNestedPriority();
+  testSpotifyProvisioningMissingRefreshToken();
+  testSpotifyDJMenuItemCounts();
+  testSpotifyDJMenuOptionValues();
+  testNetworkActivityLogicWithFakeHttp();
   return 0;
 }

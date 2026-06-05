@@ -9,6 +9,7 @@
 #include <WiFi.h>
 
 #include "Config.h"
+#include "I18n.h"
 #include "LogicHelpers.h"
 #include "TextHelpers.h"
 #include "assets/SpotifyDJIcon160.h"
@@ -103,8 +104,6 @@ void DisplayManager::begin() {
   AppLog.print("x");
   AppLog.print(tft_.height());
   AppLog.println(screenBufferReady_ ? " OK" : " FAILED, using direct draw");
-
-  wakeForUserActivity();
 }
 
 void DisplayManager::showBootMessage(const String &message) {
@@ -112,11 +111,13 @@ void DisplayManager::showBootMessage(const String &message) {
     screen_.fillSprite(TFT_BLACK);
     renderBoot(screen_, message);
     screen_.pushSprite(0, 0);
+    wakeForUserActivity();
     return;
   }
 
   tft_.fillScreen(TFT_BLACK);
   renderBoot(tft_, message);
+  wakeForUserActivity();
 }
 
 void DisplayManager::showBootMessage(const String &message, const BatteryState &battery) {
@@ -124,11 +125,13 @@ void DisplayManager::showBootMessage(const String &message, const BatteryState &
     screen_.fillSprite(TFT_BLACK);
     renderBoot(screen_, message, &battery);
     screen_.pushSprite(0, 0);
+    wakeForUserActivity();
     return;
   }
 
   tft_.fillScreen(TFT_BLACK);
   renderBoot(tft_, message, &battery);
+  wakeForUserActivity();
 }
 
 void DisplayManager::showPairingCode(const String &pairCode) {
@@ -136,11 +139,13 @@ void DisplayManager::showPairingCode(const String &pairCode) {
     screen_.fillSprite(TFT_BLACK);
     renderPairingCode(screen_, pairCode);
     screen_.pushSprite(0, 0);
+    wakeForUserActivity();
     return;
   }
 
   tft_.fillScreen(TFT_BLACK);
   renderPairingCode(tft_, pairCode);
+  wakeForUserActivity();
 }
 
 void DisplayManager::showPairingCode(const String &pairCode, const BatteryState &battery) {
@@ -148,11 +153,13 @@ void DisplayManager::showPairingCode(const String &pairCode, const BatteryState 
     screen_.fillSprite(TFT_BLACK);
     renderPairingCode(screen_, pairCode, &battery);
     screen_.pushSprite(0, 0);
+    wakeForUserActivity();
     return;
   }
 
   tft_.fillScreen(TFT_BLACK);
   renderPairingCode(tft_, pairCode, &battery);
+  wakeForUserActivity();
 }
 
 void DisplayManager::renderPlaybackScreen(
@@ -214,6 +221,7 @@ void DisplayManager::renderLowBatteryScreen(const BatteryState &battery, const S
     screen_.setTextColor(TFT_RED, TFT_BLACK);
     screen_.drawString(message, 14, 146, 2);
     screen_.pushSprite(0, 0);
+    wakeForUserActivity();
     return;
   }
 
@@ -221,6 +229,7 @@ void DisplayManager::renderLowBatteryScreen(const BatteryState &battery, const S
   renderBoot(tft_, "Battery " + String(battery.percent) + "%", &battery);
   tft_.setTextColor(TFT_RED, TFT_BLACK);
   tft_.drawString(message, 14, 146, 2);
+  wakeForUserActivity();
 }
 
 void DisplayManager::renderLogsScreen(const String *lines, size_t lineCount, const StatusNotice &notice) {
@@ -271,13 +280,13 @@ void DisplayManager::renderAlbumArtScreen(
       JpegClipBottom = 0;
     } else {
       tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
-      tft_.drawString("No art", 52, 76, 2);
+      tft_.drawString(I18n::text("album_art_no_art"), 52, 76, 2);
     }
   }
 
   tft_.fillRect(168, 0, 152, 170, TFT_BLACK);
   tft_.setTextColor(BrightYellow, TFT_BLACK);
-  tft_.drawString("Current Song", AlbumTextX, 8, 2);
+  tft_.drawString(I18n::text("current_song"), AlbumTextX, 8, 2);
 
   tft_.setTextColor(TFT_WHITE, TFT_BLACK);
   drawMarqueeText(tft_, titleMarquee_, titleText(playback), AlbumTextX, AlbumTitleY, AlbumTextWidth, 4, AlbumTitleHeight);
@@ -291,7 +300,7 @@ void DisplayManager::renderAlbumArtScreen(
   }
 
   tft_.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft_.drawString("Center press = back", AlbumTextX, 154, 1);
+  tft_.drawString(I18n::text("center_back"), AlbumTextX, 154, 1);
 }
 
 void DisplayManager::renderAlbumArtMarqueeText(const SpotifyState &playback, bool titleChanged, bool artistChanged) {
@@ -348,6 +357,12 @@ void DisplayManager::configurePowerSaving(uint8_t activeBrightnessPercent, uint3
   activeBrightnessPercent_ = constrain(activeBrightnessPercent, 10, 100);
   offAfterMs_ = offAfterMs;
   setBacklightPercent(backlightPercent_ == 0 ? 0 : activeBrightnessPercent_);
+}
+
+void DisplayManager::setLightTheme(bool enabled) {
+  // On this ST7789 build the controller inversion flag is opposite to the
+  // user-facing theme name: inversion on gives the normal dark palette.
+  tft_.invertDisplay(!enabled);
 }
 
 void DisplayManager::setBacklightPercent(uint8_t percent) {
@@ -433,9 +448,9 @@ void DisplayManager::restartMarquee(TextMarqueeState &marquee) {
 
 String DisplayManager::titleText(const SpotifyState &playback) const {
   if (!playback.hasPlayback) {
-    return "No Playback";
+    return I18n::text("no_playback");
   }
-  return playback.trackName.isEmpty() ? "Nothing playing" : playback.trackName;
+  return playback.trackName.isEmpty() ? I18n::text("nothing_playing") : playback.trackName;
 }
 
 String DisplayManager::artistText(const SpotifyState &playback) const {
@@ -516,7 +531,7 @@ void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, c
   canvas.drawString("SpotifyDJ", 60, 18, 4);
 
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  canvas.drawString("Pairing code", 14, 62, 2);
+  canvas.drawString(I18n::text("pairing_code"), 14, 62, 2);
   canvas.drawString("Home Assistant", 14, 82, 2);
 
   canvas.drawFastHLine(14, 106, 292, TFT_DARKGREY);
@@ -540,7 +555,7 @@ void DisplayManager::renderPlayback(
   canvas.setTextDatum(TL_DATUM);
 
   canvas.setTextColor(BrightYellow, TFT_BLACK);
-  canvas.drawString("Now Playing", 8, 5, 2);
+  canvas.drawString(I18n::text("now_playing"), 8, 5, 2);
 
   auto drawStatusBadge = [&](int x, const char *label, bool ok) {
     const uint16_t color = ok ? SpotifyGreen : TFT_RED;
@@ -556,7 +571,7 @@ void DisplayManager::renderPlayback(
 
   // Body: only show output and volume controls when Spotify reports an active playback context.
   if (playback.hasPlayback) {
-    const String device = playback.deviceName.isEmpty() ? "No active device" : playback.deviceName;
+    const String device = playback.deviceName.isEmpty() ? I18n::text("no_active_device") : playback.deviceName;
     canvas.setTextColor(TFT_CYAN, TFT_BLACK);
     canvas.drawString(clippedText(canvas, device, 304, 2), 8, 32, 2);
   }
@@ -580,7 +595,7 @@ void DisplayManager::renderPlayback(
     const int volumeFillPercent = (constrain(displayedVolume, 0, Config::MaxSpotifyVolumePercent) * 100) /
                                   Config::MaxSpotifyVolumePercent;
     canvas.setTextColor(VolumeOrange, TFT_BLACK);
-    canvas.drawString("Vol " + String(displayedVolume) + "%", 8, 137, 2);
+    canvas.drawString(String(I18n::text("volume")) + " " + String(displayedVolume) + "%", 8, 137, 2);
     drawProgressBar(canvas, 70, 142, 242, 5, volumeFillPercent, VolumeOrange);
   }
 
@@ -593,10 +608,10 @@ void DisplayManager::renderPlayback(
     footer = notice.message;
     canvas.setTextColor(TFT_GREEN, TFT_BLACK);
   } else if (!playback.hasPlayback) {
-    footer = "Center: start Liked Proxy";
+    footer = I18n::text("center_liked_proxy");
     canvas.setTextColor(VolumeOrange, TFT_BLACK);
   } else {
-    footer = playback.isPlaying ? "Playing" : "Paused";
+    footer = playback.isPlaying ? I18n::text("playing") : I18n::text("paused");
     const String timeText = playbackTimeText(playback);
     if (!timeText.isEmpty()) {
       footer += " ";
@@ -661,7 +676,7 @@ void DisplayManager::renderMenu(
 template <typename Canvas>
 void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, const AboutStatus &status, size_t selectedIndex) {
   canvas.setTextDatum(TL_DATUM);
-  drawMenuTitle(canvas, "About");
+  drawMenuTitle(canvas, I18n::text("about"));
   drawSpotifyDJIcon(canvas, 14, 34, 44);
 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -676,11 +691,16 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
     uint16_t color;
   };
   Row rows[] = {
-      {"Web", status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE},
-      {"WiFi", status.wifiConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
-      {"Spotify", status.spotifyConnected ? "Connected" : "Disconnected", static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
-      {"Home Assistant", status.haPaired ? "Connected" : "Not paired", static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
-      {"MQTT", status.mqttState, static_cast<uint16_t>(status.mqttConnected ? SpotifyGreen : TFT_ORANGE)}
+      {I18n::text("web"), status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE},
+      {I18n::text("wifi"), I18n::connected(status.wifiConnected), static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
+      {"Spotify", I18n::connected(status.spotifyConnected), static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
+      {"Home Assistant", status.haPaired ? I18n::text("connected") : I18n::text("not_paired"), static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
+      {"MQTT", status.mqttState, static_cast<uint16_t>(status.mqttConnected ? SpotifyGreen : TFT_ORANGE)},
+      {"Copyright", "2026 Peter van Tol", NeutralLightGrey},
+      {"Firmware", "Proprietary", NeutralLightGrey},
+      {"Spotify", "Trademark Spotify AB", NeutralLightGrey},
+      {"Notice", "Not affiliated", NeutralLightGrey},
+      {"OSS", "See notices", NeutralLightGrey},
   };
 
   const size_t itemCount = sizeof(rows) / sizeof(rows[0]);
@@ -722,7 +742,7 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
 template <typename Canvas>
 void DisplayManager::renderLogs(Canvas &canvas, const String *lines, size_t lineCount, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
-  drawMenuTitle(canvas, "Logs");
+  drawMenuTitle(canvas, I18n::text("logs"));
 
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   const int rowTop = 34;
@@ -842,7 +862,7 @@ void DisplayManager::drawMenuTitle(Canvas &canvas, const String &title) {
   canvas.setTextColor(TFT_GREEN, TFT_BLACK);
   canvas.drawString(clippedText(canvas, title, 260, 2), 8, 5, 2);
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  canvas.drawString("Menu", 270, 5, 2);
+  canvas.drawString(I18n::text("menu"), 270, 5, 2);
   canvas.drawFastHLine(8, 25, 304, TFT_DARKGREY);
 }
 
@@ -855,7 +875,7 @@ void DisplayManager::drawMenuFooter(Canvas &canvas, const StatusNotice &notice) 
   }
 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  const String backHint = "Back = top button press";
+  const String backHint = I18n::text("back_top_button");
   canvas.drawString(backHint, 312 - canvas.textWidth(backHint, 2), 151, 2);
 }
 

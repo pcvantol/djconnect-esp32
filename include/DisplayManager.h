@@ -14,7 +14,7 @@ struct MenuItemView {
 
 class DisplayManager {
 public:
-  // Powers the display, allocates the sprite buffer, and sets backlight to active brightness.
+  // Powers the display and allocates the sprite buffer while keeping backlight off until first draw.
   void begin();
 
   // Draws a simple boot/status screen before the full Spotify state is available.
@@ -92,6 +92,9 @@ public:
 
   // Applies user-selected active brightness and off timeout.
   void configurePowerSaving(uint8_t activeBrightnessPercent, uint32_t offAfterMs);
+
+  // Applies the display theme. Light mode uses the ST7789's alternate palette on this board.
+  void setLightTheme(bool enabled);
 
   // Returns the actual backlight output percentage, used to keep the LED ring in visual sync.
   uint8_t backlightPercent() const;

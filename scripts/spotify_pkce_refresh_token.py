@@ -164,10 +164,12 @@ def main():
     if not refresh_token:
         raise SystemExit("No refresh_token returned. Check your Spotify app and scopes.")
 
-    print("Paste these into include/Secrets.h:")
+    print("Provision these through the setup portal or Home Assistant pairing flow:")
     print()
-    print(f'#define SPOTIFY_CLIENT_ID "{args.client_id}"')
-    print(f'#define SPOTIFY_REFRESH_TOKEN "{refresh_token}"')
+    print(f"Spotify client ID: {args.client_id}")
+    print(f"Spotify refresh token: {refresh_token}")
+    print()
+    print("Do not commit these values or compile them into firmware headers.")
 
 
 if __name__ == "__main__":

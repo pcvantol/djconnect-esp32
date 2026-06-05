@@ -224,6 +224,14 @@ inline const char *playModeLabel(const char *mode) {
   return "No shuffle";
 }
 
+// Normalizes persisted/UI language codes. Unknown values intentionally fall back to English.
+inline const char *languageCodeOrDefault(const char *code) {
+  if (code == nullptr) {
+    return "en";
+  }
+  return (strcmp(code, "nl") == 0 || strcmp(code, "NL") == 0) ? "nl" : "en";
+}
+
 struct Bq27220Reading {
   bool available = false;
   bool charging = false;

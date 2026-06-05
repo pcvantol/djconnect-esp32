@@ -144,6 +144,7 @@ struct RuntimeDiagnostics {
   uint32_t lastLoopDurationMs = 0;
   uint32_t maxLoopDurationMs = 0;
   uint8_t cpuUsagePercent = 0;
+  String lastDjText;
 };
 
 // Live visual output state published to MQTT and shown on the web dashboard.
@@ -171,6 +172,13 @@ enum class MqttCommandType {
   Volume,
   TransferOutput,
   StartPlaylist,
+  DjResponse,
+  ScreenBrightness,
+  ScreenDimTimeout,
+  DeepSleepTimeout,
+  SpeakerVolume,
+  Language,
+  Theme,
 };
 
 struct MqttCommand {

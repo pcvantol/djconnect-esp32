@@ -7,6 +7,7 @@
 class AppLogger : public Print {
 public:
   static constexpr size_t MaxLines = 40;
+  static constexpr size_t MaxLineLength = 144;
 
   // Clears the RAM buffer and starts teeing all writes to the existing Serial port.
   void begin();
@@ -27,8 +28,9 @@ private:
   String linePrefix() const;
   String normalizedLine(const String &line) const;
 
-  String lines_[MaxLines];
-  String currentLine_;
+  char lines_[MaxLines][MaxLineLength] = {};
+  char currentLine_[MaxLineLength] = {};
+  size_t currentLength_ = 0;
   size_t nextLine_ = 0;
   size_t lineCount_ = 0;
   bool ready_ = false;

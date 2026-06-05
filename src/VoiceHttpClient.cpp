@@ -6,7 +6,9 @@
 #include <WiFi.h>
 
 #include "AppLog.h"
+#include "Config.h"
 #include "LogicHelpers.h"
+#include "NetworkActivity.h"
 
 void VoiceHttpClient::begin(SpotifyDJDevice &device) {
   device_ = &device;
@@ -33,9 +35,10 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   serializeJson(doc, body);
 
   HTTPClient http;
-  http.setConnectTimeout(5000);
-  http.setTimeout(10000);
+  NetworkActivity activity("voice_status", Config::HttpLongIoTimeoutMs);
+  NetworkActivity::configureLongHttp(http);
   if (!http.begin(url)) {
+    activity.finishError("begin failed");
     return false;
   }
   http.addHeader("Content-Type", "application/json");
@@ -43,12 +46,13 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
   const int code = http.POST(body);
   http.end();
+  activity.finish(code);
   AppLog.print("[SpotifyDJ] voice status response: ");
   AppLog.println(code);
   return code >= 200 && code < 300;
 }
 
-bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &message) {
+bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &message, String *audioUrl) {
   if (device_ == nullptr || !device_->isPaired()) {
     message = "No HA pairing";
     return false;
@@ -78,10 +82,11 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   serializeJson(doc, body);
 
   HTTPClient http;
-  http.setConnectTimeout(5000);
-  http.setTimeout(30000);
+  NetworkActivity activity("voice_command", Config::VoiceCommandIoTimeoutMs);
+  NetworkActivity::configureHttp(http, Config::HttpConnectTimeoutMs, Config::VoiceCommandIoTimeoutMs);
   if (!http.begin(url)) {
     message = "Voice HTTP begin failed";
+    activity.finishError("begin failed");
     return false;
   }
   http.addHeader("Content-Type", "application/json");
@@ -89,24 +94,26 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
   http.addHeader("X-SpotifyDJ-Text", recognizedText);
 
-  AppLog.print("[SpotifyDJ] voice text command: ");
-  AppLog.println(recognizedText);
+  AppLog.print("[SpotifyDJ] voice text command chars=");
+  AppLog.println(recognizedText.length());
   const int code = http.POST(body);
   AppLog.print("[SpotifyDJ] voice command response: ");
   AppLog.println(code);
   const String response = http.getString();
   http.end();
+  activity.finish(code);
   if (code < 200 || code >= 300) {
     message = "Voice HTTP " + String(code);
-    if (!response.isEmpty()) {
-      AppLog.println(response.substring(0, 128));
-    }
     return false;
   }
 
   JsonDocument responseDoc;
   if (!response.isEmpty() && !deserializeJson(responseDoc, response)) {
     const char *responseText = responseDoc["text"] | "";
+    const char *responseAudioUrl = responseDoc["audio_url"] | "";
+    if (audioUrl != nullptr) {
+      *audioUrl = responseAudioUrl;
+    }
     if (strlen(responseText) > 0) {
       message = responseText;
       return true;

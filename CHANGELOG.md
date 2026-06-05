@@ -1,76 +1,99 @@
 # Changelog
 
-## v2.1.0
+## v2.3.0
 
-Geconsolideerde release van SpotifyDJ firmware voor de LilyGO T-Embed-CC1101 / ESP32-S3.
+Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
-### Nieuw
+### Added
 
-- Spotify Connect afstandsbediening met now-playing scherm, trackvoortgang, volume, pause/resume, next en previous.
-- Menu's voor Up Next, Playlists, Sound Outputs, Settings, About en Logs.
-- Spotify play mode is instelbaar op device en webportal: geen shuffle, shuffle, repeat once of repeat infinite.
-- Playlist-overzicht en playlist-start zijn beschikbaar op device en webportal.
-- Current Song scherm met album-art download/cache en scrollende titel/artiest.
-- Mobile webportal met now playing, album art, volume slider, sound output selectie, queue, logs, diagnostics, settings, WiFi update en OTA upload.
-- Home Assistant device-laag met pairing, mDNS discovery, device-token opslag, status updates, OTA endpoint en Spotify provisioning endpoint.
-- BLE WiFi provisioning in setup mode via een writable JSON characteristic.
-- MQTT/Home Assistant discovery en periodieke/on-event status publishing.
-- MQTT two-way Home Assistant controls voor volume, next/previous, sound output en playlist start.
-- MQTT settings provisioning via Home Assistant pair/provision/status responses met opslag in `spotifydj` NVS.
-- Captive portal voor WiFi, Spotify en MQTT provisioning.
-- OTA releaseflow via GitHub tags en firmware assets.
-- WS2812 LED-ring feedback voor volume, status, setup/AP mode, charging en connectivity.
-- Speaker cues voor boot, reset, battery warning, factory reset en charging completed.
-- Instelbaar built-in speaker volume voor device cues: 25%, 50%, 75% of 100%.
-- Battery/charging guard schermen, low-battery deep sleep en charger-aware wake gedrag.
-- WiFi-failure boot menu met encoderselectie voor retry connect, hard reset, reset device en turn off.
+- Spotify Connect remote control with Now Playing, track progress, volume, pause/resume, next and previous controls.
+- Device menus for Up Next, Playlists, Sound Outputs, Settings, About and Logs.
+- Spotify play mode settings on the device and web portal: normal, shuffle, repeat once and repeat infinite.
+- Language setting for the device UI, web portal and captive portal with English and Dutch support.
+- Theme setting for the device, web portal and MQTT: Auto, Dark and Light.
+- Playlist browsing and playlist start from both the device and web portal.
+- Current Song screen with on-demand album art download/cache and scrolling title/artist text.
+- Mobile web portal with Now Playing, browser push-to-talk, album art, volume slider, sound output selection, queue, logs, diagnostics, settings, WiFi update and OTA upload.
+- Home Assistant device layer with pairing, mDNS discovery, device-token storage, status updates, OTA endpoint and Spotify provisioning endpoint.
+- Device API endpoint `/api/device/dj_response` for DJ text responses from the Home Assistant integration, with optional backend-generated PCM WAV playback on the ESP speaker.
+- BLE WiFi provisioning in setup mode through a writable JSON characteristic.
+- MQTT/Home Assistant discovery and periodic/on-event status publishing.
+- Two-way MQTT Home Assistant controls for volume, next/previous, sound output, playlist start and settings.
+- MQTT settings provisioning via Home Assistant pair/provision/status responses, stored in the `spotifydj` NVS namespace.
+- Captive portal for WiFi, Spotify and MQTT provisioning.
+- OTA release flow through GitHub tags and board-specific firmware assets.
+- Proprietary firmware license for closed-source distribution on sold devices.
+- WS2812 LED-ring feedback for volume, status, setup/AP mode, charging, connectivity and firmware update state.
+- Speaker cues for boot, reset, battery warning, factory reset, charging completed, menu/back and push-to-talk start/stop.
+- Built-in speaker cue volume setting: 25%, 50%, 75% or 100%.
+- Battery/charging guard screens, low-battery turn-off sleep and charger-aware wake behavior.
+- WiFi-failure boot menu with encoder selection for retry connect, factory reset, restart device and turn off.
+- Watchdog, slow-loop diagnostics and periodic heap diagnostics for long-running device stability.
+- `ProvisioningController` for centralized NVS provisioning storage and reduced `SpotifyDJApp` responsibility.
+- `PowerController` for charger/wake/watchdog policy.
+- Host-testable menu and network helper models plus release-script shell tests.
+- `release.sh` helper for local firmware release preparation, dry-run validation, manifest generation, tagging and optional public firmware repo publishing.
 
-### Gewijzigd
+### Changed
 
-- Appnaam en technische branding zijn `SpotifyDJ`.
-- Release-builds gebruiken `2.1.0` / `v2.1.0`; lokale builds zonder release flags blijven `dev` / `vdev`.
-- Geen WiFi-, Spotify- of Home Assistant-secrets meer hardcoded in firmware.
-- Spotify credentials worden via setup portal of Home Assistant provisioning opgeslagen in NVS.
-- Batterijpercentage wordt altijd voltage-based geschat en zonder tilde getoond.
-- Volume is begrensd op `0-60`; LED-ring toont `60` als vol met oranje segmenten.
-- Now Playing gebruikt statusindicatoren `H`, `M` en `S` voor Home Assistant, MQTT en Spotify.
-- Pairing mode toont SpotifyDJ logo/naam, batterijstatus, instructietekst en grote pairing code.
-- Pairing code staat ook in Serial logging en in de webinterface.
-- Setup/AP en HA pairing mode houden het scherm 10 minuten op 100% brightness en gaan daarna naar deep sleep.
-- Tijdens OTA firmware write toont het display `Firmware update in progress..`.
-- Display idle gedrag: scherm blijft op ingestelde brightness en gaat na de ingestelde timeout direct uit.
-- Eerste knop/encoderactie bij scherm-uit wekt alleen het scherm en voert geen onderliggende actie uit.
-- Webinterface toont H/M/S status bovenin, WiFi signaal als bars en laatste MQTT publish timestamp.
-- Webinterface logs kunnen gepauzeerd en gekopieerd worden.
-- `Restart device` en `Turn off device` zijn beschikbaar vanuit settings.
-- Push-to-talk is omgezet naar Route B: microfoon-audio streamt als raw PCM16 naar de Home Assistant Assist WebSocket pipeline; alleen de herkende tekst gaat naar `/api/spotify_dj/voice`.
-- `assist_pipeline_id` kan optioneel in NVS worden opgeslagen; leeg betekent de default Home Assistant Assist pipeline.
-- Encoder short press doet weer pause/resume, double press opent Current Song, en long press start push-to-talk tot loslaten.
-- Push-to-talk logt de listening stappen naar Serial en het web logs scherm.
-- LED-ring animaties: geel bij PTT start, blauw bij PTT stop/verwerken, groen bij geaccepteerde voice command response.
-- De oude WAV-upload naar `/api/spotify_dj/voice` is verwijderd uit de voice command client.
-- Voice statusmeldingen gebruiken `recording`, `sending_command` en `error`.
-- Als er geen muziek speelt, biedt device en webportal een actie om `SpotifyDJ Liked Proxy` te starten.
-- Volume control is geblokkeerd zolang er geen actieve playback is.
-- Boottekst voor WiFi verbinden is `Connecting to WiFi...`.
-- Captive portal MQTT velden zijn optioneel; leeg laten probeert geen MQTT setup en overschrijft HA-provisioned MQTT niet.
+- Application name and technical branding are now `SpotifyDJ`.
+- Release builds use `2.3.0` / `v2.3.0`; local builds without release flags remain `dev` / `vdev`.
+- WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
+- Spotify credentials are provisioned through the setup portal or Home Assistant and stored in NVS.
+- Spotify OAuth credentials can be parsed from Home Assistant pairing/status/provision payloads, both top-level and nested under `spotify`, without logging refresh tokens.
+- Battery percentage is always voltage-estimated and displayed without a tilde.
+- Spotify volume is limited to `0-60`; the LED ring treats `60` as full scale and uses orange segments.
+- Now Playing shows `H`, `M` and `S` status indicators for Home Assistant, MQTT and Spotify.
+- Pairing mode shows the SpotifyDJ logo/name, battery state, instruction text and a large pairing code.
+- Pairing code is also visible in serial logs and the web interface.
+- Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off.
+- OTA firmware write shows `Firmware update in progress..` on the display and sets the LED ring to purple.
+- Display idle behavior keeps the configured brightness until the selected timeout, then turns the screen fully off.
+- The first button/encoder action while the screen is off only wakes the screen and does not execute the underlying action.
+- Web interface shows H/M/S status indicators, WiFi signal bars and the last MQTT publish timestamp.
+- Web interface logs can be paused and selected/copied.
+- `Restart device` and `Turn off device` are available from settings.
+- Push-to-talk uses Route B: microphone audio streams as raw PCM16 to the Home Assistant Assist WebSocket pipeline; only recognized text is sent to `/api/spotify_dj/voice`.
+- The PTT flow is documented: Assist STT, text to the HA integration, then DJ text plus optional PCM WAV URL back to the ESP device.
+- `assist_pipeline_id` can optionally be stored in NVS; an empty value uses the default Home Assistant Assist pipeline.
+- Encoder short press performs pause/resume, double press opens Current Song and long press starts push-to-talk until release.
+- Current Song is blocked from Now Playing when there is no active playback.
+- Turn-off sleep periodically probes for USB-C charger attach; with a charger detected the device continues booting, otherwise it returns to sleep.
+- Push-to-talk logs listening steps to serial and the web logs screen.
+- LED-ring animations are yellow on PTT start, blue on PTT stop/processing, and green on accepted voice command response.
+- The old WAV upload path to `/api/spotify_dj/voice` was removed from the voice command client.
+- Voice status messages use `recording`, `sending_command` and `error`.
+- DJ responses are displayed locally, optionally played, published as `last_dj_text` in runtime state and emitted as MQTT events.
+- Web portal PTT uses browser speech recognition, sends recognized text through the ESP to Home Assistant and can play an optional HA `audio_url` through the browser speaker.
+- When no music is playing, the device and web portal offer an action to start the `SpotifyDJ Liked Proxy` playlist.
+- Volume control is disabled when there is no active playback.
+- WiFi boot label is `Connecting to WiFi...`.
+- Captive portal MQTT fields are optional; leaving them empty does not attempt MQTT setup and does not overwrite Home Assistant-provisioned MQTT settings.
+- The language setting is stored in NVS, can be provisioned by Home Assistant through `device_language`/`language`, and resets to English on factory reset; logs remain English.
+- Theme is stored in NVS and exposed on the device, web portal and MQTT. Device `Light` uses TFT inversion/high contrast; web `Auto` follows browser/device preference.
+- MQTT two-way support covers Spotify controls, status/discovery and settings commands for language, theme, brightness, dim timeout, turn-off timeout and speaker cue volume.
+- App logs are stored in fixed-size buffers to reduce heap fragmentation during long runs.
+- Menu counts/options, network timeout behavior and release dry-run validation have stronger automated test coverage.
+- Provisioning, power policy and long-network-call responsibilities are documented as separate refactor boundaries to keep future production fixes easier to isolate.
 
-### Opgelost
+### Fixed
 
-- Flikkerend display door onnodige redraws verminderd.
-- Volume-acties veroorzaken geen HTTP 411 melding meer in de UI.
-- Encoder-richting voor volume gecorrigeerd.
-- Token-refresh en rotated refresh tokens worden in NVS bewaard.
-- Scherm blijft bruikbaar in error/pairing/OTA states.
-- Settings zoals brightness, screen dim timeout en deep sleep timeout blijven na reboot behouden.
-- Speaker volume blijft na reboot behouden en wordt bij factory reset gewist.
-- Webinterface leegt invoervelden niet meer tijdens status polling.
-- Sound output types worden niet meer achter de outputnaam getoond.
-- JPEG album art rendering en current-song tekstscrolling verbeterd.
-- Pairing mode blokkeert normale playback/menu input maar houdt reset en lokale API beschikbaar.
+- Reduced display flicker caused by unnecessary redraws.
+- Volume actions no longer show HTTP 411 in the UI.
+- Corrected encoder direction for volume.
+- Token refresh and rotated refresh tokens are stored in NVS.
+- Display remains usable in error, pairing and OTA states.
+- Settings such as brightness, screen dim timeout, speaker volume and turn-off timeout persist after reboot.
+- Web interface no longer clears input fields during status polling.
+- Web interface no longer overwrites MQTT settings while the user is typing.
+- Sound output types are no longer appended to output names.
+- Improved JPEG album art rendering and Current Song text scrolling.
+- Pairing mode blocks normal playback/menu input while keeping reset controls and the local API available.
+- `SPOTIFY_ALLOW_INSECURE_TLS` defaults to secure TLS in local `Secrets.h`.
+- The Spotify PKCE helper no longer suggests putting credentials in firmware headers.
 
-### Bekende punten
+### Known Issues
 
-- OTA download ondersteunt HTTPS, maar SHA256-verificatie tijdens streaming is nog een TODO.
-- Spotify Web API vereist Spotify Premium en een beschikbare/actieve Spotify Connect output.
-- Sommige Spotify Connect outputs ondersteunen geen volume-control via de Web API.
+- OTA download supports HTTPS, but streaming SHA256 verification is still a TODO.
+- Spotify Web API playback control requires Spotify Premium and an available/active Spotify Connect output.
+- Some Spotify Connect outputs do not support volume control through the Web API.

@@ -116,8 +116,8 @@ bool SpotifyDJAssistClient::finish(String &recognizedText, String &message) {
       continue;
     }
     if (extractRecognizedText(payload, recognizedText) && !recognizedText.isEmpty()) {
-      AppLog.print("[SpotifyDJ] Assist recognized: ");
-      AppLog.println(recognizedText);
+      AppLog.print("[SpotifyDJ] Assist recognized chars=");
+      AppLog.println(recognizedText.length());
       close();
       return true;
     }
@@ -203,8 +203,7 @@ bool SpotifyDJAssistClient::connectSocket(const ParsedUrl &url, String &message)
   }
   WiFiClient *socket = client();
   socket->setTimeout(ConnectTimeoutMs);
-  AppLog.print("[SpotifyDJ] Assist websocket connect: ");
-  AppLog.println(url.host);
+  AppLog.println("[SpotifyDJ] Assist websocket connect");
   if (!socket->connect(url.host.c_str(), url.port, ConnectTimeoutMs)) {
     message = "Assist connect failed";
     return false;

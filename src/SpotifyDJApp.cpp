@@ -4,16 +4,19 @@
 
 #include <ArduinoJson.h>
 #include <DNSServer.h>
+#include <HTTPClient.h>
 #include <LittleFS.h>
 #include <Preferences.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <esp_heap_caps.h>
 #include <esp_sleep.h>
 #include <time.h>
 
 #include "AppLog.h"
 #include "Config.h"
 #include "LogicHelpers.h"
+#include "NetworkActivity.h"
 #include "assets/spotifydj_favicon_ico.h"
 #include "assets/spotifydj_icon_192_png.h"
 
@@ -26,28 +29,50 @@ static const char *const TopHoldMenuHint = "hold to open menu";
 
 String dimTimeoutLabel(uint32_t valueMs) {
   if (valueMs == 30000UL) {
-    return "30 seconds";
+    return I18n::language() == Language::Dutch ? "30 seconden" : "30 seconds";
   }
   if (valueMs == 60000UL) {
-    return "1 minute";
+    return I18n::language() == Language::Dutch ? "1 minuut" : "1 minute";
   }
-  return String(valueMs / 60000UL) + " minutes";
+  return String(valueMs / 60000UL) + (I18n::language() == Language::Dutch ? " minuten" : " minutes");
+}
+
+String minuteLabel(uint32_t valueMs) {
+  const uint32_t minutes = valueMs / 60000UL;
+  if (I18n::language() == Language::Dutch) {
+    return String(minutes) + (minutes == 1 ? " minuut" : " minuten");
+  }
+  return String(minutes) + (minutes == 1 ? " minute" : " minutes");
 }
 }  // namespace
 
+using namespace SpotifyDJMenu;
+
 void SpotifyDJApp::begin() {
+  pinMode(Config::DisplayBacklightPin, OUTPUT);
+  digitalWrite(Config::DisplayBacklightPin, LOW);
+
   Serial.begin(115200);
   AppLog.begin();
-  delay(500);
+  configureWatchdog();
+  responsiveDelay(500);
+
+  batteryMonitor_.begin();
+  batteryMonitor_.refresh();
+  evaluateBatteryTransition();
+  if (shouldReturnToSleepAfterTimerWake()) {
+    AppLog.println("Wake probe: no charger detected, returning to deep sleep");
+    enterDeepSleepWithoutDisplay();
+    return;
+  }
 
   // Hardware/services are initialized before WiFi so boot messages and recovery controls are available early.
   display_.begin();
   input_.begin();
-  batteryMonitor_.begin();
-  batteryMonitor_.refresh();
-  evaluateBatteryTransition();
   haDevice_.begin(&battery_, &display_);
   haPairing_.begin(haDevice_, &haDiscovery_);
+  haPairing_.setLanguageProvisionedCallback(languageProvisionedCallback, this);
+  haPairing_.setSpotifyProvisionedCallback(spotifyProvisionedCallback, this);
   softResetMonitor_.begin(battery_);
   albumArt_.begin();
   ledRing_.begin();
@@ -104,10 +129,11 @@ void SpotifyDJApp::begin() {
 
 void SpotifyDJApp::loop() {
   const uint32_t loopStartedAt = millis();
+  serviceWatchdog();
 
   if (updateLowBatteryGuard()) {
     recordLoopMetrics(loopStartedAt);
-    delay(20);
+    responsiveDelay(20);
     return;
   }
 
@@ -124,7 +150,7 @@ void SpotifyDJApp::loop() {
     renderWifiConnectFailureMenu();
     ledRing_.setPowerPercent(0);
     recordLoopMetrics(loopStartedAt);
-    delay(10);
+    responsiveDelay(10);
     return;
   }
 
@@ -202,26 +228,25 @@ void SpotifyDJApp::loop() {
   sendHomeAssistantStatusIfDue();
 
   recordLoopMetrics(loopStartedAt);
-  delay(5);
+  logHeapIfDue();
+  responsiveDelay(5);
 }
 
 void SpotifyDJApp::loadProvisioning() {
-  Preferences preferences;
-  preferences.begin("provision", false);
-  wifiSsid_ = preferences.getString("ssid", "");
-  wifiPassword_ = preferences.getString("pass", "");
-  mqttSettings_.host = preferences.getString("mqtt_host", "");
-  mqttSettings_.port = preferences.getUInt("mqtt_port", 1883);
-  mqttSettings_.username = preferences.getString("mqtt_user", "");
-  mqttSettings_.password = preferences.getString("mqtt_pass", "");
-  mqttSettings_.enabled = !mqttSettings_.host.isEmpty();
-  screenOffTimeoutMs_ = constrain(preferences.getUInt("screen_off_ms", Config::DisplayOffAfterMs), 30000UL, 240000UL);
-  deviceSleepTimeoutMs_ = constrain(preferences.getUInt("sleep_ms", Config::DeviceSleepAfterMs), 300000UL, 3600000UL);
-  screenBrightnessPercent_ = constrain(preferences.getUInt("screen_bright", 100), 25UL, 100UL);
-  speakerVolumePercent_ = constrain(preferences.getUInt("speaker_volume", 100), 25UL, 100UL);
-  volumeFeedbackEnabled_ = preferences.getBool("volume_feedback", true);
-  setupModeRequested_ = preferences.getBool("setup", false);
-  preferences.end();
+  const ProvisioningSettings settings = provisioning_.load();
+  wifiSsid_ = settings.wifiSsid;
+  wifiPassword_ = settings.wifiPassword;
+  mqttSettings_ = settings.mqtt;
+  screenOffTimeoutMs_ = settings.screenOffTimeoutMs;
+  deviceSleepTimeoutMs_ = settings.deviceSleepTimeoutMs;
+  screenBrightnessPercent_ = settings.screenBrightnessPercent;
+  language_ = settings.language;
+  I18n::setLanguage(language_);
+  languageCode_ = I18n::languageCode();
+  themeCode_ = settings.themeCode;
+  speakerVolumePercent_ = settings.speakerVolumePercent;
+  volumeFeedbackEnabled_ = settings.volumeFeedbackEnabled;
+  setupModeRequested_ = settings.setupModeRequested;
 
   const MqttSettings haMqttSettings = haDevice_.getMqttSettings();
   if (!haMqttSettings.host.isEmpty()) {
@@ -240,6 +265,13 @@ void SpotifyDJApp::loadProvisioning() {
       break;
     }
   }
+  languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+  for (size_t index = 0; index < ThemeOptionCount; index++) {
+    if (themeValue(index) == themeCode_) {
+      themeSelection_ = index;
+      break;
+    }
+  }
   for (size_t index = 0; index < SpeakerVolumeOptionCount; index++) {
     if (speakerVolumeValuePercent(index) == speakerVolumePercent_) {
       speakerVolumeSelection_ = index;
@@ -248,6 +280,7 @@ void SpotifyDJApp::loadProvisioning() {
   }
   sleepTimeoutSelection_ = Logic::deepSleepTimeoutIndexForMs(deviceSleepTimeoutMs_);
   display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
+  applyTheme();
   sound_.setVolumePercent(speakerVolumePercent_);
 
   AppLog.print("WiFi credentials source: ");
@@ -288,7 +321,7 @@ void SpotifyDJApp::handleWifiConnectFailureLoop(uint32_t loopStartedAt) {
   visualState_.screenBrightnessLevel = display_.backlightPercent();
   visualState_.ledOn = ledRing_.isOn();
   recordLoopMetrics(loopStartedAt);
-  delay(10);
+  responsiveDelay(10);
 }
 
 void SpotifyDJApp::renderWifiConnectFailureMenu() {
@@ -338,14 +371,14 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
   if (wifiFailureSelection_ == 2) {
     AppLog.println("WiFi recovery: restart selected");
     display_.showBootMessage("Restarting...", battery_);
-    delay(300);
+    responsiveDelay(300);
     ESP.restart();
     return;
   }
 
   AppLog.println("WiFi recovery: turn off selected");
   display_.showBootMessage("Turning off...", battery_);
-  delay(300);
+  responsiveDelay(300);
   enterDeepSleep();
 }
 
@@ -369,12 +402,12 @@ bool SpotifyDJApp::connectWiFi(uint32_t timeoutMs, bool bootScreen) {
   }
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(false, false);
-  delay(100);
+  responsiveDelay(100);
   WiFi.begin(wifiSsid_.c_str(), wifiPassword_.c_str());
 
   const uint32_t startedAt = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startedAt < timeoutMs) {
-    delay(250);
+    responsiveDelay(250);
     AppLog.print(".");
   }
   AppLog.println();
@@ -418,12 +451,15 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       mqttSettings_,
       screenBrightnessPercent_,
       speakerVolumePercent_,
+      languageCode_,
+      themeCode_,
       screenOffTimeoutMs_,
       deviceSleepTimeoutMs_,
       this,
       applyWebSettingsCallback,
       applyWebMqttSettingsCallback,
       applyWebWifiSettingsCallback,
+      sendWebVoiceTextCallback,
       refreshFromWebCallback,
       resetPairingFromWebCallback,
       hardResetFromWebCallback);
@@ -440,7 +476,11 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       diagnostics_,
       visualState_,
       screenBrightnessPercent_,
-      screenOffTimeoutMs_);
+      speakerVolumePercent_,
+      languageCode_,
+      themeCode_,
+      screenOffTimeoutMs_,
+      deviceSleepTimeoutMs_);
 }
 
 bool SpotifyDJApp::syncClock() {
@@ -454,7 +494,7 @@ bool SpotifyDJApp::syncClock() {
   const uint32_t startedAt = millis();
   time_t now = time(nullptr);
   while (now < 1704067200 && millis() - startedAt < 12000) {
-    delay(250);
+    responsiveDelay(250);
     AppLog.print(".");
     now = time(nullptr);
   }
@@ -555,7 +595,7 @@ void SpotifyDJApp::runCaptivePortal() {
     String message;
     if (testAndSaveProvisioning(ssid, password, clientId, refreshToken, spotifyMarket, submittedMqtt, message)) {
       server.send(200, "text/html", captivePortalPage(message, false, formSsid, formClientId, formRefreshToken, formSpotifyMarket, formMqtt));
-      delay(1500);
+      responsiveDelay(1500);
       ESP.restart();
       return;
     }
@@ -591,7 +631,7 @@ void SpotifyDJApp::runCaptivePortal() {
         bleProvisioning_.setStatus("success", "WiFi saved, restarting");
         bleProvisioning_.end();
         display_.showBootMessage("BLE setup OK...", battery_);
-        delay(1200);
+        responsiveDelay(1200);
         ESP.restart();
         return;
       }
@@ -619,10 +659,10 @@ void SpotifyDJApp::runCaptivePortal() {
 
     if (!deepSleepStarted_ && now - setupStartedAt >= Config::ProvisioningPortalTimeoutMs) {
       display_.showBootMessage("Setup timeout\nSleeping...", battery_);
-      delay(600);
+      responsiveDelay(600);
       enterDeepSleep();
     }
-    delay(5);
+    responsiveDelay(5);
   }
 }
 
@@ -643,8 +683,8 @@ bool SpotifyDJApp::handleBleProvisioningPayload(const String &payload, String &m
     return false;
   }
 
-  AppLog.print("BLE provisioning WiFi SSID: ");
-  AppLog.println(ssid);
+  AppLog.print("BLE provisioning WiFi SSID provided, chars=");
+  AppLog.println(ssid.length());
   return testAndSaveProvisioning(ssid, password, "", "", "NL", MqttSettings(), message);
 }
 
@@ -682,15 +722,23 @@ String SpotifyDJApp::captivePortalPage(
   page += F("input,button{display:block;width:100%;max-width:100%;min-height:44px;border-radius:8px;border:1px solid #233033;background:#0c1112;color:#f3f7f5;padding:9px 10px;font-size:16px}");
   page += F("button{background:#173721;border-color:#25593a;color:#baf7ca;font-weight:700;margin-top:8px}");
   page += F("</style></head><body><main><div class='brand'><img src='/icon-192.png' alt=''><h1>SpotifyDJ Setup</h1></div>");
-  page += F("<p>Please fill in your WiFi credentials.</p>");
-  page += F("<div class='timeout'>This setup portal stays awake for 10 minutes. After that the device turns off automatically.</div>");
+  page += F("<p>");
+  page += language_ == Language::Dutch ? F("Vul je WiFi gegevens in.") : F("Please fill in your WiFi credentials.");
+  page += F("</p>");
+  page += F("<div class='timeout'>");
+  page += language_ == Language::Dutch
+              ? F("Deze setup portal blijft 10 minuten wakker. Daarna schakelt het device automatisch uit.")
+              : F("This setup portal stays awake for 10 minutes. After that the device turns off automatically.");
+  page += F("</div>");
   page += F("<div class='msg'>");
   page += message;
   page += F("</div><form class='box' method='post' action='/submit'>");
   page += F("<label>WiFi SSID<input name='ssid' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' required value=\"");
   page += escaped(ssid);
   page += F("\"></label>");
-  page += F("<label>WiFi password<input name='password' type='password' autocomplete='current-password' autocapitalize='none' autocorrect='off' spellcheck='false'></label>");
+  page += language_ == Language::Dutch
+              ? F("<label>WiFi wachtwoord<input name='password' type='password' autocomplete='current-password' autocapitalize='none' autocorrect='off' spellcheck='false'></label>")
+              : F("<label>WiFi password<input name='password' type='password' autocomplete='current-password' autocapitalize='none' autocorrect='off' spellcheck='false'></label>");
   page += F("<label>Spotify client ID<input name='clientId' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
   page += escaped(clientId);
   page += F("\"></label>");
@@ -706,13 +754,19 @@ String SpotifyDJApp::captivePortalPage(
   page += F("<label>MQTT port<input name='mqttPort' inputmode='numeric' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
   page += String(mqttSettings.port == 0 ? 1883 : mqttSettings.port);
   page += F("\"></label>");
-  page += F("<label>MQTT username<input name='mqttUser' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
+  page += language_ == Language::Dutch
+              ? F("<label>MQTT gebruikersnaam<input name='mqttUser' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"")
+              : F("<label>MQTT username<input name='mqttUser' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
   page += escaped(mqttSettings.username);
   page += F("\"></label>");
-  page += F("<label>MQTT password<input name='mqttPass' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
+  page += language_ == Language::Dutch
+              ? F("<label>MQTT wachtwoord<input name='mqttPass' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"")
+              : F("<label>MQTT password<input name='mqttPass' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
   page += escaped(mqttSettings.password);
   page += F("\"></label>");
-  page += F("<button type='submit'>Save &amp; Connect</button></form>");
+  page += language_ == Language::Dutch
+              ? F("<button type='submit'>Opslaan &amp; verbinden</button></form>")
+              : F("<button type='submit'>Save &amp; Connect</button></form>");
   page += F("</main></body></html>");
   return page;
 }
@@ -733,7 +787,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
 
   const uint32_t startedAt = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startedAt < 25000) {
-    delay(250);
+    responsiveDelay(250);
     AppLog.print(".");
   }
   AppLog.println();
@@ -764,38 +818,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
     }
   }
 
-  Preferences provision;
-  provision.begin("provision", false);
-  provision.putString("ssid", ssid);
-  provision.putString("pass", password);
-  if (hasSpotifyCredentials) {
-    provision.putString("sp_client", clientId);
-    provision.putString("sp_refresh", refreshToken);
-  } else {
-    provision.remove("sp_client");
-    provision.remove("sp_refresh");
-  }
-  provision.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
-  if (!mqttSettings.host.isEmpty()) {
-    provision.putString("mqtt_host", mqttSettings.host);
-    provision.putUInt("mqtt_port", mqttSettings.port == 0 ? 1883 : mqttSettings.port);
-    provision.putString("mqtt_user", mqttSettings.username);
-    provision.putString("mqtt_pass", mqttSettings.password);
-  }
-  provision.putBool("setup", false);
-  provision.end();
-
-  Preferences spotifydj;
-  spotifydj.begin("spotifydj", false);
-  if (hasSpotifyCredentials) {
-    spotifydj.putString("spotify_client_id", clientId);
-    spotifydj.putString("spotify_refresh_token", refreshToken);
-  } else {
-    spotifydj.remove("spotify_client_id");
-    spotifydj.remove("spotify_refresh_token");
-  }
-  spotifydj.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
-  spotifydj.end();
+  provisioning_.saveSetupProvisioning(ssid, password, clientId, refreshToken, spotifyMarket, mqttSettings);
 
   wifiSsid_ = ssid;
   wifiPassword_ = password;
@@ -883,7 +906,12 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
   }
 
   if (events.encoderDoubleClick) {
-    openAlbumArtScreen();
+    if (playback_.hasPlayback) {
+      openAlbumArtScreen();
+    } else {
+      showNotice("No current song", 1800);
+      renderNow();
+    }
   }
 
   if (events.topButtonClick) {
@@ -996,6 +1024,9 @@ void SpotifyDJApp::moveMenuSelection(int encoderSteps) {
   if (activeScreen_ == UiScreen::Brightness) {
     screenBrightnessPercent_ = brightnessValuePercent(brightnessSelection_);
     display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
+  } else if (activeScreen_ == UiScreen::Language) {
+    language_ = languageSelection_ == 1 ? Language::Dutch : Language::English;
+    I18n::setLanguage(language_);
   } else if (activeScreen_ == UiScreen::SpeakerVolume) {
     speakerVolumePercent_ = speakerVolumeValuePercent(speakerVolumeSelection_);
     sound_.setVolumePercent(speakerVolumePercent_);
@@ -1049,17 +1080,28 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       } else if (settingsSelection_ == 2) {
         openScreen(UiScreen::SleepTimeout);
       } else if (settingsSelection_ == 3) {
+        languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+        openScreen(UiScreen::Language);
+      } else if (settingsSelection_ == 4) {
+        for (size_t index = 0; index < ThemeOptionCount; index++) {
+          if (themeValue(index) == themeCode_) {
+            themeSelection_ = index;
+            break;
+          }
+        }
+        openScreen(UiScreen::Theme);
+      } else if (settingsSelection_ == 5) {
         volumeFeedbackEnabled_ = !volumeFeedbackEnabled_;
         saveDisplaySettings();
         AppLog.print("Settings: audio feedback ");
         AppLog.println(volumeFeedbackEnabled_ ? "enabled" : "disabled");
-        showNotice(String("Audio feedback ") + (volumeFeedbackEnabled_ ? "on" : "off"), 1600);
+        showNotice(String(I18n::text("audio_feedback")) + " " + I18n::onOff(volumeFeedbackEnabled_), 1600);
         renderNow();
-      } else if (settingsSelection_ == 4) {
+      } else if (settingsSelection_ == 6) {
         openScreen(UiScreen::SpeakerVolume);
-      } else if (settingsSelection_ == 5) {
+      } else if (settingsSelection_ == 7) {
         playModeSelection_ = 0;
-        const String currentMode = currentPlayModeValue();
+        const String currentMode = currentPlayModeValue(playback_);
         for (size_t index = 0; index < PlayModeOptionCount; index++) {
           if (playModeValue(index) == currentMode) {
             playModeSelection_ = index;
@@ -1067,19 +1109,19 @@ void SpotifyDJApp::selectCurrentMenuItem() {
           }
         }
         openScreen(UiScreen::PlayMode);
-      } else if (settingsSelection_ == 6) {
+      } else if (settingsSelection_ == 8) {
         display_.showBootMessage("Turning off...", battery_);
-        delay(250);
+        responsiveDelay(250);
         enterDeepSleep();
-      } else if (settingsSelection_ == 7) {
+      } else if (settingsSelection_ == 9) {
         sound_.playHardReset();
         display_.showBootMessage("Restarting...", battery_);
-        delay(320);
+        responsiveDelay(320);
         ESP.restart();
-      } else if (settingsSelection_ == 8) {
+      } else if (settingsSelection_ == 10) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::ResetPairingConfirm);
-      } else if (settingsSelection_ == 9) {
+      } else if (settingsSelection_ == 11) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::HardResetConfirm);
       }
@@ -1091,6 +1133,25 @@ void SpotifyDJApp::selectCurrentMenuItem() {
 
     case UiScreen::Brightness:
       applyBrightnessSelection();
+      break;
+
+    case UiScreen::Language:
+      language_ = languageSelection_ == 1 ? Language::Dutch : Language::English;
+      I18n::setLanguage(language_);
+      saveDisplaySettings();
+      showNotice(String(I18n::text("language")) + " " + languageLabel(language_), 2000);
+      renderNow();
+      break;
+
+    case UiScreen::Theme:
+      themeCode_ = themeValue(themeSelection_);
+      applyTheme();
+      saveDisplaySettings();
+      showNotice(String(I18n::text("theme")) + " " + themeLabel(themeCode_), 2000);
+      renderNow();
+      display_.showBootMessage("Restarting...", battery_);
+      responsiveDelay(450);
+      ESP.restart();
       break;
 
     case UiScreen::SpeakerVolume:
@@ -1184,22 +1245,23 @@ void SpotifyDJApp::applySleepTimeoutSelection() {
   // The selected timeout controls full ESP32-S3 deep sleep, not just the display backlight.
   deviceSleepTimeoutMs_ = sleepTimeoutValueMs(sleepTimeoutSelection_);
   saveDisplaySettings();
-  AppLog.print("Settings: deep sleep after ");
+  AppLog.print("Settings: turn off after ");
   AppLog.print(deviceSleepTimeoutMs_ / 60000UL);
   AppLog.println(" min");
-  showNotice("Deep sleep " + String(deviceSleepTimeoutMs_ / 60000UL) + " min", 2000);
+  showNotice(String(I18n::text("deep_sleep_after")) + " " + minuteLabel(deviceSleepTimeoutMs_), 2000);
   renderNow();
 }
 
 void SpotifyDJApp::saveDisplaySettings() {
-  Preferences provision;
-  provision.begin("provision", false);
-  provision.putUInt("screen_off_ms", screenOffTimeoutMs_);
-  provision.putUInt("sleep_ms", deviceSleepTimeoutMs_);
-  provision.putUInt("screen_bright", screenBrightnessPercent_);
-  provision.putUInt("speaker_volume", speakerVolumePercent_);
-  provision.putBool("volume_feedback", volumeFeedbackEnabled_);
-  provision.end();
+  languageCode_ = I18n::languageCode();
+  provisioning_.saveDisplaySettings(
+      screenOffTimeoutMs_,
+      deviceSleepTimeoutMs_,
+      screenBrightnessPercent_,
+      languageCode_,
+      themeCode_,
+      speakerVolumePercent_,
+      volumeFeedbackEnabled_);
 }
 
 void SpotifyDJApp::hardResetToProvisioning() {
@@ -1218,11 +1280,7 @@ void SpotifyDJApp::hardResetToProvisioning() {
   spotifyPrefs.clear();
   spotifyPrefs.end();
 
-  Preferences provision;
-  provision.begin("provision", false);
-  provision.clear();
-  provision.putBool("setup", true);
-  provision.end();
+  provisioning_.requestSetupMode();
 
   if (LittleFS.begin(true)) {
     fs::File root = LittleFS.open("/");
@@ -1240,7 +1298,7 @@ void SpotifyDJApp::hardResetToProvisioning() {
   }
 
   WiFi.disconnect(true, true);
-  delay(600);
+  responsiveDelay(600);
   ESP.restart();
 }
 
@@ -1248,49 +1306,16 @@ void SpotifyDJApp::resetHomeAssistantPairing() {
   AppLog.println("Home Assistant: clearing pairing and restarting to pairing mode");
   display_.showBootMessage("Reset pairing...", battery_);
   haDevice_.clearHomeAssistantPairing();
-  delay(350);
+  responsiveDelay(350);
   ESP.restart();
 }
 
 bool SpotifyDJApp::isMenuActive() const {
-  return activeScreen_ != UiScreen::NowPlaying;
+  return isMenuScreen(activeScreen_);
 }
 
 size_t SpotifyDJApp::menuItemCount(UiScreen screen) const {
-  switch (screen) {
-    case UiScreen::AlbumArt:
-      return 0;
-    case UiScreen::Queue:
-      return 0;
-    case UiScreen::Playlists:
-      return playlists_.available && playlists_.count > 0 ? playlists_.count : 1;
-    case UiScreen::SoundOutputs:
-      return deviceList_.available && deviceList_.count > 0 ? min(deviceList_.count, static_cast<size_t>(7)) + 1 : 2;
-    case UiScreen::Logs:
-      return 0;
-    case UiScreen::RootMenu:
-      return 6;
-    case UiScreen::Settings:
-      return SettingsItemCount;
-    case UiScreen::DimTimeout:
-      return DimTimeoutOptionCount;
-    case UiScreen::Brightness:
-      return BrightnessOptionCount;
-    case UiScreen::SpeakerVolume:
-      return SpeakerVolumeOptionCount;
-    case UiScreen::PlayMode:
-      return PlayModeOptionCount;
-    case UiScreen::SleepTimeout:
-      return SleepTimeoutOptionCount;
-    case UiScreen::HardResetConfirm:
-    case UiScreen::ResetPairingConfirm:
-      return HardResetOptionCount;
-    case UiScreen::About:
-      return 6;
-    case UiScreen::NowPlaying:
-      return 0;
-  }
-  return 0;
+  return itemCount(screen, playlists_, deviceList_);
 }
 
 size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
@@ -1305,6 +1330,10 @@ size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
       return playlistSelection_;
     case UiScreen::Brightness:
       return brightnessSelection_;
+    case UiScreen::Language:
+      return languageSelection_;
+    case UiScreen::Theme:
+      return themeSelection_;
     case UiScreen::SpeakerVolume:
       return speakerVolumeSelection_;
     case UiScreen::PlayMode:
@@ -1339,6 +1368,10 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
       return playlistSelection_;
     case UiScreen::Brightness:
       return brightnessSelection_;
+    case UiScreen::Language:
+      return languageSelection_;
+    case UiScreen::Theme:
+      return themeSelection_;
     case UiScreen::SpeakerVolume:
       return speakerVolumeSelection_;
     case UiScreen::PlayMode:
@@ -1361,41 +1394,9 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
   return rootMenuSelection_;
 }
 
-uint32_t SpotifyDJApp::dimTimeoutValueMs(size_t index) const {
-  static const uint32_t values[DimTimeoutOptionCount] = {30000, 60000, 120000, 240000};
-  return values[index < DimTimeoutOptionCount ? index : 1];
-}
-
-uint8_t SpotifyDJApp::brightnessValuePercent(size_t index) const {
-  static const uint8_t values[BrightnessOptionCount] = {25, 50, 75, 100};
-  return values[index < BrightnessOptionCount ? index : 3];
-}
-
-uint8_t SpotifyDJApp::speakerVolumeValuePercent(size_t index) const {
-  static const uint8_t values[SpeakerVolumeOptionCount] = {25, 50, 75, 100};
-  return values[index < SpeakerVolumeOptionCount ? index : 3];
-}
-
-String SpotifyDJApp::playModeValue(size_t index) const {
-  static const char *const values[PlayModeOptionCount] = {
-      "normal",
-      "shuffle",
-      "repeat_once",
-      "repeat_infinite",
-  };
-  return values[index < PlayModeOptionCount ? index : 0];
-}
-
-String SpotifyDJApp::currentPlayModeValue() const {
-  return Logic::playModeFromSpotifyState(playback_.shuffle, playback_.repeatState.c_str());
-}
-
-String SpotifyDJApp::playModeLabel(const String &mode) const {
-  return Logic::playModeLabel(mode.c_str());
-}
-
-uint32_t SpotifyDJApp::sleepTimeoutValueMs(size_t index) const {
-  return Logic::deepSleepTimeoutMsForIndex(index);
+void SpotifyDJApp::applyTheme() {
+  // The ESP has no browser preference, so auto maps to the normal dark TFT palette.
+  display_.setLightTheme(themeCode_ == "light");
 }
 
 void SpotifyDJApp::handleEncoderTurn(int encoderSteps) {
@@ -1473,6 +1474,107 @@ void SpotifyDJApp::handleMqttCommand(const MqttCommand &command) {
     AppLog.println("MQTT command ignored: OTA command requires HA device OTA endpoint payload");
     return;
   }
+  if (command.type == MqttCommandType::DjResponse) {
+    AppLog.println("MQTT command: DJ response");
+    bool spoken = false;
+    const bool displayed = handleDjResponseText(command.value, "", spoken);
+    mqttPublisher_.publishDjResponseEvent(spoken, displayed);
+    return;
+  }
+  if (command.type == MqttCommandType::ScreenBrightness) {
+    screenBrightnessPercent_ = constrain(command.numericValue, 25, 100);
+    for (size_t index = 0; index < BrightnessOptionCount; index++) {
+      if (brightnessValuePercent(index) == screenBrightnessPercent_) {
+        brightnessSelection_ = index;
+      }
+    }
+    display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
+    saveDisplaySettings();
+    AppLog.print("MQTT command: screen brightness ");
+    AppLog.println(screenBrightnessPercent_);
+    showNotice(String(I18n::text("brightness")) + " " + String(screenBrightnessPercent_) + "%", 1800);
+    mqttPublisher_.requestPublish();
+    renderNow();
+    return;
+  }
+  if (command.type == MqttCommandType::ScreenDimTimeout) {
+    screenOffTimeoutMs_ = constrain(static_cast<uint32_t>(command.numericValue) * 1000UL, 30000UL, 240000UL);
+    for (size_t index = 0; index < DimTimeoutOptionCount; index++) {
+      if (dimTimeoutValueMs(index) == screenOffTimeoutMs_) {
+        dimTimeoutSelection_ = index;
+      }
+    }
+    display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
+    saveDisplaySettings();
+    AppLog.print("MQTT command: screen dim timeout ");
+    AppLog.println(screenOffTimeoutMs_);
+    showNotice(String(I18n::text("dim_timeout")) + " " + dimTimeoutLabel(screenOffTimeoutMs_), 1800);
+    mqttPublisher_.requestPublish();
+    renderNow();
+    return;
+  }
+  if (command.type == MqttCommandType::DeepSleepTimeout) {
+    deviceSleepTimeoutMs_ = constrain(static_cast<uint32_t>(command.numericValue) * 60000UL, 300000UL, 3600000UL);
+    sleepTimeoutSelection_ = Logic::deepSleepTimeoutIndexForMs(deviceSleepTimeoutMs_);
+    saveDisplaySettings();
+    AppLog.print("MQTT command: turn off after ");
+    AppLog.println(deviceSleepTimeoutMs_);
+    showNotice(String(I18n::text("deep_sleep_after")) + " " + minuteLabel(deviceSleepTimeoutMs_), 1800);
+    mqttPublisher_.requestPublish();
+    renderNow();
+    return;
+  }
+  if (command.type == MqttCommandType::SpeakerVolume) {
+    speakerVolumePercent_ = constrain(command.numericValue, 25, 100);
+    for (size_t index = 0; index < SpeakerVolumeOptionCount; index++) {
+      if (speakerVolumeValuePercent(index) == speakerVolumePercent_) {
+        speakerVolumeSelection_ = index;
+      }
+    }
+    sound_.setVolumePercent(speakerVolumePercent_);
+    saveDisplaySettings();
+    AppLog.print("MQTT command: speaker volume ");
+    AppLog.println(speakerVolumePercent_);
+    showNotice(String(I18n::text("speaker_volume")) + " " + String(speakerVolumePercent_) + "%", 1800);
+    mqttPublisher_.requestPublish();
+    renderNow();
+    return;
+  }
+  if (command.type == MqttCommandType::Language) {
+    language_ = I18n::languageFromCode(command.value);
+    I18n::setLanguage(language_);
+    languageCode_ = I18n::languageCode();
+    languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+    saveDisplaySettings();
+    AppLog.print("MQTT command: language ");
+    AppLog.println(languageCode_);
+    showNotice(String(I18n::text("language")) + " " + languageLabel(language_), 1800);
+    mqttPublisher_.requestPublish();
+    renderNow();
+    return;
+  }
+  if (command.type == MqttCommandType::Theme) {
+    String theme = command.value;
+    theme.toLowerCase();
+    if (theme != "auto" && theme != "light") {
+      theme = "dark";
+    }
+    themeCode_ = theme;
+    for (size_t index = 0; index < ThemeOptionCount; index++) {
+      if (themeValue(index) == themeCode_) {
+        themeSelection_ = index;
+        break;
+      }
+    }
+    applyTheme();
+    saveDisplaySettings();
+    AppLog.print("MQTT command: theme ");
+    AppLog.println(themeCode_);
+    showNotice(String(I18n::text("theme")) + " " + themeLabel(themeCode_), 1800);
+    mqttPublisher_.requestPublish();
+    renderNow();
+    return;
+  }
 
   if (!spotify_.isAuthorized()) {
     AppLog.println("MQTT command ignored: Spotify not connected");
@@ -1492,6 +1594,13 @@ void SpotifyDJApp::handleMqttCommand(const MqttCommand &command) {
 
     case MqttCommandType::Status:
     case MqttCommandType::Ota:
+    case MqttCommandType::DjResponse:
+    case MqttCommandType::ScreenBrightness:
+    case MqttCommandType::ScreenDimTimeout:
+    case MqttCommandType::DeepSleepTimeout:
+    case MqttCommandType::SpeakerVolume:
+    case MqttCommandType::Language:
+    case MqttCommandType::Theme:
       break;
 
     case MqttCommandType::Volume:
@@ -1697,8 +1806,8 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   }
 
   voiceState_ = VoiceState::SendingCommand;
-  AppLog.print("[SpotifyDJ] voice: recognized text: ");
-  AppLog.println(recognizedText);
+  AppLog.print("[SpotifyDJ] voice: recognized text chars=");
+  AppLog.println(recognizedText.length());
   AppLog.println("[SpotifyDJ] voice: sending text command to HA integration");
   voiceClient_.sendStatus(false, "sending_command");
   showNotice("SpotifyDJ...", 2500);
@@ -1910,6 +2019,11 @@ void SpotifyDJApp::pollPlaybackIfDue() {
 }
 
 void SpotifyDJApp::openAlbumArtScreen() {
+  if (!playback_.hasPlayback) {
+    showNotice("No current song", 1800);
+    renderNow();
+    return;
+  }
   activeScreen_ = UiScreen::AlbumArt;
   menuStackSize_ = 0;
   display_.resetAlbumArtRenderCache();
@@ -2003,7 +2117,11 @@ void SpotifyDJApp::renderNow() {
 }
 
 bool SpotifyDJApp::chargerConnected() const {
-  return battery_.charging || battery_.full || battery_.currentMa > Config::BatteryChargeCurrentThresholdMa;
+  return power_.chargerConnected(battery_);
+}
+
+bool SpotifyDJApp::shouldReturnToSleepAfterTimerWake() const {
+  return power_.shouldReturnToSleepAfterTimerWake(battery_);
 }
 
 void SpotifyDJApp::evaluateBatteryTransition() {
@@ -2036,7 +2154,7 @@ bool SpotifyDJApp::updateLowBatteryGuard() {
   const bool chargedEnough = battery_.percent >= 21;
   if (chargingBatteryGuardActive_ && chargedEnough) {
     display_.showBootMessage("Battery OK\nRestarting...", battery_);
-    delay(800);
+    responsiveDelay(800);
     ESP.restart();
   }
 
@@ -2140,6 +2258,45 @@ void SpotifyDJApp::updateVisualPower() {
   }
 }
 
+void SpotifyDJApp::configureWatchdog() {
+  power_.configureWatchdog();
+}
+
+void SpotifyDJApp::serviceWatchdog() {
+  power_.serviceWatchdog();
+}
+
+void SpotifyDJApp::responsiveDelay(uint32_t durationMs) {
+  if (durationMs == 0) {
+    serviceWatchdog();
+    yield();
+    return;
+  }
+
+  const uint32_t startedAt = millis();
+  while (millis() - startedAt < durationMs) {
+    const uint32_t elapsedMs = millis() - startedAt;
+    const uint32_t remainingMs = durationMs > elapsedMs ? durationMs - elapsedMs : 0;
+    serviceWatchdog();
+    delay(min<uint32_t>(remainingMs, 20));
+  }
+}
+
+void SpotifyDJApp::logHeapIfDue() {
+  const uint32_t now = millis();
+  if (lastHeapLogAt_ != 0 && now - lastHeapLogAt_ < Config::HeapLogIntervalMs) {
+    return;
+  }
+  lastHeapLogAt_ = now;
+
+  AppLog.print("Memory: free_heap=");
+  AppLog.print(ESP.getFreeHeap());
+  AppLog.print(" min_free_heap=");
+  AppLog.print(ESP.getMinFreeHeap());
+  AppLog.print(" largest_block=");
+  AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+}
+
 void SpotifyDJApp::enterDeepSleep() {
   deepSleepStarted_ = true;
   AppLog.println("Entering deep sleep");
@@ -2151,17 +2308,21 @@ void SpotifyDJApp::enterDeepSleep() {
 
   mqttPublisher_.prepareForSleep();
   ledRing_.setPowerPercent(0);
-  delay(50);
+  responsiveDelay(50);
 
-  // Wake only on the two buttons. Encoder phase lines can rest LOW, which would wake immediately.
-  const uint64_t wakeMask = (1ULL << Config::BoardUserKeyPin) |
-                            (1ULL << Config::EncoderButtonPin);
-  esp_sleep_enable_ext1_wakeup(wakeMask, ESP_EXT1_WAKEUP_ANY_LOW);
-  if (lowBatteryTimerWake_) {
-    esp_sleep_enable_timer_wakeup(Config::LowBatteryWakeCheckUs);
-  }
+  esp_sleep_enable_ext1_wakeup(power_.buttonWakeMask(), ESP_EXT1_WAKEUP_ANY_LOW);
+  esp_sleep_enable_timer_wakeup(power_.sleepTimerWakeUs(lowBatteryTimerWake_));
   WiFi.disconnect(true, false);
-  delay(100);
+  responsiveDelay(100);
+  esp_deep_sleep_start();
+}
+
+void SpotifyDJApp::enterDeepSleepWithoutDisplay() {
+  deepSleepStarted_ = true;
+  esp_sleep_enable_ext1_wakeup(power_.buttonWakeMask(), ESP_EXT1_WAKEUP_ANY_LOW);
+  esp_sleep_enable_timer_wakeup(power_.sleepTimerWakeUs(false));
+  WiFi.disconnect(true, false);
+  responsiveDelay(50);
   esp_deep_sleep_start();
 }
 
@@ -2174,6 +2335,13 @@ void SpotifyDJApp::recordLoopMetrics(uint32_t loopStartedAt) {
   diagnostics_.lastLoopDurationMs = busyMs;
   if (busyMs > diagnostics_.maxLoopDurationMs) {
     diagnostics_.maxLoopDurationMs = busyMs;
+  }
+  if (busyMs >= Config::SlowLoopWarningMs &&
+      (lastSlowLoopLogAt_ == 0 || now - lastSlowLoopLogAt_ >= 10000UL)) {
+    lastSlowLoopLogAt_ = now;
+    AppLog.print("Responsiveness: slow loop ");
+    AppLog.print(busyMs);
+    AppLog.println(" ms");
   }
 
   if (loopMetricsWindowStartedAt_ == 0) {
@@ -2193,11 +2361,28 @@ void SpotifyDJApp::applyWebSettings(
     uint8_t brightnessPercent,
     uint32_t offTimeoutMs,
     uint32_t sleepTimeoutMs,
-    uint8_t speakerVolumePercent) {
+    uint8_t speakerVolumePercent,
+    const String &languageCode,
+    const String &themeCode) {
   screenBrightnessPercent_ = constrain(brightnessPercent, 25, 100);
   screenOffTimeoutMs_ = constrain(offTimeoutMs, 30000UL, 240000UL);
   deviceSleepTimeoutMs_ = constrain(sleepTimeoutMs, 300000UL, 3600000UL);
   speakerVolumePercent_ = constrain(speakerVolumePercent, 25, 100);
+  language_ = I18n::languageFromCode(languageCode);
+  I18n::setLanguage(language_);
+  languageCode_ = I18n::languageCode();
+  languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+  themeCode_ = themeCode;
+  themeCode_.toLowerCase();
+  if (themeCode_ != "auto" && themeCode_ != "light") {
+    themeCode_ = "dark";
+  }
+  for (size_t index = 0; index < ThemeOptionCount; index++) {
+    if (themeValue(index) == themeCode_) {
+      themeSelection_ = index;
+      break;
+    }
+  }
   sleepTimeoutSelection_ = Logic::deepSleepTimeoutIndexForMs(deviceSleepTimeoutMs_);
   for (size_t index = 0; index < SpeakerVolumeOptionCount; index++) {
     if (speakerVolumeValuePercent(index) == speakerVolumePercent_) {
@@ -2206,10 +2391,14 @@ void SpotifyDJApp::applyWebSettings(
     }
   }
   display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
+  applyTheme();
   sound_.setVolumePercent(speakerVolumePercent_);
   saveDisplaySettings();
   showNotice("Web settings saved", 1800);
   renderNow();
+  display_.showBootMessage("Restarting...", battery_);
+  responsiveDelay(450);
+  ESP.restart();
 }
 
 void SpotifyDJApp::applyWebMqttSettings(const MqttSettings &settings) {
@@ -2217,13 +2406,7 @@ void SpotifyDJApp::applyWebMqttSettings(const MqttSettings &settings) {
   mqttSettings_.host.trim();
   mqttSettings_.enabled = !mqttSettings_.host.isEmpty();
 
-  Preferences provision;
-  provision.begin("provision", false);
-  provision.putString("mqtt_host", mqttSettings_.host);
-  provision.putUInt("mqtt_port", mqttSettings_.port);
-  provision.putString("mqtt_user", mqttSettings_.username);
-  provision.putString("mqtt_pass", mqttSettings_.password);
-  provision.end();
+  provisioning_.saveMqttSettings(mqttSettings_);
   if (!mqttSettings_.host.isEmpty()) {
     haDevice_.saveMqttSettings(mqttSettings_);
   }
@@ -2238,7 +2421,35 @@ void SpotifyDJApp::applyWebMqttSettings(const MqttSettings &settings) {
       diagnostics_,
       visualState_,
       screenBrightnessPercent_,
-      screenOffTimeoutMs_);
+      speakerVolumePercent_,
+      languageCode_,
+      themeCode_,
+      screenOffTimeoutMs_,
+      deviceSleepTimeoutMs_);
+  mqttPublisher_.requestPublish();
+}
+
+void SpotifyDJApp::applyProvisionedLanguage(const String &languageCode) {
+  const String normalized = SpotifyDJDevice::normalizedLanguageCode(languageCode);
+  if (normalized.isEmpty()) {
+    return;
+  }
+  language_ = I18n::languageFromCode(normalized);
+  I18n::setLanguage(language_);
+  languageCode_ = I18n::languageCode();
+  languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+  AppLog.print("[SpotifyDJ] UI language applied: ");
+  AppLog.println(languageCode_);
+  mqttPublisher_.requestPublish();
+  renderNow();
+}
+
+void SpotifyDJApp::applyProvisionedSpotifyCredentials() {
+  spotify_.reloadCredentials();
+  AppLog.println("[SpotifyDJ] Spotify credentials reloaded after HA provisioning");
+  if (!spotify_.isAuthorized() && WiFi.status() == WL_CONNECTED) {
+    spotify_.authorize();
+  }
   mqttPublisher_.requestPublish();
 }
 
@@ -2276,7 +2487,11 @@ void SpotifyDJApp::syncHomeAssistantMqttSettings() {
       diagnostics_,
       visualState_,
       screenBrightnessPercent_,
-      screenOffTimeoutMs_);
+      speakerVolumePercent_,
+      languageCode_,
+      themeCode_,
+      screenOffTimeoutMs_,
+      deviceSleepTimeoutMs_);
   mqttPublisher_.requestPublish();
 }
 
@@ -2305,20 +2520,20 @@ void SpotifyDJApp::processPendingWifiSettings() {
 
   String targetPassword = pendingWifiPasswordProvided_ ? pendingWifiPassword_ : oldPassword;
 
-  AppLog.print("Testing web WiFi credentials for SSID: ");
-  AppLog.println(pendingWifiSsid_);
+  AppLog.print("Testing web WiFi credentials, SSID chars=");
+  AppLog.println(pendingWifiSsid_.length());
   display_.wakeForUserActivity();
   display_.showBootMessage("Testing WiFi...", battery_);
   ledRing_.showSolid(CRGB::Yellow, 100);
 
   WiFi.disconnect(false, false);
-  delay(250);
+  responsiveDelay(250);
   WiFi.mode(WIFI_STA);
   WiFi.begin(pendingWifiSsid_.c_str(), targetPassword.c_str());
 
   const uint32_t startedAt = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startedAt < 25000) {
-    delay(250);
+    responsiveDelay(250);
     AppLog.print(".");
   }
   AppLog.println();
@@ -2326,13 +2541,9 @@ void SpotifyDJApp::processPendingWifiSettings() {
   if (WiFi.status() == WL_CONNECTED) {
     AppLog.print("Web WiFi test OK, IP: ");
     AppLog.println(WiFi.localIP());
-    Preferences provision;
-    provision.begin("provision", false);
-    provision.putString("ssid", pendingWifiSsid_);
-    provision.putString("pass", targetPassword);
-    provision.end();
+    provisioning_.saveWifiCredentials(pendingWifiSsid_, targetPassword);
     display_.showBootMessage("WiFi OK. Restarting...", battery_);
-    delay(900);
+    responsiveDelay(900);
     ESP.restart();
     return;
   }
@@ -2341,7 +2552,7 @@ void SpotifyDJApp::processPendingWifiSettings() {
   playback_.error = "WiFi test failed";
   showNotice("WiFi test failed", 5000);
   WiFi.disconnect(false, false);
-  delay(250);
+  responsiveDelay(250);
   if (!oldSsid.isEmpty()) {
     WiFi.begin(oldSsid.c_str(), oldPassword.c_str());
   }
@@ -2363,13 +2574,16 @@ void SpotifyDJApp::setupHomeAssistantLayer() {
       spotify_,
       display_,
       ledRing_,
-      battery_);
+      battery_,
+      diagnostics_,
+      this,
+      djResponseCallback,
+      languageProvisionedCallback);
 
   AppLog.print("[SpotifyDJ] paired: ");
   AppLog.println(haDevice_.isPaired() ? "true" : "false");
   if (haDevice_.isPaired()) {
-    AppLog.print("[SpotifyDJ] HA URL: ");
-    AppLog.println(haDevice_.getHaUrl());
+    AppLog.println("[SpotifyDJ] HA URL: configured");
   } else {
     haDevice_.displayPairingCode();
   }
@@ -2393,7 +2607,7 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
       haPairingScreenActive_ = false;
       haPairingStartedAt_ = 0;
       haDevice_.displayPaired();
-      delay(700);
+      responsiveDelay(700);
       display_.showBootMessage("Authorizing Spotify...", battery_);
       if (spotify_.authorize()) {
         showNotice("Spotify authorized");
@@ -2433,11 +2647,11 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   visualState_.ledOn = ledRing_.isOn();
   if (!deepSleepStarted_ && now - haPairingStartedAt_ >= Config::PairingModeTimeoutMs) {
     display_.showBootMessage("Pair timeout\nSleeping...", battery_);
-    delay(600);
+    responsiveDelay(600);
     enterDeepSleep();
   }
   recordLoopMetrics(loopStartedAt);
-  delay(10);
+  responsiveDelay(10);
   return true;
 }
 
@@ -2446,12 +2660,16 @@ void SpotifyDJApp::applyWebSettingsCallback(
     uint8_t brightnessPercent,
     uint32_t offTimeoutMs,
     uint32_t sleepTimeoutMs,
-    uint8_t speakerVolumePercent) {
+    uint8_t speakerVolumePercent,
+    const String &languageCode,
+    const String &themeCode) {
   static_cast<SpotifyDJApp *>(context)->applyWebSettings(
       brightnessPercent,
       offTimeoutMs,
       sleepTimeoutMs,
-      speakerVolumePercent);
+      speakerVolumePercent,
+      languageCode,
+      themeCode);
 }
 
 void SpotifyDJApp::applyWebMqttSettingsCallback(void *context, const MqttSettings &settings) {
@@ -2460,6 +2678,20 @@ void SpotifyDJApp::applyWebMqttSettingsCallback(void *context, const MqttSetting
 
 void SpotifyDJApp::applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password) {
   static_cast<SpotifyDJApp *>(context)->requestWebWifiSettings(ssid, password);
+}
+
+bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl) {
+  if (context == nullptr) {
+    message = "App unavailable";
+    return false;
+  }
+  SpotifyDJApp *app = static_cast<SpotifyDJApp *>(context);
+  AppLog.print("[SpotifyDJ] web voice: sending text chars=");
+  AppLog.println(text.length());
+  app->voiceClient_.sendStatus(false, "sending_command");
+  const bool ok = app->voiceClient_.sendRecognizedText(text, message, &audioUrl);
+  app->voiceClient_.sendStatus(false, ok ? "idle" : "error", ok ? "" : message);
+  return ok;
 }
 
 void SpotifyDJApp::refreshFromWebCallback(void *context) {
@@ -2474,6 +2706,78 @@ void SpotifyDJApp::hardResetFromWebCallback(void *context) {
   static_cast<SpotifyDJApp *>(context)->hardResetToProvisioning();
 }
 
+bool SpotifyDJApp::djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken) {
+  return static_cast<SpotifyDJApp *>(context)->handleDjResponseText(text, audioUrl, spoken);
+}
+
+void SpotifyDJApp::languageProvisionedCallback(void *context, const String &languageCode) {
+  if (context != nullptr) {
+    static_cast<SpotifyDJApp *>(context)->applyProvisionedLanguage(languageCode);
+  }
+}
+
+void SpotifyDJApp::spotifyProvisionedCallback(void *context) {
+  if (context != nullptr) {
+    static_cast<SpotifyDJApp *>(context)->applyProvisionedSpotifyCredentials();
+  }
+}
+
+bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioUrl, bool &spoken) {
+  if (text.isEmpty()) {
+    return false;
+  }
+  spoken = false;
+  diagnostics_.lastDjText = text;
+  AppLog.print("[SpotifyDJ] DJ response displayed chars=");
+  AppLog.println(text.length());
+  if (!audioUrl.isEmpty()) {
+    spoken = playDjResponseAudioUrl(audioUrl);
+  }
+  if (!spoken && volumeFeedbackEnabled_) {
+    sound_.playConfirm();
+  }
+  showNotice(text, 6000);
+  renderNow();
+  mqttPublisher_.requestPublish();
+  mqttPublisher_.publishDjResponseEvent(spoken, true);
+  return true;
+}
+
+bool SpotifyDJApp::playDjResponseAudioUrl(const String &audioUrl) {
+  if (WiFi.status() != WL_CONNECTED) {
+    AppLog.println("[SpotifyDJ] DJ response audio skipped: WiFi disconnected");
+    return false;
+  }
+
+  HTTPClient http;
+  NetworkActivity activity("dj_audio_download", Config::DjAudioIoTimeoutMs);
+  NetworkActivity::configureHttp(http, Config::HttpConnectTimeoutMs, Config::DjAudioIoTimeoutMs);
+  if (!http.begin(audioUrl)) {
+    AppLog.println("[SpotifyDJ] DJ response audio begin failed");
+    activity.finishError("begin failed");
+    return false;
+  }
+
+  AppLog.println("[SpotifyDJ] DJ response audio download");
+  const int code = http.GET();
+  if (code < 200 || code >= 300) {
+    AppLog.print("[SpotifyDJ] DJ response audio HTTP ");
+    AppLog.println(code);
+    http.end();
+    activity.finish(code);
+    return false;
+  }
+
+  const int contentLength = http.getSize();
+  Stream *stream = http.getStreamPtr();
+  const bool ok = stream != nullptr && sound_.playWavStream(*stream, contentLength);
+  http.end();
+  activity.finish(code, ok ? "played" : "playback failed");
+  AppLog.print("[SpotifyDJ] DJ response audio played: ");
+  AppLog.println(ok ? "true" : "false");
+  return ok;
+}
+
 void SpotifyDJApp::renderMenuNow() {
   switch (activeScreen_) {
     case UiScreen::AlbumArt:
@@ -2482,23 +2786,23 @@ void SpotifyDJApp::renderMenuNow() {
 
     case UiScreen::RootMenu: {
       MenuItemView items[] = {
-          {"Up next"},
-          {"Playlists"},
-          {"Sound outputs"},
-          {"Settings"},
-          {"About"},
-          {"Logs"},
+          {I18n::text("up_next")},
+          {I18n::text("playlists")},
+          {I18n::text("outputs")},
+          {I18n::text("settings")},
+          {I18n::text("about")},
+          {I18n::text("logs")},
       };
-      display_.renderMenuList("Menu", items, 6, rootMenuSelection_, notice_);
+      display_.renderMenuList(I18n::text("menu"), items, 6, rootMenuSelection_, notice_);
       break;
     }
 
     case UiScreen::SoundOutputs: {
       MenuItemView items[8];
-      items[0].label = "None";
+      items[0].label = I18n::text("none");
       size_t itemCount = 1;
       if (!deviceList_.available || deviceList_.count == 0) {
-        items[1].label = deviceList_.error.isEmpty() ? "No outputs loaded" : deviceList_.error;
+        items[1].label = deviceList_.error.isEmpty() ? I18n::text("no_outputs") : deviceList_.error;
         itemCount = 2;
       } else {
         const size_t maxDevices = min(deviceList_.count, static_cast<size_t>(7));
@@ -2508,7 +2812,7 @@ void SpotifyDJApp::renderMenuNow() {
         }
         itemCount = maxDevices + 1;
       }
-      display_.renderMenuList("Sound outputs", items, itemCount, soundOutputSelection_, notice_);
+      display_.renderMenuList(I18n::text("outputs"), items, itemCount, soundOutputSelection_, notice_);
       break;
     }
 
@@ -2516,7 +2820,7 @@ void SpotifyDJApp::renderMenuNow() {
       MenuItemView items[5];
       size_t itemCount = queue_.count;
       if (!queue_.available || itemCount == 0) {
-        items[0].label = queue_.error.isEmpty() ? "Queue empty" : queue_.error;
+        items[0].label = queue_.error.isEmpty() ? I18n::text("queue_empty") : queue_.error;
         itemCount = 1;
       } else {
         for (size_t index = 0; index < itemCount; index++) {
@@ -2526,7 +2830,7 @@ void SpotifyDJApp::renderMenuNow() {
           }
         }
       }
-      display_.renderMenuList("Up next", items, itemCount, 0, notice_);
+      display_.renderMenuList(I18n::text("up_next"), items, itemCount, 0, notice_);
       break;
     }
 
@@ -2534,7 +2838,7 @@ void SpotifyDJApp::renderMenuNow() {
       MenuItemView items[8];
       size_t itemCount = playlists_.count;
       if (!playlists_.available || itemCount == 0) {
-        items[0].label = playlists_.error.isEmpty() ? "No playlists loaded" : playlists_.error;
+        items[0].label = playlists_.error.isEmpty() ? I18n::text("playlists") : playlists_.error;
         itemCount = 1;
       } else {
         itemCount = min(itemCount, static_cast<size_t>(8));
@@ -2545,7 +2849,7 @@ void SpotifyDJApp::renderMenuNow() {
           }
         }
       }
-      display_.renderMenuList("Playlists", items, itemCount, playlistSelection_, notice_);
+      display_.renderMenuList(I18n::text("playlists"), items, itemCount, playlistSelection_, notice_);
       break;
     }
 
@@ -2563,18 +2867,20 @@ void SpotifyDJApp::renderMenuNow() {
 
     case UiScreen::Settings: {
       MenuItemView items[] = {
-          {String("Screen brightness ") + String(screenBrightnessPercent_) + "%"},
-          {String("Screen dim timeout ") + dimTimeoutLabel(screenOffTimeoutMs_)},
-          {String("Deep sleep after ") + String(deviceSleepTimeoutMs_ / 60000UL) + " min"},
-          {String("Audio feedback ") + (volumeFeedbackEnabled_ ? "on" : "off")},
-          {String("Speaker volume ") + String(speakerVolumePercent_) + "%"},
-          {String("Spotify play mode ") + playModeLabel(currentPlayModeValue())},
-          {"Turn off device"},
-          {"Restart device"},
-          {"Reset pairing"},
-          {"Factory reset"},
+          {String(I18n::text("brightness")) + " " + String(screenBrightnessPercent_) + "%"},
+          {String(I18n::text("dim_timeout")) + " " + dimTimeoutLabel(screenOffTimeoutMs_)},
+          {String(I18n::text("deep_sleep_after")) + " " + minuteLabel(deviceSleepTimeoutMs_)},
+          {String(I18n::text("language")) + " " + languageLabel(language_)},
+          {String(I18n::text("theme")) + " " + themeLabel(themeCode_)},
+          {String(I18n::text("audio_feedback")) + " " + I18n::onOff(volumeFeedbackEnabled_)},
+          {String(I18n::text("speaker_volume")) + " " + String(speakerVolumePercent_) + "%"},
+          {String(I18n::text("spotify_play_mode")) + " " + playModeLabel(currentPlayModeValue(playback_))},
+          {I18n::text("turn_off_device")},
+          {I18n::text("restart_device")},
+          {I18n::text("reset_pairing")},
+          {I18n::text("factory_reset")},
       };
-      display_.renderMenuList("Settings", items, SettingsItemCount, settingsSelection_, notice_);
+      display_.renderMenuList(I18n::text("settings"), items, SettingsItemCount, settingsSelection_, notice_);
       break;
     }
 
@@ -2584,11 +2890,11 @@ void SpotifyDJApp::renderMenuNow() {
         const uint32_t valueMs = dimTimeoutValueMs(index);
         items[index].label = dimTimeoutLabel(valueMs);
         if (valueMs == screenOffTimeoutMs_) {
-          items[index].label += " selected";
+          items[index].label += " " + String(I18n::text("selected"));
         }
       }
       display_.renderMenuList(
-          "Screen dim timeout",
+          I18n::text("dim_timeout"),
           items,
           DimTimeoutOptionCount,
           dimTimeoutSelection_,
@@ -2602,14 +2908,45 @@ void SpotifyDJApp::renderMenuNow() {
         const uint8_t valuePercent = brightnessValuePercent(index);
         items[index].label = String(valuePercent) + "%";
         if (valuePercent == screenBrightnessPercent_) {
-          items[index].label += " selected";
+          items[index].label += " " + String(I18n::text("selected"));
         }
       }
       display_.renderMenuList(
-          "Screen brightness",
+          I18n::text("brightness"),
           items,
           BrightnessOptionCount,
           brightnessSelection_,
+          notice_);
+      break;
+    }
+
+    case UiScreen::Language: {
+      MenuItemView items[LanguageOptionCount] = {
+          {languageLabel(Language::English)},
+          {languageLabel(Language::Dutch)},
+      };
+      items[languageSelection_].label += " " + String(I18n::text("selected"));
+      display_.renderMenuList(
+          I18n::text("language"),
+          items,
+          LanguageOptionCount,
+          languageSelection_,
+          notice_);
+      break;
+    }
+
+    case UiScreen::Theme: {
+      MenuItemView items[ThemeOptionCount] = {
+          {themeLabel("dark")},
+          {themeLabel("light")},
+          {themeLabel("auto")},
+      };
+      items[themeSelection_].label += " " + String(I18n::text("selected"));
+      display_.renderMenuList(
+          I18n::text("theme"),
+          items,
+          ThemeOptionCount,
+          themeSelection_,
           notice_);
       break;
     }
@@ -2620,11 +2957,11 @@ void SpotifyDJApp::renderMenuNow() {
         const uint8_t valuePercent = speakerVolumeValuePercent(index);
         items[index].label = String(valuePercent) + "%";
         if (valuePercent == speakerVolumePercent_) {
-          items[index].label += " selected";
+          items[index].label += " " + String(I18n::text("selected"));
         }
       }
       display_.renderMenuList(
-          "Speaker volume",
+          I18n::text("speaker_volume"),
           items,
           SpeakerVolumeOptionCount,
           speakerVolumeSelection_,
@@ -2634,16 +2971,16 @@ void SpotifyDJApp::renderMenuNow() {
 
     case UiScreen::PlayMode: {
       MenuItemView items[PlayModeOptionCount];
-      const String currentMode = currentPlayModeValue();
+      const String currentMode = currentPlayModeValue(playback_);
       for (size_t index = 0; index < PlayModeOptionCount; index++) {
         const String mode = playModeValue(index);
         items[index].label = playModeLabel(mode);
         if (mode == currentMode) {
-          items[index].label += " selected";
+          items[index].label += " " + String(I18n::text("selected"));
         }
       }
       display_.renderMenuList(
-          "Spotify play mode",
+          I18n::text("spotify_play_mode"),
           items,
           PlayModeOptionCount,
           playModeSelection_,
@@ -2655,13 +2992,13 @@ void SpotifyDJApp::renderMenuNow() {
       MenuItemView items[SleepTimeoutOptionCount];
       for (size_t index = 0; index < SleepTimeoutOptionCount; index++) {
         const uint32_t valueMs = sleepTimeoutValueMs(index);
-        items[index].label = String(valueMs / 60000UL) + " min";
+        items[index].label = minuteLabel(valueMs);
         if (valueMs == deviceSleepTimeoutMs_) {
-          items[index].label += " selected";
+          items[index].label += " " + String(I18n::text("selected"));
         }
       }
       display_.renderMenuList(
-          "Deep sleep after",
+          I18n::text("deep_sleep_after"),
           items,
           SleepTimeoutOptionCount,
           sleepTimeoutSelection_,
@@ -2671,19 +3008,19 @@ void SpotifyDJApp::renderMenuNow() {
 
     case UiScreen::HardResetConfirm: {
       MenuItemView items[HardResetOptionCount] = {
-          {"No, go back"},
-          {"Yes, wipe setup"},
+          {I18n::text("confirm_no_go_back")},
+          {I18n::text("confirm_yes_wipe_setup")},
       };
-      display_.renderMenuList("Factory reset?", items, HardResetOptionCount, hardResetSelection_, notice_);
+      display_.renderMenuList(I18n::text("factory_reset_title"), items, HardResetOptionCount, hardResetSelection_, notice_);
       break;
     }
 
     case UiScreen::ResetPairingConfirm: {
       MenuItemView items[HardResetOptionCount] = {
-          {"No"},
-          {"Yes, reset pairing"},
+          {I18n::text("confirm_no")},
+          {I18n::text("confirm_yes_reset_pairing")},
       };
-      display_.renderMenuList("Reset pairing?", items, HardResetOptionCount, hardResetSelection_, notice_);
+      display_.renderMenuList(I18n::text("reset_pairing_title"), items, HardResetOptionCount, hardResetSelection_, notice_);
       break;
     }
 

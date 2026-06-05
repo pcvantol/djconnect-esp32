@@ -8,13 +8,34 @@ SpotifyDJ is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP3
 
 - TFT now-playing UI, menus, logs, album art, queue and sound output screens.
 - Rotary encoder and top-button controls.
-- Battery/charging guards, deep sleep and reset handling.
+- Battery/charging guards, turn-off sleep and reset handling.
 - WS2812 LED ring feedback.
 - Local mobile web portal.
 - MQTT/Home Assistant state publishing.
 - Home Assistant device-layer support: pairing, mDNS discovery, device API, status posting and OTA trigger endpoints.
 
 The current PlatformIO environment is `t_embed_cc1101`.
+
+## Licensing
+
+This firmware repository is proprietary closed-source software under `LICENSE`.
+Do not add open-source license headers or wording that grants redistribution,
+modification, reverse-engineering, or source-code rights for the firmware unless
+the user explicitly changes the licensing model. The Home Assistant integration
+may be offered free of charge separately, but that does not change the firmware
+license.
+
+Legal/trademark copy must stay consistent across README, web portal, device About
+screen and third-party notices:
+
+- `Copyright (c) 2026 Peter van Tol. All rights reserved.`
+- `SpotifyDJ firmware is proprietary software.`
+- `Spotify is a trademark of Spotify AB. SpotifyDJ is not affiliated with,
+  endorsed by, or sponsored by Spotify AB.`
+- Open-source dependency notices belong in `THIRD_PARTY_NOTICES.md`; dependency
+  licenses remain with their respective authors.
+
+Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 
 ## Important Paths
 
@@ -24,22 +45,34 @@ The current PlatformIO environment is `t_embed_cc1101`.
 - `include/Config.h`: shared constants, version, pins and timing.
 - `include/AppState.h`: shared state structs.
 - `include/LogicHelpers.h`: pure helper functions with native unit tests.
+- `include/SpotifyDJMenuModel.h`: pure menu counts/options with native unit tests.
+- `include/ProvisioningController.h`, `src/ProvisioningController.cpp`: NVS provisioning keys for WiFi, MQTT, setup mode, display settings, language/theme and cue volume.
+- `include/PowerController.h`, `src/PowerController.cpp`: charger policy, deep-sleep wake policy and watchdog setup/feed.
+- `include/NetworkActivityLogic.h`: testable network-timeout helper used by `NetworkActivity`.
 - `test/native/test_logic.cpp`: host-side unit tests.
+- `test/native/test_release.sh`: release-script dry-run and invalid-version checks.
 - `include/Secrets.h`: optional non-secret build flags only. Do not put WiFi or Spotify credentials here.
 - `include/Secrets.example.h`: template for optional build flags.
 - `src/SpotifyDJDevice.*`, `src/SpotifyDJDiscovery.*`, `src/SpotifyDJPairing.*`, `src/SpotifyDJApiServer.*`, `src/SpotifyDJOTA.*`: Home Assistant device-layer modules.
 - `src/SpotifyDJAssistClient.*`, `include/VoiceRecorder.h`, `src/VoiceRecorder.cpp`, `include/VoiceHttpClient.h`, `src/VoiceHttpClient.cpp`: push-to-talk Assist STT and recognized-text command flow.
 - `src/WebPortal.cpp`: embedded mobile web UI, diagnostics, settings, logs and HA pairing panel.
 - `include/SoundManager.h`, `src/SoundManager.cpp`: generated built-in speaker cues and cue volume scaling.
-- `README.md`: user-facing Dutch project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
+- `README.md`: user-facing English project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
+- `THIRD_PARTY_NOTICES.md`: third-party dependency notices for firmware libraries and frameworks.
 
 ## Build And Test Commands
 
 Run native tests first when changing pure logic:
 
 ```sh
-c++ -std=c++17 -Iinclude test/native/test_logic.cpp -o /tmp/spotifydj_unit_tests
+c++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/native/test_logic.cpp -o /tmp/spotifydj_unit_tests
 /tmp/spotifydj_unit_tests
+```
+
+Run release-script checks when touching release tooling:
+
+```sh
+bash test/native/test_release.sh
 ```
 
 Build firmware:
@@ -51,9 +84,31 @@ Build firmware:
 Build with an explicit release version:
 
 ```sh
-SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="2.1.0" -DSPOTIFYDJ_VERSION_TAG="v2.1.0"' \
+SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="X.Y.Z" -DSPOTIFYDJ_VERSION_TAG="vX.Y.Z"' \
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
+
+Prepare a tagged firmware release from the repo root:
+
+```sh
+./release.sh X.Y.Z
+```
+
+Use dry-run before release work:
+
+```sh
+./release.sh X.Y.Z --dry-run
+```
+
+To also publish assets into the public firmware repo:
+
+```sh
+./release.sh X.Y.Z --publish-firmware-repo ../spotify-dj-firmware
+```
+
+The release script keeps local dev defaults as `dev` / `vdev` and injects the
+release version through PlatformIO build flags. Do not hardcode release versions
+into `include/Config.h`.
 
 Expected recurring third-party warning:
 
@@ -71,8 +126,15 @@ Keep concerns separated:
 - `WebPortal` owns the existing mobile dashboard and shared port-80 `WebServer`.
 - Home Assistant device-layer code belongs in the `SpotifyDJ*` modules under `src/`.
 - `LogicHelpers.h` is for pure, host-testable calculations.
+- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, MQTT, setup-mode, display-setting, language/theme or cue-volume NVS reads/writes directly in `SpotifyDJApp`.
+- `PowerController` owns charger/wake/watchdog policy. Keep low-battery rendering in the app/display layer, but keep wake masks, timer-wake decisions and watchdog setup/feed out of `SpotifyDJApp`.
+- `SpotifyDJMenuModel` is the host-testable source for menu counts and option values. Keep display labels in `SpotifyDJMenu`/i18n and pure counts/options in the model.
+- `NetworkActivityLogic` is the host-testable timeout/reuse helper for long HTTP flows.
+- Long/blocking HTTP flows should use `NetworkActivity` or a documented equivalent guard with explicit connect/read timeouts, progress logging where useful, and loop/watchdog yielding for large transfers.
 - `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
 - `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
+- User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated.
+- App logs should use the timestamp prefix only. Do not add `[SpotifyDJ]` to new log messages; the central logger strips that legacy prefix when it appears at the start of older callsites.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.
 
@@ -86,6 +148,7 @@ The HA custom integration uses:
 - HA voice endpoint: `POST /api/spotify_dj/voice`
 - ESP OTA endpoint: `POST /api/device/ota`
 - ESP Spotify provisioning endpoint: `POST /api/device/provision_spotify`
+- ESP DJ response endpoint: `POST /api/device/dj_response`
 
 Local ESP endpoints currently include:
 
@@ -93,6 +156,15 @@ Local ESP endpoints currently include:
 - `GET /api/device/pairing-info`
 - `POST /api/device/pair`
 - `POST /api/device/provision_spotify`
+- `POST /api/device/dj_response`
+
+DJ response playback rules:
+
+- Required JSON field: `text`.
+- Optional JSON field: `audio_url`.
+- `audio_url` must point to PCM WAV audio if the ESP should speak it through `SoundManager::playWavStream()`.
+- Do not add MP3/Opus decoding unless explicitly requested; let Home Assistant generate a compatible WAV.
+- If no playable audio is supplied, return success with `spoken:false` and still display the text.
 - `POST /api/device/ota`
 - `POST /api/device/reboot`
 - `POST /api/device/forget`
@@ -101,11 +173,15 @@ The local device API registers routes on the existing `WebPortal` `WebServer` in
 
 Protected local endpoints must require `Authorization: Bearer <device_token>`. Open endpoints are limited to device info and pairing info unless the user explicitly changes the pairing flow.
 
+HA may provision UI language through `device_language` with `language` as fallback. Accept only `en` and `nl`, save valid values to `provision.language`, and apply them at runtime when possible. Ignore unknown language values without changing local menu-selected language.
+
+HA may provision Spotify OAuth credentials during pairing, status responses, or `POST /api/device/provision_spotify`. Use `SpotifyProvisioning::parseCredentials()` for every path. Support top-level `spotify_client_id`/`spotify_refresh_token`/`spotify_market`, compat top-level `client_id`/`refresh_token`/`market`, and nested `spotify` equivalents. Prefer nested `spotify.spotify_refresh_token`, then `spotify.refresh_token`, then top-level `spotify_refresh_token`, then top-level `refresh_token`; client id follows the same priority. If either client id or refresh token is missing, leave existing stored credentials untouched. Never log refresh tokens.
+
 mDNS:
 
-- Hostname: `spotifydj-XXXXXXXXXXXX`
+- Hostname: `spotifydj-lilygo-XXXXXXXXXXXX`
 - Service: `_spotifydj._tcp`
-- URL: `http://spotifydj-XXXXXXXXXXXX.local`
+- URL: `http://spotifydj-lilygo-XXXXXXXXXXXX.local`
 - TXT records include `name`, `device_id`, `version`, `paired`, `api`, and `model`.
 
 ## Secrets And Credential Policy
@@ -161,6 +237,10 @@ Push-to-talk uses Route B:
 - End audio by sending a binary frame containing only the `stt_binary_handler_id`.
 - Do not upload WAV audio to `/api/spotify_dj/voice` for STT.
 - `/api/spotify_dj/voice` receives recognized text only, via `X-SpotifyDJ-Text` and JSON body `{ "text": "..." }`.
+- The HA integration is responsible for Spotify command handling, `dj_text`, and optional backend TTS generation.
+- HA pushes DJ response text plus optional PCM WAV `audio_url` back to the ESP with `POST /api/device/dj_response`.
+- The ESP displays the DJ text, plays compatible PCM WAV through `SoundManager::playWavStream()`, and then returns to the normal UI.
+- Web portal PTT uses browser speech recognition and sends recognized text to the ESP `/api/voice-text` proxy. Do not upload browser WAV audio to the ESP. If HA returns `audio_url` in the `/api/spotify_dj/voice` response, the browser may play it through the laptop/phone speaker.
 - Do not call OpenAI directly from ESP firmware.
 - Keep `SPOTIFYDJ_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.
 
@@ -171,7 +251,7 @@ When WiFi is configured but Home Assistant is not paired:
 - Show pairing code on the display with SpotifyDJ logo/name, battery indicator, instruction text, and a large readable code.
 - Keep display brightness at 100%.
 - Keep pairing mode active for 10 minutes.
-- After 10 minutes, enter deep sleep.
+- After 10 minutes, turn off through ESP32 deep sleep.
 - Keep local web/API handling alive.
 - Do not process normal playback/menu button actions.
 - Soft reset and hard reset must remain available through the reset monitor.
@@ -192,6 +272,8 @@ Display is 320x170 landscape. Before changing text placement, consider the physi
 Important current UI details:
 
 - App name is `SpotifyDJ`.
+- Default device/web theme is `dark`. `Light` uses TFT inversion/high contrast on the device. `Auto` is mainly useful for the web portal, where it follows browser/device preference.
+- Changing the theme from the device or web settings intentionally saves and restarts the device so the display theme is applied cleanly from boot.
 - Now-playing title color is bright yellow.
 - Artist/show text is light grey.
 - Track progress bar is green.
@@ -246,6 +328,7 @@ MQTT is two-way:
 - Commands are subscribed on `spotifydj/<device_id>/command` plus specific command topics under `spotifydj/<device_id>/command/`.
 - Do not perform blocking Spotify HTTPS work inside the MQTT callback; queue an `MqttCommand` and let `SpotifyDJApp::loop()` execute it.
 - Keep Home Assistant MQTT discovery aligned with command topics for buttons, number and selects.
+- Current two-way MQTT scope includes Spotify-facing controls, status, next/previous, volume, sound output, playlist start, status command, OTA command placeholder, DJ response command, and settings commands for brightness, dim timeout, turn-off timeout, speaker cue volume, language, and theme.
 - HA-provisioned MQTT settings live in `spotifydj` NVS keys `mqtt_host`, `mqtt_port`, `mqtt_username`, `mqtt_password` and take precedence over legacy `provision` MQTT settings.
 - Captive portal MQTT settings are optional. Empty host means keep existing config and do not attempt MQTT setup.
 - Never log MQTT passwords.
@@ -290,6 +373,7 @@ Respect existing low-battery behavior:
 - Below 20%: show charge screen and block normal inputs.
 - Below 10%: critical charge flow and deep sleep.
 - Charging guard blocks normal WiFi/Spotify behavior until battery recovery threshold.
+- Deep sleep uses button wake plus a periodic charger probe timer. Without a known VBUS RTC GPIO this is near-auto USB-C wake, not instant hardware wake.
 
 Battery percentage is always voltage-estimated using `LogicHelpers::batteryPercentFromVoltage`. Do not reintroduce BQ27220 state-of-charge as the primary displayed percentage unless the user explicitly asks.
 
@@ -302,6 +386,7 @@ The web portal is intended to be usable on mobile. Keep controls responsive and 
 Current web expectations:
 
 - Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and HA URL/status.
+- The Home Assistant URL label in the web portal is `URL`, not `HA URL`.
 - Album art is shown when available.
 - Volume slider range is `0-60`.
 - Volume slider is disabled when no track/playback is active.
@@ -309,6 +394,24 @@ Current web expectations:
 - Logs support pause/resume and copy/select-all behavior.
 - WiFi credentials can be updated from the web UI without hard reset.
 - Do not show a WiFi password placeholder field with masked stored password.
+- When language is Dutch, the new WiFi password placeholder should be Dutch (`leeg laten om huidige te behouden`).
+- Context help for screen-off timeout belongs directly under the `Screen dim timeout` / `Scherm uit na` select.
+- A compact legal block should remain visible in the web portal, covering copyright, Spotify trademark/non-affiliation and open-source component notices.
+
+## Legal And Third-Party Notices
+
+Keep these surfaces aligned:
+
+- `LICENSE`: proprietary firmware license.
+- `README.md`: legal/trademark section and security checklist.
+- `THIRD_PARTY_NOTICES.md`: dependency notices.
+- Device About screen: compact copyright/proprietary/trademark/not-affiliated/OSS notice rows.
+- Web portal Legal panel: copyright, Spotify trademark/non-affiliation and OSS components.
+
+When adding libraries, update `platformio.ini` and `THIRD_PARTY_NOTICES.md`
+together. Use factual dependency names and avoid guessing license terms beyond
+what the package declares. If uncertain, write a conservative notice and mark
+the exact license as needing verification.
 
 ## Coding Style
 
@@ -335,17 +438,19 @@ README should document:
 - MQTT/HA behavior.
 - OTA release flow through the GitHub repo `pcvantol/spotify-dj-firmware` using a git tag.
 - Current build/upload/test commands.
+- Legal/trademark notice and reference to `THIRD_PARTY_NOTICES.md`.
 
 ## Verification Checklist
 
 Before finalizing firmware changes:
 
 1. Run native tests when logic helpers changed.
-2. Run PlatformIO build.
-3. Scan for accidental secrets when credential/provisioning code changed:
+2. Run `bash test/native/test_release.sh` when release tooling changed.
+3. Run PlatformIO build.
+4. Scan for accidental secrets when credential/provisioning code changed:
 
 ```sh
 rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_REFRESH_TOKEN|WIFI_SSID|WIFI_PASSWORD|client_secret|wifi144iot|verbindmet|AQB|5ea462" include src test -S
 ```
 
-4. Mention any remaining known TODOs, especially OTA SHA256 verification.
+5. Mention any remaining known TODOs, especially OTA SHA256 verification.

@@ -19,13 +19,18 @@ public:
       const RuntimeDiagnostics &diagnostics,
       const VisualState &visualState,
       const uint8_t &screenBrightnessPercent,
-      const uint32_t &screenOffTimeoutMs);
+      const uint8_t &speakerVolumePercent,
+      const String &languageCode,
+      const String &themeCode,
+      const uint32_t &screenOffTimeoutMs,
+      const uint32_t &deviceSleepTimeoutMs);
 
   void loop();
   void requestPublish();
   void requestStatusPublish();
   void setDeviceFlags(bool paired, bool spotifyConfigured);
   void publishEvent(const char *type, const char *button, const char *event);
+  void publishDjResponseEvent(bool spoken, bool displayed);
   bool pollCommand(MqttCommand &command);
 
   // Publishes Home Assistant availability=offline and disconnects before deep sleep.
@@ -50,7 +55,15 @@ private:
       const char *unit = nullptr,
       const char *deviceClass = nullptr);
   void publishButtonDiscovery(const char *objectId, const char *name, const char *payload);
-  void publishNumberDiscovery(const char *objectId, const char *name, const char *commandTopic, int minValue, int maxValue);
+  void publishNumberDiscovery(
+      const char *objectId,
+      const char *name,
+      const char *commandTopic,
+      int minValue,
+      int maxValue,
+      int step,
+      const char *valueTemplate,
+      const char *unit = "%");
   void publishSelectDiscovery(const char *objectId, const char *name, const char *commandTopic, const String *options, size_t optionCount, const char *valueTemplate);
   void handleMessage(char *topic, uint8_t *payload, unsigned int length);
   void enqueueCommand(const MqttCommand &command);
@@ -76,7 +89,11 @@ private:
   const RuntimeDiagnostics *diagnostics_ = nullptr;
   const VisualState *visualState_ = nullptr;
   const uint8_t *screenBrightnessPercent_ = nullptr;
+  const uint8_t *speakerVolumePercent_ = nullptr;
+  const String *languageCode_ = nullptr;
+  const String *themeCode_ = nullptr;
   const uint32_t *screenOffTimeoutMs_ = nullptr;
+  const uint32_t *deviceSleepTimeoutMs_ = nullptr;
   bool started_ = false;
   bool discoveryPublished_ = false;
   bool publishRequested_ = false;

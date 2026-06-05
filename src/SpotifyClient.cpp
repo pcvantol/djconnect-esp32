@@ -7,6 +7,7 @@
 #include <WiFi.h>
 
 #include "Config.h"
+#include "NetworkActivity.h"
 #include "TextHelpers.h"
 
 #ifndef SPOTIFY_MARKET
@@ -540,11 +541,11 @@ bool SpotifyClient::transferPlayback(const String &deviceId, bool play) {
   configureTls(client);
 
   HTTPClient http;
-  http.setConnectTimeout(Config::HttpConnectTimeoutMs);
-  http.setTimeout(Config::HttpIoTimeoutMs);
-  http.setReuse(false);
+  NetworkActivity activity("spotify_transfer", Config::HttpLongIoTimeoutMs);
+  NetworkActivity::configureDefaultHttp(http);
   if (!http.begin(client, String(Config::SpotifyApiBaseUrl) + "/me/player")) {
     state_.error = "Transfer HTTP begin failed";
+    activity.finishError("begin failed");
     return false;
   }
 
@@ -553,6 +554,7 @@ bool SpotifyClient::transferPlayback(const String &deviceId, bool play) {
   const int code = http.PUT(body);
   payload = http.getString();
   http.end();
+  activity.finish(code);
 
   if (code == 204 || code == 200) {
     state_.deviceId = deviceId;
@@ -635,12 +637,12 @@ bool SpotifyClient::playContextUri(const String &contextUri) {
   configureTls(client);
 
   HTTPClient http;
-  http.setConnectTimeout(Config::HttpConnectTimeoutMs);
-  http.setTimeout(Config::HttpIoTimeoutMs);
-  http.setReuse(false);
+  NetworkActivity activity("spotify_play_context", Config::HttpLongIoTimeoutMs);
+  NetworkActivity::configureDefaultHttp(http);
   const String path = String("/me/player/play") + activeDeviceQuery();
   if (!http.begin(client, String(Config::SpotifyApiBaseUrl) + path)) {
     state_.error = "Playlist HTTP begin failed";
+    activity.finishError("begin failed");
     return false;
   }
 
@@ -651,6 +653,7 @@ bool SpotifyClient::playContextUri(const String &contextUri) {
   const int code = http.PUT(body);
   payload = http.getString();
   http.end();
+  activity.finish(code);
 
   AppLog.print("Spotify response: ");
   AppLog.print(code);
@@ -787,11 +790,11 @@ bool SpotifyClient::refreshAccessToken() {
     configureTls(client);
 
     HTTPClient http;
-    http.setConnectTimeout(Config::HttpConnectTimeoutMs);
-    http.setTimeout(Config::HttpIoTimeoutMs);
-    http.setReuse(false);
+    NetworkActivity activity("spotify_token", Config::HttpLongIoTimeoutMs);
+    NetworkActivity::configureDefaultHttp(http);
     if (!http.begin(client, Config::SpotifyAccountsUrl)) {
       state_.error = "Token HTTP begin failed";
+      activity.finishError("begin failed");
       return false;
     }
 
@@ -803,6 +806,7 @@ bool SpotifyClient::refreshAccessToken() {
     const int code = http.POST(body);
     const String payload = http.getString();
     http.end();
+    activity.finish(code);
 
     AppLog.print("Token response: ");
     AppLog.print(code);
@@ -811,7 +815,6 @@ bool SpotifyClient::refreshAccessToken() {
 
     if (code != 200) {
       state_.error = tokenErrorFromPayload(code, payload);
-      AppLog.println(payload);
       return false;
     }
 
@@ -876,12 +879,12 @@ int SpotifyClient::apiRequest(
     configureTls(client);
 
     HTTPClient http;
-    http.setConnectTimeout(Config::HttpConnectTimeoutMs);
-    http.setTimeout(Config::HttpIoTimeoutMs);
-    http.setReuse(false);
+    NetworkActivity activity("spotify_api", Config::HttpLongIoTimeoutMs);
+    NetworkActivity::configureDefaultHttp(http);
     const String url = String(Config::SpotifyApiBaseUrl) + path;
     if (!http.begin(client, url)) {
       state_.error = "Spotify HTTP begin failed";
+      activity.finishError("begin failed");
       return -1;
     }
 
@@ -902,6 +905,7 @@ int SpotifyClient::apiRequest(
 
     const String payload = http.getString();
     http.end();
+    activity.finish(code);
 
     AppLog.print("Spotify response: ");
     AppLog.print(code);

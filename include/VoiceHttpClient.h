@@ -10,7 +10,7 @@ public:
   void begin(SpotifyDJDevice &device);
 
   bool sendStatus(bool recording, const String &state, const String &lastError = "");
-  bool sendRecognizedText(const String &recognizedText, String &message);
+  bool sendRecognizedText(const String &recognizedText, String &message, String *audioUrl = nullptr);
 
 private:
   String endpoint(const char *path) const;

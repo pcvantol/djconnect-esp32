@@ -9,10 +9,14 @@
 #include "Config.h"
 #include "DisplayManager.h"
 #include "InputController.h"
+#include "I18n.h"
 #include "LedRing.h"
 #include "MqttPublisher.h"
+#include "PowerController.h"
+#include "ProvisioningController.h"
 #include "SoundManager.h"
 #include "SoftResetMonitor.h"
+#include "SpotifyDJMenu.h"
 #include "SpotifyClient.h"
 #include "../src/SpotifyDJAssistClient.h"
 #include "../src/SpotifyDJApiServer.h"
@@ -34,25 +38,6 @@ public:
   void loop();
 
 private:
-  enum class UiScreen {
-    NowPlaying,
-    AlbumArt,
-    Queue,
-    Playlists,
-    SoundOutputs,
-    Logs,
-    RootMenu,
-    About,
-    Settings,
-    DimTimeout,
-    Brightness,
-    SpeakerVolume,
-    PlayMode,
-    SleepTimeout,
-    ResetPairingConfirm,
-    HardResetConfirm,
-  };
-
   // Connects to WiFi and performs the TLS clock sync when secure Spotify TLS is enabled.
   void loadProvisioning();
   bool shouldStartProvisioningPortal() const;
@@ -118,13 +103,7 @@ private:
   size_t menuItemCount(UiScreen screen) const;
   size_t selectedIndexForScreen(UiScreen screen) const;
   size_t &selectedIndexRefForScreen(UiScreen screen);
-  uint32_t dimTimeoutValueMs(size_t index) const;
-  uint8_t brightnessValuePercent(size_t index) const;
-  uint8_t speakerVolumeValuePercent(size_t index) const;
-  String playModeValue(size_t index) const;
-  String currentPlayModeValue() const;
-  String playModeLabel(const String &mode) const;
-  uint32_t sleepTimeoutValueMs(size_t index) const;
+  void applyTheme();
 
   // Sends the latest encoder volume change after the user stops turning the knob.
   void flushPendingVolume();
@@ -158,6 +137,7 @@ private:
   bool connectionHealthy();
   void renderMenuNow();
   bool chargerConnected() const;
+  bool shouldReturnToSleepAfterTimerWake() const;
   bool updateLowBatteryGuard();
   void renderLowBatteryGuard();
   void evaluateBatteryTransition();
@@ -168,14 +148,23 @@ private:
   void updateVisualPower();
 
   // Publishes offline state, configures wake GPIOs, and enters ESP32-S3 deep sleep.
+  void configureWatchdog();
+  void serviceWatchdog();
+  void responsiveDelay(uint32_t durationMs);
+  void logHeapIfDue();
   void enterDeepSleep();
+  void enterDeepSleepWithoutDisplay();
   void recordLoopMetrics(uint32_t loopStartedAt);
   // Applies settings posted from the web dashboard and persists them.
-  void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent);
+  void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode);
   void applyWebMqttSettings(const MqttSettings &settings);
   void syncHomeAssistantMqttSettings();
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
+  bool handleDjResponseText(const String &text, const String &audioUrl, bool &spoken);
+  bool playDjResponseAudioUrl(const String &audioUrl);
+  void applyProvisionedLanguage(const String &languageCode);
+  void applyProvisionedSpotifyCredentials();
   void setupHomeAssistantLayer();
   void sendHomeAssistantStatusIfDue(bool force = false);
   bool handleHomeAssistantPairingMode(uint32_t loopStartedAt);
@@ -184,24 +173,20 @@ private:
       uint8_t brightnessPercent,
       uint32_t offTimeoutMs,
       uint32_t sleepTimeoutMs,
-      uint8_t speakerVolumePercent);
+      uint8_t speakerVolumePercent,
+      const String &languageCode,
+      const String &themeCode);
   static void applyWebMqttSettingsCallback(void *context, const MqttSettings &settings);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
+  static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
   static void refreshFromWebCallback(void *context);
   static void resetPairingFromWebCallback(void *context);
   static void hardResetFromWebCallback(void *context);
+  static bool djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken);
+  static void languageProvisionedCallback(void *context, const String &languageCode);
+  static void spotifyProvisionedCallback(void *context);
   void showNotice(const String &message, uint32_t ttlMs = 2500);
   int displayedVolume() const;
-
-  static constexpr size_t MenuStackCapacity = 5;
-  static constexpr size_t DimTimeoutOptionCount = 4;
-  static constexpr size_t BrightnessOptionCount = 4;
-  static constexpr size_t SpeakerVolumeOptionCount = 4;
-  static constexpr size_t PlayModeOptionCount = 4;
-  static constexpr size_t SleepTimeoutOptionCount = 4;
-  static constexpr size_t HardResetOptionCount = 2;
-  static constexpr size_t WifiFailureOptionCount = 4;
-  static constexpr size_t SettingsItemCount = 10;
 
   SpotifyState playback_;
   BatteryState battery_;
@@ -228,11 +213,13 @@ private:
   SpotifyDJApiServer haApiServer_;
   SpotifyDJOTA haOta_;
   MqttPublisher mqttPublisher_;
+  PowerController power_;
+  ProvisioningController provisioning_;
   RuntimeDiagnostics diagnostics_;
   VisualState visualState_;
 
   UiScreen activeScreen_ = UiScreen::NowPlaying;
-  UiScreen menuStack_[MenuStackCapacity] = {};
+  UiScreen menuStack_[SpotifyDJMenu::MenuStackCapacity] = {};
   size_t menuStackSize_ = 0;
   size_t rootMenuSelection_ = 0;
   size_t settingsSelection_ = 0;
@@ -240,6 +227,8 @@ private:
   size_t aboutSelection_ = 0;
   size_t dimTimeoutSelection_ = 1;
   size_t brightnessSelection_ = 3;
+  size_t languageSelection_ = 0;
+  size_t themeSelection_ = 0;
   size_t speakerVolumeSelection_ = 3;
   size_t playModeSelection_ = 0;
   size_t sleepTimeoutSelection_ = 0;
@@ -250,6 +239,9 @@ private:
   uint32_t deviceSleepTimeoutMs_ = Config::DeviceSleepAfterMs;
   uint8_t screenBrightnessPercent_ = 100;
   uint8_t speakerVolumePercent_ = 100;
+  Language language_ = Language::English;
+  String languageCode_ = "en";
+  String themeCode_ = "dark";
   String wifiSsid_;
   String wifiPassword_;
   String pendingWifiSsid_;
@@ -291,4 +283,6 @@ private:
   uint32_t lastHaPairingScreenAt_ = 0;
   uint32_t loopMetricsWindowStartedAt_ = 0;
   uint32_t loopMetricsBusyMs_ = 0;
+  uint32_t lastHeapLogAt_ = 0;
+  uint32_t lastSlowLoopLogAt_ = 0;
 };

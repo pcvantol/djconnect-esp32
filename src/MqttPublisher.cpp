@@ -27,7 +27,11 @@ void MqttPublisher::begin(
     const RuntimeDiagnostics &diagnostics,
     const VisualState &visualState,
     const uint8_t &screenBrightnessPercent,
-    const uint32_t &screenOffTimeoutMs) {
+    const uint8_t &speakerVolumePercent,
+    const String &languageCode,
+    const String &themeCode,
+    const uint32_t &screenOffTimeoutMs,
+    const uint32_t &deviceSleepTimeoutMs) {
   deviceId_ = deviceId.isEmpty() ? "spotifydj" : deviceId;
   settings_ = &settings;
   playback_ = &playback;
@@ -37,7 +41,11 @@ void MqttPublisher::begin(
   diagnostics_ = &diagnostics;
   visualState_ = &visualState;
   screenBrightnessPercent_ = &screenBrightnessPercent;
+  speakerVolumePercent_ = &speakerVolumePercent;
+  languageCode_ = &languageCode;
+  themeCode_ = &themeCode;
   screenOffTimeoutMs_ = &screenOffTimeoutMs;
+  deviceSleepTimeoutMs_ = &deviceSleepTimeoutMs;
   started_ = true;
   discoveryPublished_ = false;
   publishRequested_ = true;
@@ -123,6 +131,21 @@ void MqttPublisher::publishEvent(const char *type, const char *button, const cha
   }
 }
 
+void MqttPublisher::publishDjResponseEvent(bool spoken, bool displayed) {
+  if (!client_.connected()) {
+    return;
+  }
+  JsonDocument doc;
+  doc["type"] = "dj_response";
+  doc["spoken"] = spoken;
+  doc["displayed"] = displayed;
+  String payload;
+  serializeJson(doc, payload);
+  if (!client_.publish(deviceEventTopic().c_str(), payload.c_str(), false)) {
+    AppLog.println("MQTT DJ response event publish failed");
+  }
+}
+
 bool MqttPublisher::pollCommand(MqttCommand &command) {
   if (!commandPending_) {
     return false;
@@ -187,8 +210,8 @@ bool MqttPublisher::connectIfNeeded() {
   AppLog.print(settings_->host);
   AppLog.print(":");
   AppLog.print(settings_->port);
-  AppLog.print(" as ");
-  AppLog.println(settings_->username.isEmpty() ? "anonymous" : settings_->username);
+  AppLog.print(" auth=");
+  AppLog.println(settings_->username.isEmpty() ? "anonymous" : "configured");
 
   bool ok = false;
   if (!settings_->username.isEmpty()) {
@@ -218,6 +241,12 @@ bool MqttPublisher::connectIfNeeded() {
     client_.subscribe(commandTopic("volume/set").c_str());
     client_.subscribe(commandTopic("output/set").c_str());
     client_.subscribe(commandTopic("playlist/set").c_str());
+    client_.subscribe(commandTopic("settings/brightness/set").c_str());
+    client_.subscribe(commandTopic("settings/dim_timeout/set").c_str());
+    client_.subscribe(commandTopic("settings/deep_sleep/set").c_str());
+    client_.subscribe(commandTopic("settings/speaker_volume/set").c_str());
+    client_.subscribe(commandTopic("settings/language/set").c_str());
+    client_.subscribe(commandTopic("settings/theme/set").c_str());
     AppLog.println("MQTT command topics subscribed");
     discoveryPublished_ = false;
     publishRequested_ = true;
@@ -250,7 +279,16 @@ void MqttPublisher::publishDiscoveryIfNeeded() {
   publishSensorDiscovery("loop_load", "Loop load", "{{ value_json.system.loop_load }}", "%");
   publishButtonDiscovery("next", "Next song", "next");
   publishButtonDiscovery("previous", "Previous song", "previous");
-  publishNumberDiscovery("volume_control", "Volume", commandTopic("volume/set").c_str(), 0, Config::MaxSpotifyVolumePercent);
+  publishNumberDiscovery("volume_control", "Volume", commandTopic("volume/set").c_str(), 0, Config::MaxSpotifyVolumePercent, Config::VolumeStepPercent, "{{ value_json.device.volume }}");
+  publishNumberDiscovery("screen_brightness", "Screen brightness", commandTopic("settings/brightness/set").c_str(), 25, 100, 25, "{{ value_json.settings.brightness }}");
+  publishNumberDiscovery("screen_dim_timeout", "Screen dim timeout", commandTopic("settings/dim_timeout/set").c_str(), 30, 240, 30, "{{ value_json.settings.off_timeout_sec }}", "s");
+  publishNumberDiscovery("turn_off_after", "Turn off after", commandTopic("settings/deep_sleep/set").c_str(), 5, 60, 5, "{{ value_json.settings.deep_sleep_min }}", "min");
+  publishNumberDiscovery("speaker_volume", "Speaker volume", commandTopic("settings/speaker_volume/set").c_str(), 25, 100, 25, "{{ value_json.settings.speaker_volume }}");
+
+  String languageOptions[2] = {"en", "nl"};
+  publishSelectDiscovery("language", "Language", commandTopic("settings/language/set").c_str(), languageOptions, 2, "{{ value_json.settings.language }}");
+  String themeOptions[3] = {"auto", "dark", "light"};
+  publishSelectDiscovery("theme", "Theme", commandTopic("settings/theme/set").c_str(), themeOptions, 3, "{{ value_json.settings.theme }}");
 
   String outputOptions[8];
   size_t outputCount = 0;
@@ -339,7 +377,13 @@ void MqttPublisher::publishState() {
 
   JsonObject settings = doc["settings"].to<JsonObject>();
   settings["brightness"] = screenBrightnessPercent_ == nullptr ? 0 : *screenBrightnessPercent_;
+  settings["speaker_volume"] = speakerVolumePercent_ == nullptr ? 100 : *speakerVolumePercent_;
+  settings["language"] = languageCode_ == nullptr ? "en" : *languageCode_;
+  settings["theme"] = themeCode_ == nullptr ? "auto" : *themeCode_;
   settings["off_timeout_ms"] = screenOffTimeoutMs_ == nullptr ? 0 : *screenOffTimeoutMs_;
+  settings["off_timeout_sec"] = screenOffTimeoutMs_ == nullptr ? 0 : (*screenOffTimeoutMs_ / 1000UL);
+  settings["deep_sleep_ms"] = deviceSleepTimeoutMs_ == nullptr ? 0 : *deviceSleepTimeoutMs_;
+  settings["deep_sleep_min"] = deviceSleepTimeoutMs_ == nullptr ? 0 : (*deviceSleepTimeoutMs_ / 60000UL);
 
   JsonObject screen = doc["screen"].to<JsonObject>();
   const bool screenOn = visualState_ != nullptr && visualState_->screenOn;
@@ -355,6 +399,9 @@ void MqttPublisher::publishState() {
   system["heap_free"] = ESP.getFreeHeap();
   system["heap_used"] = ESP.getHeapSize() - ESP.getFreeHeap();
   system["loop_load"] = diagnostics_->cpuUsagePercent;
+
+  JsonObject dj = doc["dj"].to<JsonObject>();
+  dj["last_dj_text"] = diagnostics_->lastDjText;
 
   String payload;
   serializeJson(doc, payload);
@@ -450,18 +497,28 @@ void MqttPublisher::publishButtonDiscovery(const char *objectId, const char *nam
   }
 }
 
-void MqttPublisher::publishNumberDiscovery(const char *objectId, const char *name, const char *topic, int minValue, int maxValue) {
+void MqttPublisher::publishNumberDiscovery(
+    const char *objectId,
+    const char *name,
+    const char *topic,
+    int minValue,
+    int maxValue,
+    int step,
+    const char *valueTemplate,
+    const char *unit) {
   JsonDocument doc;
   doc["name"] = name;
   doc["unique_id"] = String(DeviceId) + "_" + objectId;
   doc["state_topic"] = stateTopic();
   doc["command_topic"] = topic;
   doc["availability_topic"] = availabilityTopic();
-  doc["value_template"] = "{{ value_json.device.volume }}";
+  doc["value_template"] = valueTemplate == nullptr ? "{{ value_json.device.volume }}" : valueTemplate;
   doc["min"] = minValue;
   doc["max"] = maxValue;
-  doc["step"] = Config::VolumeStepPercent;
-  doc["unit_of_measurement"] = "%";
+  doc["step"] = step;
+  if (unit != nullptr && strlen(unit) > 0) {
+    doc["unit_of_measurement"] = unit;
+  }
   JsonObject device = doc["device"].to<JsonObject>();
   device["identifiers"][0] = DeviceId;
   device["name"] = DeviceName;
@@ -536,6 +593,9 @@ void MqttPublisher::handleMessage(char *topic, uint8_t *payload, unsigned int le
       command.type = MqttCommandType::Status;
     } else if (name == "ota") {
       command.type = MqttCommandType::Ota;
+    } else if (name == "dj_response") {
+      command.type = MqttCommandType::DjResponse;
+      command.value = doc["text"] | "";
     }
   } else if (topicText == commandTopic("action")) {
     if (body == "next") {
@@ -553,13 +613,29 @@ void MqttPublisher::handleMessage(char *topic, uint8_t *payload, unsigned int le
     command.type = MqttCommandType::StartPlaylist;
     command.value = body;
     lastPlaylistCommand_ = body;
+  } else if (topicText == commandTopic("settings/brightness/set")) {
+    command.type = MqttCommandType::ScreenBrightness;
+    command.numericValue = constrain(body.toInt(), 25, 100);
+  } else if (topicText == commandTopic("settings/dim_timeout/set")) {
+    command.type = MqttCommandType::ScreenDimTimeout;
+    command.numericValue = constrain(body.toInt(), 30, 240);
+  } else if (topicText == commandTopic("settings/deep_sleep/set")) {
+    command.type = MqttCommandType::DeepSleepTimeout;
+    command.numericValue = constrain(body.toInt(), 5, 60);
+  } else if (topicText == commandTopic("settings/speaker_volume/set")) {
+    command.type = MqttCommandType::SpeakerVolume;
+    command.numericValue = constrain(body.toInt(), 25, 100);
+  } else if (topicText == commandTopic("settings/language/set")) {
+    command.type = MqttCommandType::Language;
+    command.value = body;
+  } else if (topicText == commandTopic("settings/theme/set")) {
+    command.type = MqttCommandType::Theme;
+    command.value = body;
   }
 
   if (command.type == MqttCommandType::None) {
     AppLog.print("MQTT command ignored topic=");
-    AppLog.print(topicText);
-    AppLog.print(" payload=");
-    AppLog.println(body);
+    AppLog.println(topicText);
     return;
   }
   enqueueCommand(command);

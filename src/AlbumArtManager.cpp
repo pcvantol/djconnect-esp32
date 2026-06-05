@@ -7,6 +7,9 @@
 #include <WiFiClientSecure.h>
 #include <time.h>
 
+#include "Config.h"
+#include "NetworkActivity.h"
+
 static constexpr uint32_t CacheTtlSeconds = 24UL * 60UL * 60UL;
 static constexpr uint32_t CleanupIntervalMs = 30UL * 60UL * 1000UL;
 static constexpr size_t MaxImageBytes = 220 * 1024;
@@ -110,13 +113,14 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
 
   WiFiClientSecure client;
   client.setInsecure();
-  client.setTimeout(6000);
+  client.setTimeout(Config::HttpLongIoTimeoutMs);
 
   HTTPClient http;
-  http.setConnectTimeout(6000);
-  http.setTimeout(8000);
+  NetworkActivity activity("album_art_download", Config::HttpLongIoTimeoutMs);
+  NetworkActivity::configureLongHttp(http);
   if (!http.begin(client, url)) {
     status_ = "Album HTTP begin failed";
+    activity.finishError("begin failed");
     return false;
   }
 
@@ -124,6 +128,7 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
   if (code != 200) {
     status_ = "Album HTTP " + String(code);
     http.end();
+    activity.finish(code);
     return false;
   }
 
@@ -169,6 +174,7 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
       status_ = "Album art too large";
       file.close();
       http.end();
+      activity.finishError("too large");
       LittleFS.remove(imagePath);
       return false;
     }
@@ -179,18 +185,22 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
   http.end();
   if (totalBytes == 0) {
     status_ = "Album download empty";
+    activity.finishError("empty");
     LittleFS.remove(imagePath);
     return false;
   }
   if (timedOut) {
+    activity.finishError("timeout");
     LittleFS.remove(imagePath);
     return false;
   }
   if (expectedBytes > 0 && totalBytes < static_cast<size_t>(expectedBytes)) {
     status_ = "Album download partial";
+    activity.finishError("partial");
     LittleFS.remove(imagePath);
     return false;
   }
+  activity.finish(code, "cached");
   return true;
 }
 

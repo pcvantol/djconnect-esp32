@@ -93,6 +93,27 @@ MqttSettings SpotifyDJDevice::getMqttSettings() const {
   return settings;
 }
 
+String SpotifyDJDevice::normalizedLanguageCode(const String &languageCode) {
+  String normalized = languageCode;
+  normalized.trim();
+  normalized.toLowerCase();
+  return normalized == "nl" || normalized == "en" ? normalized : "";
+}
+
+bool SpotifyDJDevice::saveProvisionedLanguage(const String &languageCode) {
+  const String normalized = normalizedLanguageCode(languageCode);
+  if (normalized.isEmpty()) {
+    return false;
+  }
+  Preferences preferences;
+  preferences.begin("provision", false);
+  preferences.putString("language", normalized);
+  preferences.end();
+  AppLog.print("[SpotifyDJ] Provisioned UI language: ");
+  AppLog.println(normalized);
+  return true;
+}
+
 void SpotifyDJDevice::ensurePairingCode() {
   if (!pairCode_.isEmpty()) {
     return;
@@ -131,15 +152,16 @@ void SpotifyDJDevice::displayPaired() {
 void SpotifyDJDevice::savePairing(const String &haUrl, const String &deviceToken) {
   writeString("ha_url", haUrl);
   writeString("device_token", deviceToken);
-  AppLog.print("[SpotifyDJ] paired with HA URL: ");
-  AppLog.println(haUrl);
+  AppLog.println("[SpotifyDJ] paired with Home Assistant URL stored");
 }
 
 void SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market) {
   writeString("spotify_client_id", clientId);
   writeString("spotify_refresh_token", refreshToken);
   writeString("spotify_market", market.isEmpty() ? "NL" : market);
-  AppLog.println("[SpotifyDJ] Spotify credentials saved to NVS");
+  AppLog.print("[SpotifyDJ] Spotify credentials provisioned: client_id=");
+  AppLog.print(clientId.isEmpty() ? "missing" : "present");
+  AppLog.println(", refresh_token=present");
 }
 
 void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {

@@ -16,9 +16,12 @@ public:
       uint8_t brightnessPercent,
       uint32_t offTimeoutMs,
       uint32_t sleepTimeoutMs,
-      uint8_t speakerVolumePercent);
+      uint8_t speakerVolumePercent,
+      const String &languageCode,
+      const String &themeCode);
   using MqttSettingsCallback = void (*)(void *context, const MqttSettings &settings);
   using WifiSettingsCallback = void (*)(void *context, const String &ssid, const String &password);
+  using VoiceTextCallback = bool (*)(void *context, const String &text, String &message, String &audioUrl);
   using SimpleCallback = void (*)(void *context);
 
   // Starts the HTTP server and binds it to the live app state snapshots.
@@ -33,12 +36,15 @@ public:
       const MqttSettings &mqttSettings,
       const uint8_t &screenBrightnessPercent,
       const uint8_t &speakerVolumePercent,
+      const String &languageCode,
+      const String &themeCode,
       const uint32_t &screenOffTimeoutMs,
       const uint32_t &deviceSleepTimeoutMs,
       void *callbackContext,
       SettingsCallback settingsCallback,
       MqttSettingsCallback mqttSettingsCallback,
       WifiSettingsCallback wifiSettingsCallback,
+      VoiceTextCallback voiceTextCallback,
       SimpleCallback refreshCallback,
       SimpleCallback resetPairingCallback,
       SimpleCallback hardResetCallback);
@@ -68,6 +74,7 @@ private:
   void handleQueueJson();
   void handleTransferPost();
   void handlePlaybackCommandPost();
+  void handleVoiceTextPost();
   void handleRefreshPost();
   void handleResetPairingPost();
   void handleRebootPost();
@@ -93,12 +100,15 @@ private:
   const MqttSettings *mqttSettings_ = nullptr;
   const uint8_t *screenBrightnessPercent_ = nullptr;
   const uint8_t *speakerVolumePercent_ = nullptr;
+  const String *languageCode_ = nullptr;
+  const String *themeCode_ = nullptr;
   const uint32_t *screenOffTimeoutMs_ = nullptr;
   const uint32_t *deviceSleepTimeoutMs_ = nullptr;
   void *callbackContext_ = nullptr;
   SettingsCallback settingsCallback_ = nullptr;
   MqttSettingsCallback mqttSettingsCallback_ = nullptr;
   WifiSettingsCallback wifiSettingsCallback_ = nullptr;
+  VoiceTextCallback voiceTextCallback_ = nullptr;
   SimpleCallback refreshCallback_ = nullptr;
   SimpleCallback resetPairingCallback_ = nullptr;
   SimpleCallback hardResetCallback_ = nullptr;
