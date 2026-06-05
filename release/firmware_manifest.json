@@ -1,8 +1,8 @@
 {
-  "version": "2.7.1",
+  "version": "2.7.2",
   "device": "lilygo-t-embed-s3",
-  "asset": "spotifydj-device-v2.7.1.bin",
-  "sha256": "61506db45bf19b8e4a73200c95128c04b2223a1fba190e78c4ac22d2c22cccd1",
-  "size": 2113136,
+  "asset": "spotifydj-device-v2.7.2.bin",
+  "sha256": "7b9c3348a5d7b6fbb729b551615cfcef521a31703d4b4c055a2e37d8374d0574",
+  "size": 2113040,
   "min_ha_integration": "1.0.0"
 }

@@ -545,7 +545,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         logsPausedSelected:"Logs paused and selected", saving:"Saving...", testWifiConfirm:"Test these WiFi credentials? The web page may disconnect during the test.",
         startingWifiTest:"Starting WiFi test...", refreshing:"Refreshing...", restartConfirm:"Restart SpotifyDJ?",
         resetPairingConfirm:"Reset Home Assistant pairing and restart to the pairing screen?", factoryResetConfirm:"Factory reset SpotifyDJ and open setup mode?",
-        uploadingFirmware:"Uploading firmware...", noIp:"No IP", wifiSignal:"WiFi signal", wifiDisconnected:"WiFi disconnected",
+        noIp:"No IP", wifiSignal:"WiFi signal", wifiDisconnected:"WiFi disconnected",
         publishedAfterConnect:"Published after connect", waitingForBroker:"Waiting for broker", ago:"ago",
         legal:"Legal", copyrightNotice:"Copyright (c) 2026 Peter van Tol. All rights reserved. SpotifyDJ firmware is proprietary software.",
         trademarkNotice:"Spotify is a trademark of Spotify AB. SpotifyDJ is not affiliated with, endorsed by, or sponsored by Spotify AB.",
@@ -584,7 +584,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         logsPausedSelected:"Logs gepauzeerd en geselecteerd", saving:"Opslaan...", testWifiConfirm:"Deze WiFi-gegevens testen? De webpagina kan tijdens de test loskoppelen.",
         startingWifiTest:"WiFi-test starten...", refreshing:"Verversen...", restartConfirm:"SpotifyDJ herstarten?",
         resetPairingConfirm:"Home Assistant koppeling resetten en herstarten naar het koppelscherm?", factoryResetConfirm:"Device resetten naar fabrieksinstellingen?",
-        uploadingFirmware:"Firmware uploaden...", noIp:"Geen IP", wifiSignal:"WiFi signaal", wifiDisconnected:"WiFi niet verbonden",
+        noIp:"Geen IP", wifiSignal:"WiFi signaal", wifiDisconnected:"WiFi niet verbonden",
         publishedAfterConnect:"Gepubliceerd na verbinden", waitingForBroker:"Wachten op broker", ago:"geleden",
         legal:"Juridisch", copyrightNotice:"Copyright (c) 2026 Peter van Tol. Alle rechten voorbehouden. SpotifyDJ firmware is proprietary software.",
         trademarkNotice:"Spotify is een handelsmerk van Spotify AB. SpotifyDJ is niet verbonden aan, goedgekeurd door of gesponsord door Spotify AB.",
@@ -1087,7 +1087,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       event.preventDefault();
       const file = $("firmware").files[0];
       if (!file) return;
-      $("otaStatus").textContent = tr("uploadingFirmware");
+      $("otaStatus").textContent = "";
       const form = new FormData();
       form.append("firmware", file, file.name);
       const response = await fetch("/ota", { method:"POST", body:form });
