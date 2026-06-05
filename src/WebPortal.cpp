@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <Update.h>
 #include <WiFi.h>
+#include <esp_task_wdt.h>
 
 #include "Config.h"
 #include "I18n.h"
@@ -54,6 +55,15 @@ String decodeFormValue(const String &value) {
     }
   }
   return decoded;
+}
+
+void serviceWebOtaLoop(LedRing *ledRing) {
+  esp_task_wdt_reset();
+  if (ledRing != nullptr) {
+    ledRing->showFirmwareUpdateAnimation();
+  }
+  delay(1);
+  yield();
 }
 
 String formValueFromBody(const String &body, const char *key) {
@@ -1828,9 +1838,7 @@ void WebPortal::handleOtaUpload() {
         display_->showBootMessage(I18n::text("firmware_update_progress"));
       }
     }
-    if (ledRing_ != nullptr) {
-      ledRing_->showFirmwareUpdateAnimation();
-    }
+    serviceWebOtaLoop(ledRing_);
     if (sound_ != nullptr) {
       sound_->playOtaStart();
     }
@@ -1841,22 +1849,19 @@ void WebPortal::handleOtaUpload() {
       Update.printError(Serial);
     }
   } else if (upload.status == UPLOAD_FILE_WRITE) {
-    if (ledRing_ != nullptr) {
-      ledRing_->showFirmwareUpdateAnimation();
-    }
+    serviceWebOtaLoop(ledRing_);
     if (otaOk_ && Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
       otaOk_ = false;
       Update.printError(Serial);
     }
+    serviceWebOtaLoop(ledRing_);
     otaUploadedBytes_ += upload.currentSize;
     if (sound_ != nullptr && otaUploadedBytes_ - otaLastProgressCue_ >= 196608) {
       sound_->playOtaProgress();
       otaLastProgressCue_ = otaUploadedBytes_;
     }
   } else if (upload.status == UPLOAD_FILE_END) {
-    if (ledRing_ != nullptr) {
-      ledRing_->showFirmwareUpdateAnimation();
-    }
+    serviceWebOtaLoop(ledRing_);
     if (otaOk_) {
       otaOk_ = Update.end(true);
       AppLog.println(otaOk_ ? "OTA upload complete" : "OTA upload failed");

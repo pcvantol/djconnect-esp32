@@ -5,6 +5,7 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <esp_task_wdt.h>
 #include <mbedtls/sha256.h>
 
 #include "AppLog.h"
@@ -37,6 +38,15 @@ bool equalsIgnoreCase(const String &left, const String &right) {
     }
   }
   return true;
+}
+
+void serviceOtaLoop(LedRing *ledRing) {
+  esp_task_wdt_reset();
+  if (ledRing != nullptr) {
+    ledRing->showFirmwareUpdateAnimation();
+  }
+  delay(1);
+  yield();
 }
 }
 
@@ -161,10 +171,8 @@ bool SpotifyDJOTA::performUpdate(
     return false;
   }
   while (stream != nullptr && (contentLength <= 0 || written < static_cast<size_t>(contentLength))) {
+    serviceOtaLoop(ledRing);
     const int available = stream->available();
-    if (ledRing != nullptr) {
-      ledRing->showFirmwareUpdateAnimation();
-    }
     if (available <= 0) {
       if (!http.connected() && contentLength <= 0) {
         break;
@@ -179,8 +187,6 @@ bool SpotifyDJOTA::performUpdate(
         failWithCue();
         return false;
       }
-      delay(1);
-      yield();
       continue;
     }
 
@@ -192,6 +198,7 @@ bool SpotifyDJOTA::performUpdate(
     if (read == 0) {
       continue;
     }
+    serviceOtaLoop(ledRing);
     if (mbedtls_sha256_update_ret(&shaContext, buffer, read) != 0) {
       message = "OTA SHA256 update failed";
       AppLog.println("[SpotifyDJ] OTA SHA256 update failed");
@@ -202,6 +209,7 @@ bool SpotifyDJOTA::performUpdate(
       failWithCue();
       return false;
     }
+    serviceOtaLoop(ledRing);
     const size_t chunkWritten = Update.write(buffer, read);
     if (chunkWritten != read) {
       message = "OTA write failed";
@@ -225,8 +233,7 @@ bool SpotifyDJOTA::performUpdate(
       AppLog.println(written);
       lastLogged = written;
     }
-    delay(1);
-    yield();
+    serviceOtaLoop(ledRing);
   }
 
   if (contentLength > 0 && written != static_cast<size_t>(contentLength)) {
