@@ -181,6 +181,7 @@ enum class MqttCommandType {
   SpeakerVolume,
   Language,
   Theme,
+  LogLevel,
 };
 
 struct MqttCommand {

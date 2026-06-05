@@ -12,6 +12,10 @@ public:
   // Clears the RAM buffer and starts teeing all writes to the existing Serial port.
   void begin();
 
+  // Sets the minimum severity kept in Serial/web logs: debug, info, warning, or error.
+  void setLevel(const String &level);
+  String level() const;
+
   // Print-compatible sink used by the firmware instead of writing to Serial directly.
   size_t write(uint8_t value) override;
   size_t write(const uint8_t *buffer, size_t size) override;
@@ -28,6 +32,8 @@ private:
   String linePrefix(const String &severity) const;
   String normalizedLine(const String &line) const;
   String severityForLine(const String &line) const;
+  int severityRank(const String &severity) const;
+  bool shouldLogSeverity(const String &severity) const;
 
   char lines_[MaxLines][MaxLineLength] = {};
   char currentLine_[MaxLineLength] = {};
@@ -35,6 +41,7 @@ private:
   size_t nextLine_ = 0;
   size_t lineCount_ = 0;
   bool ready_ = false;
+  int minimumSeverityRank_ = 1;
 };
 
 extern AppLogger AppLog;

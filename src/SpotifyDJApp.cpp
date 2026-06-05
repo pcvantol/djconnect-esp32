@@ -261,6 +261,8 @@ void SpotifyDJApp::loadProvisioning() {
   I18n::setLanguage(language_);
   languageCode_ = I18n::languageCode();
   themeCode_ = settings.themeCode;
+  logLevel_ = settings.logLevel;
+  AppLog.setLevel(logLevel_);
   speakerVolumePercent_ = settings.speakerVolumePercent;
   volumeFeedbackEnabled_ = settings.volumeFeedbackEnabled;
   setupModeRequested_ = settings.setupModeRequested;
@@ -286,6 +288,12 @@ void SpotifyDJApp::loadProvisioning() {
   for (size_t index = 0; index < ThemeOptionCount; index++) {
     if (themeValue(index) == themeCode_) {
       themeSelection_ = index;
+      break;
+    }
+  }
+  for (size_t index = 0; index < LogLevelOptionCount; index++) {
+    if (logLevelValue(index) == logLevel_) {
+      logLevelSelection_ = index;
       break;
     }
   }
@@ -473,6 +481,7 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       homeAssistantPaired_,
       languageCode_,
       themeCode_,
+      logLevel_,
       screenOffTimeoutMs_,
       deviceSleepTimeoutMs_,
       this,
@@ -500,6 +509,7 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       speakerVolumePercent_,
       languageCode_,
       themeCode_,
+      logLevel_,
       screenOffTimeoutMs_,
       deviceSleepTimeoutMs_);
 }
@@ -510,7 +520,7 @@ bool SpotifyDJApp::syncClock() {
 #else
   // TLS certificate validation needs a sane wall clock on ESP32.
   display_.showBootMessage(I18n::text("boot_syncing_clock"), battery_);
-  configTime(0, 0, "pool.ntp.org", "time.google.com", "time.nist.gov");
+  configTzTime(Config::AmsterdamTimezone, "pool.ntp.org", "time.google.com", "time.nist.gov");
 
   const uint32_t startedAt = millis();
   time_t now = time(nullptr);
@@ -529,8 +539,13 @@ bool SpotifyDJApp::syncClock() {
 
   playback_.error = "";
   showNotice("Clock synced");
-  AppLog.print("Clock: ");
-  AppLog.println(ctime(&now));
+  struct tm local = {};
+  char buffer[32] = {};
+  if (localtime_r(&now, &local) != nullptr) {
+    strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M:%S", &local);
+    AppLog.print("Clock synced Amsterdam: ");
+    AppLog.println(buffer);
+  }
   return true;
 #endif
 }
@@ -1134,15 +1149,23 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         }
         openScreen(UiScreen::Theme);
       } else if (settingsSelection_ == 5) {
+        for (size_t index = 0; index < LogLevelOptionCount; index++) {
+          if (logLevelValue(index) == logLevel_) {
+            logLevelSelection_ = index;
+            break;
+          }
+        }
+        openScreen(UiScreen::LogLevel);
+      } else if (settingsSelection_ == 6) {
         volumeFeedbackEnabled_ = !volumeFeedbackEnabled_;
         saveDisplaySettings();
         AppLog.print("Settings: audio feedback ");
         AppLog.println(volumeFeedbackEnabled_ ? "enabled" : "disabled");
         showNotice(String(I18n::text("audio_feedback")) + " " + I18n::onOff(volumeFeedbackEnabled_), 1600);
         renderNow();
-      } else if (settingsSelection_ == 6) {
-        openScreen(UiScreen::SpeakerVolume);
       } else if (settingsSelection_ == 7) {
+        openScreen(UiScreen::SpeakerVolume);
+      } else if (settingsSelection_ == 8) {
         playModeSelection_ = 0;
         const String currentMode = currentPlayModeValue(playback_);
         for (size_t index = 0; index < PlayModeOptionCount; index++) {
@@ -1152,21 +1175,21 @@ void SpotifyDJApp::selectCurrentMenuItem() {
           }
         }
         openScreen(UiScreen::PlayMode);
-      } else if (settingsSelection_ == 8) {
-        toggleStressTest();
       } else if (settingsSelection_ == 9) {
+        toggleStressTest();
+      } else if (settingsSelection_ == 10) {
         display_.showBootMessage(I18n::text("turning_off"), battery_);
         responsiveDelay(250);
         enterDeepSleep();
-      } else if (settingsSelection_ == 10) {
+      } else if (settingsSelection_ == 11) {
         sound_.playHardReset();
         display_.showBootMessage(I18n::text("restarting"), battery_);
         responsiveDelay(320);
         ESP.restart();
-      } else if (settingsSelection_ == 11) {
+      } else if (settingsSelection_ == 12) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::ResetPairingConfirm);
-      } else if (settingsSelection_ == 12) {
+      } else if (settingsSelection_ == 13) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::HardResetConfirm);
       }
@@ -1197,6 +1220,10 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       display_.showBootMessage(I18n::text("restarting"), battery_);
       responsiveDelay(450);
       ESP.restart();
+      break;
+
+    case UiScreen::LogLevel:
+      applyLogLevelSelection();
       break;
 
     case UiScreen::SpeakerVolume:
@@ -1267,6 +1294,14 @@ void SpotifyDJApp::applySpeakerVolumeSelection() {
   renderNow();
 }
 
+void SpotifyDJApp::applyLogLevelSelection() {
+  logLevel_ = logLevelValue(logLevelSelection_);
+  saveDisplaySettings();
+  AppLog.setLevel(logLevel_);
+  showNotice(String(I18n::text("log_level")) + " " + logLevelLabel(logLevel_), 2000);
+  renderNow();
+}
+
 void SpotifyDJApp::applyPlayModeSelection() {
   const String mode = playModeValue(playModeSelection_);
   AppLog.print("Spotify: setting play mode ");
@@ -1305,6 +1340,7 @@ void SpotifyDJApp::saveDisplaySettings() {
       screenBrightnessPercent_,
       languageCode_,
       themeCode_,
+      logLevel_,
       speakerVolumePercent_,
       volumeFeedbackEnabled_);
 }
@@ -1374,6 +1410,8 @@ size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
       return languageSelection_;
     case UiScreen::Theme:
       return themeSelection_;
+    case UiScreen::LogLevel:
+      return logLevelSelection_;
     case UiScreen::SpeakerVolume:
       return speakerVolumeSelection_;
     case UiScreen::PlayMode:
@@ -1412,6 +1450,8 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
       return languageSelection_;
     case UiScreen::Theme:
       return themeSelection_;
+    case UiScreen::LogLevel:
+      return logLevelSelection_;
     case UiScreen::SpeakerVolume:
       return speakerVolumeSelection_;
     case UiScreen::PlayMode:
@@ -1710,6 +1750,26 @@ void SpotifyDJApp::handleMqttCommand(const MqttCommand &command) {
     renderNow();
     return;
   }
+  if (command.type == MqttCommandType::LogLevel) {
+    String level = command.value;
+    level.toLowerCase();
+    if (level != "debug" && level != "warning" && level != "error") {
+      level = "info";
+    }
+    logLevel_ = level;
+    for (size_t index = 0; index < LogLevelOptionCount; index++) {
+      if (logLevelValue(index) == logLevel_) {
+        logLevelSelection_ = index;
+        break;
+      }
+    }
+    saveDisplaySettings();
+    AppLog.setLevel(logLevel_);
+    showNotice(String(I18n::text("log_level")) + " " + logLevelLabel(logLevel_), 1800);
+    mqttPublisher_.requestPublish();
+    renderNow();
+    return;
+  }
 
   if (!spotify_.isAuthorized()) {
     AppLog.println("MQTT command ignored: Spotify not connected");
@@ -1736,6 +1796,7 @@ void SpotifyDJApp::handleMqttCommand(const MqttCommand &command) {
     case MqttCommandType::SpeakerVolume:
     case MqttCommandType::Language:
     case MqttCommandType::Theme:
+    case MqttCommandType::LogLevel:
       break;
 
     case MqttCommandType::Volume:
@@ -2597,7 +2658,8 @@ void SpotifyDJApp::applyWebSettings(
     uint32_t sleepTimeoutMs,
     uint8_t speakerVolumePercent,
     const String &languageCode,
-    const String &themeCode) {
+    const String &themeCode,
+    const String &logLevel) {
   screenBrightnessPercent_ = constrain(brightnessPercent, 25, 100);
   screenOffTimeoutMs_ = constrain(offTimeoutMs, 30000UL, 240000UL);
   deviceSleepTimeoutMs_ = constrain(sleepTimeoutMs, 300000UL, 3600000UL);
@@ -2611,9 +2673,20 @@ void SpotifyDJApp::applyWebSettings(
   if (themeCode_ != "auto" && themeCode_ != "light") {
     themeCode_ = "dark";
   }
+  logLevel_ = logLevel;
+  logLevel_.toLowerCase();
+  if (logLevel_ != "debug" && logLevel_ != "warning" && logLevel_ != "error") {
+    logLevel_ = "info";
+  }
   for (size_t index = 0; index < ThemeOptionCount; index++) {
     if (themeValue(index) == themeCode_) {
       themeSelection_ = index;
+      break;
+    }
+  }
+  for (size_t index = 0; index < LogLevelOptionCount; index++) {
+    if (logLevelValue(index) == logLevel_) {
+      logLevelSelection_ = index;
       break;
     }
   }
@@ -2626,6 +2699,7 @@ void SpotifyDJApp::applyWebSettings(
   }
   display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
   applyTheme();
+  AppLog.setLevel(logLevel_);
   sound_.setVolumePercent(speakerVolumePercent_);
   saveDisplaySettings();
   showNotice(I18n::text("web_settings_saved"), 1800);
@@ -2658,6 +2732,7 @@ void SpotifyDJApp::applyWebMqttSettings(const MqttSettings &settings) {
       speakerVolumePercent_,
       languageCode_,
       themeCode_,
+      logLevel_,
       screenOffTimeoutMs_,
       deviceSleepTimeoutMs_);
   mqttPublisher_.requestPublish();
@@ -2770,6 +2845,7 @@ void SpotifyDJApp::syncHomeAssistantMqttSettings() {
       speakerVolumePercent_,
       languageCode_,
       themeCode_,
+      logLevel_,
       screenOffTimeoutMs_,
       deviceSleepTimeoutMs_);
   mqttPublisher_.requestPublish();
@@ -2959,14 +3035,16 @@ void SpotifyDJApp::applyWebSettingsCallback(
     uint32_t sleepTimeoutMs,
     uint8_t speakerVolumePercent,
     const String &languageCode,
-    const String &themeCode) {
+    const String &themeCode,
+    const String &logLevel) {
   static_cast<SpotifyDJApp *>(context)->applyWebSettings(
       brightnessPercent,
       offTimeoutMs,
       sleepTimeoutMs,
       speakerVolumePercent,
       languageCode,
-      themeCode);
+      themeCode,
+      logLevel);
 }
 
 void SpotifyDJApp::applyWebMqttSettingsCallback(void *context, const MqttSettings &settings) {
@@ -3177,6 +3255,7 @@ void SpotifyDJApp::renderMenuNow() {
           {String(I18n::text("deep_sleep_after")) + " " + minuteLabel(deviceSleepTimeoutMs_)},
           {String(I18n::text("language")) + " " + languageLabel(language_)},
           {String(I18n::text("theme")) + " " + themeLabel(themeCode_)},
+          {String(I18n::text("log_level")) + " " + logLevelLabel(logLevel_)},
           {String(I18n::text("audio_feedback")) + " " + I18n::onOff(volumeFeedbackEnabled_)},
           {String(I18n::text("speaker_volume")) + " " + String(speakerVolumePercent_) + "%"},
           {String(I18n::text("spotify_play_mode")) + " " + playModeLabel(currentPlayModeValue(playback_))},
@@ -3253,6 +3332,24 @@ void SpotifyDJApp::renderMenuNow() {
           items,
           ThemeOptionCount,
           themeSelection_,
+          notice_);
+      break;
+    }
+
+    case UiScreen::LogLevel: {
+      MenuItemView items[LogLevelOptionCount];
+      for (size_t index = 0; index < LogLevelOptionCount; index++) {
+        const String value = logLevelValue(index);
+        items[index].label = logLevelLabel(value);
+        if (value == logLevel_) {
+          items[index].label += " " + String(I18n::text("selected"));
+        }
+      }
+      display_.renderMenuList(
+          I18n::text("log_level"),
+          items,
+          LogLevelOptionCount,
+          logLevelSelection_,
           notice_);
       break;
     }

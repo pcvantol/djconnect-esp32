@@ -46,7 +46,7 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `include/AppState.h`: shared state structs.
 - `include/LogicHelpers.h`: pure helper functions with native unit tests.
 - `include/SpotifyDJMenuModel.h`: pure menu counts/options with native unit tests.
-- `include/ProvisioningController.h`, `src/ProvisioningController.cpp`: NVS provisioning keys for WiFi, MQTT, setup mode, display settings, language/theme and cue volume.
+- `include/ProvisioningController.h`, `src/ProvisioningController.cpp`: NVS provisioning keys for WiFi, MQTT, setup mode, display settings, language/theme/log-level and cue volume.
 - `include/PowerController.h`, `src/PowerController.cpp`: charger policy, deep-sleep wake policy and watchdog setup/feed.
 - `include/NetworkActivityLogic.h`: testable network-timeout helper used by `NetworkActivity`.
 - `test/native/test_logic.cpp`: host-side unit tests.
@@ -126,14 +126,14 @@ Keep concerns separated:
 - `WebPortal` owns the existing mobile dashboard and shared port-80 `WebServer`.
 - Home Assistant device-layer code belongs in the `SpotifyDJ*` modules under `src/`.
 - `LogicHelpers.h` is for pure, host-testable calculations.
-- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, MQTT, setup-mode, display-setting, language/theme or cue-volume NVS reads/writes directly in `SpotifyDJApp`.
+- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, MQTT, setup-mode, display-setting, language/theme/log-level or cue-volume NVS reads/writes directly in `SpotifyDJApp`.
 - `PowerController` owns charger/wake/watchdog policy. Keep low-battery rendering in the app/display layer, but keep wake masks, timer-wake decisions and watchdog setup/feed out of `SpotifyDJApp`.
 - `SpotifyDJMenuModel` is the host-testable source for menu counts and option values. Keep display labels in `SpotifyDJMenu`/i18n and pure counts/options in the model.
 - `NetworkActivityLogic` is the host-testable timeout/reuse helper for long HTTP flows.
 - Long/blocking HTTP flows should use `NetworkActivity` or a documented equivalent guard with explicit connect/read timeouts, progress logging where useful, and loop/watchdog yielding for large transfers.
 - `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
 - `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
-- User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated.
+- User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated. Loglevel UI labels still need translated strings.
 - App logs are centrally formatted as `[dd-mm-yyyy HH:MM:SS] [inf|wrn|err|dbg] ...`. Do not manually add timestamps, severity labels, or `[SpotifyDJ]` to new log messages; the central logger strips that legacy prefix when it appears at the start of older callsites.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.
@@ -350,7 +350,7 @@ MQTT is two-way:
 - Commands are subscribed on `spotifydj/<device_id>/command` plus specific command topics under `spotifydj/<device_id>/command/`.
 - Do not perform blocking Spotify HTTPS work inside the MQTT callback; queue an `MqttCommand` and let `SpotifyDJApp::loop()` execute it.
 - Keep Home Assistant MQTT discovery aligned with command topics for buttons, number and selects.
-- Current two-way MQTT scope includes Spotify-facing controls, status, next/previous, volume, sound output, playlist start, status command, OTA command placeholder, DJ response command, and settings commands for brightness, dim timeout, turn-off timeout, speaker cue volume, language, and theme.
+- Current two-way MQTT scope includes Spotify-facing controls, status, next/previous, volume, sound output, playlist start, status command, OTA command placeholder, DJ response command, and settings commands for brightness, dim timeout, turn-off timeout, speaker cue volume, language, theme, and log level.
 - HA-provisioned MQTT settings live in `spotifydj` NVS keys `mqtt_host`, `mqtt_port`, `mqtt_user`, `mqtt_pass` and take precedence over legacy `provision` MQTT settings.
 - After three consecutive MQTT auth failures (`rc=4` or `rc=5`), stop reconnect attempts and report `Auth failed; update MQTT credentials`. Reset that lock only when MQTT host/port/username/password changes or after restart.
 - Captive portal MQTT settings are optional. Empty host means keep existing config and do not attempt MQTT setup.

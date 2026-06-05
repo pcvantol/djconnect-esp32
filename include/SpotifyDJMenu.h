@@ -15,6 +15,7 @@ constexpr size_t DimTimeoutOptionCount = SpotifyDJMenuModel::DimTimeoutOptionCou
 constexpr size_t BrightnessOptionCount = SpotifyDJMenuModel::BrightnessOptionCount;
 constexpr size_t LanguageOptionCount = SpotifyDJMenuModel::LanguageOptionCount;
 constexpr size_t ThemeOptionCount = SpotifyDJMenuModel::ThemeOptionCount;
+constexpr size_t LogLevelOptionCount = SpotifyDJMenuModel::LogLevelOptionCount;
 constexpr size_t SpeakerVolumeOptionCount = SpotifyDJMenuModel::SpeakerVolumeOptionCount;
 constexpr size_t PlayModeOptionCount = SpotifyDJMenuModel::PlayModeOptionCount;
 constexpr size_t SleepTimeoutOptionCount = SpotifyDJMenuModel::SleepTimeoutOptionCount;
@@ -37,6 +38,8 @@ uint32_t sleepTimeoutValueMs(size_t index);
 String languageLabel(Language language);
 String themeValue(size_t index);
 String themeLabel(const String &theme);
+String logLevelValue(size_t index);
+String logLevelLabel(const String &level);
 String playModeValue(size_t index);
 String playModeLabel(const String &mode);
 String currentPlayModeValue(const SpotifyState &playback);

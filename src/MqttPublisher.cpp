@@ -43,6 +43,7 @@ void MqttPublisher::begin(
     const uint8_t &speakerVolumePercent,
     const String &languageCode,
     const String &themeCode,
+    const String &logLevel,
     const uint32_t &screenOffTimeoutMs,
     const uint32_t &deviceSleepTimeoutMs) {
   deviceId_ = deviceId.isEmpty() ? "spotifydj" : deviceId;
@@ -57,6 +58,7 @@ void MqttPublisher::begin(
   speakerVolumePercent_ = &speakerVolumePercent;
   languageCode_ = &languageCode;
   themeCode_ = &themeCode;
+  logLevel_ = &logLevel;
   screenOffTimeoutMs_ = &screenOffTimeoutMs;
   deviceSleepTimeoutMs_ = &deviceSleepTimeoutMs;
   started_ = true;
@@ -272,6 +274,7 @@ bool MqttPublisher::connectIfNeeded() {
     client_.subscribe(commandTopic("settings/speaker_volume/set").c_str());
     client_.subscribe(commandTopic("settings/language/set").c_str());
     client_.subscribe(commandTopic("settings/theme/set").c_str());
+    client_.subscribe(commandTopic("settings/log_level/set").c_str());
     AppLog.println("MQTT command topics subscribed");
     discoveryPublished_ = false;
     publishRequested_ = true;
@@ -347,6 +350,8 @@ void MqttPublisher::publishDiscoveryIfNeeded() {
   publishSelectDiscovery("language", "Language", commandTopic("settings/language/set").c_str(), languageOptions, 2, "{{ value_json.settings.language }}");
   String themeOptions[3] = {"auto", "dark", "light"};
   publishSelectDiscovery("theme", "Theme", commandTopic("settings/theme/set").c_str(), themeOptions, 3, "{{ value_json.settings.theme }}");
+  String logLevelOptions[4] = {"debug", "info", "warning", "error"};
+  publishSelectDiscovery("log_level", "Log level", commandTopic("settings/log_level/set").c_str(), logLevelOptions, 4, "{{ value_json.settings.log_level }}");
 
   String outputOptions[8];
   size_t outputCount = 0;
@@ -438,6 +443,7 @@ void MqttPublisher::publishState() {
   settings["speaker_volume"] = speakerVolumePercent_ == nullptr ? 100 : *speakerVolumePercent_;
   settings["language"] = languageCode_ == nullptr ? "en" : *languageCode_;
   settings["theme"] = themeCode_ == nullptr ? "auto" : *themeCode_;
+  settings["log_level"] = logLevel_ == nullptr ? "info" : *logLevel_;
   settings["off_timeout_ms"] = screenOffTimeoutMs_ == nullptr ? 0 : *screenOffTimeoutMs_;
   settings["off_timeout_sec"] = screenOffTimeoutMs_ == nullptr ? 0 : (*screenOffTimeoutMs_ / 1000UL);
   settings["deep_sleep_ms"] = deviceSleepTimeoutMs_ == nullptr ? 0 : *deviceSleepTimeoutMs_;
@@ -688,6 +694,9 @@ void MqttPublisher::handleMessage(char *topic, uint8_t *payload, unsigned int le
     command.value = body;
   } else if (topicText == commandTopic("settings/theme/set")) {
     command.type = MqttCommandType::Theme;
+    command.value = body;
+  } else if (topicText == commandTopic("settings/log_level/set")) {
+    command.type = MqttCommandType::LogLevel;
     command.value = body;
   }
 

@@ -22,6 +22,7 @@ public:
       const uint8_t &speakerVolumePercent,
       const String &languageCode,
       const String &themeCode,
+      const String &logLevel,
       const uint32_t &screenOffTimeoutMs,
       const uint32_t &deviceSleepTimeoutMs);
 
@@ -93,6 +94,7 @@ private:
   const uint8_t *speakerVolumePercent_ = nullptr;
   const String *languageCode_ = nullptr;
   const String *themeCode_ = nullptr;
+  const String *logLevel_ = nullptr;
   const uint32_t *screenOffTimeoutMs_ = nullptr;
   const uint32_t *deviceSleepTimeoutMs_ = nullptr;
   bool started_ = false;

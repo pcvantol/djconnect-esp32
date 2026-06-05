@@ -20,7 +20,8 @@ public:
       uint32_t sleepTimeoutMs,
       uint8_t speakerVolumePercent,
       const String &languageCode,
-      const String &themeCode);
+      const String &themeCode,
+      const String &logLevel);
   using MqttSettingsCallback = void (*)(void *context, const MqttSettings &settings);
   using WifiSettingsCallback = void (*)(void *context, const String &ssid, const String &password);
   using VoiceTextCallback = bool (*)(void *context, const String &text, String &message, String &audioUrl);
@@ -49,6 +50,7 @@ public:
       const bool &homeAssistantPaired,
       const String &languageCode,
       const String &themeCode,
+      const String &logLevel,
       const uint32_t &screenOffTimeoutMs,
       const uint32_t &deviceSleepTimeoutMs,
       void *callbackContext,
@@ -104,6 +106,7 @@ private:
   String maskedSecret(const char *value) const;
   String wifiStatusText() const;
   String batteryLabel() const;
+  String appVersionLabel() const;
   String formatBytes(uint32_t bytes) const;
 
   // Keeps small portal strings localized without pulling the full device i18n table into HTML.
@@ -126,6 +129,7 @@ private:
   const bool *homeAssistantPaired_ = nullptr;
   const String *languageCode_ = nullptr;
   const String *themeCode_ = nullptr;
+  const String *logLevel_ = nullptr;
   const uint32_t *screenOffTimeoutMs_ = nullptr;
   const uint32_t *deviceSleepTimeoutMs_ = nullptr;
   void *callbackContext_ = nullptr;

@@ -416,24 +416,16 @@ void SoundManager::runTask() {
         playTone(1175, 140, 16);
         break;
       case Event::OtaStart:
-        playTone(784, 70, 14);
-        playSilence(30);
-        playTone(1047, 90, 14);
+        playTone(988, 55, 10);
         break;
       case Event::OtaProgress:
-        playTone(1568, 24, 9);
+        playTone(1319, 18, 6);
         break;
       case Event::OtaComplete:
-        playTone(1047, 60, 16);
-        playSilence(25);
-        playTone(1319, 60, 16);
-        playSilence(25);
-        playTone(1568, 110, 16);
+        playTone(1568, 75, 12);
         break;
       case Event::OtaFailed:
-        playTone(740, 80, 18);
-        playSilence(35);
-        playTone(370, 140, 18);
+        playTone(370, 100, 14);
         break;
     }
     playSilence(8);

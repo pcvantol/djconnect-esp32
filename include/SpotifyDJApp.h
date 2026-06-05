@@ -92,6 +92,9 @@ private:
   // Applies selected Spotify shuffle/repeat play mode.
   void applyPlayModeSelection();
 
+  // Applies selected log level and persists it to NVS.
+  void applyLogLevelSelection();
+
   // Applies selected deep-sleep idle timeout and persists it to NVS.
   void applySleepTimeoutSelection();
 
@@ -165,7 +168,7 @@ private:
   void enterDeepSleepWithoutDisplay();
   void recordLoopMetrics(uint32_t loopStartedAt);
   // Applies settings posted from the web dashboard and persists them.
-  void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode);
+  void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode, const String &logLevel);
   void applyWebMqttSettings(const MqttSettings &settings);
   bool repairSpotifyCredentialsFromWeb(const String &clientId, const String &refreshToken, const String &market, String &message);
   void syncHomeAssistantMqttSettings();
@@ -189,7 +192,8 @@ private:
       uint32_t sleepTimeoutMs,
       uint8_t speakerVolumePercent,
       const String &languageCode,
-      const String &themeCode);
+      const String &themeCode,
+      const String &logLevel);
   static void applyWebMqttSettingsCallback(void *context, const MqttSettings &settings);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
@@ -248,6 +252,7 @@ private:
   size_t brightnessSelection_ = 3;
   size_t languageSelection_ = 0;
   size_t themeSelection_ = 0;
+  size_t logLevelSelection_ = 1;
   size_t speakerVolumeSelection_ = 3;
   size_t playModeSelection_ = 0;
   size_t sleepTimeoutSelection_ = 0;
@@ -261,6 +266,7 @@ private:
   Language language_ = Language::English;
   String languageCode_ = "en";
   String themeCode_ = "dark";
+  String logLevel_ = "info";
   bool homeAssistantPaired_ = false;
   String wifiSsid_;
   String wifiPassword_;

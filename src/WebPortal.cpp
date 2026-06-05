@@ -335,6 +335,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
             <option value="dark" data-i18n="themeDark">Dark</option><option value="light" data-i18n="themeLight">Light</option><option value="auto" data-i18n="themeAuto">Auto</option>
           </select>
         </label>
+        <label data-i18n-label="logLevel">Log level
+          <select id="logLevel">
+            <option value="debug" data-i18n="logLevelDebug">Debug</option><option value="info" data-i18n="logLevelInfo">Info</option><option value="warning" data-i18n="logLevelWarning">Warning</option><option value="error" data-i18n="logLevelError">Error</option>
+          </select>
+        </label>
         <label data-i18n-label="playMode">Spotify play mode
           <select id="playMode">
             <option value="normal" data-i18n="noShuffle">No shuffle</option><option value="shuffle" data-i18n="shuffle">Shuffle</option><option value="repeat_once" data-i18n="repeatOnce">Repeat once</option><option value="repeat_infinite" data-i18n="repeatInfinite">Repeat infinite</option>
@@ -521,7 +526,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", loadingQueue:"Loading queue...",
         playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", settings:"Settings",
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
-        language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", playMode:"Spotify play mode", noShuffle:"No shuffle",
+        language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error", playMode:"Spotify play mode", noShuffle:"No shuffle",
         timeout30s:"30 seconds", timeout1m:"1 minute", timeout2m:"2 minutes", timeout4m:"4 minutes", timeout5m:"5 minutes", timeout15m:"15 minutes", timeout30m:"30 minutes", timeout60m:"60 minutes",
         shuffle:"Shuffle", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", mqttHost:"MQTT host", mqttPort:"MQTT port",
         mqttUsername:"MQTT username", mqttPassword:"MQTT password", saveSettings:"Save settings", settingsFine:"Screen turns off after the selected idle timeout. LED ring follows the screen power state.",
@@ -560,7 +565,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         output:"Geluidsuitgang", loadingOutputs:"Outputs laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
-        language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", playMode:"Spotify speelmodus", noShuffle:"Geen shuffle",
+        language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout", playMode:"Spotify speelmodus", noShuffle:"Geen shuffle",
         timeout30s:"30 seconden", timeout1m:"1 minuut", timeout2m:"2 minuten", timeout4m:"4 minuten", timeout5m:"5 minuten", timeout15m:"15 minuten", timeout30m:"30 minuten", timeout60m:"60 minuten",
         shuffle:"Shuffle", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", mqttHost:"MQTT host", mqttPort:"MQTT poort",
         mqttUsername:"MQTT gebruikersnaam", mqttPassword:"MQTT wachtwoord", saveSettings:"Instellingen opslaan", settingsFine:"Scherm gaat uit na de ingestelde inactiviteit. LED-ring volgt de schermstatus.",
@@ -799,6 +804,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setInput("speakerVolume", String(data.settings.speakerVolumePercent));
       setInput("language", currentLanguage);
       setInput("theme", data.settings.theme || "dark");
+      setInput("logLevel", data.settings.logLevel || "info");
       setInput("playMode", data.playback.playMode || "normal");
       setInput("mqttHost", data.mqtt.host || "");
       setInput("mqttPort", String(data.mqtt.port || 1883));
@@ -1022,6 +1028,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         speakerVolume: $("speakerVolume").value,
         language: $("language").value,
         theme: $("theme").value,
+        logLevel: $("logLevel").value,
         playMode: $("playMode").value,
         mqttHost: $("mqttHost").value,
         mqttPort: $("mqttPort").value,
@@ -1121,6 +1128,7 @@ void WebPortal::begin(
     const bool &homeAssistantPaired,
     const String &languageCode,
     const String &themeCode,
+    const String &logLevel,
     const uint32_t &screenOffTimeoutMs,
     const uint32_t &deviceSleepTimeoutMs,
     void *callbackContext,
@@ -1147,6 +1155,7 @@ void WebPortal::begin(
   homeAssistantPaired_ = &homeAssistantPaired;
   languageCode_ = &languageCode;
   themeCode_ = &themeCode;
+  logLevel_ = &logLevel;
   screenOffTimeoutMs_ = &screenOffTimeoutMs;
   deviceSleepTimeoutMs_ = &deviceSleepTimeoutMs;
   callbackContext_ = callbackContext;
@@ -1258,7 +1267,7 @@ void WebPortal::handleStatusJson() {
   JsonDocument doc;
   JsonObject app = doc["app"].to<JsonObject>();
   app["name"] = "SpotifyDJ";
-  app["version"] = Config::AppVersion;
+  app["version"] = appVersionLabel();
   app["uptimeMs"] = millis();
 
   JsonObject playback = doc["playback"].to<JsonObject>();
@@ -1301,6 +1310,7 @@ void WebPortal::handleStatusJson() {
   settings["speakerVolumePercent"] = speakerVolumePercent_ == nullptr ? 100 : *speakerVolumePercent_;
   settings["language"] = languageCode_ == nullptr ? "en" : *languageCode_;
   settings["theme"] = themeCode_ == nullptr ? "dark" : *themeCode_;
+  settings["logLevel"] = logLevel_ == nullptr ? "info" : *logLevel_;
   settings["screenOffTimeoutMs"] = *screenOffTimeoutMs_;
   settings["screenDimStartAfterMs"] = Config::DisplayDimStartAfterMs;
   settings["deviceSleepTimeoutMs"] = deviceSleepTimeoutMs_ == nullptr ? Config::DeviceSleepAfterMs : *deviceSleepTimeoutMs_;
@@ -1402,6 +1412,11 @@ void WebPortal::handleSettingsPost() {
   if (theme != "auto" && theme != "light") {
     theme = "dark";
   }
+  String logLevel = server_.hasArg("logLevel") ? server_.arg("logLevel") : "info";
+  logLevel.toLowerCase();
+  if (logLevel != "debug" && logLevel != "warning" && logLevel != "error") {
+    logLevel = "info";
+  }
   AppLog.print("Web settings: brightness=");
   AppLog.print(brightness);
   AppLog.print("% dim=");
@@ -1410,9 +1425,11 @@ void WebPortal::handleSettingsPost() {
   AppLog.print(sleepTimeoutMs / 60000UL);
   AppLog.print("m speaker=");
   AppLog.print(speakerVolume);
-  AppLog.println("%");
+  AppLog.print("% log_level=");
+  AppLog.print(logLevel);
+  AppLog.println();
   if (settingsCallback_ != nullptr) {
-    settingsCallback_(callbackContext_, brightness, offTimeoutMs, sleepTimeoutMs, speakerVolume, language, theme);
+    settingsCallback_(callbackContext_, brightness, offTimeoutMs, sleepTimeoutMs, speakerVolume, language, theme, logLevel);
   }
 
   String responseText = "Settings saved";
@@ -1901,6 +1918,16 @@ String WebPortal::batteryLabel() const {
     return "--%";
   }
   return String(battery_->percent) + "%";
+}
+
+String WebPortal::appVersionLabel() const {
+  if (strcmp(Config::AppVersion, "vdev") != 0) {
+    return Config::AppVersion;
+  }
+  if (strcmp(Config::AppVersionNumber, "dev") != 0) {
+    return String("v") + Config::AppVersionNumber;
+  }
+  return Config::AppVersion;
 }
 
 String WebPortal::formatBytes(uint32_t bytes) const {

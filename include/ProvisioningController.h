@@ -16,6 +16,7 @@ struct ProvisioningSettings {
   uint8_t speakerVolumePercent = 100;
   Language language = Language::English;
   String themeCode = "dark";
+  String logLevel = "info";
   bool volumeFeedbackEnabled = true;
   bool setupModeRequested = false;
 };
@@ -31,6 +32,7 @@ public:
       uint8_t screenBrightnessPercent,
       const String &languageCode,
       const String &themeCode,
+      const String &logLevel,
       uint8_t speakerVolumePercent,
       bool volumeFeedbackEnabled) const;
 

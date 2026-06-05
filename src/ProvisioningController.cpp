@@ -10,6 +10,14 @@ String normalizedTheme(String themeCode) {
   }
   return themeCode;
 }
+
+String normalizedLogLevel(String logLevel) {
+  logLevel.toLowerCase();
+  if (logLevel != "debug" && logLevel != "warning" && logLevel != "error") {
+    return "info";
+  }
+  return logLevel;
+}
 }  // namespace
 
 ProvisioningSettings ProvisioningController::load() const {
@@ -28,6 +36,7 @@ ProvisioningSettings ProvisioningController::load() const {
   settings.screenBrightnessPercent = constrain(preferences.getUInt("screen_bright", 100), 25UL, 100UL);
   settings.language = I18n::languageFromCode(preferences.getString("language", "en"));
   settings.themeCode = normalizedTheme(preferences.getString("theme", "dark"));
+  settings.logLevel = normalizedLogLevel(preferences.getString("log_level", "info"));
   settings.speakerVolumePercent = constrain(preferences.getUInt("speaker_volume", 100), 25UL, 100UL);
   settings.volumeFeedbackEnabled = preferences.getBool("volume_feedback", true);
   settings.setupModeRequested = preferences.getBool("setup", false);
@@ -41,6 +50,7 @@ void ProvisioningController::saveDisplaySettings(
     uint8_t screenBrightnessPercent,
     const String &languageCode,
     const String &themeCode,
+    const String &logLevel,
     uint8_t speakerVolumePercent,
     bool volumeFeedbackEnabled) const {
   Preferences provision;
@@ -50,6 +60,7 @@ void ProvisioningController::saveDisplaySettings(
   provision.putUInt("screen_bright", screenBrightnessPercent);
   provision.putString("language", languageCode);
   provision.putString("theme", normalizedTheme(themeCode));
+  provision.putString("log_level", normalizedLogLevel(logLevel));
   provision.putUInt("speaker_volume", speakerVolumePercent);
   provision.putBool("volume_feedback", volumeFeedbackEnabled);
   provision.end();

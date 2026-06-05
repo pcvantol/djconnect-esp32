@@ -103,4 +103,7 @@ static const char *const ProvisioningApSsid = "SpotifyDJ Setup";
 static const char *const SpotifyAccountsUrl = "https://accounts.spotify.com/api/token";
 static const char *const SpotifyApiBaseUrl = "https://api.spotify.com/v1";
 static const char *const SpotifyLikedProxyPlaylistName = "SpotifyDJ Liked Proxy";
+
+// POSIX timezone rule for Europe/Amsterdam, including CET/CEST daylight saving changes.
+static const char *const AmsterdamTimezone = "CET-1CEST,M3.5.0/2,M10.5.0/3";
 }  // namespace Config

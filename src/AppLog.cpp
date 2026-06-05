@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "Config.h"
+
 AppLogger AppLog;
 
 namespace {
@@ -22,7 +24,7 @@ int appLogVprintf(const char *format, va_list args) {
 }  // namespace
 
 void AppLogger::begin() {
-  setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
+  setenv("TZ", Config::AmsterdamTimezone, 1);
   tzset();
   currentLine_[0] = '\0';
   currentLength_ = 0;
@@ -31,6 +33,34 @@ void AppLogger::begin() {
   lineCount_ = 0;
   ready_ = true;
   esp_log_set_vprintf(appLogVprintf);
+}
+
+void AppLogger::setLevel(const String &level) {
+  String normalized = level;
+  normalized.trim();
+  normalized.toLowerCase();
+  if (normalized == "debug") {
+    minimumSeverityRank_ = 0;
+  } else if (normalized == "warning") {
+    minimumSeverityRank_ = 2;
+  } else if (normalized == "error") {
+    minimumSeverityRank_ = 3;
+  } else {
+    minimumSeverityRank_ = 1;
+  }
+}
+
+String AppLogger::level() const {
+  switch (minimumSeverityRank_) {
+    case 0:
+      return "debug";
+    case 2:
+      return "warning";
+    case 3:
+      return "error";
+    default:
+      return "info";
+  }
 }
 
 size_t AppLogger::write(uint8_t value) {
@@ -56,7 +86,10 @@ String AppLogger::text() const {
   }
   if (currentLength_ > 0) {
     const String line = normalizedLine(String(currentLine_));
-    output += linePrefix(severityForLine(line)) + line;
+    const String severity = severityForLine(line);
+    if (shouldLogSeverity(severity)) {
+      output += linePrefix(severity) + line;
+    }
   }
   return output;
 }
@@ -78,7 +111,8 @@ size_t AppLogger::newestLines(String *target, size_t maxLines) const {
       target[index] = lines_[lineIndex];
     } else {
       const String line = normalizedLine(String(currentLine_));
-      target[index] = linePrefix(severityForLine(line)) + line;
+      const String severity = severityForLine(line);
+      target[index] = shouldLogSeverity(severity) ? linePrefix(severity) + line : "";
     }
   }
   return count;
@@ -111,11 +145,15 @@ void AppLogger::commitCurrentLine() {
     return;
   }
   const String normalized = normalizedLine(String(currentLine_));
-  const String line = linePrefix(severityForLine(normalized)) + normalized;
-  Serial.println(line);
-  snprintf(lines_[nextLine_], MaxLineLength, "%s", line.c_str());
+  const String severity = severityForLine(normalized);
   currentLine_[0] = '\0';
   currentLength_ = 0;
+  if (!shouldLogSeverity(severity)) {
+    return;
+  }
+  const String line = linePrefix(severity) + normalized;
+  Serial.println(line);
+  snprintf(lines_[nextLine_], MaxLineLength, "%s", line.c_str());
   nextLine_ = (nextLine_ + 1) % MaxLines;
   if (lineCount_ < MaxLines) {
     lineCount_++;
@@ -198,4 +236,21 @@ String AppLogger::severityForLine(const String &line) const {
   }
 
   return "inf";
+}
+
+int AppLogger::severityRank(const String &severity) const {
+  if (severity == "dbg") {
+    return 0;
+  }
+  if (severity == "wrn") {
+    return 2;
+  }
+  if (severity == "err") {
+    return 3;
+  }
+  return 1;
+}
+
+bool AppLogger::shouldLogSeverity(const String &severity) const {
+  return severityRank(severity) >= minimumSeverityRank_;
 }

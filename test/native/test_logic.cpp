@@ -431,7 +431,7 @@ static void testSpotifyDJMenuItemCounts() {
   assert(SpotifyDJMenuModel::itemCount(UiScreen::NowPlaying, input) == 0);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::RootMenu, input) == SpotifyDJMenuModel::RootMenuItemCount);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::Settings, input) == SpotifyDJMenuModel::SettingsItemCount);
-  assert(SpotifyDJMenuModel::SettingsItemCount == 13);
+  assert(SpotifyDJMenuModel::SettingsItemCount == 14);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::About, input) == SpotifyDJMenuModel::AboutItemCount);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::Playlists, input) == 1);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 2);
@@ -467,6 +467,13 @@ static void testSpotifyDJMenuOptionValues() {
   assert(std::strcmp(SpotifyDJMenuModel::themeValue(1), "light") == 0);
   assert(std::strcmp(SpotifyDJMenuModel::themeValue(2), "auto") == 0);
   assert(std::strcmp(SpotifyDJMenuModel::themeValue(99), "dark") == 0);
+
+  assert(SpotifyDJMenuModel::LogLevelOptionCount == 4);
+  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(0), "debug") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(1), "info") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(2), "warning") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(3), "error") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(99), "info") == 0);
 
   assert(std::strcmp(SpotifyDJMenuModel::playModeValue(0), "normal") == 0);
   assert(std::strcmp(SpotifyDJMenuModel::playModeValue(1), "shuffle") == 0);

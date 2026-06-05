@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.7.10
+## v2.8.0
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -31,6 +31,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Optional local micro wake word hook for a trained `Spotify DJ` detector.
 - Watchdog, slow-loop diagnostics and periodic heap diagnostics for long-running device stability.
 - Timestamped log severity classification with `[inf]`, `[wrn]`, `[err]` and `[dbg]` markers for serial and web logs.
+- Log level setting on the device, web portal and MQTT discovery/commands with translated UI labels and `info` as the default.
 - `ProvisioningController` for centralized NVS provisioning storage and reduced `SpotifyDJApp` responsibility.
 - `PowerController` for charger/wake/watchdog policy.
 - Host-testable menu and network helper models plus release-script shell tests.
@@ -41,7 +42,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.7.10` / `v2.7.10`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.8.0` / `v2.8.0`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
@@ -99,13 +100,13 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Captive portal MQTT fields are optional; leaving them empty does not attempt MQTT setup and does not overwrite Home Assistant-provisioned MQTT settings.
 - The language setting is stored in NVS, can be provisioned by Home Assistant through `device_language`/`language`, and resets to English on factory reset; logs remain English.
 - Theme is stored in NVS and exposed on the device, web portal and MQTT. Device `Light` uses TFT inversion/high contrast; web `Auto` follows browser/device preference.
-- MQTT two-way support covers Spotify controls, status/discovery and settings commands for language, theme, brightness, dim timeout, turn-off timeout and speaker cue volume.
+- MQTT two-way support covers Spotify controls, status/discovery and settings commands for language, theme, log level, brightness, dim timeout, turn-off timeout and speaker cue volume.
 - MQTT reconnect attempts stop after three consecutive authentication failures to avoid log spam and needless broker polling.
 - Device Settings menu includes a safe local Stress test / monkey mode for render/navigation diagnostics.
 - Web portal polling is visibility-aware for logs, queue, playlists and sound-output lists, and embedded icon/manifest assets use cache headers.
 - Error-like web status messages are visually highlighted so stale HA pairing/voice endpoint failures stand out.
 - App logs are stored in fixed-size buffers to reduce heap fragmentation during long runs.
-- Menu counts/options, network timeout behavior and release dry-run validation have stronger automated test coverage.
+- Menu counts/options including log-level choices, network timeout behavior and release dry-run validation have stronger automated test coverage.
 - Web battery header state has host-side test coverage for low/medium/high and charging classes.
 - Provisioning, power policy and long-network-call responsibilities are documented as separate refactor boundaries to keep future production fixes easier to isolate.
 

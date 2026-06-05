@@ -17,6 +17,7 @@ enum class UiScreen {
   Brightness,
   Language,
   Theme,
+  LogLevel,
   SpeakerVolume,
   PlayMode,
   SleepTimeout,
@@ -38,13 +39,14 @@ constexpr size_t DimTimeoutOptionCount = 4;
 constexpr size_t BrightnessOptionCount = 4;
 constexpr size_t LanguageOptionCount = 2;
 constexpr size_t ThemeOptionCount = 3;
+constexpr size_t LogLevelOptionCount = 4;
 constexpr size_t SpeakerVolumeOptionCount = 4;
 constexpr size_t PlayModeOptionCount = 4;
 constexpr size_t SleepTimeoutOptionCount = 4;
 constexpr size_t ConfirmOptionCount = 2;
 constexpr size_t HardResetOptionCount = ConfirmOptionCount;
 constexpr size_t WifiFailureOptionCount = 4;
-constexpr size_t SettingsItemCount = 13;
+constexpr size_t SettingsItemCount = 14;
 constexpr size_t RootMenuItemCount = 6;
 constexpr size_t AboutItemCount = 10;
 constexpr size_t FixedSoundOutputCount = 2;
@@ -77,6 +79,8 @@ inline size_t itemCount(UiScreen screen, const MenuCountInput &input) {
       return LanguageOptionCount;
     case UiScreen::Theme:
       return ThemeOptionCount;
+    case UiScreen::LogLevel:
+      return LogLevelOptionCount;
     case UiScreen::SpeakerVolume:
       return SpeakerVolumeOptionCount;
     case UiScreen::PlayMode:
@@ -110,6 +114,11 @@ inline uint8_t speakerVolumeValuePercent(size_t index) {
 inline const char *themeValue(size_t index) {
   static const char *const values[ThemeOptionCount] = {"dark", "light", "auto"};
   return values[index < ThemeOptionCount ? index : 0];
+}
+
+inline const char *logLevelValue(size_t index) {
+  static const char *const values[LogLevelOptionCount] = {"debug", "info", "warning", "error"};
+  return values[index < LogLevelOptionCount ? index : 1];
 }
 
 inline const char *playModeValue(size_t index) {

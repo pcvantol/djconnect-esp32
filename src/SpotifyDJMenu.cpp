@@ -49,6 +49,23 @@ String themeLabel(const String &theme) {
   return I18n::text("theme_auto");
 }
 
+String logLevelValue(size_t index) {
+  return SpotifyDJMenuModel::logLevelValue(index);
+}
+
+String logLevelLabel(const String &level) {
+  if (level == "debug") {
+    return I18n::text("log_level_debug");
+  }
+  if (level == "warning") {
+    return I18n::text("log_level_warning");
+  }
+  if (level == "error") {
+    return I18n::text("log_level_error");
+  }
+  return I18n::text("log_level_info");
+}
+
 String playModeValue(size_t index) {
   return SpotifyDJMenuModel::playModeValue(index);
 }

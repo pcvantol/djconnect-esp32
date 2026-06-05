@@ -13,6 +13,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - Spotify play mode from device settings and the web portal: normal, shuffle, repeat once or repeat infinite.
 - Language setting for the device UI, web portal and captive portal: English or Dutch.
 - Theme setting for the device and web portal: Auto, Dark or Light.
+- Log level setting from the device, web portal and MQTT: debug, info, warning or error. The default is info.
 - Playlist browser on the device and web portal to start playlists directly.
 - Current Song screen with album art download/cache.
 - Encoder short press on Now Playing: pause/resume.
@@ -27,7 +28,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - Mobile web portal with Now Playing, browser push-to-talk, album art, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update and OTA upload.
 - Home Assistant pairing with mDNS discovery and device-token authentication.
 - BLE WiFi provisioning in setup mode for apps/flows that actively write credentials to the device.
-- MQTT/Home Assistant discovery, periodic status publishing and two-way commands.
+- MQTT/Home Assistant discovery, periodic status publishing and two-way commands, including selected settings such as log level.
 - Battery/charging guards, turn-off sleep and low-battery screens.
 - Charger-aware wake probe while turned off.
 - WiFi-failure boot menu with retry, factory reset, restart device and turn off.
@@ -259,7 +260,9 @@ spotifydj/<device_id>/event
 spotifydj/<device_id>/command
 ```
 
-Supported MQTT command categories include status request, next/previous, volume, transfer sound output, start playlist, DJ response text, screen brightness, dim timeout, turn-off timeout, speaker cue volume, language and theme.
+Supported MQTT command categories include status request, next/previous, volume, transfer sound output, start playlist, DJ response text, screen brightness, dim timeout, turn-off timeout, speaker cue volume, language, theme and log level.
+
+The retained MQTT state publishes `settings.log_level`, and Home Assistant discovery exposes a `Log level` select with `debug`, `info`, `warning` and `error`. The firmware default is `info`; logs remain English even when the device/web UI language is Dutch.
 
 If the broker returns authentication failures (`rc=4` or `rc=5`) three times in a row, the firmware stops MQTT reconnect attempts until credentials are changed or the device restarts. This prevents repeated log spam and needless network wakeups when broker credentials are wrong.
 
@@ -281,7 +284,7 @@ Spotify's queue endpoint can omit upcoming tracks for playlist context playback.
 
 `SpotifyDJApp` is the top-level coordinator for setup, loop timing, input routing and screen transitions. Storage and hardware policy are kept in smaller modules so production issues can be isolated more easily:
 
-- `ProvisioningController` owns NVS provisioning keys for WiFi, MQTT, setup mode, display settings, language, theme and speaker cue volume.
+- `ProvisioningController` owns NVS provisioning keys for WiFi, MQTT, setup mode, display settings, language, theme, log level and speaker cue volume.
 - `PowerController` owns charger detection policy, timer-wake sleep decisions, button wake masks and watchdog setup/feed.
 - `SpotifyDJMenuModel` contains host-testable menu counts and option values; `SpotifyDJMenu` adapts that model to Arduino strings and display labels.
 - `NetworkActivity` applies bounded HTTP timeout policy and logs duration/result for long network flows such as Spotify, Home Assistant status, OTA, album art and DJ response audio.
@@ -352,7 +355,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.7.10 --dry-run` validates the release plan without touching files. Both `2.7.10` and `v2.7.10` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.8.0 --dry-run` validates the release plan without touching files. Both `2.8.0` and `v2.8.0` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
@@ -384,7 +387,7 @@ Run release-script checks:
 bash test/native/test_release.sh
 ```
 
-The native test binary covers pure logic such as battery estimation, menu option counts/values, Spotify provisioning parsing, Spotify credential repair validation and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
+The native test binary covers pure logic such as battery estimation, menu option counts/values including log-level options, Spotify provisioning parsing, Spotify credential repair validation and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
 
 ## Security Checklist
 
