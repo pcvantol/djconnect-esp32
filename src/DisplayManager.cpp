@@ -316,7 +316,7 @@ void DisplayManager::renderAlbumArtScreen(
   }
 
   tft_.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft_.drawString(I18n::text("center_back"), AlbumTextX, 154, 1);
+  tft_.drawString(I18n::text("back_top_button"), AlbumTextX, 154, 1);
 }
 
 void DisplayManager::renderAlbumArtMarqueeText(const SpotifyState &playback, bool titleChanged, bool artistChanged) {
@@ -334,6 +334,10 @@ void DisplayManager::renderAlbumArtMarqueeText(const SpotifyState &playback, boo
 }
 
 void DisplayManager::renderDjResponseOverlay(const String &text) {
+  if (text == lastDjResponseOverlayText_) {
+    return;
+  }
+  lastDjResponseOverlayText_ = text;
   tft_.fillScreen(TFT_BLACK);
   tft_.setTextDatum(TL_DATUM);
 
@@ -377,6 +381,10 @@ void DisplayManager::renderDjResponseOverlay(const String &text) {
     tft_.drawString(line, x, y, font);
     y += actualLineHeight;
   }
+}
+
+void DisplayManager::resetDjResponseOverlayCache() {
+  lastDjResponseOverlayText_ = "";
 }
 
 void DisplayManager::resetAlbumArtRenderCache() {

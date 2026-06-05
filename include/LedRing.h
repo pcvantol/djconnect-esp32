@@ -32,6 +32,9 @@ public:
   // Advances a fast purple chase used while OTA firmware is being written.
   void showFirmwareUpdateAnimation();
 
+  // Advances a green chase while a Home Assistant DJ response is being played.
+  void showDjResponseAnimation();
+
   // Matches the ring brightness to the display power state; 0 fully hides the ring.
   void setPowerPercent(uint8_t percent);
 
@@ -50,4 +53,6 @@ private:
   uint8_t setupFrame_ = 0;
   uint32_t lastFirmwareFrameAt_ = 0;
   uint8_t firmwareFrame_ = 0;
+  uint32_t lastDjResponseFrameAt_ = 0;
+  uint8_t djResponseFrame_ = 0;
 };

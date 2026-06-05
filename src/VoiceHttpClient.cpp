@@ -74,6 +74,45 @@ String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs) {
   esp_task_wdt_reset();
   return body;
 }
+
+String compactHttpErrorBody(const String &body) {
+  String compact;
+  compact.reserve(min(static_cast<size_t>(body.length()), static_cast<size_t>(160)));
+  for (size_t i = 0; i < body.length() && compact.length() < 160; ++i) {
+    const char c = body.charAt(i);
+    if (c == '\r' || c == '\n' || c == '\t') {
+      if (!compact.endsWith(" ")) {
+        compact += ' ';
+      }
+    } else {
+      compact += c;
+    }
+  }
+  compact.trim();
+  return compact;
+}
+
+void logVoiceHttpErrorBody(const String &context, const String &body) {
+  const String compact = compactHttpErrorBody(body);
+  if (compact.isEmpty()) {
+    return;
+  }
+  AppLog.print(context);
+  AppLog.print(": ");
+  AppLog.println(compact);
+}
+
+void logVoiceHttpClientError(const String &context, int code) {
+  if (code >= 0) {
+    return;
+  }
+  AppLog.print(context);
+  AppLog.print(": ");
+  AppLog.println(HTTPClient::errorToString(code));
+}
+
+static constexpr uint8_t HaNotFoundInvalidationThreshold = 3;
+static constexpr uint32_t HaNotFoundInvalidationWindowMs = 60000;
 }  // namespace
 
 void VoiceHttpClient::begin(SpotifyDJDevice &device) {
@@ -116,9 +155,7 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   activity.finish(code);
   AppLog.print("[SpotifyDJ] voice status response: ");
   AppLog.println(code);
-  if (Logic::isHomeAssistantPairingInvalidStatus(code)) {
-    pairingInvalidated_ = true;
-  }
+  updatePairingInvalidationForStatus(code);
   return code >= 200 && code < 300;
 }
 
@@ -176,11 +213,13 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   esp_task_wdt_reset();
   AppLog.print("[SpotifyDJ] voice command response: ");
   AppLog.println(code);
+  logVoiceHttpClientError("[SpotifyDJ] voice command client error", code);
   const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs);
   http.end();
   activity.finish(code);
   if (code < 200 || code >= 300) {
-    pairingInvalidated_ = Logic::isHomeAssistantPairingInvalidStatus(code);
+    logVoiceHttpErrorBody("[SpotifyDJ] voice command error body", response);
+    updatePairingInvalidationForStatus(code);
     if (code == 404) {
       message = I18n::text("voice_ha_endpoint_missing");
     } else if (code == 401 || code == 403) {
@@ -264,12 +303,14 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   esp_task_wdt_reset();
   AppLog.print("[SpotifyDJ] voice WAV response: ");
   AppLog.println(code);
+  logVoiceHttpClientError("[SpotifyDJ] voice WAV client error", code);
   const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs);
   http.end();
   activity.finish(code);
 
   if (code < 200 || code >= 300) {
-    pairingInvalidated_ = Logic::isHomeAssistantPairingInvalidStatus(code);
+    logVoiceHttpErrorBody("[SpotifyDJ] voice WAV error body", response);
+    updatePairingInvalidationForStatus(code);
     if (code == 404) {
       message = I18n::text("voice_ha_endpoint_missing");
     } else if (code == 401 || code == 403) {
@@ -297,6 +338,26 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
 }
 
 bool VoiceHttpClient::pairingInvalidated() const {
+  return pairingInvalidated_;
+}
+
+bool VoiceHttpClient::updatePairingInvalidationForStatus(int statusCode) {
+  if (statusCode == 404) {
+    const uint32_t now = millis();
+    if (firstHaNotFoundAt_ == 0 || now - firstHaNotFoundAt_ > HaNotFoundInvalidationWindowMs) {
+      firstHaNotFoundAt_ = now;
+      consecutiveHaNotFoundCount_ = 0;
+    }
+    consecutiveHaNotFoundCount_++;
+    AppLog.print("[SpotifyDJ] Home Assistant route not found count=");
+    AppLog.println(consecutiveHaNotFoundCount_);
+    pairingInvalidated_ = consecutiveHaNotFoundCount_ >= HaNotFoundInvalidationThreshold;
+    return pairingInvalidated_;
+  }
+
+  consecutiveHaNotFoundCount_ = 0;
+  firstHaNotFoundAt_ = 0;
+  pairingInvalidated_ = statusCode == 401 || statusCode == 403;
   return pairingInvalidated_;
 }
 

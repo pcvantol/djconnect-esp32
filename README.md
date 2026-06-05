@@ -15,16 +15,15 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - Theme setting for the device and web portal: Auto, Dark or Light.
 - Log level setting from the device, web portal and MQTT: debug, info, warning or error. The default is info.
 - Playlist browser on the device and web portal to start playlists directly.
-- Current Song screen with album art download/cache.
+- Current Song menu screen with album art download/cache.
 - Encoder short press on Now Playing: pause/resume.
-- Encoder double press on Now Playing: Current Song / album art screen, only when playback is active.
 - Encoder long press: push-to-talk through Home Assistant Assist; release stops listening.
 - Top button short press: back in menus, otherwise next track.
 - Top button double press: previous track.
 - Top button long press: open the menu.
 - Top button held for 10 seconds: restart/soft reset.
 - Encoder button + top button held for 10 seconds: factory reset when battery state allows it.
-- Menus for Up Next, Playlists, Sound Outputs, Settings, About and Logs.
+- Menus for Current Song, Up Next, Playlists, Sound Outputs, Settings, About and Logs.
 - Mobile web portal with Now Playing, DJ-response simulation, album art, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update and OTA upload.
 - Home Assistant pairing with mDNS discovery and device-token authentication.
 - BLE WiFi provisioning in setup mode for apps/flows that actively write credentials to the device.
@@ -355,7 +354,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.0 --dry-run` validates the release plan without touching files. Both `2.9.0` and `v2.9.0` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.2 --dry-run` validates the release plan without touching files. Both `2.9.2` and `v2.9.2` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

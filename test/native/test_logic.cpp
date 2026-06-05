@@ -437,6 +437,7 @@ static void testSpotifyDJMenuItemCounts() {
   assert(SpotifyDJMenuModel::isMenuScreen(UiScreen::Settings));
   assert(SpotifyDJMenuModel::itemCount(UiScreen::NowPlaying, input) == 0);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::RootMenu, input) == SpotifyDJMenuModel::RootMenuItemCount);
+  assert(SpotifyDJMenuModel::RootMenuItemCount == 7);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::Settings, input) == SpotifyDJMenuModel::SettingsItemCount);
   assert(SpotifyDJMenuModel::SettingsItemCount == 14);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::About, input) == SpotifyDJMenuModel::AboutItemCount);

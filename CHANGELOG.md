@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.0
+## v2.9.2
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -42,7 +42,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.0` / `v2.9.0`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.2` / `v2.9.2`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
@@ -78,8 +78,8 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Push-to-talk now records a WAV file on the ESP and uploads it as raw `audio/wav` to the Home Assistant integration endpoint `/api/spotify_dj/voice`.
 - The PTT flow is documented: ESP WAV upload to the HA integration, backend Assist/STT/TTS in Home Assistant, then DJ text plus optional WAV/MP3 URL back to the ESP device.
 - Direct Home Assistant Assist WebSocket authentication has been removed from the physical PTT path; the websocket, if required, belongs on the Home Assistant integration backend.
-- Encoder short press performs pause/resume, double press opens Current Song and long press starts push-to-talk until release.
-- Current Song is blocked from Now Playing when there is no active playback.
+- Encoder short press performs pause/resume and long press starts push-to-talk until release.
+- Current Song moved into the first root menu item so it remains available now that the encoder long press is dedicated to PTT.
 - Turn-off sleep periodically probes for USB-C charger attach; with a charger detected the device continues booting, otherwise it returns to sleep.
 - Push-to-talk logs listening steps to serial and the web logs screen.
 - LED-ring animations are yellow on PTT start, blue on PTT stop/processing, and green on accepted voice command response.

@@ -6,6 +6,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "LedRing.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
 #include "SoundManager.h"
@@ -52,8 +53,16 @@ private:
 };
 } // namespace
 
-void DjResponseAudioPlayer::begin(SoundManager &sound) {
+void DjResponseAudioPlayer::begin(SoundManager &sound, LedRing *ledRing) {
   sound_ = &sound;
+  ledRing_ = ledRing;
+}
+
+void showDjResponseLedFrame(void *context) {
+  auto *ring = static_cast<LedRing *>(context);
+  if (ring != nullptr) {
+    ring->showDjResponseAnimation();
+  }
 }
 
 DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
@@ -116,6 +125,10 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
 
   result.audioType = Logic::djAudioTypeName(audioType);
   bool ok = false;
+  if (ledRing_ != nullptr) {
+    sound_->setStreamActivityCallback(showDjResponseLedFrame, ledRing_);
+    ledRing_->showDjResponseAnimation();
+  }
   if (stream != nullptr && audioType == Logic::DjAudioType::Wav) {
     PrefixStream prefixed(prefix, prefixLength, *stream);
     ok = sound_->playWavStream(prefixed, contentLength);
@@ -124,6 +137,7 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
   } else {
     AppLog.println("[SpotifyDJ] DJ response audio type unsupported");
   }
+  sound_->setStreamActivityCallback(nullptr, nullptr);
 
   http.end();
   activity.finish(code, ok ? "played" : "playback failed");

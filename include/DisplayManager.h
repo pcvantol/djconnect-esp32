@@ -69,6 +69,9 @@ public:
   // Draws a temporary full-screen DJ response overlay above the current UI.
   void renderDjResponseOverlay(const String &text);
 
+  // Forces the next DJ response overlay render to repaint its full-screen frame.
+  void resetDjResponseOverlayCache();
+
   // Forces the next Current Song render to redraw the album-art pane.
   void resetAlbumArtRenderCache();
 
@@ -201,6 +204,7 @@ private:
   uint8_t backlightPercent_ = 100;
   uint8_t activeBrightnessPercent_ = 100;
   String lastAlbumArtPath_;
+  String lastDjResponseOverlayText_;
   bool albumArtPaneDirty_ = true;
   uint32_t dimStartAfterMs_ = Config::DisplayDimStartAfterMs;
   uint32_t dimTargetAfterMs_ = Config::DisplayDimAfterMs;

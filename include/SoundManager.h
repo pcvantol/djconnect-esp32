@@ -5,6 +5,8 @@
 
 class SoundManager {
 public:
+  using StreamActivityCallback = void (*)(void *context);
+
   // Initializes I2S output and starts the tiny audio worker task.
   void begin();
 
@@ -65,6 +67,9 @@ public:
   // Plays an already opened MP3 HTTP stream. Used after content-type/header sniffing.
   bool playMp3Stream(Stream &stream, const uint8_t *prefix, size_t prefixLength, int contentLength);
 
+  // Optional callback invoked from blocking WAV/MP3 playback loops for visual activity frames.
+  void setStreamActivityCallback(StreamActivityCallback callback, void *context);
+
 private:
   enum class AudioState : uint8_t {
     Idle,
@@ -105,6 +110,7 @@ private:
   void endAudioState();
   void playTone(uint16_t frequency, uint16_t durationMs, uint8_t amplitude = 18);
   void playSilence(uint16_t durationMs);
+  void notifyStreamActivity();
 
   QueueHandle_t queue_ = nullptr;
   SemaphoreHandle_t i2sMutex_ = nullptr;
@@ -112,4 +118,6 @@ private:
   AudioState audioState_ = AudioState::Idle;
   uint8_t volumePercent_ = 100;
   uint32_t lastVolumeTickAt_ = 0;
+  StreamActivityCallback streamActivityCallback_ = nullptr;
+  void *streamActivityContext_ = nullptr;
 };

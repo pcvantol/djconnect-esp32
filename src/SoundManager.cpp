@@ -26,10 +26,16 @@ public:
         prefix_(prefix),
         prefixLength_(prefixLength),
         contentLength_(contentLength > 0 ? static_cast<uint32_t>(contentLength) : 0),
-        open_(true) {}
+        open_(true) {
+    stream_.setTimeout(35);
+  }
 
   uint32_t read(void *data, uint32_t len) override {
     if (!open_ || data == nullptr || len == 0) {
+      return 0;
+    }
+    if (contentLength_ > 0 && position_ >= contentLength_) {
+      open_ = false;
       return 0;
     }
     uint8_t *target = static_cast<uint8_t *>(data);
@@ -39,9 +45,35 @@ public:
       position_++;
     }
     if (copied < len) {
-      const uint32_t got = stream_.readBytes(target + copied, len - copied);
-      copied += got;
-      position_ += got;
+      const uint32_t remainingByLength = contentLength_ > 0 ? contentLength_ - position_ : len - copied;
+      const uint32_t wanted = min(len - copied, remainingByLength);
+      uint32_t bodyCopied = 0;
+      uint32_t idleStartedAt = millis();
+      while (bodyCopied < wanted && millis() - idleStartedAt < 120) {
+        const int available = stream_.available();
+        if (available <= 0) {
+          esp_task_wdt_reset();
+          delay(1);
+          yield();
+          continue;
+        }
+        const uint32_t chunk = min(static_cast<uint32_t>(available), wanted - bodyCopied);
+        if (chunk == 0) {
+          break;
+        }
+        const int got = stream_.readBytes(target + copied, chunk);
+        if (got <= 0) {
+          break;
+        }
+        copied += got;
+        bodyCopied += got;
+        position_ += got;
+        idleStartedAt = millis();
+        if (contentLength_ > 0 && position_ >= contentLength_) {
+          open_ = false;
+          break;
+        }
+      }
     }
     esp_task_wdt_reset();
     yield();
@@ -210,6 +242,17 @@ void SoundManager::playOtaFailed() {
   enqueue(Event::OtaFailed);
 }
 
+void SoundManager::setStreamActivityCallback(StreamActivityCallback callback, void *context) {
+  streamActivityCallback_ = callback;
+  streamActivityContext_ = context;
+}
+
+void SoundManager::notifyStreamActivity() {
+  if (streamActivityCallback_ != nullptr) {
+    streamActivityCallback_(streamActivityContext_);
+  }
+}
+
 bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   if (!ready_) {
     AppLog.println("[SpotifyDJ] voice response audio skipped: speaker not ready");
@@ -327,6 +370,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   uint32_t remaining = dataBytes;
   while (remaining > 0) {
     esp_task_wdt_reset();
+    notifyStreamActivity();
     const size_t want = min(static_cast<uint32_t>(sizeof(buffer)), remaining);
     const size_t got = stream.readBytes(buffer, want);
     if (got == 0) {
@@ -382,6 +426,7 @@ bool SoundManager::playMp3Stream(const String &url) {
   const uint32_t startedAt = millis();
   while (mp3.isRunning()) {
     esp_task_wdt_reset();
+    notifyStreamActivity();
     if (!mp3.loop()) {
       break;
     }
@@ -446,6 +491,7 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   const uint32_t startedAt = millis();
   while (mp3.isRunning()) {
     esp_task_wdt_reset();
+    notifyStreamActivity();
     if (!mp3.loop()) {
       break;
     }

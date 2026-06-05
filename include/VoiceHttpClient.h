@@ -16,7 +16,10 @@ public:
 
 private:
   String endpoint(const char *path) const;
+  bool updatePairingInvalidationForStatus(int statusCode);
 
   SpotifyDJDevice *device_ = nullptr;
   bool pairingInvalidated_ = false;
+  uint8_t consecutiveHaNotFoundCount_ = 0;
+  uint32_t firstHaNotFoundAt_ = 0;
 };

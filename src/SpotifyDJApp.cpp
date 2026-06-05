@@ -77,7 +77,7 @@ void SpotifyDJApp::begin() {
   albumArt_.begin();
   ledRing_.begin();
   sound_.begin();
-  djAudio_.begin(sound_);
+  djAudio_.begin(sound_, &ledRing_);
   voiceRecorder_.begin();
   wakeWord_.begin();
   wakeWord_.setCallback(wakeWordDetectedCallback, this);
@@ -169,6 +169,7 @@ void SpotifyDJApp::loop() {
   handleInputEvents(events);
   if (djResponseOverlayVisible_ && static_cast<int32_t>(millis() - djResponseOverlayUntil_) >= 0) {
     djResponseOverlayVisible_ = false;
+    display_.resetDjResponseOverlayCache();
     renderNow();
   }
   if (voiceRecording_) {
@@ -945,15 +946,6 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
     }
   }
 
-  if (events.encoderDoubleClick) {
-    if (playback_.hasPlayback) {
-      openAlbumArtScreen();
-    } else {
-      showNotice(I18n::text("no_current_song"), 1800);
-      renderNow();
-    }
-  }
-
   if (events.topButtonClick) {
     goToNextTrack();
   }
@@ -998,10 +990,6 @@ void SpotifyDJApp::handleMenuInputEvents(const InputEvents &events) {
   }
 
   if (events.encoderClick) {
-    if (activeScreen_ == UiScreen::AlbumArt) {
-      goBackOneScreen();
-      return;
-    }
     selectCurrentMenuItem();
   }
   // Encoder long press is intentionally unused in menu screens.
@@ -1080,27 +1068,29 @@ void SpotifyDJApp::selectCurrentMenuItem() {
   switch (activeScreen_) {
     case UiScreen::RootMenu:
       if (rootMenuSelection_ == 0) {
+        openAlbumArtScreen();
+      } else if (rootMenuSelection_ == 1) {
         openScreen(UiScreen::Queue);
         showNotice(I18n::text("loading_queue"), 1200);
         spotify_.refreshQueue(queue_);
         renderNow();
-      } else if (rootMenuSelection_ == 1) {
+      } else if (rootMenuSelection_ == 2) {
         openScreen(UiScreen::Playlists);
         playlistSelection_ = 0;
         showNotice(I18n::text("loading_playlists"), 1200);
         spotify_.refreshPlaylists(playlists_);
         renderNow();
-      } else if (rootMenuSelection_ == 2) {
+      } else if (rootMenuSelection_ == 3) {
         openScreen(UiScreen::SoundOutputs);
         soundOutputSelection_ = 0;
         showNotice(I18n::text("loading_outputs"), 1200);
         spotify_.refreshDevices(deviceList_);
         renderNow();
-      } else if (rootMenuSelection_ == 3) {
-        openScreen(UiScreen::Settings);
       } else if (rootMenuSelection_ == 4) {
-        openScreen(UiScreen::About);
+        openScreen(UiScreen::Settings);
       } else if (rootMenuSelection_ == 5) {
+        openScreen(UiScreen::About);
+      } else if (rootMenuSelection_ == 6) {
         openScreen(UiScreen::Logs);
       }
       break;
@@ -1934,6 +1924,7 @@ void SpotifyDJApp::handleVoiceButton() {
   voiceClient_.sendStatus(true, "recording");
   mqttPublisher_.publishEvent("button", "middle", "push_to_talk_start");
   diagnostics_.lastDjText = I18n::text("voice_listening");
+  display_.resetDjResponseOverlayCache();
   djResponseOverlayVisible_ = true;
   djResponseOverlayUntil_ = millis() + Config::VoiceMaxRecordMs + 1000;
   showNotice(I18n::text("voice_listening"), Config::VoiceMaxRecordMs + 1000);
@@ -1952,6 +1943,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   }
   ledRing_.playPulse(CRGB::Blue);
   diagnostics_.lastDjText = I18n::text("voice_processing");
+  display_.resetDjResponseOverlayCache();
   djResponseOverlayVisible_ = true;
   djResponseOverlayUntil_ = millis() + 3000;
   showNotice(I18n::text("voice_processing"), 3000);
@@ -2282,6 +2274,15 @@ void SpotifyDJApp::renderNow() {
     return;
   }
 
+  if (djResponseOverlayVisible_) {
+    display_.renderDjResponseOverlay(diagnostics_.lastDjText);
+    visualState_.screenOn = display_.isOn();
+    visualState_.screenBrightnessLevel = display_.backlightPercent();
+    visualState_.ledOn = ledRing_.isOn();
+    mqttPublisher_.requestPublish();
+    return;
+  }
+
   // Render from the same snapshot into both visual outputs so screen and ring agree.
   if (isMenuActive()) {
     renderMenuNow();
@@ -2310,9 +2311,6 @@ void SpotifyDJApp::renderNow() {
   visualState_.screenOn = display_.isOn();
   visualState_.screenBrightnessLevel = display_.backlightPercent();
   visualState_.ledOn = ledRing_.isOn();
-  if (djResponseOverlayVisible_) {
-    display_.renderDjResponseOverlay(diagnostics_.lastDjText);
-  }
   mqttPublisher_.requestPublish();
 }
 
@@ -2321,6 +2319,7 @@ bool SpotifyDJApp::dismissDjResponseOverlay() {
     return false;
   }
   djResponseOverlayVisible_ = false;
+  display_.resetDjResponseOverlayCache();
   renderNow();
   return true;
 }
@@ -3023,6 +3022,9 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
   SpotifyDJApp *app = static_cast<SpotifyDJApp *>(context);
   AppLog.print("[SpotifyDJ] web voice: sending text chars=");
   AppLog.println(text.length());
+  app->voiceState_ = VoiceState::SendingCommand;
+  app->voiceRecording_ = false;
+  app->notice_.visibleUntil = 0;
   app->voiceClient_.sendStatus(false, "sending_command");
   const bool ok = app->voiceClient_.sendRecognizedText(text, message, &audioUrl);
   if (ok) {
@@ -3035,6 +3037,9 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
   } else if (app->voiceClient_.pairingInvalidated()) {
     app->markHomeAssistantPairingInvalid(message);
   }
+  app->voiceState_ = VoiceState::Idle;
+  app->voiceRecording_ = false;
+  app->notice_.visibleUntil = 0;
   app->voiceClient_.sendStatus(false, ok ? "idle" : "error", ok ? "" : message);
   return ok;
 }
@@ -3105,6 +3110,7 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "unknown";
   AppLog.print("[SpotifyDJ] DJ response displayed chars=");
   AppLog.println(text.length());
+  display_.resetDjResponseOverlayCache();
   djResponseOverlayVisible_ = true;
   djResponseOverlayUntil_ = millis() + 6000;
   display_.wakeForUserActivity();
@@ -3113,6 +3119,9 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
     const DjResponseAudioResult audioResult = djAudio_.play(audioUrl);
     spoken = audioResult.spoken;
     lastDjAudioType_ = audioResult.audioType;
+    if (djResponseOverlayVisible_) {
+      djResponseOverlayUntil_ = millis() + 6000;
+    }
   }
   if (!spoken && volumeFeedbackEnabled_) {
     sound_.playConfirm();
@@ -3131,6 +3140,7 @@ void SpotifyDJApp::renderMenuNow() {
 
     case UiScreen::RootMenu: {
       MenuItemView items[] = {
+          {I18n::text("current_song")},
           {I18n::text("up_next")},
           {I18n::text("playlists")},
           {I18n::text("outputs")},
@@ -3138,7 +3148,7 @@ void SpotifyDJApp::renderMenuNow() {
           {I18n::text("about")},
           {I18n::text("logs")},
       };
-      display_.renderMenuList(I18n::text("menu"), items, 6, rootMenuSelection_, notice_);
+      display_.renderMenuList(I18n::text("menu"), items, RootMenuItemCount, rootMenuSelection_, notice_);
       break;
     }
 
