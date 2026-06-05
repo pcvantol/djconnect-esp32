@@ -884,6 +884,10 @@ void SpotifyClient::loadSpotifyCredentials() {
 
   AppLog.print("Refresh token source: ");
   AppLog.println(refreshTokenSource_);
+  AppLog.print("Refresh token stored: ");
+  AppLog.print(refreshToken_.isEmpty() ? "missing" : "present");
+  AppLog.print(" len=");
+  AppLog.println(refreshToken_.length());
   AppLog.print("Spotify client id source: ");
   AppLog.println(clientId_.isEmpty() ? "missing" : "NVS");
 }
@@ -926,7 +930,7 @@ bool SpotifyClient::refreshAccessToken() {
     return false;
   }
 
-  for (int attempt = 0; attempt < 1; attempt++) {
+  for (int attempt = 0; attempt < 2; attempt++) {
     WiFiClientSecure client;
     configureTls(client);
 
@@ -955,6 +959,18 @@ bool SpotifyClient::refreshAccessToken() {
     AppLog.println(payload.length());
 
     if (code != 200) {
+      const String tokenError = tokenErrorNameFromPayload(payload);
+      if (tokenError == "invalid_grant" && attempt == 0) {
+        AppLog.println("Spotify token invalid_grant; reloading credentials from NVS and retrying once");
+        const String previousRefreshToken = refreshToken_;
+        loadSpotifyCredentials();
+        if (refreshToken_.isEmpty() || refreshToken_ == previousRefreshToken) {
+          AppLog.println("Spotify token retry skipped: no newer refresh token in NVS");
+          state_.error = tokenErrorFromPayload(code, payload);
+          return false;
+        }
+        continue;
+      }
       state_.error = tokenErrorFromPayload(code, payload);
       return false;
     }
@@ -982,7 +998,8 @@ bool SpotifyClient::refreshAccessToken() {
     }
 
     accessToken_ = token;
-    accessTokenExpiresAt_ = millis() + ((expiresIn - 60) * 1000UL);
+    const int refreshInSeconds = max(30, expiresIn - 60);
+    accessTokenExpiresAt_ = millis() + (static_cast<uint32_t>(refreshInSeconds) * 1000UL);
     state_.error = "";
     return true;
   }

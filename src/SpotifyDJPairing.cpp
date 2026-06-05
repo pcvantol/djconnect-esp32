@@ -71,6 +71,9 @@ void SpotifyDJPairing::applyProvisionedLanguage(JsonVariantConst payload) {
   if (normalized.isEmpty()) {
     return;
   }
+  if (normalized == I18n::languageCode()) {
+    return;
+  }
   if (SpotifyDJDevice::saveProvisionedLanguage(normalized) &&
       languageProvisionedCallback_ != nullptr) {
     languageProvisionedCallback_(languageProvisionedContext_, normalized);
@@ -215,11 +218,14 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(const BatterySta
     JsonDocument response;
     if (!deserializeJson(response, payload)) {
       MqttSettings mqttSettings;
-      if (mqttSettingsFromJson(response["mqtt"], mqttSettings)) {
+      if (mqttSettingsFromJson(response["mqtt"], mqttSettings) &&
+          !device_->mqttSettingsMatch(mqttSettings)) {
         device_->saveMqttSettings(mqttSettings);
       }
       applyProvisionedLanguage(response.as<JsonVariantConst>());
-      applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());
+      if (!spotifyConfigured) {
+        applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());
+      }
     }
   }
   return code >= 200 && code < 300 ? StatusResult::Ok : StatusResult::Failed;

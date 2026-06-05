@@ -355,7 +355,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.8.0 --dry-run` validates the release plan without touching files. Both `2.8.0` and `v2.8.0` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.8.1 --dry-run` validates the release plan without touching files. Both `2.8.1` and `v2.8.1` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

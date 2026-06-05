@@ -38,6 +38,7 @@ public:
   bool saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market);
   bool saveSpotifyRefreshToken(const String &refreshToken);
   void saveAssistPipelineId(const String &pipelineId);
+  bool mqttSettingsMatch(const MqttSettings &settings) const;
   void saveMqttSettings(const MqttSettings &settings);
   void clearHomeAssistantPairing();
   void clearPairing();

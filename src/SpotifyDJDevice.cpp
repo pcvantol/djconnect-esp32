@@ -170,9 +170,17 @@ void SpotifyDJDevice::savePairing(const String &haUrl, const String &deviceToken
 }
 
 bool SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market) {
+  const String normalizedMarket = market.isEmpty() ? "NL" : market;
+  const bool unchanged = readString(SpotifyClientIdKey) == clientId &&
+                         readString(SpotifyRefreshKey) == refreshToken &&
+                         readString(SpotifyMarketKey, "NL") == normalizedMarket;
+  if (unchanged) {
+    return true;
+  }
+
   const bool clientSaved = writeString(SpotifyClientIdKey, clientId);
   const bool refreshSaved = writeString(SpotifyRefreshKey, refreshToken);
-  const bool marketSaved = writeString(SpotifyMarketKey, market.isEmpty() ? "NL" : market);
+  const bool marketSaved = writeString(SpotifyMarketKey, normalizedMarket);
 
   AppLog.print("[SpotifyDJ] Spotify credentials provisioned: client_id=");
   AppLog.print(clientId.isEmpty() ? "missing" : "present");
@@ -197,8 +205,19 @@ void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
   AppLog.println("[SpotifyDJ] Assist pipeline setting saved");
 }
 
+bool SpotifyDJDevice::mqttSettingsMatch(const MqttSettings &settings) const {
+  const uint16_t normalizedPort = settings.port == 0 ? 1883 : settings.port;
+  return readString(MqttHostKey) == settings.host &&
+         static_cast<uint16_t>(readString(MqttPortKey, "1883").toInt()) == normalizedPort &&
+         readString(MqttUserKey) == settings.username &&
+         readString(MqttPassKey) == settings.password;
+}
+
 void SpotifyDJDevice::saveMqttSettings(const MqttSettings &settings) {
   if (settings.host.isEmpty()) {
+    return;
+  }
+  if (mqttSettingsMatch(settings)) {
     return;
   }
   writeString(MqttHostKey, settings.host);
