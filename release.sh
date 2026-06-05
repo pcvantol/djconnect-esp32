@@ -92,7 +92,7 @@ write_manifest() {
   cat > "$manifest" <<EOF
 {
   "version": "$version",
-  "device": "spotifydj-device",
+  "device": "lilygo-t-embed-s3",
   "asset": "$asset",
   "sha256": "$sha",
   "size": $size,

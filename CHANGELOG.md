@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.7.0
+## v2.7.1
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -39,7 +39,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.7.0` / `v2.7.0`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.7.1` / `v2.7.1`; local builds without release flags remain `dev` / `vdev`.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
 - Spotify credentials are provisioned through the setup portal or Home Assistant and stored in NVS.
 - The web portal can manually repair Spotify OAuth credentials with a one-shot refresh-token submit field, immediately testing authorization and clearing the submitted fields from the page.
@@ -62,6 +62,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Liked Proxy lookup now searches multiple pages of the user's own playlists before falling back to public playlist search.
 - Up Next falls back to the current playlist tracks when Spotify's queue endpoint returns no upcoming tracks for playlist playback.
 - The Home Assistant pairing banner setup link opens in a new browser tab.
+- Firmware manifests now target `lilygo-t-embed-s3` while keeping the distributable binary asset name `spotifydj-device-vX.Y.Z.bin`, matching the ESP OTA endpoint validation.
 - Web interface logs can be paused and selected/copied.
 - `Restart device` and `Turn off device` are available from settings.
 - Push-to-talk uses Route B: microphone audio streams as raw PCM16 to the Home Assistant Assist WebSocket pipeline; only recognized text is sent to `/api/spotify_dj/voice`.

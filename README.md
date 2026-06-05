@@ -311,7 +311,7 @@ The device Settings menu includes a `Stress test` toggle. This is a local render
 
 ## OTA Firmware Updates
 
-Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA.
+Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries use the distributable asset name `spotifydj-device-vX.Y.Z.bin`; the manifest `device` field is the OTA target and must be `lilygo-t-embed-s3`.
 
 During firmware write, the display shows `Firmware update in progress..`, the LED ring turns purple and the device restarts after a successful update. SHA256 verification during streaming is still a TODO.
 
@@ -343,7 +343,7 @@ Skip GitHub release creation when you only want the commit/tag/push steps:
 ./release.sh X.Y.Z --no-gh-release
 ```
 
-For example, `./release.sh 2.7.0 --dry-run` validates the release plan without touching files. Both `2.7.0` and `v2.7.0` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.7.1 --dry-run` validates the release plan without touching files. Both `2.7.1` and `v2.7.1` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
