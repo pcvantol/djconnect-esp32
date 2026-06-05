@@ -296,7 +296,7 @@ Skip GitHub release creation when you only want the commit/tag/push steps:
 ./release.sh X.Y.Z --no-gh-release
 ```
 
-For example, `./release.sh 2.3.0 --dry-run` validates the release plan without touching files. Both `2.3.0` and `v2.3.0` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.4.0 --dry-run` validates the release plan without touching files. Both `2.4.0` and `v2.4.0` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
