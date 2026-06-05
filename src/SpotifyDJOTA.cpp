@@ -57,6 +57,7 @@ bool SpotifyDJOTA::performUpdate(
     const BatteryState *battery,
     DisplayManager *display,
     LedRing *ledRing,
+    SoundManager *sound,
     String &message) {
   if (request.device != ExpectedModel) {
     message = "Wrong device target";
@@ -80,6 +81,15 @@ bool SpotifyDJOTA::performUpdate(
 
   AppLog.print("[SpotifyDJ] OTA target version: ");
   AppLog.println(request.version);
+  if (sound != nullptr) {
+    sound->playOtaStart();
+  }
+  auto failWithCue = [&]() {
+    if (sound != nullptr) {
+      sound->playOtaFailed();
+      delay(220);
+    }
+  };
 
   HTTPClient http;
   NetworkActivity activity("ota_download", Config::OtaIoTimeoutMs);
@@ -92,6 +102,7 @@ bool SpotifyDJOTA::performUpdate(
   if (!begun) {
     message = "OTA HTTP begin failed";
     activity.finishError("begin failed");
+    failWithCue();
     return false;
   }
 
@@ -102,6 +113,7 @@ bool SpotifyDJOTA::performUpdate(
     AppLog.println(message);
     http.end();
     activity.finish(code);
+    failWithCue();
     return false;
   }
 
@@ -112,6 +124,7 @@ bool SpotifyDJOTA::performUpdate(
     AppLog.println(Update.errorString());
     http.end();
     activity.finishError("Update.begin failed");
+    failWithCue();
     return false;
   }
 
@@ -131,6 +144,7 @@ bool SpotifyDJOTA::performUpdate(
   Stream *stream = http.getStreamPtr();
   size_t written = 0;
   size_t lastLogged = 0;
+  size_t lastProgressCue = 0;
   uint32_t lastProgressAt = millis();
   mbedtls_sha256_context shaContext;
   mbedtls_sha256_init(&shaContext);
@@ -140,6 +154,7 @@ bool SpotifyDJOTA::performUpdate(
     http.end();
     mbedtls_sha256_free(&shaContext);
     activity.finishError("sha init failed");
+    failWithCue();
     return false;
   }
   while (stream != nullptr && (contentLength <= 0 || written < static_cast<size_t>(contentLength))) {
@@ -158,6 +173,7 @@ bool SpotifyDJOTA::performUpdate(
         http.end();
         mbedtls_sha256_free(&shaContext);
         activity.finishError("stream timeout");
+        failWithCue();
         return false;
       }
       delay(1);
@@ -180,6 +196,7 @@ bool SpotifyDJOTA::performUpdate(
       http.end();
       mbedtls_sha256_free(&shaContext);
       activity.finishError("sha update failed");
+      failWithCue();
       return false;
     }
     const size_t chunkWritten = Update.write(buffer, read);
@@ -190,11 +207,16 @@ bool SpotifyDJOTA::performUpdate(
       http.end();
       mbedtls_sha256_free(&shaContext);
       activity.finishError("write failed");
+      failWithCue();
       return false;
     }
 
     written += chunkWritten;
     lastProgressAt = millis();
+    if (sound != nullptr && written - lastProgressCue >= 196608) {
+      sound->playOtaProgress();
+      lastProgressCue = written;
+    }
     if (written - lastLogged >= 65536 || (contentLength > 0 && written == static_cast<size_t>(contentLength))) {
       AppLog.print("[SpotifyDJ] OTA written bytes=");
       AppLog.println(written);
@@ -211,6 +233,7 @@ bool SpotifyDJOTA::performUpdate(
     http.end();
     mbedtls_sha256_free(&shaContext);
     activity.finishError("short write");
+    failWithCue();
     return false;
   }
 
@@ -222,6 +245,7 @@ bool SpotifyDJOTA::performUpdate(
     http.end();
     mbedtls_sha256_free(&shaContext);
     activity.finishError("sha finalize failed");
+    failWithCue();
     return false;
   }
   mbedtls_sha256_free(&shaContext);
@@ -232,6 +256,7 @@ bool SpotifyDJOTA::performUpdate(
     Update.abort();
     http.end();
     activity.finishError("sha mismatch");
+    failWithCue();
     return false;
   }
   AppLog.println("[SpotifyDJ] OTA SHA256 verified");
@@ -242,12 +267,17 @@ bool SpotifyDJOTA::performUpdate(
     AppLog.println(Update.errorString());
     http.end();
     activity.finishError("finalize failed");
+    failWithCue();
     return false;
   }
 
   http.end();
   message = "OTA started";
   AppLog.println("[SpotifyDJ] OTA update written successfully");
+  if (sound != nullptr) {
+    sound->playOtaComplete();
+    delay(320);
+  }
   activity.finish(code, "written");
   return true;
 }

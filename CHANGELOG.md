@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.7.6
+## v2.7.8
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -30,6 +30,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - WiFi-failure boot menu with encoder selection for retry connect, factory reset, restart device and turn off.
 - Optional local micro wake word hook for a trained `Spotify DJ` detector.
 - Watchdog, slow-loop diagnostics and periodic heap diagnostics for long-running device stability.
+- Timestamped log severity classification with `[inf]`, `[wrn]`, `[err]` and `[dbg]` markers for serial and web logs.
 - `ProvisioningController` for centralized NVS provisioning storage and reduced `SpotifyDJApp` responsibility.
 - `PowerController` for charger/wake/watchdog policy.
 - Host-testable menu and network helper models plus release-script shell tests.
@@ -40,11 +41,13 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.7.6` / `v2.7.6`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.7.8` / `v2.7.8`; local builds without release flags remain `dev` / `vdev`.
+- Boot logs now include the SpotifyDJ app name and active firmware version.
+- Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
 - Spotify credentials are provisioned through the setup portal or Home Assistant and stored in NVS.
 - The web portal can manually repair Spotify OAuth credentials with a one-shot refresh-token submit field, immediately testing authorization and clearing the submitted fields from the page.
-- Spotify refresh tokens now live only in the `spotifydj` NVS namespace; the old `spotify/refresh` legacy namespace is no longer read or written.
+- Spotify refresh tokens now live in short-key provisioning storage, and web-repaired/rotated tokens are mirrored to the namespaces used by both provisioning and Spotify runtime loading.
 - Spotify OAuth credentials can be parsed from Home Assistant pairing/status/provision payloads, both top-level and nested under `spotify`, without logging refresh tokens.
 - Battery percentage is always voltage-estimated and displayed without a tilde.
 - Spotify volume is limited to `0-60`; the LED ring treats `60` as full scale and uses orange segments.
@@ -52,7 +55,8 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Pairing mode shows the SpotifyDJ logo/name, battery state, instruction text and a large pairing code.
 - Pairing code is also visible in serial logs and the web interface.
 - Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off.
-- OTA firmware write shows `Firmware update in progress..` on the display and sets the LED ring to purple.
+- OTA firmware write shows `Firmware update in progress..` on the display for both Home Assistant OTA and manual web upload, runs a fast purple LED-ring animation, and plays start/progress/complete/failure speaker cues.
+- Normal boot LED-ring bounce uses a brighter Spotify-green color and fades back to off.
 - Display idle behavior keeps the configured brightness until the selected timeout, then turns the screen fully off.
 - The first button/encoder action while the screen is off only wakes the screen and does not execute the underlying action.
 - Web interface shows H/M/S status indicators, WiFi signal bars, a CSS battery icon with percentage/charging flash and the last MQTT publish timestamp.
@@ -64,6 +68,8 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Up Next falls back to the current playlist tracks when Spotify's queue endpoint returns no upcoming tracks for playlist playback.
 - The Home Assistant pairing banner setup link opens in a new browser tab.
 - Firmware manifests now target `lilygo-t-embed-s3` while keeping the distributable binary asset name `spotifydj-device-vX.Y.Z.bin`, matching the ESP OTA endpoint validation.
+- GitHub Actions now injects the release version into the PlatformIO build, verifies the compiled firmware contains `vX.Y.Z`, and publishes the single OTA asset `spotifydj-device-vX.Y.Z.bin`.
+- `release.sh` now lets GitHub Actions publish the public firmware release by default; local GitHub release creation is an explicit `--gh-release` fallback.
 - Web portal firmware upload no longer shows a temporary `Uploading firmware...` / `Firmware uploaden...` status label before the final upload response.
 - Web interface logs can be paused and selected/copied.
 - `Restart device` and `Turn off device` are available from settings.

@@ -133,6 +133,22 @@ void SoundManager::playChargingComplete() {
   enqueue(Event::ChargingComplete);
 }
 
+void SoundManager::playOtaStart() {
+  enqueue(Event::OtaStart);
+}
+
+void SoundManager::playOtaProgress() {
+  enqueue(Event::OtaProgress);
+}
+
+void SoundManager::playOtaComplete() {
+  enqueue(Event::OtaComplete);
+}
+
+void SoundManager::playOtaFailed() {
+  enqueue(Event::OtaFailed);
+}
+
 bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   if (!ready_) {
     AppLog.println("[SpotifyDJ] voice response audio skipped: speaker not ready");
@@ -398,6 +414,26 @@ void SoundManager::runTask() {
         playTone(988, 80, 16);
         playSilence(35);
         playTone(1175, 140, 16);
+        break;
+      case Event::OtaStart:
+        playTone(784, 70, 14);
+        playSilence(30);
+        playTone(1047, 90, 14);
+        break;
+      case Event::OtaProgress:
+        playTone(1568, 24, 9);
+        break;
+      case Event::OtaComplete:
+        playTone(1047, 60, 16);
+        playSilence(25);
+        playTone(1319, 60, 16);
+        playSilence(25);
+        playTone(1568, 110, 16);
+        break;
+      case Event::OtaFailed:
+        playTone(740, 80, 18);
+        playSilence(35);
+        playTone(370, 140, 18);
         break;
     }
     playSilence(8);

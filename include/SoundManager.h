@@ -50,6 +50,12 @@ public:
   // Bright confirmation cue when charging passes the nearly-full threshold.
   void playChargingComplete();
 
+  // Three-stage OTA cues: start, throttled progress tick, and final result.
+  void playOtaStart();
+  void playOtaProgress();
+  void playOtaComplete();
+  void playOtaFailed();
+
   // Plays a raw WAV stream returned by Home Assistant voice processing.
   bool playWavStream(Stream &stream, int contentLength);
 
@@ -80,6 +86,10 @@ private:
     BatteryWarning,
     SetupPrompt,
     ChargingComplete,
+    OtaStart,
+    OtaProgress,
+    OtaComplete,
+    OtaFailed,
   };
 
   static void soundTask(void *parameter);

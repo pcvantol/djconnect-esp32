@@ -134,7 +134,7 @@ Keep concerns separated:
 - `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
 - `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
 - User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated.
-- App logs should use the timestamp prefix only. Do not add `[SpotifyDJ]` to new log messages; the central logger strips that legacy prefix when it appears at the start of older callsites.
+- App logs are centrally formatted as `[dd-mm-yyyy HH:MM:SS] [inf|wrn|err|dbg] ...`. Do not manually add timestamps, severity labels, or `[SpotifyDJ]` to new log messages; the central logger strips that legacy prefix when it appears at the start of older callsites.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.
 
@@ -332,7 +332,9 @@ Current OTA implementation streams via `Update.h`.
 
 SHA256 verification is mandatory for OTA. The endpoint rejects missing/invalid hashes, streams the image through `Update.h`, computes SHA256 while writing, and aborts before reboot if the manifest hash does not match.
 
-During OTA firmware write, show `Firmware update in progress..` on the display at 100% brightness. The HTTP response is sent before the blocking write/reboot flow.
+During OTA firmware write, show `Firmware update in progress..` on the display at 100% brightness for both HA-triggered OTA and manual web upload. Keep the LED ring in the fast purple firmware-update animation and play OTA start/progress/complete/failure cues through `SoundManager`.
+
+Local development builds may display `vdev`, but Home Assistant/device API version reporting must expose them as OTA-comparable `0.0.0` so every published `X.Y.Z` release is treated as an upgrade from a local flash.
 
 ## MQTT Rules
 

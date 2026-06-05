@@ -7,6 +7,9 @@ namespace {
 constexpr uint8_t SpotifyGreenRed = 0x1D;
 constexpr uint8_t SpotifyGreenGreen = 0xB9;
 constexpr uint8_t SpotifyGreenBlue = 0x54;
+constexpr uint8_t BootGreenRed = 0x22;
+constexpr uint8_t BootGreenGreen = 0xFF;
+constexpr uint8_t BootGreenBlue = 0x66;
 constexpr uint8_t VolumeOrangeRed = 0xFF;
 constexpr uint8_t VolumeOrangeGreen = 0x8A;
 constexpr uint8_t VolumeOrangeBlue = 0x00;
@@ -16,6 +19,13 @@ CRGB scaledSpotifyGreen(uint8_t level) {
       (SpotifyGreenRed * level) / 255,
       (SpotifyGreenGreen * level) / 255,
       (SpotifyGreenBlue * level) / 255);
+}
+
+CRGB scaledBootGreen(uint8_t level) {
+  return CRGB(
+      (BootGreenRed * level) / 255,
+      (BootGreenGreen * level) / 255,
+      (BootGreenBlue * level) / 255);
 }
 
 CRGB scaledVolumeOrange(uint8_t level) {
@@ -78,7 +88,7 @@ void LedRing::playPulse(const CRGB &color) {
 
   powerPercent_ = 100;
   lastVolume_ = -999;
-  FastLED.setBrightness(Config::LedRingBrightness);
+  FastLED.setBrightness(160);
   for (uint8_t index = 0; index < Config::Ws2812LedCount; index++) {
     fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
     leds_[index] = color;
@@ -103,14 +113,14 @@ void LedRing::playBootBounce() {
   // One green lap with a soft trailing pixel gives a quick "alive" cue without delaying boot much.
   for (uint8_t index = 0; index < Config::Ws2812LedCount; index++) {
     fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
-    leds_[index] = scaledSpotifyGreen(255);
-    leds_[(index + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = scaledSpotifyGreen(70);
+    leds_[index] = scaledBootGreen(255);
+    leds_[(index + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = scaledBootGreen(95);
     FastLED.show();
     delay(45);
   }
 
   // Fade/debounce the ring back to fully off so the later connection state owns the LEDs.
-  for (int brightness = Config::LedRingBrightness; brightness >= 0; brightness -= 8) {
+  for (int brightness = 160; brightness >= 0; brightness -= 16) {
     FastLED.setBrightness(brightness < 0 ? 0 : brightness);
     FastLED.show();
     delay(18);

@@ -8,6 +8,7 @@
 #include <WiFi.h>
 
 #include "Config.h"
+#include "I18n.h"
 #include "LogicHelpers.h"
 #include "TextHelpers.h"
 #include "assets/spotifydj_favicon_ico.h"
@@ -1111,6 +1112,8 @@ void WebPortal::begin(
     const VisualState &visualState,
     SpotifyClient &spotify,
     LedRing &ledRing,
+    DisplayManager &display,
+    SoundManager &sound,
     MqttPublisher &mqttPublisher,
     const MqttSettings &mqttSettings,
     const uint8_t &screenBrightnessPercent,
@@ -1135,6 +1138,8 @@ void WebPortal::begin(
   visualState_ = &visualState;
   spotify_ = &spotify;
   ledRing_ = &ledRing;
+  display_ = &display;
+  sound_ = &sound;
   mqttPublisher_ = &mqttPublisher;
   mqttSettings_ = &mqttSettings;
   screenBrightnessPercent_ = &screenBrightnessPercent;
@@ -1776,12 +1781,19 @@ void WebPortal::handleHardResetPost() {
 
 void WebPortal::handleOtaFinished() {
   if (otaOk_ && !Update.hasError()) {
+    if (sound_ != nullptr) {
+      sound_->playOtaComplete();
+      delay(320);
+    }
     server_.send(200, "text/plain", localizedText("Firmware uploaded. Restarting...", "Firmware geupload. Herstarten..."));
     delay(500);
     ESP.restart();
     return;
   }
 
+  if (sound_ != nullptr) {
+    sound_->playOtaFailed();
+  }
   server_.send(500, "text/plain", "Firmware update failed");
 }
 
@@ -1789,8 +1801,21 @@ void WebPortal::handleOtaUpload() {
   HTTPUpload &upload = server_.upload();
 
   if (upload.status == UPLOAD_FILE_START) {
+    otaUploadedBytes_ = 0;
+    otaLastProgressCue_ = 0;
+    if (display_ != nullptr) {
+      display_->forceBacklightPercent(100);
+      if (battery_ != nullptr) {
+        display_->showBootMessage(I18n::text("firmware_update_progress"), *battery_);
+      } else {
+        display_->showBootMessage(I18n::text("firmware_update_progress"));
+      }
+    }
     if (ledRing_ != nullptr) {
-      ledRing_->showSolid(CRGB::Purple, 100);
+      ledRing_->showFirmwareUpdateAnimation();
+    }
+    if (sound_ != nullptr) {
+      sound_->playOtaStart();
     }
     otaOk_ = Update.begin(UPDATE_SIZE_UNKNOWN);
     AppLog.print("OTA upload: ");
@@ -1799,11 +1824,22 @@ void WebPortal::handleOtaUpload() {
       Update.printError(Serial);
     }
   } else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (ledRing_ != nullptr) {
+      ledRing_->showFirmwareUpdateAnimation();
+    }
     if (otaOk_ && Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
       otaOk_ = false;
       Update.printError(Serial);
     }
+    otaUploadedBytes_ += upload.currentSize;
+    if (sound_ != nullptr && otaUploadedBytes_ - otaLastProgressCue_ >= 196608) {
+      sound_->playOtaProgress();
+      otaLastProgressCue_ = otaUploadedBytes_;
+    }
   } else if (upload.status == UPLOAD_FILE_END) {
+    if (ledRing_ != nullptr) {
+      ledRing_->showFirmwareUpdateAnimation();
+    }
     if (otaOk_) {
       otaOk_ = Update.end(true);
       AppLog.println(otaOk_ ? "OTA upload complete" : "OTA upload failed");
@@ -1814,6 +1850,9 @@ void WebPortal::handleOtaUpload() {
   } else if (upload.status == UPLOAD_FILE_ABORTED) {
     otaOk_ = false;
     Update.abort();
+    if (sound_ != nullptr) {
+      sound_->playOtaFailed();
+    }
     AppLog.println("OTA upload aborted");
   }
 }

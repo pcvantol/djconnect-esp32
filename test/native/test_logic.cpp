@@ -45,6 +45,15 @@ static void testTrackTimeFormatting() {
   assert(std::strcmp(buffer, "0:00") == 0);
 }
 
+static void testOtaComparableFirmwareVersion() {
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("dev", "vdev"), "0.0.0") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("dev", "v2.7.6"), "0.0.0") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("2.7.6", "vdev"), "0.0.0") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion(nullptr, nullptr), "0.0.0") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("", ""), "0.0.0") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("2.7.6", "v2.7.6"), "2.7.6") == 0);
+}
+
 static void testProgressEstimation() {
   assert(Logic::estimatedProgressMs(1000, 10000, false, 500, 2500) == 1000);
   assert(Logic::estimatedProgressMs(1000, 10000, true, 500, 2500) == 3000);
@@ -480,6 +489,7 @@ static void testNetworkActivityLogicWithFakeHttp() {
 
 int main() {
   testTrackTimeFormatting();
+  testOtaComparableFirmwareVersion();
   testProgressEstimation();
   testLedRingBrightness();
   testDisplayPowerPolicy();

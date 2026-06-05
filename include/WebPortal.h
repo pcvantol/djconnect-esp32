@@ -5,8 +5,10 @@
 #include <WebServer.h>
 
 #include "AppState.h"
+#include "DisplayManager.h"
 #include "LedRing.h"
 #include "MqttPublisher.h"
+#include "SoundManager.h"
 #include "SpotifyClient.h"
 
 class WebPortal {
@@ -38,6 +40,8 @@ public:
       const VisualState &visualState,
       SpotifyClient &spotify,
       LedRing &ledRing,
+      DisplayManager &display,
+      SoundManager &sound,
       MqttPublisher &mqttPublisher,
       const MqttSettings &mqttSettings,
       const uint8_t &screenBrightnessPercent,
@@ -113,6 +117,8 @@ private:
   const VisualState *visualState_ = nullptr;
   SpotifyClient *spotify_ = nullptr;
   LedRing *ledRing_ = nullptr;
+  DisplayManager *display_ = nullptr;
+  SoundManager *sound_ = nullptr;
   MqttPublisher *mqttPublisher_ = nullptr;
   const MqttSettings *mqttSettings_ = nullptr;
   const uint8_t *screenBrightnessPercent_ = nullptr;
@@ -133,4 +139,6 @@ private:
   SimpleCallback hardResetCallback_ = nullptr;
   bool running_ = false;
   bool otaOk_ = false;
+  size_t otaUploadedBytes_ = 0;
+  size_t otaLastProgressCue_ = 0;
 };

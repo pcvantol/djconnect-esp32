@@ -6,6 +6,7 @@
 
 #include "AppLog.h"
 #include "I18n.h"
+#include "LogicHelpers.h"
 
 namespace {
 const char *Namespace = "spotifydj";
@@ -66,7 +67,7 @@ String SpotifyDJDevice::getHaUrl() const {
 }
 
 String SpotifyDJDevice::getFirmwareVersion() const {
-  return Config::AppVersionNumber;
+  return Logic::otaComparableFirmwareVersion(Config::AppVersionNumber, Config::AppVersion);
 }
 
 String SpotifyDJDevice::getModel() const {

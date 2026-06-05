@@ -7,6 +7,7 @@
 #include "AppState.h"
 #include "DisplayManager.h"
 #include "LedRing.h"
+#include "SoundManager.h"
 #include "SpotifyClient.h"
 #include "SpotifyDJDevice.h"
 #include "SpotifyDJDiscovery.h"
@@ -27,6 +28,7 @@ public:
       SpotifyClient &spotify,
       DisplayManager &display,
       LedRing &ledRing,
+      SoundManager &sound,
       const BatteryState &battery,
       const RuntimeDiagnostics &diagnostics,
       void *callbackContext = nullptr,
@@ -55,6 +57,7 @@ private:
   SpotifyClient *spotify_ = nullptr;
   DisplayManager *display_ = nullptr;
   LedRing *ledRing_ = nullptr;
+  SoundManager *sound_ = nullptr;
   const BatteryState *battery_ = nullptr;
   const RuntimeDiagnostics *diagnostics_ = nullptr;
   void *callbackContext_ = nullptr;

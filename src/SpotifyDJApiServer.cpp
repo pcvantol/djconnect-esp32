@@ -38,6 +38,7 @@ void SpotifyDJApiServer::begin(
     SpotifyClient &spotify,
     DisplayManager &display,
     LedRing &ledRing,
+    SoundManager &sound,
     const BatteryState &battery,
     const RuntimeDiagnostics &diagnostics,
     void *callbackContext,
@@ -54,6 +55,7 @@ void SpotifyDJApiServer::begin(
   spotify_ = &spotify;
   display_ = &display;
   ledRing_ = &ledRing;
+  sound_ = &sound;
   battery_ = &battery;
   diagnostics_ = &diagnostics;
   callbackContext_ = callbackContext;
@@ -236,7 +238,7 @@ void SpotifyDJApiServer::handleOta() {
   sendJson(200, payload);
 
   delay(100);
-  if (ota_->performUpdate(request, battery_, display_, ledRing_, message)) {
+  if (ota_->performUpdate(request, battery_, display_, ledRing_, sound_, message)) {
     delay(500);
     ESP.restart();
   }

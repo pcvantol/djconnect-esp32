@@ -19,6 +19,20 @@ inline int clampPercent(int value) {
   return value;
 }
 
+// Converts local dev build identifiers into a semver baseline that OTA clients can compare safely.
+inline const char *otaComparableFirmwareVersion(const char *version, const char *versionTag) {
+  if (version == nullptr || version[0] == '\0') {
+    return "0.0.0";
+  }
+  if (strcmp(version, "dev") == 0 || strcmp(version, "vdev") == 0) {
+    return "0.0.0";
+  }
+  if (versionTag != nullptr && strcmp(versionTag, "vdev") == 0) {
+    return "0.0.0";
+  }
+  return version;
+}
+
 // Computes one LED's brightness for the volume ring, independent of the final UI color.
 // Each LED represents 1/8 of the configured range, with the active edge LED partially lit.
 inline int ledSegmentBrightness(int volumePercent, int segmentIndex, int segmentCount, int maxVolumePercent = 100) {

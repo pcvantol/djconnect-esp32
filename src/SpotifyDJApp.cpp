@@ -53,6 +53,11 @@ void SpotifyDJApp::begin() {
 
   Serial.begin(115200);
   AppLog.begin();
+  AppLog.print("SpotifyDJ ");
+  AppLog.print(Config::AppVersion);
+  AppLog.print(" / ");
+  AppLog.print(Config::AppVersionNumber);
+  AppLog.println(" booting");
   configureWatchdog();
   responsiveDelay(500);
 
@@ -459,6 +464,8 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       visualState_,
       spotify_,
       ledRing_,
+      display_,
+      sound_,
       mqttPublisher_,
       mqttSettings_,
       screenBrightnessPercent_,
@@ -2847,6 +2854,7 @@ void SpotifyDJApp::setupHomeAssistantLayer() {
       spotify_,
       display_,
       ledRing_,
+      sound_,
       battery_,
       diagnostics_,
       this,

@@ -313,13 +313,15 @@ The device Settings menu includes a `Stress test` toggle. This is a local render
 
 Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries use the distributable asset name `spotifydj-device-vX.Y.Z.bin`; the manifest `device` field is the OTA target and must be `lilygo-t-embed-s3`.
 
-During firmware write, the display shows `Firmware update in progress..`, the LED ring turns purple and the device restarts after a successful update. The manifest `sha256` is required and verified while streaming; mismatches abort the update before reboot.
+Local development builds still show `vdev` on the device, but the Home Assistant/device API reports dev firmware as OTA-comparable version `0.0.0`. This keeps local flashes clearly recognizable while ensuring every published `X.Y.Z` firmware release is seen as an upgrade from a dev build.
+
+During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot.
 
 ## GitHub Firmware Release
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/spotify-dj-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates `release/spotifydj-device-vX.Y.Z.bin`, writes `release/firmware_manifest.json`, commits, tags and pushes. The pushed git tag then triggers the GitHub Action, which builds and publishes the public firmware release in `pcvantol/spotify-dj-firmware`.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates `release/spotifydj-device-vX.Y.Z.bin`, writes `release/firmware_manifest.json`, commits, tags and pushes. The pushed git tag then triggers the GitHub Action, which builds and publishes the public firmware release in `pcvantol/spotify-dj-firmware`. The action verifies that the compiled firmware contains the expected `vX.Y.Z` version tag before publishing the single OTA asset `spotifydj-device-vX.Y.Z.bin`.
 
 Old public firmware releases can be reviewed and pruned with the separate dry-run first cleanup helper:
 
@@ -350,7 +352,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.7.6 --dry-run` validates the release plan without touching files. Both `2.7.6` and `v2.7.6` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.7.8 --dry-run` validates the release plan without touching files. Both `2.7.8` and `v2.7.8` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
