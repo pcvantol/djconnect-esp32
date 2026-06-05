@@ -330,7 +330,7 @@ Device OTA endpoint:
 
 Current OTA implementation streams via `Update.h`.
 
-SHA256 verification is currently marked as TODO/log warning if a hash is supplied. Do not claim cryptographic validation is complete until implemented.
+SHA256 verification is mandatory for OTA. The endpoint rejects missing/invalid hashes, streams the image through `Update.h`, computes SHA256 while writing, and aborts before reboot if the manifest hash does not match.
 
 During OTA firmware write, show `Firmware update in progress..` on the display at 100% brightness. The HTTP response is sent before the blocking write/reboot flow.
 
@@ -480,4 +480,4 @@ Before finalizing firmware changes:
 rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_REFRESH_TOKEN|WIFI_SSID|WIFI_PASSWORD|client_secret|wifi144iot|verbindmet|AQB|5ea462" include src test -S
 ```
 
-5. Mention any remaining known TODOs, especially OTA SHA256 verification.
+5. If release cleanup tooling changed, run `bash -n scripts/cleanup_old_releases.sh`.

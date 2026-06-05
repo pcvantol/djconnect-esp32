@@ -5,14 +5,39 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <mbedtls/sha256.h>
 
 #include "AppLog.h"
 #include "Config.h"
 #include "I18n.h"
+#include "LogicHelpers.h"
 #include "NetworkActivity.h"
 
 namespace {
 const char *ExpectedModel = "lilygo-t-embed-s3";
+
+String sha256Hex(const unsigned char digest[32]) {
+  static const char *hex = "0123456789abcdef";
+  String out;
+  out.reserve(64);
+  for (size_t index = 0; index < 32; index++) {
+    out += hex[(digest[index] >> 4) & 0x0F];
+    out += hex[digest[index] & 0x0F];
+  }
+  return out;
+}
+
+bool equalsIgnoreCase(const String &left, const String &right) {
+  if (left.length() != right.length()) {
+    return false;
+  }
+  for (size_t index = 0; index < left.length(); index++) {
+    if (Logic::asciiLower(left[index]) != Logic::asciiLower(right[index])) {
+      return false;
+    }
+  }
+  return true;
+}
 }
 
 bool SpotifyDJOTA::canUpdate(const BatteryState *battery, String &message) const {
@@ -41,11 +66,16 @@ bool SpotifyDJOTA::performUpdate(
     message = "OTA URL missing";
     return false;
   }
-  if (!canUpdate(battery, message)) {
+  if (!request.url.startsWith("https://")) {
+    message = "OTA HTTPS URL required";
     return false;
   }
-  if (!request.sha256.isEmpty()) {
-    AppLog.println("[SpotifyDJ] OTA SHA256 provided; TODO verify while streaming before reboot");
+  if (!Logic::isSha256Hex(request.sha256.c_str())) {
+    message = "OTA SHA256 missing or invalid";
+    return false;
+  }
+  if (!canUpdate(battery, message)) {
+    return false;
   }
 
   AppLog.print("[SpotifyDJ] OTA target version: ");
@@ -54,15 +84,11 @@ bool SpotifyDJOTA::performUpdate(
   HTTPClient http;
   NetworkActivity activity("ota_download", Config::OtaIoTimeoutMs);
   NetworkActivity::configureHttp(http, Config::OtaConnectTimeoutMs, Config::OtaIoTimeoutMs);
-  WiFiClient plainClient;
   WiFiClientSecure secureClient;
-  const bool secure = request.url.startsWith("https://");
-  if (secure) {
-    // TODO: pin the release certificate or verify SHA256 before accepting production OTA binaries.
-    secureClient.setInsecure();
-  }
+  // Firmware authenticity is enforced with the manifest SHA256 below.
+  secureClient.setInsecure();
 
-  const bool begun = secure ? http.begin(secureClient, request.url) : http.begin(plainClient, request.url);
+  const bool begun = http.begin(secureClient, request.url);
   if (!begun) {
     message = "OTA HTTP begin failed";
     activity.finishError("begin failed");
@@ -106,6 +132,16 @@ bool SpotifyDJOTA::performUpdate(
   size_t written = 0;
   size_t lastLogged = 0;
   uint32_t lastProgressAt = millis();
+  mbedtls_sha256_context shaContext;
+  mbedtls_sha256_init(&shaContext);
+  if (mbedtls_sha256_starts_ret(&shaContext, 0) != 0) {
+    message = "OTA SHA256 init failed";
+    Update.abort();
+    http.end();
+    mbedtls_sha256_free(&shaContext);
+    activity.finishError("sha init failed");
+    return false;
+  }
   while (stream != nullptr && (contentLength <= 0 || written < static_cast<size_t>(contentLength))) {
     const int available = stream->available();
     if (available <= 0) {
@@ -117,6 +153,7 @@ bool SpotifyDJOTA::performUpdate(
         AppLog.println("[SpotifyDJ] OTA stream timeout");
         Update.abort();
         http.end();
+        mbedtls_sha256_free(&shaContext);
         activity.finishError("stream timeout");
         return false;
       }
@@ -133,12 +170,22 @@ bool SpotifyDJOTA::performUpdate(
     if (read == 0) {
       continue;
     }
+    if (mbedtls_sha256_update_ret(&shaContext, buffer, read) != 0) {
+      message = "OTA SHA256 update failed";
+      AppLog.println("[SpotifyDJ] OTA SHA256 update failed");
+      Update.abort();
+      http.end();
+      mbedtls_sha256_free(&shaContext);
+      activity.finishError("sha update failed");
+      return false;
+    }
     const size_t chunkWritten = Update.write(buffer, read);
     if (chunkWritten != read) {
       message = "OTA write failed";
       AppLog.println("[SpotifyDJ] OTA write failed");
       Update.abort();
       http.end();
+      mbedtls_sha256_free(&shaContext);
       activity.finishError("write failed");
       return false;
     }
@@ -159,9 +206,32 @@ bool SpotifyDJOTA::performUpdate(
     AppLog.println("[SpotifyDJ] OTA short write");
     Update.abort();
     http.end();
+    mbedtls_sha256_free(&shaContext);
     activity.finishError("short write");
     return false;
   }
+
+  unsigned char digest[32] = {};
+  if (mbedtls_sha256_finish_ret(&shaContext, digest) != 0) {
+    message = "OTA SHA256 finalize failed";
+    AppLog.println("[SpotifyDJ] OTA SHA256 finalize failed");
+    Update.abort();
+    http.end();
+    mbedtls_sha256_free(&shaContext);
+    activity.finishError("sha finalize failed");
+    return false;
+  }
+  mbedtls_sha256_free(&shaContext);
+  const String actualSha = sha256Hex(digest);
+  if (!equalsIgnoreCase(actualSha, request.sha256)) {
+    message = "OTA SHA256 mismatch";
+    AppLog.println("[SpotifyDJ] OTA SHA256 mismatch");
+    Update.abort();
+    http.end();
+    activity.finishError("sha mismatch");
+    return false;
+  }
+  AppLog.println("[SpotifyDJ] OTA SHA256 verified");
 
   if (!Update.end(true)) {
     message = "OTA finalize failed";

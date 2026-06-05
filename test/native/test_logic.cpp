@@ -155,6 +155,15 @@ static void testDjAudioTypeDetection() {
   assert(Logic::djAudioTypeFromHeaderBytes(nullptr, 0) == Logic::DjAudioType::Unknown);
 }
 
+static void testSha256HexValidation() {
+  assert(Logic::isSha256Hex("0123456789abcdef0123456789abcdef0123456789ABCDEF0123456789ABCDEF"));
+  assert(!Logic::isSha256Hex(nullptr));
+  assert(!Logic::isSha256Hex(""));
+  assert(!Logic::isSha256Hex("0123456789abcdef"));
+  assert(!Logic::isSha256Hex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg"));
+  assert(!Logic::isSha256Hex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0"));
+}
+
 static void testBq27220Interpretation() {
   const auto stuckReading = Logic::interpretBq27220(
       40,
@@ -480,6 +489,7 @@ int main() {
   testBatteryVoltageFallbackCurve();
   testWebBatteryHeaderClass();
   testDjAudioTypeDetection();
+  testSha256HexValidation();
   testBq27220Interpretation();
   testVoiceChunkHelpers();
   testPlayModeMapping();

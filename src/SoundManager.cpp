@@ -1,6 +1,7 @@
 // I2S speaker cues. Uses generated square waves to avoid storing audio assets.
 #include "SoundManager.h"
 
+#include <AudioFileSourceBuffer.h>
 #include <AudioFileSourceHTTPStream.h>
 #include <AudioGeneratorMP3.h>
 #include <AudioOutputI2S.h>
@@ -17,6 +18,13 @@ static constexpr uint32_t MinVolumeTickIntervalMs = 90;
 void SoundManager::begin() {
   if (ready_) {
     return;
+  }
+  if (i2sMutex_ == nullptr) {
+    i2sMutex_ = xSemaphoreCreateMutex();
+    if (i2sMutex_ == nullptr) {
+      AppLog.println("Speaker mutex failed");
+      return;
+    }
   }
 
   if (!installI2s()) {
@@ -130,9 +138,12 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
     AppLog.println("[SpotifyDJ] voice response audio skipped: speaker not ready");
     return false;
   }
-  streamingAudio_ = true;
+  if (!beginAudioState(AudioState::StreamingWav, 250)) {
+    AppLog.println("[SpotifyDJ] voice response audio skipped: speaker busy");
+    return false;
+  }
   auto finish = [&](bool ok) {
-    streamingAudio_ = false;
+    endAudioState();
     return ok;
   };
   if (contentLength > 0 && contentLength < 12) {
@@ -256,22 +267,30 @@ bool SoundManager::playMp3Stream(const String &url) {
   if (url.isEmpty()) {
     return false;
   }
+  if (!beginAudioState(AudioState::StreamingMp3, 250)) {
+    AppLog.println("[SpotifyDJ] MP3 response audio skipped: speaker busy");
+    return false;
+  }
 
-  streamingAudio_ = true;
   i2s_driver_uninstall(SpeakerI2sPort);
 
   AudioFileSourceHTTPStream source(url.c_str());
+  AudioFileSourceBuffer buffered(&source, 2048);
   AudioOutputI2S output(SpeakerI2sPort);
   output.SetPinout(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
   output.SetGain(static_cast<float>(volumePercent_) / 100.0f);
 
   AudioGeneratorMP3 mp3;
-  const bool started = mp3.begin(&source, &output);
+  const bool started = mp3.begin(&buffered, &output);
   if (!started) {
     AppLog.println("[SpotifyDJ] MP3 decoder start failed");
+    buffered.close();
     source.close();
-    installI2s();
-    streamingAudio_ = false;
+    if (!installI2s()) {
+      AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3 start error");
+      ready_ = false;
+    }
+    endAudioState();
     return false;
   }
 
@@ -289,6 +308,7 @@ bool SoundManager::playMp3Stream(const String &url) {
     yield();
   }
   mp3.stop();
+  buffered.close();
   source.close();
   output.stop();
 
@@ -297,7 +317,7 @@ bool SoundManager::playMp3Stream(const String &url) {
     AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3");
     ready_ = false;
   }
-  streamingAudio_ = false;
+  endAudioState();
   AppLog.println("[SpotifyDJ] DJ response MP3 playback finished");
   return restored;
 }
@@ -310,6 +330,9 @@ void SoundManager::runTask() {
   Event event;
   for (;;) {
     if (xQueueReceive(queue_, &event, portMAX_DELAY) != pdTRUE) {
+      continue;
+    }
+    if (!beginAudioState(AudioState::Cue, 50)) {
       continue;
     }
 
@@ -378,14 +401,42 @@ void SoundManager::runTask() {
         break;
     }
     playSilence(8);
+    endAudioState();
   }
 }
 
 void SoundManager::enqueue(Event event) {
-  if (!ready_ || queue_ == nullptr || streamingAudio_) {
+  if (!ready_ || queue_ == nullptr || audioState_ != AudioState::Idle) {
     return;
   }
   xQueueSend(queue_, &event, 0);
+}
+
+bool SoundManager::takeI2s(uint32_t timeoutMs) {
+  return i2sMutex_ != nullptr && xSemaphoreTake(i2sMutex_, pdMS_TO_TICKS(timeoutMs)) == pdTRUE;
+}
+
+void SoundManager::releaseI2s() {
+  if (i2sMutex_ != nullptr) {
+    xSemaphoreGive(i2sMutex_);
+  }
+}
+
+bool SoundManager::beginAudioState(AudioState state, uint32_t timeoutMs) {
+  if (!takeI2s(timeoutMs)) {
+    return false;
+  }
+  if (audioState_ != AudioState::Idle) {
+    releaseI2s();
+    return false;
+  }
+  audioState_ = state;
+  return true;
+}
+
+void SoundManager::endAudioState() {
+  audioState_ = AudioState::Idle;
+  releaseI2s();
 }
 
 void SoundManager::playTone(uint16_t frequency, uint16_t durationMs, uint8_t amplitude) {

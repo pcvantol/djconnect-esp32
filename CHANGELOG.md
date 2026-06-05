@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.7.3
+## v2.7.4
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -35,11 +35,12 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Host-testable menu and network helper models plus release-script shell tests.
 - `release.sh` helper for local firmware release preparation, dry-run validation, manifest generation, tagging and optional public firmware repo publishing.
 - Postman collection for the public/local ESP device API.
+- GitHub release cleanup helper to dry-run and delete older public firmware releases/tags while keeping the newest semver release.
 
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.7.3` / `v2.7.3`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.7.4` / `v2.7.4`; local builds without release flags remain `dev` / `vdev`.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
 - Spotify credentials are provisioned through the setup portal or Home Assistant and stored in NVS.
 - The web portal can manually repair Spotify OAuth credentials with a one-shot refresh-token submit field, immediately testing authorization and clearing the submitted fields from the page.
@@ -117,12 +118,16 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - The PKCE helper now requests `playlist-read-private` so private `SpotifyDJ Liked Proxy` playlists can be discovered after regenerating the refresh token.
 - Sound output types are no longer appended to output names.
 - Improved JPEG album art rendering and Current Song text scrolling.
+- OTA now requires HTTPS plus a valid manifest SHA256 and verifies the streamed firmware before rebooting.
+- DJ response audio playback is split into a focused WAV/MP3 dispatcher, reducing `SpotifyDJApp` complexity.
+- Speaker audio uses guarded I2S ownership so UI cues do not collide with streamed DJ response audio.
+- Captive portal no longer reflects sensitive refresh-token or MQTT-password values back into HTML after failed setup attempts.
 - Pairing mode blocks normal playback/menu input while keeping reset controls and the local API available.
 - `SPOTIFY_ALLOW_INSECURE_TLS` defaults to secure TLS in local `Secrets.h`.
 - The Spotify PKCE helper no longer suggests putting credentials in firmware headers.
 
 ### Known Issues
 
-- OTA download supports HTTPS, but streaming SHA256 verification is still a TODO.
+- OTA transport still uses the ESP secure client in manifest-hash enforced mode; GitHub CA pinning can be added later if required.
 - Spotify Web API playback control requires Spotify Premium and an available/active Spotify Connect output.
 - Some Spotify Connect outputs do not support volume control through the Web API.

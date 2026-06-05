@@ -4,7 +4,6 @@
 
 #include <ArduinoJson.h>
 #include <DNSServer.h>
-#include <HTTPClient.h>
 #include <LittleFS.h>
 #include <Preferences.h>
 #include <WebServer.h>
@@ -17,7 +16,6 @@
 #include "AppLog.h"
 #include "Config.h"
 #include "LogicHelpers.h"
-#include "NetworkActivity.h"
 #include "assets/spotifydj_favicon_ico.h"
 #include "assets/spotifydj_icon_192_png.h"
 
@@ -27,46 +25,6 @@
 
 namespace {
 static const char *const TopHoldMenuHint = "hold to open menu";
-
-class PrefixStream : public Stream {
-public:
-  PrefixStream(const uint8_t *prefix, size_t prefixLength, Stream &inner)
-      : prefix_(prefix),
-        prefixLength_(prefixLength),
-        inner_(inner) {}
-
-  int available() override {
-    return static_cast<int>(prefixLength_ - prefixOffset_) + inner_.available();
-  }
-
-  int read() override {
-    if (prefixOffset_ < prefixLength_) {
-      return prefix_[prefixOffset_++];
-    }
-    return inner_.read();
-  }
-
-  int peek() override {
-    if (prefixOffset_ < prefixLength_) {
-      return prefix_[prefixOffset_];
-    }
-    return inner_.peek();
-  }
-
-  void flush() override {
-    inner_.flush();
-  }
-
-  size_t write(uint8_t) override {
-    return 0;
-  }
-
-private:
-  const uint8_t *prefix_ = nullptr;
-  size_t prefixLength_ = 0;
-  size_t prefixOffset_ = 0;
-  Stream &inner_;
-};
 
 String dimTimeoutLabel(uint32_t valueMs) {
   if (valueMs == 30000UL) {
@@ -118,6 +76,7 @@ void SpotifyDJApp::begin() {
   albumArt_.begin();
   ledRing_.begin();
   sound_.begin();
+  djAudio_.begin(sound_);
   voiceRecorder_.begin();
   wakeWord_.begin();
   wakeWord_.setCallback(wakeWordDetectedCallback, this);
@@ -806,9 +765,8 @@ String SpotifyDJApp::captivePortalPage(
   page += F("<label>Spotify client ID<input name='clientId' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
   page += escaped(clientId);
   page += F("\"></label>");
-  page += F("<label>Spotify refresh token<input name='refreshToken' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
-  page += escaped(refreshToken);
-  page += F("\"></label>");
+  (void)refreshToken;
+  page += F("<label>Spotify refresh token<input name='refreshToken' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false'></label>");
   page += F("<label>Spotify market<input name='spotifyMarket' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
   page += escaped(spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
   page += F("\"></label>");
@@ -824,10 +782,8 @@ String SpotifyDJApp::captivePortalPage(
   page += escaped(mqttSettings.username);
   page += F("\"></label>");
   page += language_ == Language::Dutch
-              ? F("<label>MQTT wachtwoord<input name='mqttPass' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"")
-              : F("<label>MQTT password<input name='mqttPass' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
-  page += escaped(mqttSettings.password);
-  page += F("\"></label>");
+              ? F("<label>MQTT wachtwoord<input name='mqttPass' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false'></label>")
+              : F("<label>MQTT password<input name='mqttPass' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false'></label>");
   page += language_ == Language::Dutch
               ? F("<button type='submit'>Opslaan &amp; verbinden</button></form>")
               : F("<button type='submit'>Save &amp; Connect</button></form>");
@@ -2004,7 +1960,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
     if (message != "Voice command sent") {
       handleDjResponseText(message, audioUrl, spoken);
     } else if (!audioUrl.isEmpty()) {
-      spoken = playDjResponseAudioUrl(audioUrl).spoken;
+      spoken = djAudio_.play(audioUrl).spoken;
       showNotice(spoken ? I18n::text("voice_response_played") : I18n::text("voice_response_audio_failed"), 3500);
     } else {
       showNotice(recognizedText, 3500);
@@ -3027,7 +2983,7 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
     if (message != "Voice command sent") {
       app->handleDjResponseText(message, audioUrl, spoken);
     } else if (!audioUrl.isEmpty()) {
-      spoken = app->playDjResponseAudioUrl(audioUrl).spoken;
+      spoken = app->djAudio_.play(audioUrl).spoken;
     }
   } else if (app->voiceClient_.pairingInvalidated()) {
     app->markHomeAssistantPairingInvalid(message);
@@ -3107,7 +3063,9 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   display_.wakeForUserActivity();
   renderNow();
   if (!audioUrl.isEmpty()) {
-    spoken = playDjResponseAudioUrl(audioUrl).spoken;
+    const DjResponseAudioResult audioResult = djAudio_.play(audioUrl);
+    spoken = audioResult.spoken;
+    lastDjAudioType_ = audioResult.audioType;
   }
   if (!spoken && volumeFeedbackEnabled_) {
     sound_.playConfirm();
@@ -3116,90 +3074,6 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   mqttPublisher_.requestPublish();
   mqttPublisher_.publishDjResponseEvent(spoken, true);
   return true;
-}
-
-SpotifyDJApp::DjAudioPlaybackResult SpotifyDJApp::playDjResponseAudioUrl(const String &audioUrl) {
-  DjAudioPlaybackResult result;
-  if (WiFi.status() != WL_CONNECTED) {
-    AppLog.println("[SpotifyDJ] DJ response audio skipped: WiFi disconnected");
-    result.audioType = "unknown";
-    lastDjAudioType_ = result.audioType;
-    return result;
-  }
-
-  HTTPClient http;
-  NetworkActivity activity("dj_audio_download", Config::DjAudioIoTimeoutMs);
-  NetworkActivity::configureHttp(http, Config::HttpConnectTimeoutMs, Config::DjAudioIoTimeoutMs);
-  if (!http.begin(audioUrl)) {
-    AppLog.println("[SpotifyDJ] DJ response audio begin failed");
-    activity.finishError("begin failed");
-    result.audioType = "unknown";
-    lastDjAudioType_ = result.audioType;
-    return result;
-  }
-
-  AppLog.println("[SpotifyDJ] DJ response audio download");
-  static const char *headers[] = {"Content-Type"};
-  http.collectHeaders(headers, 1);
-  const int code = http.GET();
-  if (code < 200 || code >= 300) {
-    AppLog.print("[SpotifyDJ] DJ response audio HTTP ");
-    AppLog.println(code);
-    http.end();
-    activity.finish(code);
-    result.audioType = "unknown";
-    lastDjAudioType_ = result.audioType;
-    return result;
-  }
-
-  const int contentLength = http.getSize();
-  Stream *stream = http.getStreamPtr();
-  Logic::DjAudioType audioType = Logic::djAudioTypeFromContentType(http.header("Content-Type").c_str());
-  uint8_t prefix[12] = {};
-  size_t prefixLength = 0;
-  if (stream != nullptr && audioType == Logic::DjAudioType::Unknown) {
-    const uint32_t start = millis();
-    while (prefixLength < sizeof(prefix) && millis() - start < Config::HttpConnectTimeoutMs) {
-      const int value = stream->read();
-      if (value >= 0) {
-        prefix[prefixLength++] = static_cast<uint8_t>(value);
-      } else {
-        delay(1);
-        yield();
-      }
-    }
-    audioType = Logic::djAudioTypeFromHeaderBytes(prefix, prefixLength);
-  }
-
-  result.audioType = Logic::djAudioTypeName(audioType);
-  bool ok = false;
-  if (stream != nullptr && audioType == Logic::DjAudioType::Wav) {
-    PrefixStream prefixed(prefix, prefixLength, *stream);
-    ok = sound_.playWavStream(prefixed, contentLength);
-  } else if (audioType == Logic::DjAudioType::Mp3) {
-    http.end();
-    activity.finish(code, "mp3 dispatch");
-    ok = sound_.playMp3Stream(audioUrl);
-    result.spoken = ok;
-    lastDjAudioType_ = result.audioType;
-    AppLog.print("[SpotifyDJ] DJ response audio type=");
-    AppLog.print(result.audioType);
-    AppLog.print(" played=");
-    AppLog.println(ok ? "true" : "false");
-    return result;
-  } else {
-    AppLog.println("[SpotifyDJ] DJ response audio type unsupported");
-  }
-
-  http.end();
-  activity.finish(code, ok ? "played" : "playback failed");
-  result.spoken = ok;
-  lastDjAudioType_ = result.audioType;
-  AppLog.print("[SpotifyDJ] DJ response audio type=");
-  AppLog.print(result.audioType);
-  AppLog.print(" played=");
-  AppLog.println(ok ? "true" : "false");
-  return result;
 }
 
 void SpotifyDJApp::renderMenuNow() {

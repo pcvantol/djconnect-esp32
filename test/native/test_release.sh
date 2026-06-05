@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 bash -n release.sh
+bash -n scripts/cleanup_old_releases.sh
 
 dry_run_output="$(./release.sh 98.76.54 --dry-run)"
 echo "$dry_run_output" | grep -q "version: 98.76.54"

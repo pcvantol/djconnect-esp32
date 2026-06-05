@@ -7,6 +7,7 @@
 #include "BleWifiProvisioning.h"
 #include "BatteryMonitor.h"
 #include "Config.h"
+#include "DjResponseAudioPlayer.h"
 #include "DisplayManager.h"
 #include "InputController.h"
 #include "I18n.h"
@@ -171,14 +172,8 @@ private:
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
 
-  struct DjAudioPlaybackResult {
-    bool spoken = false;
-    String audioType = "none";
-  };
-
   // Shows HA DJ response text and optionally plays the HA-generated WAV/MP3 response URL.
   bool handleDjResponseText(const String &text, const String &audioUrl, bool &spoken);
-  DjAudioPlaybackResult playDjResponseAudioUrl(const String &audioUrl);
 
   // Applies credentials and language pushed by Home Assistant without touching local fallbacks.
   void applyProvisionedLanguage(const String &languageCode);
@@ -222,6 +217,7 @@ private:
   InputController input_;
   LedRing ledRing_;
   SoundManager sound_;
+  DjResponseAudioPlayer djAudio_;
   VoiceRecorder voiceRecorder_;
   WakeWordEngine wakeWord_;
   SpotifyDJAssistClient assistClient_;

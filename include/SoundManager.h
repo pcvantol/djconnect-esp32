@@ -57,6 +57,13 @@ public:
   bool playMp3Stream(const String &url);
 
 private:
+  enum class AudioState : uint8_t {
+    Idle,
+    Cue,
+    StreamingWav,
+    StreamingMp3,
+  };
+
   enum class Event : uint8_t {
     Startup,
     VolumeUp,
@@ -79,12 +86,17 @@ private:
   void runTask();
   void enqueue(Event event);
   bool installI2s();
+  bool takeI2s(uint32_t timeoutMs);
+  void releaseI2s();
+  bool beginAudioState(AudioState state, uint32_t timeoutMs);
+  void endAudioState();
   void playTone(uint16_t frequency, uint16_t durationMs, uint8_t amplitude = 18);
   void playSilence(uint16_t durationMs);
 
   QueueHandle_t queue_ = nullptr;
+  SemaphoreHandle_t i2sMutex_ = nullptr;
   bool ready_ = false;
-  bool streamingAudio_ = false;
+  AudioState audioState_ = AudioState::Idle;
   uint8_t volumePercent_ = 100;
   uint32_t lastVolumeTickAt_ = 0;
 };

@@ -306,6 +306,24 @@ inline DjAudioType djAudioTypeFromHeaderBytes(const uint8_t *bytes, size_t lengt
   return DjAudioType::Unknown;
 }
 
+inline bool isHexDigit(char value) {
+  return (value >= '0' && value <= '9') ||
+         (value >= 'a' && value <= 'f') ||
+         (value >= 'A' && value <= 'F');
+}
+
+inline bool isSha256Hex(const char *value) {
+  if (value == nullptr) {
+    return false;
+  }
+  for (size_t index = 0; index < 64; index++) {
+    if (!isHexDigit(value[index])) {
+      return false;
+    }
+  }
+  return value[64] == '\0';
+}
+
 // True when Spotify's paged playlist response indicates there can be another page to inspect.
 inline bool shouldFetchNextSpotifyPlaylistPage(size_t itemCount, int total, int offset, int pageSize) {
   if (itemCount == 0 || pageSize <= 0 || offset < 0) {

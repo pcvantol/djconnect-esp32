@@ -50,7 +50,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - Spotify Premium is required for Spotify Web API playback control endpoints.
 - A Spotify Connect playback context or available Spotify Connect output is required.
 - Some Spotify Connect outputs do not support volume control through the Web API.
-- OTA through `/api/device/ota` uses `Update.h`; streaming SHA256 verification is still a TODO.
+- OTA through `/api/device/ota` requires HTTPS and verifies the streamed firmware against the manifest SHA256 before rebooting.
 - Web portal DJ-response test runs through the ESP and Home Assistant pairing; it does not require browser microphone access.
 
 ## License
@@ -313,13 +313,20 @@ The device Settings menu includes a `Stress test` toggle. This is a local render
 
 Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries use the distributable asset name `spotifydj-device-vX.Y.Z.bin`; the manifest `device` field is the OTA target and must be `lilygo-t-embed-s3`.
 
-During firmware write, the display shows `Firmware update in progress..`, the LED ring turns purple and the device restarts after a successful update. SHA256 verification during streaming is still a TODO.
+During firmware write, the display shows `Firmware update in progress..`, the LED ring turns purple and the device restarts after a successful update. The manifest `sha256` is required and verified while streaming; mismatches abort the update before reboot.
 
 ## GitHub Firmware Release
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/spotify-dj-firmware` also contains the release assets consumed by Home Assistant OTA.
 
 The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates `release/spotifydj-device-vX.Y.Z.bin`, writes `release/firmware_manifest.json`, commits, tags and pushes:
+
+Old public firmware releases can be reviewed and pruned with the separate dry-run first cleanup helper:
+
+```sh
+scripts/cleanup_old_releases.sh --repo pcvantol/spotify-dj-firmware --dry-run
+scripts/cleanup_old_releases.sh --repo pcvantol/spotify-dj-firmware --keep 1 --execute
+```
 
 ```bash
 ./release.sh X.Y.Z
@@ -343,7 +350,7 @@ Skip GitHub release creation when you only want the commit/tag/push steps:
 ./release.sh X.Y.Z --no-gh-release
 ```
 
-For example, `./release.sh 2.7.3 --dry-run` validates the release plan without touching files. Both `2.7.3` and `v2.7.3` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.7.4 --dry-run` validates the release plan without touching files. Both `2.7.4` and `v2.7.4` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
