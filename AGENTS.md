@@ -231,6 +231,7 @@ The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postma
 - Keep external JSON payload names compatible with HA, but keep internal ESP32 Preferences keys at 15 characters or less.
 - Route slow network operations through explicit timeout/backoff policy and avoid making input/display responsiveness depend on an unbounded HTTP call.
 - Keep release binaries/manifests separate from the closed-source firmware source repo workflow.
+- Device stress/monkey testing must stay local and non-destructive: render/navigation only, no OTA, factory reset, WiFi changes, Spotify playback mutations or credential changes.
 
 Never log:
 
@@ -349,6 +350,7 @@ MQTT is two-way:
 - Keep Home Assistant MQTT discovery aligned with command topics for buttons, number and selects.
 - Current two-way MQTT scope includes Spotify-facing controls, status, next/previous, volume, sound output, playlist start, status command, OTA command placeholder, DJ response command, and settings commands for brightness, dim timeout, turn-off timeout, speaker cue volume, language, and theme.
 - HA-provisioned MQTT settings live in `spotifydj` NVS keys `mqtt_host`, `mqtt_port`, `mqtt_user`, `mqtt_pass` and take precedence over legacy `provision` MQTT settings.
+- After three consecutive MQTT auth failures (`rc=4` or `rc=5`), stop reconnect attempts and report `Auth failed; update MQTT credentials`. Reset that lock only when MQTT host/port/username/password changes or after restart.
 - Captive portal MQTT settings are optional. Empty host means keep existing config and do not attempt MQTT setup.
 - Never log MQTT passwords.
 
@@ -405,12 +407,18 @@ The web portal is intended to be usable on mobile. Keep controls responsive and 
 Current web expectations:
 
 - Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and HA URL/status.
+- The Home Assistant pairing banner setup link must open in a new tab/window so the local ESP web portal remains loaded.
+- The top web status bar is right-aligned and follows the device order: H, M, S, WiFi signal bars, CSS battery icon. Keep the IP address in the WiFi block, not in the top status bar.
 - The Home Assistant URL label in the web portal is `URL`, not `HA URL`.
 - Album art is shown when available.
 - Volume slider range is `0-60`.
 - Volume slider is disabled when no track/playback is active.
-- Sound output selection uses a combobox/list without device type suffixes.
-- Logs support pause/resume and copy/select-all behavior.
+- Web Now Playing includes previous, next, play and pause controls with compact CSS icons.
+- Sound output selection uses a combobox/list without device type suffixes. Keep `None`/`Geen` and `iPhone` as fixed first entries before live Spotify Connect devices on both device and web UI.
+- Logs support pause/resume and copy/select-all behavior. Logs should poll only while the logs panel is visible and not paused.
+- Queue, playlist and sound-output list requests should be visibility-aware so hidden panels do not keep polling.
+- Highlight error-like web status messages with the alert/error status styling so long HA pairing/voice endpoint failures are obvious.
+- Root/status/log API responses should stay uncached; embedded static icon and manifest assets should keep explicit browser cache headers.
 - WiFi credentials can be updated from the web UI without hard reset.
 - Do not show a WiFi password placeholder field with masked stored password.
 - When language is Dutch, the new WiFi password placeholder should be Dutch (`leeg laten om huidige te behouden`).

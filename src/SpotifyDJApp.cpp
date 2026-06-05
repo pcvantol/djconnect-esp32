@@ -201,6 +201,7 @@ void SpotifyDJApp::loop() {
   }
   flushPendingVolume();
   processVolumeResult();
+  processStressTest();
   webPortal_.handle();
   processPendingWifiSettings();
   haApiServer_.loop();
@@ -720,10 +721,19 @@ String SpotifyDJApp::captivePortalPage(
   page.reserve(4600);
   page += F("<!doctype html><html><head><meta charset='utf-8'>");
   page += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
+  page += F("<meta name='theme-color' content='#080b0c'>");
+  page += F("<meta name='mobile-web-app-capable' content='yes'>");
+  page += F("<meta name='apple-mobile-web-app-capable' content='yes'>");
+  page += F("<meta name='apple-mobile-web-app-title' content='SpotifyDJ Setup'>");
+  page += F("<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent'>");
+  page += F("<meta name='application-name' content='SpotifyDJ Setup'>");
   page += F("<link rel='shortcut icon' href='/favicon.ico?v=2' sizes='any'>");
   page += F("<link rel='icon' href='/favicon.ico?v=2' sizes='any'>");
   page += F("<link rel='icon' type='image/png' sizes='192x192' href='/icon-192.png?v=2'>");
+  page += F("<link rel='apple-touch-icon' sizes='180x180' href='/apple-touch-icon.png'>");
   page += F("<link rel='apple-touch-icon' sizes='192x192' href='/apple-touch-icon.png?v=2'>");
+  page += F("<link rel='apple-touch-icon-precomposed' sizes='180x180' href='/apple-touch-icon-precomposed.png'>");
+  page += F("<link rel='apple-touch-icon-precomposed' sizes='192x192' href='/apple-touch-icon-precomposed.png?v=2'>");
   page += F("<title>SpotifyDJ Setup</title><style>");
   page += F("*{box-sizing:border-box}body{margin:0;background:#080b0c;color:#f3f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}");
   page += F("main{width:100%;max-width:520px;margin:0 auto;padding:18px}.brand{display:flex;align-items:center;gap:10px;margin:8px 0 4px}.brand img{width:42px;height:42px;border-radius:8px}h1{font-size:26px;margin:0}p{color:#9aa6a2;line-height:1.4}");
@@ -880,6 +890,18 @@ void SpotifyDJApp::handleInputEvents(const InputEvents &events) {
     sound_.playButtonPress();
   }
 
+  if (homeAssistantPaired_ && events.encoderRelease && voiceRecording_) {
+    input_.clearPendingButtonActions();
+    stopVoiceRecordingAndSendText();
+    return;
+  }
+
+  if (activeScreen_ == UiScreen::AlbumArt && events.encoderLongClick) {
+    AppLog.println("voice: encoder long press from current song");
+    handleVoiceButton();
+    return;
+  }
+
   if (menuTopHoldActive_) {
     if (!events.topButtonHeld) {
       menuTopHoldActive_ = false;
@@ -909,13 +931,8 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
     handleEncoderTurn(events.encoderSteps);
   }
 
-  if (homeAssistantPaired_ && events.encoderRelease && voiceRecording_) {
-    input_.clearPendingButtonActions();
-    stopVoiceRecordingAndSendText();
-    return;
-  }
   if (homeAssistantPaired_ && events.encoderRelease && !voiceRecording_ && voiceState_ == VoiceState::Idle) {
-    AppLog.println("[SpotifyDJ] voice: encoder released without active PTT");
+    AppLog.println("voice: encoder released without active PTT");
   }
 
   if (events.encoderClick) {
@@ -930,7 +947,7 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
     if (playback_.hasPlayback) {
       openAlbumArtScreen();
     } else {
-      showNotice("No current song", 1800);
+      showNotice(I18n::text("no_current_song"), 1800);
       renderNow();
     }
   }
@@ -944,7 +961,7 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
   }
 
   if (events.encoderLongClick) {
-    AppLog.println("[SpotifyDJ] voice: encoder long press");
+    AppLog.println("voice: encoder long press");
     handleVoiceButton();
   }
 
@@ -995,7 +1012,7 @@ void SpotifyDJApp::openRootMenu() {
   if (volumeFeedbackEnabled_) {
     sound_.playMenuOpen();
   }
-  showNotice("Menu", 900);
+  showNotice(I18n::text("menu"), 900);
   renderNow();
 }
 
@@ -1062,19 +1079,19 @@ void SpotifyDJApp::selectCurrentMenuItem() {
     case UiScreen::RootMenu:
       if (rootMenuSelection_ == 0) {
         openScreen(UiScreen::Queue);
-        showNotice("Loading queue", 1200);
+        showNotice(I18n::text("loading_queue"), 1200);
         spotify_.refreshQueue(queue_);
         renderNow();
       } else if (rootMenuSelection_ == 1) {
         openScreen(UiScreen::Playlists);
         playlistSelection_ = 0;
-        showNotice("Loading playlists", 1200);
+        showNotice(I18n::text("loading_playlists"), 1200);
         spotify_.refreshPlaylists(playlists_);
         renderNow();
       } else if (rootMenuSelection_ == 2) {
         openScreen(UiScreen::SoundOutputs);
         soundOutputSelection_ = 0;
-        showNotice("Loading outputs", 1200);
+        showNotice(I18n::text("loading_outputs"), 1200);
         spotify_.refreshDevices(deviceList_);
         renderNow();
       } else if (rootMenuSelection_ == 3) {
@@ -1132,18 +1149,20 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         }
         openScreen(UiScreen::PlayMode);
       } else if (settingsSelection_ == 8) {
+        toggleStressTest();
+      } else if (settingsSelection_ == 9) {
         display_.showBootMessage(I18n::text("turning_off"), battery_);
         responsiveDelay(250);
         enterDeepSleep();
-      } else if (settingsSelection_ == 9) {
+      } else if (settingsSelection_ == 10) {
         sound_.playHardReset();
         display_.showBootMessage(I18n::text("restarting"), battery_);
         responsiveDelay(320);
         ESP.restart();
-      } else if (settingsSelection_ == 10) {
+      } else if (settingsSelection_ == 11) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::ResetPairingConfirm);
-      } else if (settingsSelection_ == 11) {
+      } else if (settingsSelection_ == 12) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::HardResetConfirm);
       }
@@ -1218,7 +1237,7 @@ void SpotifyDJApp::applyDimTimeoutSelection() {
   saveDisplaySettings();
   AppLog.print("Settings: screen dim timeout ");
   AppLog.println(dimTimeoutLabel(screenOffTimeoutMs_));
-  showNotice("Dim timeout " + dimTimeoutLabel(screenOffTimeoutMs_), 2000);
+  showNotice(String(I18n::text("dim_timeout")) + " " + dimTimeoutLabel(screenOffTimeoutMs_), 2000);
   renderNow();
 }
 
@@ -1229,7 +1248,7 @@ void SpotifyDJApp::applyBrightnessSelection() {
   AppLog.print("Settings: screen brightness ");
   AppLog.print(screenBrightnessPercent_);
   AppLog.println("%");
-  showNotice("Brightness " + String(screenBrightnessPercent_) + "%", 2000);
+  showNotice(String(I18n::text("brightness")) + " " + String(screenBrightnessPercent_) + "%", 2000);
   renderNow();
 }
 
@@ -1240,7 +1259,7 @@ void SpotifyDJApp::applySpeakerVolumeSelection() {
   AppLog.print("Settings: speaker volume ");
   AppLog.print(speakerVolumePercent_);
   AppLog.println("%");
-  showNotice("Speaker volume " + String(speakerVolumePercent_) + "%", 2000);
+  showNotice(String(I18n::text("speaker_volume")) + " " + String(speakerVolumePercent_) + "%", 2000);
   renderNow();
 }
 
@@ -1248,7 +1267,7 @@ void SpotifyDJApp::applyPlayModeSelection() {
   const String mode = playModeValue(playModeSelection_);
   AppLog.print("Spotify: setting play mode ");
   AppLog.println(mode);
-  showNotice("Setting play mode", 1600);
+  showNotice(I18n::text("spotify_play_mode"), 1600);
   renderNow();
   if (spotify_.setPlayMode(mode)) {
     AppLog.print("Spotify: play mode set to ");
@@ -1434,7 +1453,7 @@ void SpotifyDJApp::handleEncoderTurn(int encoderSteps) {
       0,
       Config::MaxSpotifyVolumePercent);
   pendingVolumeChangedAt_ = millis();
-  showNotice("Volume " + String(pendingVolume_) + "%", 1200);
+  showNotice(String(I18n::text("volume")) + " " + String(pendingVolume_) + "%", 1200);
   renderNow();
 }
 
@@ -1450,7 +1469,7 @@ void SpotifyDJApp::flushPendingVolume() {
   if (spotify_.queueVolume(volume)) {
     playback_.volume = volume;
     playback_.error = "";
-    showNotice("Volume " + String(volume) + "%", 2000);
+    showNotice(String(I18n::text("volume")) + " " + String(volume) + "%", 2000);
   } else {
     showNotice(playback_.error, 3500);
   }
@@ -1479,6 +1498,101 @@ void SpotifyDJApp::processMqttCommands() {
   while (mqttPublisher_.pollCommand(command)) {
     handleMqttCommand(command);
   }
+}
+
+void SpotifyDJApp::processStressTest() {
+  if (!stressTestActive_) {
+    return;
+  }
+  if (voiceRecording_ || haPairingScreenActive_ || lowBatteryGuardActive_ || criticalBatteryGuardActive_ || chargingBatteryGuardActive_) {
+    stopStressTest("guard state active");
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - stressTestStartedAt_ >= Config::StressTestDurationMs) {
+    stopStressTest("duration complete");
+    return;
+  }
+  if (now - lastStressTestStepAt_ < Config::StressTestStepIntervalMs) {
+    return;
+  }
+  lastStressTestStepAt_ = now;
+  runStressTestStep();
+}
+
+void SpotifyDJApp::toggleStressTest() {
+  if (stressTestActive_) {
+    stopStressTest("manual stop");
+    return;
+  }
+  stressTestActive_ = true;
+  stressTestStartedAt_ = millis();
+  lastStressTestStepAt_ = 0;
+  stressTestStepCount_ = 0;
+  AppLog.println("Stress test: started");
+  showNotice(I18n::text("stress_test_started"), 1800);
+  renderNow();
+}
+
+void SpotifyDJApp::stopStressTest(const String &reason) {
+  if (!stressTestActive_) {
+    return;
+  }
+  stressTestActive_ = false;
+  AppLog.print("Stress test: stopped steps=");
+  AppLog.print(stressTestStepCount_);
+  AppLog.print(" reason=");
+  AppLog.println(reason);
+  activeScreen_ = UiScreen::Settings;
+  showNotice(I18n::text("stress_test_stopped"), 2200);
+  renderNow();
+}
+
+void SpotifyDJApp::runStressTestStep() {
+  stressTestStepCount_++;
+  const uint32_t randomValue = esp_random();
+  switch (randomValue % 8) {
+    case 0:
+      activeScreen_ = UiScreen::NowPlaying;
+      break;
+    case 1:
+      activeScreen_ = UiScreen::RootMenu;
+      rootMenuSelection_ = (rootMenuSelection_ + 1) % RootMenuItemCount;
+      break;
+    case 2:
+      activeScreen_ = UiScreen::Settings;
+      settingsSelection_ = (settingsSelection_ + 1) % SettingsItemCount;
+      break;
+    case 3:
+      activeScreen_ = UiScreen::About;
+      aboutSelection_ = (aboutSelection_ + 1) % AboutItemCount;
+      break;
+    case 4:
+      activeScreen_ = UiScreen::Logs;
+      break;
+    case 5:
+      activeScreen_ = UiScreen::Queue;
+      break;
+    case 6:
+      activeScreen_ = UiScreen::SoundOutputs;
+      soundOutputSelection_ = (soundOutputSelection_ + 1) % max(menuItemCount(UiScreen::SoundOutputs), static_cast<size_t>(1));
+      break;
+    default:
+      activeScreen_ = UiScreen::Playlists;
+      playlistSelection_ = (playlistSelection_ + 1) % max(menuItemCount(UiScreen::Playlists), static_cast<size_t>(1));
+      break;
+  }
+
+  if (stressTestStepCount_ % 20 == 0) {
+    AppLog.print("Stress test: step=");
+    AppLog.print(stressTestStepCount_);
+    AppLog.print(" free_heap=");
+    AppLog.print(ESP.getFreeHeap());
+    AppLog.print(" largest_block=");
+    AppLog.println(ESP.getMaxAllocHeap());
+  }
+  renderNow();
 }
 
 void SpotifyDJApp::handleMqttCommand(const MqttCommand &command) {
@@ -1666,14 +1780,14 @@ void SpotifyDJApp::pauseOrResume() {
   lastPauseToggleAt_ = now;
 
   // Refresh first so a stale paused/playing bit does not invert the user's command.
-  showNotice("Checking playback", 1200);
+  showNotice(I18n::text("checking_playback"), 1200);
   renderNow();
   spotify_.refreshPlayback();
 
   if (playback_.isPlaying) {
     if (spotify_.pausePlayback()) {
       playback_.isPlaying = false;
-      showNotice("Paused");
+      showNotice(I18n::text("paused"));
       lastPlaybackPollAt_ = 0;
     } else {
       showNotice(playback_.error, 3500);
@@ -1684,7 +1798,7 @@ void SpotifyDJApp::pauseOrResume() {
       playback_.progressSyncedAt = millis();
       display_.restartTitleScroll();
       display_.restartArtistScroll();
-      showNotice("Playing");
+      showNotice(I18n::text("playing"));
       lastPlaybackPollAt_ = 0;
     } else {
       showNotice(playback_.error, 3500);
@@ -1695,11 +1809,11 @@ void SpotifyDJApp::pauseOrResume() {
 
 void SpotifyDJApp::startLikedProxyPlaylist() {
   AppLog.println("Spotify: starting Liked Proxy playlist");
-  showNotice("Starting Liked Proxy", 1600);
+  showNotice(I18n::text("starting_liked_proxy"), 1600);
   renderNow();
   if (spotify_.startLikedProxyPlaylist()) {
     AppLog.println("Spotify: Liked Proxy playlist command accepted");
-    playback_.trackName = "Starting Liked Proxy";
+    playback_.trackName = I18n::text("starting_liked_proxy");
     playback_.artistName = "";
     playback_.hasPlayback = true;
     playback_.isPlaying = true;
@@ -1708,7 +1822,7 @@ void SpotifyDJApp::startLikedProxyPlaylist() {
     playback_.progressSyncedAt = millis();
     display_.restartTitleScroll();
     display_.restartArtistScroll();
-    showNotice("Liked Proxy started", 2200);
+    showNotice(I18n::text("liked_proxy_started"), 2200);
     lastPlaybackPollAt_ = 0;
   } else {
     AppLog.print("Spotify: Liked Proxy playlist failed: ");
@@ -1758,7 +1872,7 @@ void SpotifyDJApp::handleVoiceButton() {
     voiceState_ = VoiceState::Error;
     voiceClient_.sendStatus(false, "error", message);
     if (message == "Assist auth_invalid") {
-      markHomeAssistantPairingInvalid("Home Assistant pairing invalid. Reset pairing and pair again.");
+      markHomeAssistantPairingInvalid(I18n::text("ha_pairing_invalid"));
       return;
     }
     showNotice(message, 3500);
@@ -1850,7 +1964,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
       handleDjResponseText(message, audioUrl, spoken);
     } else if (!audioUrl.isEmpty()) {
       spoken = playDjResponseAudioUrl(audioUrl);
-      showNotice(spoken ? "Voice response played" : "Voice response audio failed", 3500);
+      showNotice(spoken ? I18n::text("voice_response_played") : I18n::text("voice_response_audio_failed"), 3500);
     } else {
       showNotice(recognizedText, 3500);
     }
@@ -1875,18 +1989,18 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
 void SpotifyDJApp::goToNextTrack() {
   if (spotify_.nextTrack()) {
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
-    playback_.trackName = "Loading next track";
+    playback_.trackName = I18n::text("loading_next_track");
     playback_.artistName = "";
     playback_.progressMs = 0;
     playback_.durationMs = 0;
     playback_.progressSyncedAt = millis();
-    showNotice("Next track");
+    showNotice(I18n::text("next_track"));
 
     if (!playback_.isPlaying && spotify_.resumePlayback()) {
       playback_.isPlaying = true;
       display_.restartTitleScroll();
       display_.restartArtistScroll();
-      showNotice("Playing");
+      showNotice(I18n::text("playing"));
     }
 
     lastPlaybackPollAt_ = 0;
@@ -1899,12 +2013,12 @@ void SpotifyDJApp::goToNextTrack() {
 void SpotifyDJApp::goToPreviousTrack() {
   if (spotify_.previousTrack()) {
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
-    playback_.trackName = "Loading previous track";
+    playback_.trackName = I18n::text("loading_previous_track");
     playback_.artistName = "";
     playback_.progressMs = 0;
     playback_.durationMs = 0;
     playback_.progressSyncedAt = millis();
-    showNotice("Previous track");
+    showNotice(I18n::text("previous_track"));
     lastPlaybackPollAt_ = 0;
   } else {
     showNotice(playback_.error, 3500);
@@ -1914,7 +2028,7 @@ void SpotifyDJApp::goToPreviousTrack() {
 
 void SpotifyDJApp::startSelectedPlaylist() {
   if (!playlists_.available || playlists_.count == 0 || playlistSelection_ >= playlists_.count) {
-    showNotice(playlists_.error.isEmpty() ? "No playlists" : playlists_.error, 3000);
+    showNotice(playlists_.error.isEmpty() ? I18n::text("no_playlists") : playlists_.error.c_str(), 3000);
     renderNow();
     return;
   }
@@ -1922,20 +2036,20 @@ void SpotifyDJApp::startSelectedPlaylist() {
   const PlaylistItemState &playlist = playlists_.items[playlistSelection_];
   AppLog.print("Spotify: starting playlist ");
   AppLog.println(playlist.name);
-  showNotice("Starting playlist", 1600);
+  showNotice(I18n::text("starting_playlist"), 1600);
   renderNow();
   if (spotify_.startPlaylist(playlist.uri)) {
     AppLog.println("Spotify: playlist command accepted");
     playback_.hasPlayback = true;
     playback_.isPlaying = true;
-    playback_.trackName = "Starting playlist";
+    playback_.trackName = I18n::text("starting_playlist");
     playback_.artistName = playlist.name;
     playback_.progressMs = 0;
     playback_.durationMs = 0;
     playback_.progressSyncedAt = millis();
     display_.restartTitleScroll();
     display_.restartArtistScroll();
-    showNotice("Playlist started", 2200);
+    showNotice(I18n::text("playlist_started"), 2200);
     lastPlaybackPollAt_ = 0;
   } else {
     AppLog.print("Spotify: playlist failed: ");
@@ -1957,13 +2071,18 @@ bool SpotifyDJApp::transferToOutputByNameOrId(const String &output) {
 
   for (size_t index = 0; index < deviceList_.count; index++) {
     const SpotifyDeviceState &device = deviceList_.devices[index];
-    if (device.id == output || device.name == output) {
+    String lowerDeviceName = device.name;
+    String lowerOutput = output;
+    lowerDeviceName.toLowerCase();
+    lowerOutput.toLowerCase();
+    const bool iphoneAlias = lowerOutput == "iphone" && lowerDeviceName.indexOf("iphone") >= 0;
+    if (device.id == output || device.name == output || iphoneAlias) {
       if (!spotify_.transferPlayback(device.id, true)) {
         return false;
       }
       lastPlaybackPollAt_ = 0;
       spotify_.refreshPlayback();
-      showNotice("Playing on " + device.name, 2200);
+      showNotice(String(I18n::text("playing_on")) + " " + device.name, 2200);
       mqttPublisher_.requestPublish();
       renderNow();
       return true;
@@ -1992,14 +2111,14 @@ bool SpotifyDJApp::startPlaylistByNameOrUri(const String &playlist) {
       }
       playback_.hasPlayback = true;
       playback_.isPlaying = true;
-      playback_.trackName = "Starting playlist";
+      playback_.trackName = I18n::text("starting_playlist");
       playback_.artistName = item.name;
       playback_.progressMs = 0;
       playback_.durationMs = 0;
       playback_.progressSyncedAt = millis();
       display_.restartTitleScroll();
       display_.restartArtistScroll();
-      showNotice("Playlist started", 2200);
+      showNotice(I18n::text("playlist_started"), 2200);
       lastPlaybackPollAt_ = 0;
       mqttPublisher_.requestPublish();
       renderNow();
@@ -2012,7 +2131,7 @@ bool SpotifyDJApp::startPlaylistByNameOrUri(const String &playlist) {
 }
 
 void SpotifyDJApp::refreshPlaybackAndBattery() {
-  showNotice("Refreshing");
+  showNotice(I18n::text("refreshing"));
   batteryMonitor_.refresh();
   evaluateBatteryTransition();
   spotify_.refreshPlayback();
@@ -2060,14 +2179,14 @@ void SpotifyDJApp::pollPlaybackIfDue() {
 
 void SpotifyDJApp::openAlbumArtScreen() {
   if (!playback_.hasPlayback) {
-    showNotice("No current song", 1800);
+    showNotice(I18n::text("no_current_song"), 1800);
     renderNow();
     return;
   }
   activeScreen_ = UiScreen::AlbumArt;
   menuStackSize_ = 0;
   display_.resetAlbumArtRenderCache();
-  showNotice("Current Song", 900);
+  showNotice(I18n::text("current_song"), 900);
   renderNow();
   albumArt_.requestCurrentSongArt(playback_);
   renderNow();
@@ -2076,7 +2195,7 @@ void SpotifyDJApp::openAlbumArtScreen() {
 void SpotifyDJApp::openQueueScreen() {
   activeScreen_ = UiScreen::Queue;
   menuStackSize_ = 0;
-  showNotice("Loading queue", 1200);
+  showNotice(I18n::text("loading_queue"), 1200);
   renderNow();
   spotify_.refreshQueue(queue_);
   renderNow();
@@ -2086,7 +2205,7 @@ void SpotifyDJApp::openSoundOutputsScreen() {
   activeScreen_ = UiScreen::SoundOutputs;
   menuStackSize_ = 0;
   soundOutputSelection_ = 0;
-  showNotice("Loading outputs", 1200);
+  showNotice(I18n::text("loading_outputs"), 1200);
   renderNow();
   spotify_.refreshDevices(deviceList_);
   renderNow();
@@ -2094,23 +2213,38 @@ void SpotifyDJApp::openSoundOutputsScreen() {
 
 void SpotifyDJApp::transferToSelectedOutput() {
   if (soundOutputSelection_ == 0) {
-    showNotice("No output selected", 1600);
+    if (spotify_.pausePlayback()) {
+      playback_.isPlaying = false;
+      showNotice(I18n::text("paused"), 1800);
+      lastPlaybackPollAt_ = 0;
+    } else {
+      showNotice(playback_.error, 3500);
+    }
     renderNow();
     return;
   }
 
-  const size_t deviceIndex = soundOutputSelection_ - 1;
+  if (soundOutputSelection_ == 1) {
+    if (transferToOutputByNameOrId("iPhone")) {
+      return;
+    }
+    showNotice(playback_.error, 3500);
+    renderNow();
+    return;
+  }
+
+  const size_t deviceIndex = soundOutputSelection_ - SpotifyDJMenuModel::FixedSoundOutputCount;
   if (!deviceList_.available || deviceList_.count == 0 || deviceIndex >= deviceList_.count) {
-    showNotice("No outputs", 2000);
+    showNotice(I18n::text("no_outputs"), 2000);
     renderNow();
     return;
   }
 
   const SpotifyDeviceState &device = deviceList_.devices[deviceIndex];
-  showNotice("Starting " + device.name, 1800);
+  showNotice(String(I18n::text("starting_output")) + " " + device.name, 1800);
   renderNow();
   if (spotify_.transferPlayback(device.id, true)) {
-    showNotice("Playing on " + device.name, 2500);
+    showNotice(String(I18n::text("playing_on")) + " " + device.name, 2500);
     lastPlaybackPollAt_ = 0;
     spotify_.refreshPlayback();
   } else {
@@ -2490,7 +2624,7 @@ void SpotifyDJApp::applyWebSettings(
   applyTheme();
   sound_.setVolumePercent(speakerVolumePercent_);
   saveDisplaySettings();
-  showNotice("Web settings saved", 1800);
+  showNotice(I18n::text("web_settings_saved"), 1800);
   renderNow();
   display_.showBootMessage(I18n::text("restarting"), battery_);
   responsiveDelay(450);
@@ -2643,7 +2777,7 @@ void SpotifyDJApp::requestWebWifiSettings(const String &ssid, const String &pass
   pendingWifiPasswordProvided_ = !password.isEmpty();
   pendingWifiSettingsRequestedAt_ = millis();
   pendingWifiSettings_ = !pendingWifiSsid_.isEmpty();
-  showNotice("Testing WiFi", 2500);
+  showNotice(I18n::text("testing_wifi"), 2500);
   renderNow();
 }
 
@@ -2690,8 +2824,8 @@ void SpotifyDJApp::processPendingWifiSettings() {
   }
 
   AppLog.println("Web WiFi test failed, restoring previous connection");
-  playback_.error = "WiFi test failed";
-  showNotice("WiFi test failed", 5000);
+  playback_.error = I18n::text("wifi_test_failed");
+  showNotice(I18n::text("wifi_test_failed"), 5000);
   WiFi.disconnect(false, false);
   responsiveDelay(250);
   if (!oldSsid.isEmpty()) {
@@ -2743,7 +2877,7 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
   if (result == SpotifyDJPairing::StatusResult::Ok) {
     homeAssistantPaired_ = true;
   } else if (result == SpotifyDJPairing::StatusResult::PairingInvalid) {
-    markHomeAssistantPairingInvalid("Home Assistant pairing invalid. Reset pairing and pair again.");
+    markHomeAssistantPairingInvalid(I18n::text("ha_pairing_invalid"));
   }
 }
 
@@ -2996,17 +3130,15 @@ void SpotifyDJApp::renderMenuNow() {
     case UiScreen::SoundOutputs: {
       MenuItemView items[8];
       items[0].label = I18n::text("none");
-      size_t itemCount = 1;
-      if (!deviceList_.available || deviceList_.count == 0) {
-        items[1].label = deviceList_.error.isEmpty() ? I18n::text("no_outputs") : deviceList_.error;
-        itemCount = 2;
-      } else {
-        const size_t maxDevices = min(deviceList_.count, static_cast<size_t>(7));
+      items[1].label = "iPhone";
+      size_t itemCount = SpotifyDJMenuModel::FixedSoundOutputCount;
+      if (deviceList_.available && deviceList_.count > 0) {
+        const size_t maxDevices = min(deviceList_.count, SpotifyDJMenuModel::MaxVisibleOutputs);
         for (size_t index = 0; index < maxDevices; index++) {
-          items[index + 1].label = deviceList_.devices[index].active ? "* " : "  ";
-          items[index + 1].label += deviceList_.devices[index].name;
+          items[index + SpotifyDJMenuModel::FixedSoundOutputCount].label = deviceList_.devices[index].active ? "* " : "  ";
+          items[index + SpotifyDJMenuModel::FixedSoundOutputCount].label += deviceList_.devices[index].name;
         }
-        itemCount = maxDevices + 1;
+        itemCount += maxDevices;
       }
       display_.renderMenuList(I18n::text("outputs"), items, itemCount, soundOutputSelection_, notice_);
       break;
@@ -3071,6 +3203,7 @@ void SpotifyDJApp::renderMenuNow() {
           {String(I18n::text("audio_feedback")) + " " + I18n::onOff(volumeFeedbackEnabled_)},
           {String(I18n::text("speaker_volume")) + " " + String(speakerVolumePercent_) + "%"},
           {String(I18n::text("spotify_play_mode")) + " " + playModeLabel(currentPlayModeValue(playback_))},
+          {String(I18n::text("stress_test")) + " " + I18n::onOff(stressTestActive_)},
           {I18n::text("turn_off_device")},
           {I18n::text("restart_device")},
           {I18n::text("reset_pairing")},

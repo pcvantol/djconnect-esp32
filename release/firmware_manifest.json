@@ -1,8 +1,8 @@
 {
-  "version": "2.5.1",
+  "version": "2.7.0",
   "device": "spotifydj-device",
-  "asset": "spotifydj-device-v2.5.1.bin",
-  "sha256": "fe9d94b9b313acbc768d432eb82874a7fcda162335bfac24049d273ffb52351b",
-  "size": 2092992,
+  "asset": "spotifydj-device-v2.7.0.bin",
+  "sha256": "4a310a4d2d40062cca233601eb93a2178bd019af5d214d4c2a10a22cc59a15f1",
+  "size": 2113136,
   "min_ha_integration": "1.0.0"
 }

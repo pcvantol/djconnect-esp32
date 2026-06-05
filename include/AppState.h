@@ -15,6 +15,8 @@ struct SpotifyState {
   String trackName;
   String artistName;
   String currentType;
+  String currentUri;
+  String contextUri;
   String albumImageUrl;
 
   // User-facing Spotify/network error. Empty means the playback screen can show normal state.

@@ -44,10 +44,11 @@ constexpr size_t SleepTimeoutOptionCount = 4;
 constexpr size_t ConfirmOptionCount = 2;
 constexpr size_t HardResetOptionCount = ConfirmOptionCount;
 constexpr size_t WifiFailureOptionCount = 4;
-constexpr size_t SettingsItemCount = 12;
+constexpr size_t SettingsItemCount = 13;
 constexpr size_t RootMenuItemCount = 6;
 constexpr size_t AboutItemCount = 10;
-constexpr size_t MaxVisibleOutputs = 7;
+constexpr size_t FixedSoundOutputCount = 2;
+constexpr size_t MaxVisibleOutputs = 6;
 
 inline bool isMenuScreen(UiScreen screen) {
   return screen != UiScreen::NowPlaying;
@@ -63,7 +64,7 @@ inline size_t itemCount(UiScreen screen, const MenuCountInput &input) {
     case UiScreen::Playlists:
       return input.playlistsAvailable && input.playlistCount > 0 ? input.playlistCount : 1;
     case UiScreen::SoundOutputs:
-      return input.devicesAvailable && input.deviceCount > 0 ? (input.deviceCount < MaxVisibleOutputs ? input.deviceCount : MaxVisibleOutputs) + 1 : 2;
+      return FixedSoundOutputCount + (input.devicesAvailable && input.deviceCount > 0 ? (input.deviceCount < MaxVisibleOutputs ? input.deviceCount : MaxVisibleOutputs) : 0);
     case UiScreen::RootMenu:
       return RootMenuItemCount;
     case UiScreen::Settings:

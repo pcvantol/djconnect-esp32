@@ -124,6 +124,21 @@ inline int batteryPercentFromVoltage(int voltageMv) {
   return 0;
 }
 
+// CSS state used by the web header battery icon. Charging is added beside the color class.
+inline const char *batteryHeaderClass(int percent, bool charging) {
+  const char *level = percent < 20 ? "low" : percent < 50 ? "medium" : "high";
+  if (!charging) {
+    return level;
+  }
+  if (percent < 20) {
+    return "charging low";
+  }
+  if (percent < 50) {
+    return "charging medium";
+  }
+  return "charging high";
+}
+
 // Estimates the current playback position between Spotify polling calls.
 inline int estimatedProgressMs(
     int progressMs,
@@ -208,6 +223,27 @@ inline const char *voiceHttpFailureMessage(int statusCode) {
 // ESP32 Preferences/NVS keys are limited to 15 characters.
 inline bool preferencesKeyFits(const char *key) {
   return key != nullptr && strlen(key) <= 15;
+}
+
+inline bool shouldLockMqttAuthRetries(int connectCode, uint8_t authFailureCount, uint8_t maxAuthFailures) {
+  const bool authFailure = connectCode == 4 || connectCode == 5;
+  return authFailure && maxAuthFailures > 0 && authFailureCount >= maxAuthFailures;
+}
+
+inline bool isSpotifyPlaylistContextUri(const char *uri) {
+  static constexpr const char *prefix = "spotify:playlist:";
+  return uri != nullptr && strncmp(uri, prefix, strlen(prefix)) == 0 && uri[strlen(prefix)] != '\0';
+}
+
+// True when Spotify's paged playlist response indicates there can be another page to inspect.
+inline bool shouldFetchNextSpotifyPlaylistPage(size_t itemCount, int total, int offset, int pageSize) {
+  if (itemCount == 0 || pageSize <= 0 || offset < 0) {
+    return false;
+  }
+  if (itemCount < static_cast<size_t>(pageSize)) {
+    return false;
+  }
+  return total <= 0 || offset + static_cast<int>(itemCount) < total;
 }
 
 // Formats the HA-provisioned per-device MQTT topics without depending on Arduino String.

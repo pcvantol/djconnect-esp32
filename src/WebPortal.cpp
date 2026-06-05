@@ -104,6 +104,25 @@ String postedValue(WebServer &server, const String &rawBody, const char *primary
   }
   return formValueFromBody(rawBody, fallbackKey);
 }
+
+void sendNoStore(WebServer &server) {
+  server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  server.sendHeader("Pragma", "no-cache");
+}
+
+void sendStaticCache(WebServer &server, uint32_t maxAgeSeconds) {
+  server.sendHeader("Cache-Control", "public, max-age=" + String(maxAgeSeconds) + ", immutable");
+}
+
+void sendProgmemAsset(
+    WebServer &server,
+    const char *contentType,
+    const uint8_t *data,
+    size_t length,
+    uint32_t maxAgeSeconds = 604800UL) {
+  sendStaticCache(server, maxAgeSeconds);
+  server.send_P(200, contentType, reinterpret_cast<const char *>(data), length);
+}
 }  // namespace
 
 static const char IndexHtml[] PROGMEM = R"rawliteral(
@@ -112,10 +131,19 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b0c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SpotifyDJ">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="application-name" content="SpotifyDJ">
   <link rel="shortcut icon" href="/favicon.ico?v=2" sizes="any">
   <link rel="icon" href="/favicon.ico?v=2" sizes="any">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon.png?v=2">
+  <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon-precomposed.png">
+  <link rel="apple-touch-icon-precomposed" sizes="192x192" href="/apple-touch-icon-precomposed.png?v=2">
   <link rel="manifest" href="/site.webmanifest?v=2">
   <title>SpotifyDJ</title>
   <style>
@@ -129,19 +157,21 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     h1 { margin:0; font-size:22px; letter-spacing:0; display:flex; align-items:center; gap:8px; }
     .brand-icon { width:28px; height:28px; border-radius:6px; }
     .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+    .header-status { display:flex; justify-content:flex-end; align-items:center; gap:8px; }
     main { padding:12px; display:grid; gap:12px; max-width:960px; margin:0 auto; }
     .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
     h2 { margin:0 0 10px; font-size:15px; color:var(--yellow); font-weight:700; }
     .hero-title { font-size:26px; line-height:1.08; font-weight:750; margin:2px 0 8px; overflow-wrap:anywhere; }
     .artist { color:#d8e3df; font-size:18px; margin-bottom:12px; overflow-wrap:anywhere; }
     .now { display:grid; grid-template-columns:96px 1fr; gap:12px; align-items:start; margin-bottom:12px; }
+    .now.no-art { grid-template-columns:1fr; }
     .album-art { width:96px; height:96px; border-radius:8px; border:1px solid var(--line); object-fit:cover; background:var(--art-bg); display:none; }
     .grid { display:grid; gap:8px; grid-template-columns:1fr; }
     .row { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--row-line); padding-top:8px; font-size:14px; }
     .row:first-child { border-top:0; padding-top:0; }
     .key { color:var(--muted); min-width:110px; }
     .value { text-align:right; overflow-wrap:anywhere; }
-    .signal { display:inline-flex; align-items:flex-end; gap:2px; min-width:22px; height:16px; vertical-align:middle; margin-right:6px; }
+    .signal { display:inline-flex; align-items:flex-end; gap:2px; min-width:22px; height:16px; vertical-align:middle; }
     .signal i { display:block; width:4px; border-radius:2px 2px 0 0; background:#293436; }
     .signal i:nth-child(1) { height:5px; }
     .signal i:nth-child(2) { height:8px; }
@@ -150,7 +180,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .signal.level-1 i:nth-child(-n+1), .signal.level-2 i:nth-child(-n+2) { background:#ff6f61; }
     .signal.level-3 i:nth-child(-n+3) { background:#f3d37b; }
     .signal.level-4 i:nth-child(-n+4) { background:var(--green); }
-    .status-icons { display:inline-flex; gap:5px; margin-left:8px; vertical-align:middle; }
+    .status-icons { display:inline-flex; gap:5px; vertical-align:middle; }
     .status-dot { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--red); color:var(--red); font-size:11px; font-weight:800; line-height:1; }
     .status-dot.ok { border-color:var(--green); color:var(--green); }
     .pill { display:inline-flex; align-items:center; min-height:24px; border-radius:999px; padding:2px 10px; background:#173721; color:#9df2b9; font-size:13px; }
@@ -165,6 +195,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     input.volume-slider { accent-color:var(--orange); }
     .volume-value, .volume-label { color:var(--orange); }
     button { background:#1f8c46; border-color:#31c36a; color:#f3fff7; font-weight:700; cursor:pointer; box-shadow:inset 0 -1px 0 rgba(0,0,0,.25); }
+    .playback-actions button::before { display:inline-block; min-width:16px; margin-right:7px; font-weight:900; }
+    #previousButton::before { content:"⏮"; }
+    #nextButton::before { content:"⏭"; }
+    #playButton::before { content:"▶"; }
+    #pauseButton::before { content:"⏸"; }
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
     button.warning { background:#a57912; border-color:#d6a329; color:#fff3c4; }
     button.firmware { background:#6f3bd8; border-color:#9b72ff; color:#f4edff; }
@@ -184,8 +219,20 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .fine + .fine, button + .fine, form + .fine { margin-top:10px; }
     .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px; }
     .status { margin-top:8px; color:#b7c5c1; font-size:13px; min-height:18px; }
+    .status.alert { color:#ffdf5d; font-weight:750; }
+    .status.error { color:#ff8a78; font-weight:750; }
     .wifi-grid { margin-bottom:14px; }
-    .header-battery { margin-left:8px; color:#d6dfdc; white-space:nowrap; }
+    .header-battery { display:inline-flex; align-items:center; justify-content:center; position:relative; width:58px; height:22px; border:1px solid currentColor; border-radius:4px; color:var(--green); font-size:11px; font-weight:800; line-height:1; vertical-align:middle; overflow:visible; }
+    .header-battery::after { content:""; position:absolute; right:-5px; top:6px; width:3px; height:9px; border-radius:0 2px 2px 0; background:currentColor; }
+    .header-battery .battery-fill { position:absolute; left:2px; top:2px; bottom:2px; width:0; border-radius:2px; background:currentColor; opacity:.24; transition:width .25s ease, color .25s ease; }
+    .header-battery .battery-text { position:relative; z-index:1; color:var(--text); text-shadow:0 1px 2px rgba(0,0,0,.65); }
+    .header-battery .battery-flash { display:none; position:absolute; right:4px; top:2px; z-index:1; color:var(--yellow); font-size:12px; text-shadow:0 1px 2px rgba(0,0,0,.65); }
+    .header-battery.charging .battery-flash { display:block; animation:batteryPulse 1s ease-in-out infinite; }
+    .header-battery.charging .battery-text { padding-right:12px; }
+    .header-battery.low { color:var(--red); }
+    .header-battery.medium { color:var(--yellow); }
+    .header-battery.high { color:var(--green); }
+    @keyframes batteryPulse { 0%,100% { opacity:.45; transform:scale(.92); } 50% { opacity:1; transform:scale(1.08); } }
     .pair-banner { display:none; margin:10px; padding:14px; border:1px solid rgba(255,204,51,.45); border-radius:8px; background:linear-gradient(135deg,rgba(255,204,51,.18),rgba(29,185,84,.12)); color:var(--text); }
     .pair-banner strong { display:block; font-size:18px; margin-bottom:4px; color:#ffdf5d; }
     .pair-banner a { color:#fff; font-weight:800; text-decoration:none; }
@@ -198,18 +245,18 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <body>
   <header>
     <h1><img class="brand-icon" src="/icon-192.png" alt="">SpotifyDJ <span id="appVersion" class="sub">vdev</span></h1>
-    <div class="sub"><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="ip">-</span><span id="batteryHeader" class="header-battery">-</span><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span></div>
+    <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">
     <strong data-i18n="deviceNotPaired">Device not paired with Home Assistant</strong>
-    <a data-i18n="setup" href="https://my.home-assistant.io/redirect/config_flow_start?domain=spotify_dj">Click here to setup</a>
+    <a data-i18n="setup" href="https://my.home-assistant.io/redirect/config_flow_start?domain=spotify_dj" target="_blank" rel="noopener noreferrer">Click here to setup</a>
     <span data-i18n="providePair">and provide pairing code:</span>
     <span id="haPairBannerCode" class="pair-code">------</span>
   </div>
   <main>
     <section class="panel wide">
       <h2 data-i18n="nowPlaying">Now Playing</h2>
-      <div class="now">
+      <div id="nowContent" class="now no-art">
         <img id="albumArt" class="album-art" alt="Album art">
         <div>
           <div id="playbackPill" class="pill">Loading</div>
@@ -220,13 +267,17 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div class="bar"><i id="progressBar"></i></div>
       <div class="row"><span class="key" data-i18n="time">Time</span><span id="time" class="value">-</span></div>
       <div class="two playback-actions">
-        <button id="previousButton" class="secondary" type="button">Previous song</button>
-        <button id="nextButton" class="secondary" type="button">Next song</button>
+        <button id="previousButton" type="button">Previous song</button>
+        <button id="nextButton" type="button">Next song</button>
+      </div>
+      <div class="two playback-actions">
+        <button id="playButton" type="button">Play</button>
+        <button id="pauseButton" type="button">Pause</button>
       </div>
       <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start SpotifyDJ Liked Proxy</button>
       <div id="playbackCommandStatus" class="status"></div>
       <div class="row"><span class="key" data-i18n="output">Sound output</span><span id="device" class="value">-</span></div>
-      <select id="soundOutputSelect" aria-label="Sound output"><option value="">Loading outputs...</option></select>
+      <select id="soundOutputSelect" aria-label="Sound output"><option value="" data-i18n="loadingOutputs">Loading outputs...</option></select>
       <div id="soundOutputStatus" class="status"></div>
       <div class="row"><span class="key volume-label" data-i18n="volume">Volume</span><span id="volume" class="value volume-value">-</span></div>
       <input id="volumeSlider" class="volume-slider" type="range" min="0" max="60" value="0" aria-label="Volume">
@@ -236,13 +287,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div id="webPttStatus" class="status"></div>
     </section>
 
-    <section id="diagnosticsPanel" class="panel">
+    <section id="queuePanel" class="panel">
       <h2 data-i18n="upNext">Up Next</h2>
       <div id="queueList" class="queue"><div class="fine" data-i18n="loadingQueue">Loading queue...</div></div>
       <div id="queueStatus" class="status"></div>
     </section>
 
-    <section class="panel">
+    <section id="playlistsPanel" class="panel">
       <h2 data-i18n="playlists">Playlists</h2>
       <select id="playlistSelect" aria-label="Playlist"><option value="">Loading playlists...</option></select>
       <button id="startPlaylistButton" class="section-action" type="button">Start playlist</button>
@@ -309,6 +360,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <h2 data-i18n="wifi">WiFi</h2>
       <div class="grid wifi-grid">
         <div class="row"><span class="key" data-i18n="state">State</span><span id="wifiConnected" class="value">-</span></div>
+        <div class="row"><span class="key">IP</span><span id="wifiIp" class="value mono">-</span></div>
         <div class="row"><span class="key">SSID</span><span id="wifiSsid" class="value">-</span></div>
         <div class="row"><span class="key">RSSI</span><span class="value"><span id="wifiSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="wifiRssi">-</span></span></div>
         <div class="row"><span class="key">MAC</span><span id="wifiMac" class="value">-</span></div>
@@ -349,7 +401,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <div class="row"><span class="key" data-i18n="token">Token</span><span id="spotifyToken" class="value">-</span></div>
         <div class="row"><span class="key" data-i18n="error">Error</span><span id="spotifyError" class="value">-</span></div>
       </div>
-      <button id="refreshButton" data-i18n="refreshSpotify" class="secondary section-action" type="button">Refresh Spotify</button>
+      <button id="refreshButton" data-i18n="refreshSpotify" class="section-action" type="button">Refresh Spotify status</button>
       <div id="refreshStatus" class="status"></div>
       <form id="spotifyCredentialForm" class="controls section-action">
         <label data-i18n-label="spotifyClientIdRepair">Spotify client ID (optional)
@@ -361,7 +413,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <label data-i18n-label="spotifyMarketRepair">Spotify market
           <input id="spotifyRepairMarket" name="market" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="NL">
         </label>
-        <button data-i18n="saveSpotifyToken" class="secondary" type="submit">Save token &amp; test</button>
+        <button data-i18n="saveSpotifyToken" class="warning" type="submit">Save token &amp; test</button>
       </form>
       <div class="fine" data-i18n="spotifyTokenFine">The refresh token is saved and tested immediately. It is never shown after submission.</div>
       <div id="spotifyCredentialStatus" class="status"></div>
@@ -424,6 +476,25 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
   <script>
     const $ = id => document.getElementById(id);
     const text = (id, value) => { $(id).textContent = value ?? "-"; };
+    function classifyStatusElement(el) {
+      if (!el || !el.classList || !el.classList.contains("status")) return;
+      const value = (el.textContent || "").toLowerCase();
+      el.classList.remove("alert", "error");
+      if (!value) return;
+      const errorWords = ["failed", "mislukt", "error", "fout", "not found", "niet gevonden", "authorization", "autorisatie", "auth", "endpoint"];
+      const alertWords = ["reset", "koppeling", "pairing", "warning", "waarschuwing"];
+      if (errorWords.some(word => value.includes(word))) {
+        el.classList.add("error");
+      } else if (alertWords.some(word => value.includes(word))) {
+        el.classList.add("alert");
+      }
+    }
+    function setupStatusStyling() {
+      document.querySelectorAll(".status").forEach(el => {
+        classifyStatusElement(el);
+        new MutationObserver(() => classifyStatusElement(el)).observe(el, { childList:true, characterData:true, subtree:true });
+      });
+    }
     const bytes = n => {
       if (!Number.isFinite(n)) return "-";
       const units = ["B","KB","MB","GB"];
@@ -443,7 +514,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     const translations = {
       en: {
         deviceNotPaired:"Device not paired with Home Assistant", setup:"Click here to setup", providePair:"and provide pairing code:",
-        nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", liked:"Start SpotifyDJ Liked Proxy",
+        nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start SpotifyDJ Liked Proxy",
         webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
         webPttFailed:"Voice command failed", webPttTestCommand:"Test the SpotifyDJ response flow", spotifyUnavailable:"Spotify not connected",
         output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", loadingQueue:"Loading queue...",
@@ -457,7 +528,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.",
         wifiPasswordPlaceholder:"leave blank to keep current",
         ha:"Home Assistant", pairing:"Pairing", pairCode:"Pair code", firmware:"Firmware", model:"Model", resetPairing:"Reset pairing",
-        spotify:"Spotify", connection:"Connection", token:"Token", error:"Error", refreshSpotify:"Refresh Spotify", spotifyClientIdRepair:"Spotify client ID (optional)",
+        spotify:"Spotify", connection:"Connection", token:"Token", error:"Error", refreshSpotify:"Refresh Spotify status", spotifyClientIdRepair:"Spotify client ID (optional)",
         spotifyClientIdRepairPlaceholder:"leave blank to keep current", spotifyRefreshRepair:"New Spotify refresh token", spotifyMarketRepair:"Spotify market",
         saveSpotifyToken:"Save token & test", spotifyTokenFine:"The refresh token is saved and tested immediately. Fill the client ID too if this device does not have one stored yet. The token is never shown after submission.", broker:"Broker",
         username:"Username", discovery:"HA discovery", lastPublished:"Last published", diagnostics:"Diagnostics", screen:"Screen",
@@ -465,9 +536,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         logs:"Logs", pauseLogs:"Pause logs", selectAll:"Select all", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
         firmwareFine:"Firmware updates run automatically when SpotifyDJ is paired with Home Assistant.", factoryReset:"Factory reset",
         loading:"Loading", playing:"Playing", paused:"Paused", noPlayback:"No playback", connected:"Connected", disconnected:"Disconnected",
-        authorized:"Authorized", notAuthorized:"Not authorized", disabled:"Disabled", charging:"charging", full:"full",
+        authorized:"Authorized", notAuthorized:"Not authorized", tokenSecondsLeft:"s left", disabled:"Disabled", charging:"charging", full:"full",
         discharging:"discharging", paired:"Paired", pairingMode:"Pairing mode", pairingUnavailable:"Pairing info unavailable",
-        noOutputs:"No outputs", outputsFailed:"Outputs failed", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
+        none:"None", noOutputs:"No outputs", outputsFailed:"Outputs failed", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
         playlistsFailed:"Playlists failed", noLogs:"No logs yet", switchingOutput:"Switching output...", skipping:"Skipping...",
         goingBack:"Going back...", startingLiked:"Starting Liked Proxy...", selectPlaylist:"Select a playlist",
         startingPlaylist:"Starting playlist...", resumeLogs:"Resume logs", logsPaused:"Logs paused", logsLive:"Logs live",
@@ -482,7 +553,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       },
       nl: {
         deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om te koppelen", providePair:"en vul koppelcode in:",
-        nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", liked:"Start SpotifyDJ Liked Proxy",
+        nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start SpotifyDJ Liked Proxy",
         webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
         webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de SpotifyDJ response flow", spotifyUnavailable:"Spotify niet verbonden",
         output:"Geluidsuitgang", loadingOutputs:"Outputs laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
@@ -496,7 +567,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"Het device test de nieuwe WiFi nadat deze pagina antwoord krijgt. Bij succes worden credentials opgeslagen en herstart het device.",
         wifiPasswordPlaceholder:"leeg laten om huidige te behouden",
         ha:"Home Assistant", pairing:"Koppeling", pairCode:"Koppelcode", firmware:"Firmware", model:"Model", resetPairing:"Home Assistant koppeling resetten",
-        spotify:"Spotify", connection:"Verbinding", token:"Token", error:"Fout", refreshSpotify:"Spotify verversen", spotifyClientIdRepair:"Spotify client ID (optioneel)",
+        spotify:"Spotify", connection:"Verbinding", token:"Token", error:"Fout", refreshSpotify:"Spotify status verversen", spotifyClientIdRepair:"Spotify client ID (optioneel)",
         spotifyClientIdRepairPlaceholder:"leeg laten om huidige te behouden", spotifyRefreshRepair:"Nieuwe Spotify refresh token", spotifyMarketRepair:"Spotify market",
         saveSpotifyToken:"Token opslaan & testen", spotifyTokenFine:"De refresh token wordt opgeslagen en direct getest. Vul ook de client ID in als dit device er nog geen heeft opgeslagen. De token wordt na verzenden nooit getoond.", broker:"Broker",
         username:"Gebruikersnaam", discovery:"HA discovery", lastPublished:"Laatst gepubliceerd", diagnostics:"Diagnostiek", screen:"Scherm",
@@ -504,15 +575,15 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         logs:"Logs", pauseLogs:"Pauzeer logs", selectAll:"Selecteer alles", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
         firmwareFine:"Firmware update wordt automatisch uitgevoerd indien SpotifyDJ is gekoppeld aan Home Assistant.", factoryReset:"Fabrieksreset",
         loading:"Laden", playing:"Speelt", paused:"Gepauzeerd", noPlayback:"Geen playback", connected:"Verbonden", disconnected:"Niet verbonden",
-        authorized:"Geautoriseerd", notAuthorized:"Niet geautoriseerd", disabled:"Uitgeschakeld", charging:"laden", full:"vol",
+        authorized:"Geautoriseerd", notAuthorized:"Niet geautoriseerd", tokenSecondsLeft:"s over", disabled:"Uitgeschakeld", charging:"laden", full:"vol",
         discharging:"ontladen", paired:"Gekoppeld", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformatie niet beschikbaar",
-        noOutputs:"Geen outputs", outputsFailed:"Outputs mislukt", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
+        none:"Geen", noOutputs:"Geen outputs", outputsFailed:"Outputs mislukt", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
         playlistsFailed:"Afspeellijsten mislukt", noLogs:"Nog geen logs", switchingOutput:"Output wisselen...", skipping:"Overslaan...",
         goingBack:"Teruggaan...", startingLiked:"Liked Proxy starten...", selectPlaylist:"Selecteer een afspeellijst",
         startingPlaylist:"Afspeellijst starten...", resumeLogs:"Logs hervatten", logsPaused:"Logs gepauzeerd", logsLive:"Logs live",
         logsPausedSelected:"Logs gepauzeerd en geselecteerd", saving:"Opslaan...", testWifiConfirm:"Deze WiFi-gegevens testen? De webpagina kan tijdens de test loskoppelen.",
         startingWifiTest:"WiFi-test starten...", refreshing:"Verversen...", restartConfirm:"SpotifyDJ herstarten?",
-        resetPairingConfirm:"Home Assistant koppeling resetten en herstarten naar het koppelscherm?", factoryResetConfirm:"SpotifyDJ fabrieksresetten en setupmodus openen?",
+        resetPairingConfirm:"Home Assistant koppeling resetten en herstarten naar het koppelscherm?", factoryResetConfirm:"Device resetten naar fabrieksinstellingen?",
         uploadingFirmware:"Firmware uploaden...", noIp:"Geen IP", wifiSignal:"WiFi signaal", wifiDisconnected:"WiFi niet verbonden",
         publishedAfterConnect:"Gepubliceerd na verbinden", waitingForBroker:"Wachten op broker", ago:"geleden",
         legal:"Juridisch", copyrightNotice:"Copyright (c) 2026 Peter van Tol. Alle rechten voorbehouden. SpotifyDJ firmware is proprietary software.",
@@ -534,10 +605,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       });
       $("previousButton").textContent = tr("previous");
       $("nextButton").textContent = tr("next");
+      $("playButton").textContent = tr("play");
+      $("pauseButton").textContent = tr("pause");
       $("startLikedProxyButton").textContent = tr("liked");
       if (!webPttRunning) $("webPttButton").textContent = tr("webPttHold");
-      const outputOption = $("soundOutputSelect").querySelector("option");
-      if (spotifyControlsEnabled && outputOption && outputOption.value === "") outputOption.textContent = tr("loadingOutputs");
+      $("pauseLogsButton").textContent = logsPaused ? tr("resumeLogs") : tr("pauseLogs");
+      const outputOption = $("soundOutputSelect").querySelector("option[data-i18n='loadingOutputs']");
+      if (spotifyControlsEnabled && outputOption) outputOption.textContent = tr("loadingOutputs");
       const playlistOption = $("playlistSelect").querySelector("option");
       if (spotifyControlsEnabled && playlistOption && playlistOption.value === "") playlistOption.textContent = tr("loadingPlaylists");
     }
@@ -565,6 +639,16 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       const el = $(id);
       el.className = "status-dot" + (ok ? " ok" : "");
     }
+    function setBatteryHeader(battery) {
+      const percent = Math.max(0, Math.min(100, Number(battery.percent ?? 0)));
+      const charging = !!battery.charging;
+      const full = !!battery.full;
+      const el = $("batteryHeader");
+      el.className = "header-battery " + (charging ? "charging " : "") + (percent < 20 ? "low" : percent < 50 ? "medium" : "high");
+      el.title = `${battery.label || `${percent}%`} ${charging ? tr("charging") : full ? tr("full") : ""}`.trim();
+      $("batteryHeaderFill").style.width = `${percent}%`;
+      $("batteryHeaderText").textContent = charging ? `${percent}%` : (battery.label || `${percent}%`);
+    }
     let volumeTimer = 0;
     let logsPaused = false;
     let soundOutputLoadedAt = 0;
@@ -576,7 +660,40 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let homeAssistantRuntimePaired = false;
     let albumArtUrl = "";
     let logsVisible = false;
-    let diagnosticsVisible = false;
+    let queueVisible = false;
+    let playlistsVisible = false;
+    let soundOutputsVisible = false;
+    function watchVisibility(id, callback) {
+      const el = $(id);
+      if (!el) return;
+      if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver(entries => {
+          const visible = entries.some(entry => entry.isIntersecting);
+          callback(visible);
+        }, { rootMargin:"120px 0px", threshold:0.01 });
+        observer.observe(el);
+      } else {
+        callback(true);
+      }
+    }
+    function setupVisibilityObservers() {
+      watchVisibility("logsPanel", visible => {
+        logsVisible = visible;
+        if (visible && !logsPaused) refreshLogs();
+      });
+      watchVisibility("queuePanel", visible => {
+        queueVisible = visible;
+        if (visible && spotifyControlsEnabled) loadQueue();
+      });
+      watchVisibility("playlistsPanel", visible => {
+        playlistsVisible = visible;
+        if (visible && spotifyControlsEnabled) loadPlaylists();
+      });
+      watchVisibility("soundOutputSelect", visible => {
+        soundOutputsVisible = visible;
+        if (visible && spotifyControlsEnabled) loadSoundOutputs();
+      });
+    }
     async function startWebPtt() {
       if ($("webPttButton").disabled) return;
       if (webPttRunning) return;
@@ -601,14 +718,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     function setSpotifyControlsEnabled(enabled) {
       spotifyControlsEnabled = !!enabled;
-      for (const id of ["previousButton", "nextButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
+      for (const id of ["previousButton", "nextButton", "playButton", "pauseButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
         $(id).disabled = !spotifyControlsEnabled;
       }
       if (!spotifyControlsEnabled) {
         $("soundOutputStatus").textContent = "";
         $("playbackCommandStatus").textContent = "";
         $("volumeStatus").textContent = "";
-        $("soundOutputSelect").innerHTML = `<option value="">${tr("spotifyUnavailable")}</option>`;
+        $("soundOutputSelect").innerHTML = `<option value="none">${tr("none")}</option><option value="iPhone">iPhone</option>`;
         $("playlistSelect").innerHTML = `<option value="">${tr("spotifyUnavailable")}</option>`;
         $("queueList").innerHTML = '<div class="fine"></div>';
       }
@@ -618,25 +735,30 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       document.documentElement.dataset.theme = data.settings.theme || "dark";
       applyTranslations();
       text("appVersion", data.app.version);
-      text("ip", data.wifi.ip || tr("noIp"));
+      text("wifiIp", data.wifi.ip || tr("noIp"));
       text("track", data.playback.hasPlayback ? (data.playback.track || "-") : "");
       text("artist", data.playback.hasPlayback ? (data.playback.artist || data.playback.type || "-") : "");
       const albumArt = $("albumArt");
+      const nowContent = $("nowContent");
       if (data.playback.albumImageUrl) {
         if (albumArtUrl !== data.playback.albumImageUrl) {
           albumArtUrl = data.playback.albumImageUrl;
           albumArt.src = albumArtUrl;
         }
         albumArt.style.display = "block";
+        nowContent.classList.remove("no-art");
       } else {
         albumArtUrl = "";
         albumArt.removeAttribute("src");
         albumArt.style.display = "none";
+        nowContent.classList.add("no-art");
       }
       const state = data.playback.isPlaying ? tr("playing") : data.playback.hasPlayback ? tr("paused") : tr("noPlayback");
       text("playbackPill", state);
       pill($("playbackPill"), data.playback.isPlaying ? "ok" : data.playback.hasPlayback ? "warn" : "bad");
       $("startLikedProxyButton").style.display = data.spotify.authorized && !data.playback.hasPlayback ? "block" : "none";
+      $("playButton").disabled = !data.spotify.authorized || !data.playback.hasPlayback || data.playback.isPlaying;
+      $("pauseButton").disabled = !data.spotify.authorized || !data.playback.hasPlayback || !data.playback.isPlaying;
       text("time", `${duration(data.playback.progressMs)} / ${duration(data.playback.durationMs)}`);
       $("progressBar").style.width = `${data.playback.progressPercent || 0}%`;
       text("device", data.device.name || "-");
@@ -644,7 +766,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setInput("volumeSlider", data.device.volume >= 0 ? String(data.device.volume) : "0");
       $("volumeSlider").disabled = !data.spotify.authorized || !data.playback.hasPlayback || !data.device.supportsVolume;
       if (!data.playback.hasPlayback || !data.device.supportsVolume) $("volumeStatus").textContent = "";
-      text("batteryHeader", `${data.battery.label} ${data.battery.charging ? tr("charging") : data.battery.full ? tr("full") : data.battery.discharging ? tr("discharging") : ""}`);
+      setBatteryHeader(data.battery);
       text("wifiConnected", data.wifi.connected ? tr("connected") : tr("disconnected"));
       text("wifiSsid", data.wifi.ssid || "-");
       setInput("wifiNewSsid", data.wifi.ssid || "");
@@ -655,7 +777,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       text("spotifyState", data.spotify.authorized ? tr("authorized") : tr("notAuthorized"));
       setStatusDot("spotifyHeaderStatus", !!data.spotify.authorized);
       setSpotifyControlsEnabled(!!data.spotify.authorized);
-      text("spotifyToken", data.spotify.authorized ? `${data.spotify.tokenExpiresInSec}s left` : "-");
+      text("spotifyToken", data.spotify.authorized ? `${data.spotify.tokenExpiresInSec} ${tr("tokenSecondsLeft")}` : "-");
       text("spotifyError", data.spotify.error || "-");
       homeAssistantRuntimePaired = !!(data.ha && data.ha.paired);
       setStatusDot("haHeaderStatus", homeAssistantRuntimePaired);
@@ -691,9 +813,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       const response = await fetch("/api/status", { cache: "no-store" });
       render(await response.json());
       if (Date.now() - pairingInfoLoadedAt > 5000) loadPairingInfo();
-      if (spotifyControlsEnabled && Date.now() - soundOutputLoadedAt > 15000) loadSoundOutputs();
-      if (spotifyControlsEnabled && Date.now() - queueLoadedAt > 15000) loadQueue();
-      if (spotifyControlsEnabled && Date.now() - playlistsLoadedAt > 30000) loadPlaylists();
+      if (spotifyControlsEnabled && soundOutputsVisible && Date.now() - soundOutputLoadedAt > 15000) loadSoundOutputs();
+      if (spotifyControlsEnabled && queueVisible && Date.now() - queueLoadedAt > 15000) loadQueue();
+      if (spotifyControlsEnabled && playlistsVisible && Date.now() - playlistsLoadedAt > 30000) loadPlaylists();
     }
     async function loadPairingInfo() {
       pairingInfoLoadedAt = Date.now();
@@ -724,17 +846,28 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       }
     }
     async function loadSoundOutputs() {
+      if (!soundOutputsVisible) return;
       const select = $("soundOutputSelect");
       soundOutputLoadedAt = Date.now();
       try {
         const response = await fetch("/api/devices", { cache: "no-store" });
         const data = await response.json();
         select.innerHTML = "";
-        if (!data.devices || data.devices.length === 0) {
-          select.innerHTML = `<option value="">${tr("noOutputs")}</option>`;
-          return;
-        }
-        for (const device of data.devices) {
+        const none = document.createElement("option");
+        none.value = "none";
+        none.textContent = tr("none") || "None";
+        select.appendChild(none);
+        const iphone = document.createElement("option");
+        iphone.value = "iPhone";
+        iphone.textContent = "iPhone";
+        select.appendChild(iphone);
+        for (const device of (data.devices || [])) {
+          if ((device.name || "").toLowerCase().includes("iphone")) {
+            iphone.value = device.id || "iPhone";
+            iphone.selected = !!device.active;
+            iphone.textContent = device.active ? "iPhone *" : "iPhone";
+            continue;
+          }
           const option = document.createElement("option");
           option.value = device.id;
           option.textContent = device.active ? `${device.name} *` : device.name;
@@ -746,6 +879,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       }
     }
     async function loadQueue() {
+      if (!queueVisible) return;
       const list = $("queueList");
       queueLoadedAt = Date.now();
       try {
@@ -775,6 +909,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       }
     }
     async function loadPlaylists() {
+      if (!playlistsVisible) return;
       const select = $("playlistSelect");
       playlistsLoadedAt = Date.now();
       try {
@@ -797,7 +932,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       }
     }
     async function refreshLogs() {
-      if (logsPaused) return;
+      if (logsPaused || !logsVisible) return;
       const response = await fetch("/api/logs", { cache: "no-store" });
       const value = await response.text();
       const logs = $("logs");
@@ -830,7 +965,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     });
     async function sendPlaybackCommand(action) {
       if (!spotifyControlsEnabled) return;
-      $("playbackCommandStatus").textContent = action === "next" ? tr("skipping") : action === "previous" ? tr("goingBack") : tr("startingLiked");
+      $("playbackCommandStatus").textContent = action === "next" ? tr("skipping") : action === "previous" ? tr("goingBack") : action === "play" ? tr("playing") : action === "pause" ? tr("paused") : tr("startingLiked");
       const body = new URLSearchParams({ action });
       const response = await fetch("/api/playback", { method:"POST", body });
       $("playbackCommandStatus").textContent = await response.text();
@@ -839,6 +974,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     $("previousButton").addEventListener("click", () => sendPlaybackCommand("previous"));
     $("nextButton").addEventListener("click", () => sendPlaybackCommand("next"));
+    $("playButton").addEventListener("click", () => sendPlaybackCommand("play"));
+    $("pauseButton").addEventListener("click", () => sendPlaybackCommand("pause"));
     $("startLikedProxyButton").addEventListener("click", () => sendPlaybackCommand("likedProxy"));
     $("webPttButton").addEventListener("click", event => {
       event.preventDefault();
@@ -861,7 +998,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     $("pauseLogsButton").addEventListener("click", () => {
       logsPaused = !logsPaused;
       $("pauseLogsButton").textContent = logsPaused ? tr("resumeLogs") : tr("pauseLogs");
-      $("logsStatus").textContent = logsPaused ? tr("logsPaused") : tr("logsLive");
+      $("logsStatus").textContent = "";
       if (!logsPaused) refreshLogs();
     });
     $("copyLogsButton").addEventListener("click", async () => {
@@ -876,7 +1013,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     });
     $("settingsForm").addEventListener("submit", async event => {
       event.preventDefault();
-      $("settingsStatus").textContent = tr("saving");
+      $("settingsStatus").textContent = "";
       const body = new URLSearchParams({
         brightness: $("brightness").value,
         offTimeoutMs: $("offTimeout").value,
@@ -956,11 +1093,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       const response = await fetch("/ota", { method:"POST", body:form });
       $("otaStatus").textContent = await response.text();
     });
+    setupStatusStyling();
+    setupVisibilityObservers();
     refresh();
     loadPairingInfo();
-    loadSoundOutputs();
-    loadQueue();
-    refreshLogs();
     setInterval(refresh, 3000);
     setInterval(refreshLogs, 1000);
   </script>
@@ -1046,37 +1182,37 @@ WebServer &WebPortal::server() {
 void WebPortal::configureRoutes() {
   server_.on("/", HTTP_GET, [this]() { handleRoot(); });
   server_.on("/favicon.ico", HTTP_GET, [this]() {
-    server_.send_P(200, "image/x-icon", reinterpret_cast<const char *>(SPOTIFYDJ_FAVICON_ICO), SPOTIFYDJ_FAVICON_ICO_LEN);
+    sendProgmemAsset(server_, "image/x-icon", SPOTIFYDJ_FAVICON_ICO, SPOTIFYDJ_FAVICON_ICO_LEN);
   });
   server_.on("/icon-192.png", HTTP_GET, [this]() {
-    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
   });
   server_.on("/apple-touch-icon.png", HTTP_GET, [this]() {
-    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
   });
   server_.on("/apple-touch-icon-precomposed.png", HTTP_GET, [this]() {
-    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
   });
   server_.on("/icons/favicon.ico", HTTP_GET, [this]() {
-    server_.send_P(200, "image/x-icon", reinterpret_cast<const char *>(SPOTIFYDJ_FAVICON_ICO), SPOTIFYDJ_FAVICON_ICO_LEN);
+    sendProgmemAsset(server_, "image/x-icon", SPOTIFYDJ_FAVICON_ICO, SPOTIFYDJ_FAVICON_ICO_LEN);
   });
   server_.on("/icons/icon-192.png", HTTP_GET, [this]() {
-    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
   });
   server_.on("/icons/icon-512.png", HTTP_GET, [this]() {
-    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
   });
   server_.on("/icons/maskable-icon-192.png", HTTP_GET, [this]() {
-    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
   });
   server_.on("/icons/maskable-icon-512.png", HTTP_GET, [this]() {
-    server_.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
   });
   server_.on("/site.webmanifest", HTTP_GET, [this]() {
-    server_.send_P(200, "application/manifest+json", reinterpret_cast<const char *>(SPOTIFYDJ_SITE_WEBMANIFEST), SPOTIFYDJ_SITE_WEBMANIFEST_LEN);
+    sendProgmemAsset(server_, "application/manifest+json", SPOTIFYDJ_SITE_WEBMANIFEST, SPOTIFYDJ_SITE_WEBMANIFEST_LEN, 86400UL);
   });
   server_.on("/icons/site.webmanifest", HTTP_GET, [this]() {
-    server_.send_P(200, "application/manifest+json", reinterpret_cast<const char *>(SPOTIFYDJ_SITE_WEBMANIFEST), SPOTIFYDJ_SITE_WEBMANIFEST_LEN);
+    sendProgmemAsset(server_, "application/manifest+json", SPOTIFYDJ_SITE_WEBMANIFEST, SPOTIFYDJ_SITE_WEBMANIFEST_LEN, 86400UL);
   });
   server_.on("/api/status", HTTP_GET, [this]() { handleStatusJson(); });
   server_.on("/api/logs", HTTP_GET, [this]() { handleLogsText(); });
@@ -1103,11 +1239,13 @@ void WebPortal::configureRoutes() {
 }
 
 void WebPortal::handleRoot() {
+  sendNoStore(server_);
   server_.send_P(200, "text/html", IndexHtml);
 }
 
 void WebPortal::handleStatusJson() {
   if (playback_ == nullptr || battery_ == nullptr || diagnostics_ == nullptr || spotify_ == nullptr) {
+    sendNoStore(server_);
     server_.send(503, "application/json", "{\"error\":\"portal not ready\"}");
     return;
   }
@@ -1230,10 +1368,12 @@ void WebPortal::handleStatusJson() {
 
   String body;
   serializeJson(doc, body);
+  sendNoStore(server_);
   server_.send(200, "application/json", body);
 }
 
 void WebPortal::handleLogsText() {
+  sendNoStore(server_);
   server_.send(200, "text/plain", AppLog.text());
 }
 
@@ -1432,10 +1572,37 @@ void WebPortal::handleTransferPost() {
     return;
   }
 
-  const String deviceId = server_.arg("deviceId");
+  String deviceId = server_.arg("deviceId");
   if (deviceId.isEmpty()) {
     server_.send(400, "text/plain", "Missing output");
     return;
+  }
+
+  if (deviceId == "none") {
+    AppLog.println("Web playback: stopping output via none selection");
+    if (!spotify_->pausePlayback()) {
+      AppLog.print("Web playback: stop failed: ");
+      AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
+      server_.send(502, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Playback stop failed" : playback_->error);
+      return;
+    }
+    spotify_->refreshPlayback();
+    server_.send(200, "text/plain", localizedText("Playback stopped", "Playback gestopt"));
+    return;
+  }
+
+  DeviceListState devices;
+  spotify_->refreshDevices(devices);
+  String lowerRequested = deviceId;
+  lowerRequested.toLowerCase();
+  for (size_t index = 0; index < devices.count; index++) {
+    String lowerName = devices.devices[index].name;
+    lowerName.toLowerCase();
+    const bool iphoneAlias = lowerRequested == "iphone" && lowerName.indexOf("iphone") >= 0;
+    if (devices.devices[index].id == deviceId || devices.devices[index].name == deviceId || iphoneAlias) {
+      deviceId = devices.devices[index].id;
+      break;
+    }
   }
 
   AppLog.println("Web playback: transfer output requested");
@@ -1448,7 +1615,7 @@ void WebPortal::handleTransferPost() {
 
   AppLog.println("Web playback: output switched");
   spotify_->refreshPlayback();
-  server_.send(200, "text/plain", "Output switched");
+  server_.send(200, "text/plain", localizedText("Output switched", "Output gewisseld"));
 }
 
 void WebPortal::handlePlaybackCommandPost() {
@@ -1469,6 +1636,10 @@ void WebPortal::handlePlaybackCommandPost() {
     ok = spotify_->nextTrack();
   } else if (action == "previous") {
     ok = spotify_->previousTrack();
+  } else if (action == "play") {
+    ok = spotify_->resumePlayback();
+  } else if (action == "pause") {
+    ok = spotify_->pausePlayback();
   } else if (action == "likedProxy") {
     ok = spotify_->startLikedProxyPlaylist();
   } else if (action == "playlist") {
@@ -1493,10 +1664,19 @@ void WebPortal::handlePlaybackCommandPost() {
   AppLog.print("Web playback: action completed ");
   AppLog.println(action);
   spotify_->refreshPlayback();
-  server_.send(
-      200,
-      "text/plain",
-      action == "next" ? "Next song" : action == "previous" ? "Previous song" : action == "playlist" ? "Playlist started" : "Liked Proxy started");
+  String message = localizedText("Liked Proxy started", "Liked Proxy gestart");
+  if (action == "next") {
+    message = localizedText("Next song", "Volgend nummer");
+  } else if (action == "previous") {
+    message = localizedText("Previous song", "Vorig nummer");
+  } else if (action == "play") {
+    message = localizedText("Playing", "Speelt");
+  } else if (action == "pause") {
+    message = localizedText("Paused", "Gepauzeerd");
+  } else if (action == "playlist") {
+    message = localizedText("Playlist started", "Afspeellijst gestart");
+  }
+  server_.send(200, "text/plain", message);
 }
 
 void WebPortal::handleVoiceTextPost() {
@@ -1561,7 +1741,7 @@ void WebPortal::handleRefreshPost() {
   if (refreshCallback_ != nullptr) {
     refreshCallback_(callbackContext_);
   }
-  server_.send(200, "text/plain", "Refresh requested");
+  server_.send(200, "text/plain", localizedText("Refresh requested", "Verversen aangevraagd"));
 }
 
 void WebPortal::handleResetPairingPost() {
@@ -1587,7 +1767,7 @@ void WebPortal::handleHardResetPost() {
   AppLog.println("Web action: factory reset requested");
   server_.send(200, "text/plain", localizedText(
                                       "Factory reset requested. Restarting into setup mode...",
-                                      "Fabrieksreset aangevraagd. Herstarten naar setupmodus..."));
+                                      "Fabrieksreset wordt uitgevoerd..."));
   delay(250);
   if (hardResetCallback_ != nullptr) {
     hardResetCallback_(callbackContext_);

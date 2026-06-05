@@ -7,6 +7,7 @@
 #include <WiFi.h>
 
 #include "Config.h"
+#include "I18n.h"
 #include "LogicHelpers.h"
 
 static const char *DeviceId = "spotifydj";
@@ -14,8 +15,20 @@ static const char *DeviceName = "SpotifyDJ";
 static constexpr uint32_t PublishIntervalMs = 30000;
 static constexpr uint32_t EventPublishMinIntervalMs = 2000;
 static constexpr uint32_t ReconnectIntervalMs = 5000;
+static constexpr uint8_t MaxAuthFailuresBeforeLock = 3;
 
 MqttPublisher *activeMqttPublisher = nullptr;
+
+namespace {
+uint32_t fnv1a(const String &value) {
+  uint32_t hash = 2166136261UL;
+  for (size_t index = 0; index < value.length(); index++) {
+    hash ^= static_cast<uint8_t>(value[index]);
+    hash *= 16777619UL;
+  }
+  return hash;
+}
+}  // namespace
 
 void MqttPublisher::begin(
     const String &deviceId,
@@ -52,8 +65,11 @@ void MqttPublisher::begin(
   statusPublishRequested_ = true;
   commandPending_ = false;
   discoveryOptionSignature_ = "";
+  settingsSignature_ = "";
   lastPlaylistCommand_ = "";
   lastConnectCode_ = 0;
+  authFailureCount_ = 0;
+  authRetryLocked_ = false;
   lastConnectAttemptAt_ = 0;
   lastPublishAt_ = 0;
 
@@ -77,6 +93,7 @@ void MqttPublisher::loop() {
   if (WiFi.status() != WL_CONNECTED) {
     return;
   }
+  resetAuthLockIfSettingsChanged();
   if (!connectIfNeeded()) {
     return;
   }
@@ -182,6 +199,9 @@ String MqttPublisher::connectionState() {
   if (client_.connected()) {
     return "Connected";
   }
+  if (authRetryLocked_) {
+    return I18n::text("mqtt_auth_failed_update");
+  }
   if (lastConnectCode_ != 0) {
     return connectCodeText(lastConnectCode_) + " (rc=" + String(lastConnectCode_) + ")";
   }
@@ -195,6 +215,9 @@ uint32_t MqttPublisher::lastPublishAtMs() const {
 bool MqttPublisher::connectIfNeeded() {
   if (client_.connected()) {
     return true;
+  }
+  if (authRetryLocked_) {
+    return false;
   }
 
   const uint32_t now = millis();
@@ -235,6 +258,8 @@ bool MqttPublisher::connectIfNeeded() {
   if (ok) {
     AppLog.println("MQTT connected");
     lastConnectCode_ = 0;
+    authFailureCount_ = 0;
+    authRetryLocked_ = false;
     publishAvailability(true);
     client_.subscribe(deviceCommandTopic().c_str());
     client_.subscribe(commandTopic("action").c_str());
@@ -252,12 +277,45 @@ bool MqttPublisher::connectIfNeeded() {
     publishRequested_ = true;
   } else {
     lastConnectCode_ = client_.state();
+    if (lastConnectCode_ == MQTT_CONNECT_BAD_CREDENTIALS ||
+        lastConnectCode_ == MQTT_CONNECT_UNAUTHORIZED) {
+      authFailureCount_++;
+      if (Logic::shouldLockMqttAuthRetries(lastConnectCode_, authFailureCount_, MaxAuthFailuresBeforeLock)) {
+        authRetryLocked_ = true;
+      }
+    } else {
+      authFailureCount_ = 0;
+    }
     AppLog.print("MQTT connect failed ");
     AppLog.print(connectCodeText(lastConnectCode_));
     AppLog.print(" rc=");
-    AppLog.println(lastConnectCode_);
+    AppLog.print(lastConnectCode_);
+    if (authRetryLocked_) {
+      AppLog.print(" auth retries stopped after ");
+      AppLog.print(authFailureCount_);
+      AppLog.print(" failures");
+    }
+    AppLog.println();
   }
   return ok;
+}
+
+void MqttPublisher::resetAuthLockIfSettingsChanged() {
+  if (settings_ == nullptr) {
+    return;
+  }
+  const String signature = settings_->host + ":" +
+                           String(settings_->port) + ":" +
+                           settings_->username + ":" +
+                           String(fnv1a(settings_->password), HEX);
+  if (signature == settingsSignature_) {
+    return;
+  }
+  settingsSignature_ = signature;
+  authFailureCount_ = 0;
+  authRetryLocked_ = false;
+  lastConnectCode_ = 0;
+  lastConnectAttemptAt_ = 0;
 }
 
 void MqttPublisher::publishDiscoveryIfNeeded() {

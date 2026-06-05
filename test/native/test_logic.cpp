@@ -122,6 +122,18 @@ static void testBatteryVoltageFallbackCurve() {
   assert(Logic::batteryPercentFromVoltage(4300) == 100);
 }
 
+static void testWebBatteryHeaderClass() {
+  assert(std::strcmp(Logic::batteryHeaderClass(0, false), "low") == 0);
+  assert(std::strcmp(Logic::batteryHeaderClass(19, false), "low") == 0);
+  assert(std::strcmp(Logic::batteryHeaderClass(20, false), "medium") == 0);
+  assert(std::strcmp(Logic::batteryHeaderClass(49, false), "medium") == 0);
+  assert(std::strcmp(Logic::batteryHeaderClass(50, false), "high") == 0);
+  assert(std::strcmp(Logic::batteryHeaderClass(100, false), "high") == 0);
+  assert(std::strcmp(Logic::batteryHeaderClass(10, true), "charging low") == 0);
+  assert(std::strcmp(Logic::batteryHeaderClass(30, true), "charging medium") == 0);
+  assert(std::strcmp(Logic::batteryHeaderClass(90, true), "charging high") == 0);
+}
+
 static void testBq27220Interpretation() {
   const auto stuckReading = Logic::interpretBq27220(
       40,
@@ -251,6 +263,18 @@ static void testVoiceChunkHelpers() {
   assert(Logic::preferencesKeyFits("sp_market"));
   assert(!Logic::preferencesKeyFits("spotify_client_id"));
   assert(!Logic::preferencesKeyFits("spotify_refresh_token"));
+
+  assert(!Logic::shouldLockMqttAuthRetries(5, 1, 3));
+  assert(!Logic::shouldLockMqttAuthRetries(5, 2, 3));
+  assert(Logic::shouldLockMqttAuthRetries(5, 3, 3));
+  assert(Logic::shouldLockMqttAuthRetries(4, 3, 3));
+  assert(!Logic::shouldLockMqttAuthRetries(3, 3, 3));
+  assert(!Logic::shouldLockMqttAuthRetries(5, 3, 0));
+
+  assert(Logic::isSpotifyPlaylistContextUri("spotify:playlist:abc123"));
+  assert(!Logic::isSpotifyPlaylistContextUri("spotify:album:abc123"));
+  assert(!Logic::isSpotifyPlaylistContextUri("spotify:playlist:"));
+  assert(!Logic::isSpotifyPlaylistContextUri(nullptr));
 }
 
 static void testPlayModeMapping() {
@@ -351,6 +375,16 @@ static void testSpotifyCredentialRepairValidation() {
   assert(std::strcmp(Logic::spotifyMarketOrDefault(nullptr), "NL") == 0);
 }
 
+static void testSpotifyPlaylistPagingDecision() {
+  assert(Logic::shouldFetchNextSpotifyPlaylistPage(50, 120, 0, 50));
+  assert(Logic::shouldFetchNextSpotifyPlaylistPage(50, 0, 50, 50));
+  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(20, 120, 50, 50));
+  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(50, 50, 0, 50));
+  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(0, 120, 0, 50));
+  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(50, 120, -1, 50));
+  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(50, 120, 0, 0));
+}
+
 static void testSpotifyDJMenuItemCounts() {
   MenuCountInput input;
   assert(!SpotifyDJMenuModel::isMenuScreen(UiScreen::NowPlaying));
@@ -358,6 +392,7 @@ static void testSpotifyDJMenuItemCounts() {
   assert(SpotifyDJMenuModel::itemCount(UiScreen::NowPlaying, input) == 0);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::RootMenu, input) == SpotifyDJMenuModel::RootMenuItemCount);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::Settings, input) == SpotifyDJMenuModel::SettingsItemCount);
+  assert(SpotifyDJMenuModel::SettingsItemCount == 13);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::About, input) == SpotifyDJMenuModel::AboutItemCount);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::Playlists, input) == 1);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 2);
@@ -368,10 +403,10 @@ static void testSpotifyDJMenuItemCounts() {
 
   input.devicesAvailable = true;
   input.deviceCount = 3;
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 4);
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 5);
 
   input.deviceCount = 99;
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == SpotifyDJMenuModel::MaxVisibleOutputs + 1);
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == SpotifyDJMenuModel::MaxVisibleOutputs + SpotifyDJMenuModel::FixedSoundOutputCount);
 }
 
 static void testSpotifyDJMenuOptionValues() {
@@ -422,6 +457,7 @@ int main() {
   testChargingCompleteCue();
   testBacklightDutyCurve();
   testBatteryVoltageFallbackCurve();
+  testWebBatteryHeaderClass();
   testBq27220Interpretation();
   testVoiceChunkHelpers();
   testPlayModeMapping();
@@ -432,6 +468,7 @@ int main() {
   testSpotifyProvisioningNestedPriority();
   testSpotifyProvisioningMissingRefreshToken();
   testSpotifyCredentialRepairValidation();
+  testSpotifyPlaylistPagingDecision();
   testSpotifyDJMenuItemCounts();
   testSpotifyDJMenuOptionValues();
   testNetworkActivityLogicWithFakeHttp();

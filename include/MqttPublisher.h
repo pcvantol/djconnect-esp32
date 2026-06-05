@@ -67,6 +67,7 @@ private:
   void publishSelectDiscovery(const char *objectId, const char *name, const char *commandTopic, const String *options, size_t optionCount, const char *valueTemplate);
   void handleMessage(char *topic, uint8_t *payload, unsigned int length);
   void enqueueCommand(const MqttCommand &command);
+  void resetAuthLockIfSettingsChanged();
   static void mqttCallback(char *topic, uint8_t *payload, unsigned int length);
   String stateTopic() const;
   String availabilityTopic() const;
@@ -103,8 +104,11 @@ private:
   bool commandPending_ = false;
   MqttCommand pendingCommand_;
   String discoveryOptionSignature_;
+  String settingsSignature_;
   String lastPlaylistCommand_;
   int lastConnectCode_ = 0;
+  uint8_t authFailureCount_ = 0;
+  bool authRetryLocked_ = false;
   uint32_t lastConnectAttemptAt_ = 0;
   uint32_t lastPublishAt_ = 0;
 };

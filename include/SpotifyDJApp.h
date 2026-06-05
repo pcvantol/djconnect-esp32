@@ -111,6 +111,10 @@ private:
   void processVolumeResult();
   void processMqttCommands();
   void handleMqttCommand(const MqttCommand &command);
+  void processStressTest();
+  void toggleStressTest();
+  void stopStressTest(const String &reason);
+  void runStressTestStep();
   bool transferToOutputByNameOrId(const String &output);
   bool startPlaylistByNameOrUri(const String &playlist);
 
@@ -274,6 +278,7 @@ private:
   bool lowBatteryTimerWake_ = false;
   bool chargingCompleteSoundPlayed_ = false;
   bool volumeFeedbackEnabled_ = true;
+  bool stressTestActive_ = false;
   bool voiceRecording_ = false;
   VoiceState voiceState_ = VoiceState::Idle;
   bool topHoldMenuHintVisible_ = false;
@@ -301,6 +306,9 @@ private:
   uint32_t loopMetricsBusyMs_ = 0;
   uint32_t lastHeapLogAt_ = 0;
   uint32_t lastSlowLoopLogAt_ = 0;
+  uint32_t stressTestStartedAt_ = 0;
+  uint32_t lastStressTestStepAt_ = 0;
+  uint32_t stressTestStepCount_ = 0;
   uint32_t heapTrendBaselineMinFree_ = 0;
   uint32_t heapTrendBaselineLargestBlock_ = 0;
   uint32_t heapTrendPreviousMinFree_ = 0;

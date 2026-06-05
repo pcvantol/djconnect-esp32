@@ -42,6 +42,7 @@ public:
 
   // Reads the next songs from Spotify's play queue.
   bool refreshQueue(QueueState &queue);
+  bool refreshPlaylistContextQueue(QueueState &queue);
 
   // Reads the user's Spotify playlists for device/web selection.
   bool refreshPlaylists(PlaylistListState &playlists);
@@ -94,6 +95,7 @@ private:
   VolumeResult sendVolumeToSpotify(const VolumeCommand &command);
   bool findPlaylistUriByName(const String &playlistName, String &playlistUri);
   bool playContextUri(const String &contextUri);
+  bool fillQueueFromPlaylistContext(QueueState &queue);
 
   // Spotify JSON parsing helpers.
   void applyDevice(JsonVariantConst device);

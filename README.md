@@ -136,6 +136,8 @@ python3 scripts/spotify_pkce_refresh_token.py --client-id YOUR_SPOTIFY_CLIENT_ID
 
 The script prints the client ID and refresh token for provisioning through the setup portal or Home Assistant pairing flow. Do not commit those values and do not compile them into firmware headers.
 
+The generated token includes `playlist-read-private` so the firmware can find a private `SpotifyDJ Liked Proxy` playlist from your own playlists. If an older token was generated without that scope, regenerate the refresh token and submit it through Home Assistant provisioning or the web portal Spotify repair form.
+
 ## Home Assistant Integration
 
 The custom integration domain is `spotify_dj`.
@@ -259,13 +261,21 @@ spotifydj/<device_id>/command
 
 Supported MQTT command categories include status request, next/previous, volume, transfer sound output, start playlist, DJ response text, screen brightness, dim timeout, turn-off timeout, speaker cue volume, language and theme.
 
+If the broker returns authentication failures (`rc=4` or `rc=5`) three times in a row, the firmware stops MQTT reconnect attempts until credentials are changed or the device restarts. This prevents repeated log spam and needless network wakeups when broker credentials are wrong.
+
 ## Web Portal
 
-The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, sound output selection, queue, playlists, Home Assistant status, MQTT settings, Spotify refresh-token repair, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support.
+The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, Home Assistant status, MQTT settings, Spotify refresh-token repair, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live Spotify Connect devices. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, M, S, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The IP address is shown in the WiFi details block.
 
 Spotify refresh-token repair accepts a new refresh token and, when no client ID is already stored on the device, a client ID. Submitted refresh tokens are stored in NVS but are never shown back in the portal or logged.
 
 Spotify controls are disabled when Spotify is not connected or when there is no active playback where that action would not make sense.
+
+The web portal includes Safari/iOS home-screen metadata and an Apple touch icon. On iPhone, open the device web portal in Safari, tap Share and choose `Add to Home Screen`. The shortcut opens the local portal as a standalone web app while the phone can reach the device on the network.
+
+To reduce unnecessary ESP HTTP work, the portal only polls heavier panels when they are visible: logs poll only while the logs panel is visible and not paused, and queue, playlist and sound-output list refreshes run only when their related UI is on screen. Dynamic API and root page responses use `no-store` cache headers, while embedded static assets such as icons and the web manifest use browser cache headers.
+
+Spotify's queue endpoint can omit upcoming tracks for playlist context playback. When the queue response is empty and the current context is a Spotify playlist, the firmware falls back to reading the current playlist tracks and shows the next items after the currently playing track. The `SpotifyDJ Liked Proxy` lookup scans multiple pages of the user's own playlists before falling back to public search, which helps private playlists and larger libraries.
 
 ## Firmware Architecture
 
@@ -287,12 +297,17 @@ Keep new provisioning writes in `ProvisioningController`, power/sleep/watchdog d
 - Spotify OAuth credentials are accepted through HA provisioning, setup portal or the web repair form. Refresh tokens are never logged or shown back to the user.
 - External API payload field names stay integration-friendly, for example `spotify_refresh_token`. Internal ESP32 Preferences keys must stay at 15 characters or less, so Spotify credentials are stored as `sp_client`, `sp_refresh` and `sp_market`.
 - Long network operations are bounded by explicit timeout policy and tracked through `NetworkActivity`; UI/input responsiveness should not depend on a blocking Spotify, HA, OTA or audio download call finishing quickly.
+- Web portal polling is visibility-aware for logs, queue, playlist and sound-output data. Keep root/status/log API responses uncached, but cache embedded static assets with explicit cache headers.
 - The public ESP API is documented as a Postman collection with variables only. Do not commit real device tokens, refresh tokens, MQTT passwords or private HA URLs.
 - Product firmware is proprietary/closed-source, while release binaries and manifests are published separately for Home Assistant OTA distribution.
 
 ## Battery, Charging and Turn Off
 
 Battery percentage is voltage-estimated. Below 20%, the device shows a charge screen and restricts normal operation. Below 10%, the device shows a short charge prompt and turns off. While charging below 20%, the device stays in a charging screen and does not connect WiFi. Turn-off sleep periodically wakes briefly to probe for USB-C charger attach.
+
+## Device Diagnostics
+
+The device Settings menu includes a `Stress test` toggle. This is a local render/input monkey mode for diagnostics: it cycles through safe screens, menu selections and render paths every 250 ms, logs heap information every 20 steps, and stops automatically after two minutes. It never triggers OTA, factory reset, WiFi changes, Spotify playback mutations or credential changes. It also stops when pairing, voice recording or battery guard screens take over.
 
 ## OTA Firmware Updates
 
@@ -328,7 +343,7 @@ Skip GitHub release creation when you only want the commit/tag/push steps:
 ./release.sh X.Y.Z --no-gh-release
 ```
 
-For example, `./release.sh 2.5.1 --dry-run` validates the release plan without touching files. Both `2.5.1` and `v2.5.1` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.7.0 --dry-run` validates the release plan without touching files. Both `2.7.0` and `v2.7.0` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

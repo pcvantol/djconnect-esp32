@@ -21,6 +21,7 @@ SCOPES = [
     "user-read-playback-state",
     "user-read-currently-playing",
     "user-modify-playback-state",
+    "playlist-read-private",
 ]
 
 DEFAULT_CA_FILES = [

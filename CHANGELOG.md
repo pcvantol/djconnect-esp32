@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.5.1
+## v2.7.0
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -39,7 +39,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.5.1` / `v2.5.1`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.7.0` / `v2.7.0`; local builds without release flags remain `dev` / `vdev`.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
 - Spotify credentials are provisioned through the setup portal or Home Assistant and stored in NVS.
 - The web portal can manually repair Spotify OAuth credentials with a one-shot refresh-token submit field, immediately testing authorization and clearing the submitted fields from the page.
@@ -54,7 +54,14 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - OTA firmware write shows `Firmware update in progress..` on the display and sets the LED ring to purple.
 - Display idle behavior keeps the configured brightness until the selected timeout, then turns the screen fully off.
 - The first button/encoder action while the screen is off only wakes the screen and does not execute the underlying action.
-- Web interface shows H/M/S status indicators, WiFi signal bars and the last MQTT publish timestamp.
+- Web interface shows H/M/S status indicators, WiFi signal bars, a CSS battery icon with percentage/charging flash and the last MQTT publish timestamp.
+- Web statusbar order now matches the device: H, M, S, WiFi signal bars, battery.
+- Web Now Playing includes previous, next, play and pause controls with compact CSS icons.
+- Web interface keeps the status bar compact by showing the IP address in the WiFi details block instead of the header.
+- Sound output lists on device and web always include `None`/`Geen` and `iPhone` before live Spotify Connect devices.
+- Liked Proxy lookup now searches multiple pages of the user's own playlists before falling back to public playlist search.
+- Up Next falls back to the current playlist tracks when Spotify's queue endpoint returns no upcoming tracks for playlist playback.
+- The Home Assistant pairing banner setup link opens in a new browser tab.
 - Web interface logs can be paused and selected/copied.
 - `Restart device` and `Turn off device` are available from settings.
 - Push-to-talk uses Route B: microphone audio streams as raw PCM16 to the Home Assistant Assist WebSocket pipeline; only recognized text is sent to `/api/spotify_dj/voice`.
@@ -82,8 +89,13 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - The language setting is stored in NVS, can be provisioned by Home Assistant through `device_language`/`language`, and resets to English on factory reset; logs remain English.
 - Theme is stored in NVS and exposed on the device, web portal and MQTT. Device `Light` uses TFT inversion/high contrast; web `Auto` follows browser/device preference.
 - MQTT two-way support covers Spotify controls, status/discovery and settings commands for language, theme, brightness, dim timeout, turn-off timeout and speaker cue volume.
+- MQTT reconnect attempts stop after three consecutive authentication failures to avoid log spam and needless broker polling.
+- Device Settings menu includes a safe local Stress test / monkey mode for render/navigation diagnostics.
+- Web portal polling is visibility-aware for logs, queue, playlists and sound-output lists, and embedded icon/manifest assets use cache headers.
+- Error-like web status messages are visually highlighted so stale HA pairing/voice endpoint failures stand out.
 - App logs are stored in fixed-size buffers to reduce heap fragmentation during long runs.
 - Menu counts/options, network timeout behavior and release dry-run validation have stronger automated test coverage.
+- Web battery header state has host-side test coverage for low/medium/high and charging classes.
 - Provisioning, power policy and long-network-call responsibilities are documented as separate refactor boundaries to keep future production fixes easier to isolate.
 
 ### Fixed
@@ -97,6 +109,9 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Web interface no longer clears input fields during status polling.
 - Web interface no longer overwrites MQTT settings while the user is typing.
 - Web interface sound-output and playlist comboboxes no longer stay on loading text when Spotify is not connected.
+- Liked Proxy playlist missing errors are translated through the firmware language setting.
+- Web playback command responses such as playlist start and output switch are localized.
+- The PKCE helper now requests `playlist-read-private` so private `SpotifyDJ Liked Proxy` playlists can be discovered after regenerating the refresh token.
 - Sound output types are no longer appended to output names.
 - Improved JPEG album art rendering and Current Song text scrolling.
 - Pairing mode blocks normal playback/menu input while keeping reset controls and the local API available.

@@ -9,6 +9,7 @@
 
 #include "Config.h"
 #include "I18n.h"
+#include "LogicHelpers.h"
 #include "NetworkActivity.h"
 #include "TextHelpers.h"
 
@@ -163,6 +164,8 @@ bool SpotifyClient::refreshPlayback() {
   filter["repeat_state"] = true;
   filter["progress_ms"] = true;
   filter["currently_playing_type"] = true;
+  filter["context"]["uri"] = true;
+  filter["item"]["uri"] = true;
   filter["item"]["name"] = true;
   filter["item"]["duration_ms"] = true;
   filter["item"]["type"] = true;
@@ -185,15 +188,18 @@ bool SpotifyClient::refreshPlayback() {
   state_.progressMs = doc["progress_ms"] | 0;
   state_.progressSyncedAt = millis();
   state_.currentType = doc["currently_playing_type"] | "";
+  state_.contextUri = doc["context"]["uri"] | "";
 
   JsonVariantConst item = doc["item"];
   if (item.isNull()) {
     state_.trackName = state_.isPlaying ? "Playing" : "Paused";
     state_.artistName = "";
+    state_.currentUri = "";
     state_.durationMs = 0;
     state_.albumImageUrl = "";
   } else {
     state_.trackName = item["name"] | "";
+    state_.currentUri = item["uri"] | "";
     state_.durationMs = item["duration_ms"] | 0;
     state_.albumImageUrl = "";
 
@@ -376,7 +382,85 @@ bool SpotifyClient::refreshQueue(QueueState &queue) {
   }
 
   queue.available = true;
+  if (queue.count == 0 && fillQueueFromPlaylistContext(queue)) {
+    return true;
+  }
   return true;
+}
+
+bool SpotifyClient::refreshPlaylistContextQueue(QueueState &queue) {
+  queue.available = false;
+  queue.error = "";
+  queue.count = 0;
+  return fillQueueFromPlaylistContext(queue);
+}
+
+bool SpotifyClient::fillQueueFromPlaylistContext(QueueState &queue) {
+  if (!Logic::isSpotifyPlaylistContextUri(state_.contextUri.c_str())) {
+    return false;
+  }
+
+  const String playlistId = state_.contextUri.substring(strlen("spotify:playlist:"));
+  if (playlistId.isEmpty()) {
+    return false;
+  }
+
+  String payload;
+  const String path = "/playlists/" + playlistId + "/tracks?limit=20&fields=items(track(uri,name,artists(name)))";
+  const int code = apiRequest("GET", path, &payload, false);
+  if (code != 200 || payload.isEmpty()) {
+    AppLog.print("Spotify: playlist queue fallback failed HTTP ");
+    AppLog.println(code);
+    return false;
+  }
+
+  JsonDocument filter;
+  filter["items"][0]["track"]["uri"] = true;
+  filter["items"][0]["track"]["name"] = true;
+  filter["items"][0]["track"]["artists"][0]["name"] = true;
+
+  JsonDocument doc;
+  const DeserializationError error = deserializeJson(
+      doc,
+      payload,
+      DeserializationOption::Filter(filter),
+      DeserializationOption::NestingLimit(32));
+  if (error) {
+    AppLog.print("Spotify: playlist queue fallback JSON failed ");
+    AppLog.println(error.c_str());
+    return false;
+  }
+
+  JsonArrayConst items = doc["items"].as<JsonArrayConst>();
+  bool afterCurrent = state_.currentUri.isEmpty();
+  for (JsonVariantConst item : items) {
+    JsonVariantConst track = item["track"];
+    const String uri = track["uri"] | "";
+    if (!afterCurrent && uri == state_.currentUri) {
+      afterCurrent = true;
+      continue;
+    }
+    if (!afterCurrent || queue.count >= 5) {
+      continue;
+    }
+
+    QueueItemState &target = queue.items[queue.count];
+    target.title = track["name"] | "";
+    target.subtitle = artistList(track["artists"].as<JsonArrayConst>());
+    if (target.title.isEmpty()) {
+      continue;
+    }
+    queue.count++;
+  }
+
+  queue.available = true;
+  if (queue.count > 0) {
+    queue.error = "";
+    AppLog.print("Spotify: playlist queue fallback count=");
+    AppLog.println(queue.count);
+    return true;
+  }
+  return false;
 }
 
 bool SpotifyClient::refreshPlaylists(PlaylistListState &playlists) {
@@ -575,6 +659,62 @@ bool SpotifyClient::findPlaylistUriByName(const String &playlistName, String &pl
   }
 
   String payload;
+  bool userPlaylistLookupOk = false;
+  bool parsedUserPlaylists = false;
+  for (int offset = 0; offset <= 450; offset += 50) {
+    const String path = String("/me/playlists?limit=50&offset=") + String(offset);
+    const int code = apiRequest("GET", path, &payload);
+    if (code != 200) {
+      AppLog.print("Spotify: user playlist lookup failed code=");
+      AppLog.println(code);
+      state_.error = state_.error.isEmpty() ? "Playlist lookup failed " + String(code) : state_.error;
+      break;
+    }
+    userPlaylistLookupOk = true;
+    if (payload.isEmpty()) {
+      AppLog.println("Spotify: user playlist lookup returned empty payload");
+      break;
+    }
+
+    JsonDocument filter;
+    filter["total"] = true;
+    filter["items"][0]["name"] = true;
+    filter["items"][0]["uri"] = true;
+
+    JsonDocument doc;
+    const DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
+    if (error) {
+      state_.error = "Playlist JSON failed";
+      AppLog.print("Spotify: user playlist JSON parse failed ");
+      AppLog.println(error.c_str());
+      break;
+    }
+
+    parsedUserPlaylists = true;
+    JsonArrayConst items = doc["items"].as<JsonArrayConst>();
+    const size_t itemCount = items.size();
+    for (JsonVariantConst item : items) {
+      const String name = item["name"] | "";
+      const char *uri = item["uri"] | "";
+      if (name.equalsIgnoreCase(playlistName) && strlen(uri) > 0) {
+        playlistUri = uri;
+        state_.error = "";
+        AppLog.print("Spotify: Liked Proxy found in user playlists offset=");
+        AppLog.println(offset);
+        return true;
+      }
+    }
+
+    const int total = doc["total"] | 0;
+    if (!Logic::shouldFetchNextSpotifyPlaylistPage(itemCount, total, offset, 50)) {
+      break;
+    }
+  }
+
+  if (userPlaylistLookupOk && parsedUserPlaylists) {
+    AppLog.println("Spotify: Liked Proxy not found in user playlists, trying public search");
+  }
+
   const String path = String("/search?type=playlist&limit=1&q=") + urlEncode(playlistName);
   const int code = apiRequest("GET", path, &payload);
   if (code != 200) {
@@ -608,7 +748,7 @@ bool SpotifyClient::findPlaylistUriByName(const String &playlistName, String &pl
     return true;
   }
 
-  state_.error = "Liked Proxy playlist not found";
+  state_.error = I18n::text("liked_proxy_not_found");
   return false;
 }
 
@@ -1085,9 +1225,15 @@ String SpotifyClient::spotifyErrorFromPayload(int code, const String &payload) c
   const char *message = doc["error"]["message"] | "";
 
   if (strlen(reason) > 0) {
+    if (strcmp(reason, "Device not found") == 0) {
+      return I18n::text("device_not_found");
+    }
     return String(reason);
   }
   if (strlen(message) > 0) {
+    if (strcmp(message, "Device not found") == 0) {
+      return I18n::text("device_not_found");
+    }
     return String(message);
   }
   return "Spotify HTTP " + String(code);
