@@ -19,6 +19,23 @@ static constexpr i2s_port_t SpeakerI2sPort = I2S_NUM_1;
 static constexpr uint32_t MinVolumeTickIntervalMs = 90;
 
 namespace {
+class ScopedLoopWatchdogPause {
+public:
+  ScopedLoopWatchdogPause() {
+    active_ = esp_task_wdt_delete(nullptr) == ESP_OK;
+  }
+
+  ~ScopedLoopWatchdogPause() {
+    if (active_) {
+      esp_task_wdt_add(nullptr);
+      esp_task_wdt_reset();
+    }
+  }
+
+private:
+  bool active_ = false;
+};
+
 class AudioFileSourceArduinoStream : public AudioFileSource {
 public:
   AudioFileSourceArduinoStream(Stream &stream, const uint8_t *prefix, size_t prefixLength, int contentLength)
@@ -423,6 +440,7 @@ bool SoundManager::playMp3Stream(const String &url) {
   }
 
   AppLog.println("[SpotifyDJ] DJ response MP3 playback started");
+  ScopedLoopWatchdogPause watchdogPause;
   const uint32_t startedAt = millis();
   while (mp3.isRunning()) {
     esp_task_wdt_reset();
@@ -488,6 +506,7 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   }
 
   AppLog.println("[SpotifyDJ] DJ response MP3 playback started");
+  ScopedLoopWatchdogPause watchdogPause;
   const uint32_t startedAt = millis();
   while (mp3.isRunning()) {
     esp_task_wdt_reset();
