@@ -84,6 +84,19 @@ bool SpotifyDJOTA::performUpdate(
   if (sound != nullptr) {
     sound->playOtaStart();
   }
+  if (display != nullptr) {
+    display->forceBacklightPercent(100);
+    const String displayMessage = String(I18n::text("firmware_update_progress")) +
+                                  "\n" + request.version;
+    if (battery != nullptr) {
+      display->showBootMessage(displayMessage, *battery);
+    } else {
+      display->showBootMessage(displayMessage);
+    }
+  }
+  if (ledRing != nullptr) {
+    ledRing->showFirmwareUpdateAnimation();
+  }
   auto failWithCue = [&]() {
     if (sound != nullptr) {
       sound->playOtaFailed();
@@ -94,6 +107,8 @@ bool SpotifyDJOTA::performUpdate(
   HTTPClient http;
   NetworkActivity activity("ota_download", Config::OtaIoTimeoutMs);
   NetworkActivity::configureHttp(http, Config::OtaConnectTimeoutMs, Config::OtaIoTimeoutMs);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  http.setRedirectLimit(5);
   WiFiClientSecure secureClient;
   // Firmware authenticity is enforced with the manifest SHA256 below.
   secureClient.setInsecure();
@@ -126,18 +141,6 @@ bool SpotifyDJOTA::performUpdate(
     activity.finishError("Update.begin failed");
     failWithCue();
     return false;
-  }
-
-  if (display != nullptr) {
-    display->forceBacklightPercent(100);
-    if (battery != nullptr) {
-      display->showBootMessage(I18n::text("firmware_update_progress"), *battery);
-    } else {
-      display->showBootMessage(I18n::text("firmware_update_progress"));
-    }
-  }
-  if (ledRing != nullptr) {
-    ledRing->showFirmwareUpdateAnimation();
   }
 
   uint8_t buffer[1024];
