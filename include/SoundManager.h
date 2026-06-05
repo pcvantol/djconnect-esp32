@@ -53,6 +53,9 @@ public:
   // Plays a raw WAV stream returned by Home Assistant voice processing.
   bool playWavStream(Stream &stream, int contentLength);
 
+  // Streams an MP3 URL directly to the on-board speaker using a small decoder.
+  bool playMp3Stream(const String &url);
+
 private:
   enum class Event : uint8_t {
     Startup,
@@ -75,11 +78,13 @@ private:
   static void soundTask(void *parameter);
   void runTask();
   void enqueue(Event event);
+  bool installI2s();
   void playTone(uint16_t frequency, uint16_t durationMs, uint8_t amplitude = 18);
   void playSilence(uint16_t durationMs);
 
   QueueHandle_t queue_ = nullptr;
   bool ready_ = false;
+  bool streamingAudio_ = false;
   uint8_t volumePercent_ = 100;
   uint32_t lastVolumeTickAt_ = 0;
 };

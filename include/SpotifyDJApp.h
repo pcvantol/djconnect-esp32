@@ -171,9 +171,14 @@ private:
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
 
-  // Shows HA DJ response text and optionally plays the HA-generated PCM WAV response URL.
+  struct DjAudioPlaybackResult {
+    bool spoken = false;
+    String audioType = "none";
+  };
+
+  // Shows HA DJ response text and optionally plays the HA-generated WAV/MP3 response URL.
   bool handleDjResponseText(const String &text, const String &audioUrl, bool &spoken);
-  bool playDjResponseAudioUrl(const String &audioUrl);
+  DjAudioPlaybackResult playDjResponseAudioUrl(const String &audioUrl);
 
   // Applies credentials and language pushed by Home Assistant without touching local fallbacks.
   void applyProvisionedLanguage(const String &languageCode);
@@ -198,7 +203,7 @@ private:
   static void refreshFromWebCallback(void *context);
   static void resetPairingFromWebCallback(void *context);
   static void hardResetFromWebCallback(void *context);
-  static bool djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken);
+  static bool djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType);
   static void languageProvisionedCallback(void *context, const String &languageCode);
   static void spotifyProvisionedCallback(void *context);
   void showNotice(const String &message, uint32_t ttlMs = 2500);
@@ -234,6 +239,7 @@ private:
   ProvisioningController provisioning_;
   RuntimeDiagnostics diagnostics_;
   VisualState visualState_;
+  String lastDjAudioType_ = "none";
 
   UiScreen activeScreen_ = UiScreen::NowPlaying;
   UiScreen menuStack_[SpotifyDJMenu::MenuStackCapacity] = {};

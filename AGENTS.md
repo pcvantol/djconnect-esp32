@@ -162,8 +162,8 @@ DJ response playback rules:
 
 - Required JSON field: `text`.
 - Optional JSON field: `audio_url`.
-- `audio_url` must point to PCM WAV audio if the ESP should speak it through `SoundManager::playWavStream()`.
-- Do not add MP3/Opus decoding unless explicitly requested; let Home Assistant generate a compatible WAV.
+- `audio_url` may point to PCM WAV or MP3 audio. Detect by `Content-Type` first and magic bytes as fallback.
+- WAV stays on `SoundManager::playWavStream()`; MP3 stays on `SoundManager::playMp3Stream()`. Do not rewrite the WAV pipeline when changing MP3 support.
 - If no playable audio is supplied, return success with `spoken:false` and still display the text.
 - `POST /api/device/ota`
 - `POST /api/device/reboot`
@@ -255,8 +255,8 @@ Push-to-talk uses Route B:
 - Do not upload WAV audio to `/api/spotify_dj/voice` for STT.
 - `/api/spotify_dj/voice` receives recognized text only, via `X-SpotifyDJ-Text` and JSON body `{ "text": "..." }`.
 - The HA integration is responsible for Spotify command handling, `dj_text`, and optional backend TTS generation.
-- HA pushes DJ response text plus optional PCM WAV `audio_url` back to the ESP with `POST /api/device/dj_response`.
-- The ESP displays the DJ text, plays compatible PCM WAV through `SoundManager::playWavStream()`, and then returns to the normal UI.
+- HA pushes DJ response text plus optional WAV/MP3 `audio_url` back to the ESP with `POST /api/device/dj_response`.
+- The ESP displays the DJ text, plays compatible WAV through `SoundManager::playWavStream()` or MP3 through `SoundManager::playMp3Stream()`, and then returns to the normal UI.
 - Web portal PTT is a compact simulation button: it sends a fixed localized test command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on Spotify credentials or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/spotify_dj/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
 - Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.

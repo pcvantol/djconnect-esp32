@@ -1,6 +1,9 @@
 // I2S speaker cues. Uses generated square waves to avoid storing audio assets.
 #include "SoundManager.h"
 
+#include <AudioFileSourceHTTPStream.h>
+#include <AudioGeneratorMP3.h>
+#include <AudioOutputI2S.h>
 #include <driver/i2s.h>
 #include <cstring>
 
@@ -16,6 +19,22 @@ void SoundManager::begin() {
     return;
   }
 
+  if (!installI2s()) {
+    AppLog.println("Speaker I2S init failed");
+    return;
+  }
+
+  queue_ = xQueueCreate(6, sizeof(Event));
+  if (queue_ == nullptr) {
+    AppLog.println("Speaker queue failed");
+    return;
+  }
+
+  ready_ = true;
+  xTaskCreatePinnedToCore(soundTask, "sound", 3072, this, 1, nullptr, 0);
+}
+
+bool SoundManager::installI2s() {
   const i2s_config_t i2sConfig = {
       .mode = static_cast<i2s_mode_t>(I2S_MODE_MASTER | I2S_MODE_TX),
       .sample_rate = Config::SpeakerSampleRate,
@@ -39,19 +58,10 @@ void SoundManager::begin() {
 
   if (i2s_driver_install(SpeakerI2sPort, &i2sConfig, 0, nullptr) != ESP_OK ||
       i2s_set_pin(SpeakerI2sPort, &pinConfig) != ESP_OK) {
-    AppLog.println("Speaker I2S init failed");
-    return;
+    return false;
   }
   i2s_zero_dma_buffer(SpeakerI2sPort);
-
-  queue_ = xQueueCreate(6, sizeof(Event));
-  if (queue_ == nullptr) {
-    AppLog.println("Speaker queue failed");
-    return;
-  }
-
-  ready_ = true;
-  xTaskCreatePinnedToCore(soundTask, "sound", 3072, this, 1, nullptr, 0);
+  return true;
 }
 
 void SoundManager::setVolumePercent(uint8_t percent) {
@@ -120,8 +130,13 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
     AppLog.println("[SpotifyDJ] voice response audio skipped: speaker not ready");
     return false;
   }
+  streamingAudio_ = true;
+  auto finish = [&](bool ok) {
+    streamingAudio_ = false;
+    return ok;
+  };
   if (contentLength > 0 && contentLength < 12) {
-    return false;
+    return finish(false);
   }
 
   auto readExact = [&](uint8_t *target, size_t length) -> bool {
@@ -139,7 +154,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
       memcmp(riff, "RIFF", 4) != 0 ||
       memcmp(riff + 8, "WAVE", 4) != 0) {
     AppLog.println("[SpotifyDJ] voice response is not PCM WAV");
-    return false;
+    return finish(false);
   }
 
   uint16_t audioFormat = 0;
@@ -165,7 +180,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
       uint8_t fmt[16] = {};
       if (chunkSize < sizeof(fmt) || !readExact(fmt, sizeof(fmt))) {
         AppLog.println("[SpotifyDJ] invalid voice WAV fmt chunk");
-        return false;
+        return finish(false);
       }
       consumed += sizeof(fmt);
       audioFormat = readLe16(fmt);
@@ -175,7 +190,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
       foundFormat = true;
       for (uint32_t skip = sizeof(fmt); skip < chunkSize; skip++) {
         if (stream.read() < 0) {
-          return false;
+          return finish(false);
         }
         consumed++;
       }
@@ -186,7 +201,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
     } else {
       for (uint32_t skip = 0; skip < chunkSize; skip++) {
         if (stream.read() < 0) {
-          return false;
+          return finish(false);
         }
       }
       consumed += chunkSize;
@@ -194,7 +209,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
 
     if (chunkSize % 2 != 0) {
       if (stream.read() < 0) {
-        return false;
+        return finish(false);
       }
       consumed++;
     }
@@ -202,11 +217,11 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
 
   if (!foundFormat || !foundData) {
     AppLog.println("[SpotifyDJ] voice WAV missing fmt/data chunk");
-    return false;
+    return finish(false);
   }
   if (audioFormat != 1 || channels != 1 || bitsPerSample != 16 || sampleRate == 0) {
     AppLog.println("[SpotifyDJ] unsupported voice WAV format");
-    return false;
+    return finish(false);
   }
   if (contentLength > 0 && consumed + dataBytes > static_cast<uint32_t>(contentLength)) {
     dataBytes = static_cast<uint32_t>(contentLength) - consumed;
@@ -230,7 +245,61 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
     remaining -= got;
   }
   i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
-  return remaining == 0;
+  return finish(remaining == 0);
+}
+
+bool SoundManager::playMp3Stream(const String &url) {
+  if (!ready_) {
+    AppLog.println("[SpotifyDJ] MP3 response audio skipped: speaker not ready");
+    return false;
+  }
+  if (url.isEmpty()) {
+    return false;
+  }
+
+  streamingAudio_ = true;
+  i2s_driver_uninstall(SpeakerI2sPort);
+
+  AudioFileSourceHTTPStream source(url.c_str());
+  AudioOutputI2S output(SpeakerI2sPort);
+  output.SetPinout(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
+  output.SetGain(static_cast<float>(volumePercent_) / 100.0f);
+
+  AudioGeneratorMP3 mp3;
+  const bool started = mp3.begin(&source, &output);
+  if (!started) {
+    AppLog.println("[SpotifyDJ] MP3 decoder start failed");
+    source.close();
+    installI2s();
+    streamingAudio_ = false;
+    return false;
+  }
+
+  AppLog.println("[SpotifyDJ] DJ response MP3 playback started");
+  const uint32_t startedAt = millis();
+  while (mp3.isRunning()) {
+    if (!mp3.loop()) {
+      break;
+    }
+    if (millis() - startedAt > Config::DjAudioIoTimeoutMs) {
+      AppLog.println("[SpotifyDJ] MP3 playback timeout");
+      break;
+    }
+    delay(1);
+    yield();
+  }
+  mp3.stop();
+  source.close();
+  output.stop();
+
+  const bool restored = installI2s();
+  if (!restored) {
+    AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3");
+    ready_ = false;
+  }
+  streamingAudio_ = false;
+  AppLog.println("[SpotifyDJ] DJ response MP3 playback finished");
+  return restored;
 }
 
 void SoundManager::soundTask(void *parameter) {
@@ -313,7 +382,7 @@ void SoundManager::runTask() {
 }
 
 void SoundManager::enqueue(Event event) {
-  if (!ready_ || queue_ == nullptr) {
+  if (!ready_ || queue_ == nullptr || streamingAudio_) {
     return;
   }
   xQueueSend(queue_, &event, 0);

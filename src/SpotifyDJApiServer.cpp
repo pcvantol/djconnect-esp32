@@ -267,20 +267,27 @@ void SpotifyDJApiServer::handleDjResponse() {
   AppLog.println(text.length());
   bool displayed = false;
   bool spoken = false;
+  String audioType = audioUrl.isEmpty() ? "none" : "unknown";
   if (djResponseCallback_ != nullptr) {
-    displayed = djResponseCallback_(callbackContext_, text, audioUrl, spoken);
+    displayed = djResponseCallback_(callbackContext_, text, audioUrl, spoken, audioType);
   }
   if (!displayed) {
     sendJson(500, "{\"success\":false,\"error\":\"dj response display failed\"}");
     return;
   }
-  if (spoken) {
-    sendJson(200, "{\"success\":true,\"spoken\":true,\"displayed\":true}");
-  } else {
-    sendJson(
-        202,
-        "{\"success\":true,\"spoken\":false,\"displayed\":true,\"message\":\"DJ response displayed; no playable TTS audio supplied\"}");
+  JsonDocument response;
+  response["success"] = true;
+  response["spoken"] = spoken;
+  response["displayed"] = true;
+  response["audio_type"] = audioType;
+  if (!spoken) {
+    response["message"] = audioUrl.isEmpty()
+                              ? "DJ response displayed; no TTS audio supplied"
+                              : "DJ response displayed; audio could not be played";
   }
+  String payload;
+  serializeJson(response, payload);
+  sendJson(spoken ? 200 : 202, payload);
 }
 
 void SpotifyDJApiServer::handleReboot() {

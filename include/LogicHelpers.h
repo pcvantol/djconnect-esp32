@@ -235,6 +235,77 @@ inline bool isSpotifyPlaylistContextUri(const char *uri) {
   return uri != nullptr && strncmp(uri, prefix, strlen(prefix)) == 0 && uri[strlen(prefix)] != '\0';
 }
 
+enum class DjAudioType : uint8_t {
+  None,
+  Wav,
+  Mp3,
+  Unknown,
+};
+
+inline char asciiLower(char value) {
+  return value >= 'A' && value <= 'Z' ? static_cast<char>(value + ('a' - 'A')) : value;
+}
+
+inline bool contentTypeEquals(const char *contentType, const char *expected) {
+  if (contentType == nullptr || expected == nullptr) {
+    return false;
+  }
+  while (*contentType == ' ' || *contentType == '\t') {
+    contentType++;
+  }
+  while (*expected != '\0') {
+    if (*contentType == '\0' || *contentType == ';' || asciiLower(*contentType) != *expected) {
+      return false;
+    }
+    contentType++;
+    expected++;
+  }
+  return *contentType == '\0' || *contentType == ';' || *contentType == ' ' || *contentType == '\t';
+}
+
+inline const char *djAudioTypeName(DjAudioType type) {
+  switch (type) {
+    case DjAudioType::Wav:
+      return "wav";
+    case DjAudioType::Mp3:
+      return "mp3";
+    case DjAudioType::Unknown:
+      return "unknown";
+    case DjAudioType::None:
+    default:
+      return "none";
+  }
+}
+
+inline DjAudioType djAudioTypeFromContentType(const char *contentType) {
+  if (contentTypeEquals(contentType, "audio/wav") ||
+      contentTypeEquals(contentType, "audio/x-wav") ||
+      contentTypeEquals(contentType, "audio/wave")) {
+    return DjAudioType::Wav;
+  }
+  if (contentTypeEquals(contentType, "audio/mpeg") ||
+      contentTypeEquals(contentType, "audio/mp3")) {
+    return DjAudioType::Mp3;
+  }
+  return DjAudioType::Unknown;
+}
+
+inline DjAudioType djAudioTypeFromHeaderBytes(const uint8_t *bytes, size_t length) {
+  if (bytes == nullptr || length == 0) {
+    return DjAudioType::Unknown;
+  }
+  if (length >= 12 && memcmp(bytes, "RIFF", 4) == 0 && memcmp(bytes + 8, "WAVE", 4) == 0) {
+    return DjAudioType::Wav;
+  }
+  if (length >= 3 && memcmp(bytes, "ID3", 3) == 0) {
+    return DjAudioType::Mp3;
+  }
+  if (length >= 2 && bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0) {
+    return DjAudioType::Mp3;
+  }
+  return DjAudioType::Unknown;
+}
+
 // True when Spotify's paged playlist response indicates there can be another page to inspect.
 inline bool shouldFetchNextSpotifyPlaylistPage(size_t itemCount, int total, int offset, int pageSize) {
   if (itemCount == 0 || pageSize <= 0 || offset < 0) {

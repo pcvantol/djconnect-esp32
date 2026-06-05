@@ -134,6 +134,27 @@ static void testWebBatteryHeaderClass() {
   assert(std::strcmp(Logic::batteryHeaderClass(90, true), "charging high") == 0);
 }
 
+static void testDjAudioTypeDetection() {
+  assert(Logic::djAudioTypeFromContentType("audio/wav") == Logic::DjAudioType::Wav);
+  assert(Logic::djAudioTypeFromContentType("audio/x-wav; charset=binary") == Logic::DjAudioType::Wav);
+  assert(Logic::djAudioTypeFromContentType("Audio/MPEG") == Logic::DjAudioType::Mp3);
+  assert(Logic::djAudioTypeFromContentType(" audio/mp3 ") == Logic::DjAudioType::Mp3);
+  assert(Logic::djAudioTypeFromContentType("application/octet-stream") == Logic::DjAudioType::Unknown);
+  assert(std::strcmp(Logic::djAudioTypeName(Logic::DjAudioType::Wav), "wav") == 0);
+  assert(std::strcmp(Logic::djAudioTypeName(Logic::DjAudioType::Mp3), "mp3") == 0);
+  assert(std::strcmp(Logic::djAudioTypeName(Logic::DjAudioType::Unknown), "unknown") == 0);
+
+  const uint8_t wavHeader[] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V', 'E'};
+  const uint8_t id3Header[] = {'I', 'D', '3', 4};
+  const uint8_t mp3FrameHeader[] = {0xFF, 0xFB, 0x90, 0x64};
+  const uint8_t unknownHeader[] = {'O', 'g', 'g', 'S'};
+  assert(Logic::djAudioTypeFromHeaderBytes(wavHeader, sizeof(wavHeader)) == Logic::DjAudioType::Wav);
+  assert(Logic::djAudioTypeFromHeaderBytes(id3Header, sizeof(id3Header)) == Logic::DjAudioType::Mp3);
+  assert(Logic::djAudioTypeFromHeaderBytes(mp3FrameHeader, sizeof(mp3FrameHeader)) == Logic::DjAudioType::Mp3);
+  assert(Logic::djAudioTypeFromHeaderBytes(unknownHeader, sizeof(unknownHeader)) == Logic::DjAudioType::Unknown);
+  assert(Logic::djAudioTypeFromHeaderBytes(nullptr, 0) == Logic::DjAudioType::Unknown);
+}
+
 static void testBq27220Interpretation() {
   const auto stuckReading = Logic::interpretBq27220(
       40,
@@ -458,6 +479,7 @@ int main() {
   testBacklightDutyCurve();
   testBatteryVoltageFallbackCurve();
   testWebBatteryHeaderClass();
+  testDjAudioTypeDetection();
   testBq27220Interpretation();
   testVoiceChunkHelpers();
   testPlayModeMapping();

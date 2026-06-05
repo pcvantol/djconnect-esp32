@@ -229,8 +229,8 @@ Physical PTT:
 3. Release the encoder button.
 4. Home Assistant returns recognized text.
 5. The ESP sends recognized text to the SpotifyDJ HA integration at `/api/spotify_dj/voice`.
-6. The HA integration can return DJ text and an optional PCM WAV `audio_url`.
-7. The ESP displays the DJ text briefly and plays compatible PCM WAV audio through the built-in speaker.
+6. The HA integration can return DJ text and an optional WAV or MP3 `audio_url`.
+7. The ESP displays the DJ text briefly, detects the audio type from `Content-Type` or magic bytes, and plays compatible WAV/MP3 audio through the built-in speaker.
 8. The UI returns to Now Playing.
 
 Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require Spotify credentials, an active Spotify playback session or browser microphone permission.
@@ -343,7 +343,7 @@ Skip GitHub release creation when you only want the commit/tag/push steps:
 ./release.sh X.Y.Z --no-gh-release
 ```
 
-For example, `./release.sh 2.7.2 --dry-run` validates the release plan without touching files. Both `2.7.2` and `v2.7.2` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.7.3 --dry-run` validates the release plan without touching files. Both `2.7.3` and `v2.7.3` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

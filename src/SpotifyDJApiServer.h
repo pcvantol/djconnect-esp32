@@ -15,7 +15,7 @@
 
 class SpotifyDJApiServer {
 public:
-  using DjResponseCallback = bool (*)(void *context, const String &text, const String &audioUrl, bool &spoken);
+  using DjResponseCallback = bool (*)(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType);
   using LanguageProvisionedCallback = void (*)(void *context, const String &languageCode);
 
   void begin(

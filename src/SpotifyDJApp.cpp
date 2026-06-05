@@ -11,6 +11,7 @@
 #include <WiFi.h>
 #include <esp_heap_caps.h>
 #include <esp_sleep.h>
+#include <cstring>
 #include <time.h>
 
 #include "AppLog.h"
@@ -26,6 +27,46 @@
 
 namespace {
 static const char *const TopHoldMenuHint = "hold to open menu";
+
+class PrefixStream : public Stream {
+public:
+  PrefixStream(const uint8_t *prefix, size_t prefixLength, Stream &inner)
+      : prefix_(prefix),
+        prefixLength_(prefixLength),
+        inner_(inner) {}
+
+  int available() override {
+    return static_cast<int>(prefixLength_ - prefixOffset_) + inner_.available();
+  }
+
+  int read() override {
+    if (prefixOffset_ < prefixLength_) {
+      return prefix_[prefixOffset_++];
+    }
+    return inner_.read();
+  }
+
+  int peek() override {
+    if (prefixOffset_ < prefixLength_) {
+      return prefix_[prefixOffset_];
+    }
+    return inner_.peek();
+  }
+
+  void flush() override {
+    inner_.flush();
+  }
+
+  size_t write(uint8_t) override {
+    return 0;
+  }
+
+private:
+  const uint8_t *prefix_ = nullptr;
+  size_t prefixLength_ = 0;
+  size_t prefixOffset_ = 0;
+  Stream &inner_;
+};
 
 String dimTimeoutLabel(uint32_t valueMs) {
   if (valueMs == 30000UL) {
@@ -1963,7 +2004,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
     if (message != "Voice command sent") {
       handleDjResponseText(message, audioUrl, spoken);
     } else if (!audioUrl.isEmpty()) {
-      spoken = playDjResponseAudioUrl(audioUrl);
+      spoken = playDjResponseAudioUrl(audioUrl).spoken;
       showNotice(spoken ? I18n::text("voice_response_played") : I18n::text("voice_response_audio_failed"), 3500);
     } else {
       showNotice(recognizedText, 3500);
@@ -2986,7 +3027,7 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
     if (message != "Voice command sent") {
       app->handleDjResponseText(message, audioUrl, spoken);
     } else if (!audioUrl.isEmpty()) {
-      spoken = app->playDjResponseAudioUrl(audioUrl);
+      spoken = app->playDjResponseAudioUrl(audioUrl).spoken;
     }
   } else if (app->voiceClient_.pairingInvalidated()) {
     app->markHomeAssistantPairingInvalid(message);
@@ -3033,8 +3074,11 @@ void SpotifyDJApp::hardResetFromWebCallback(void *context) {
   static_cast<SpotifyDJApp *>(context)->hardResetToProvisioning();
 }
 
-bool SpotifyDJApp::djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken) {
-  return static_cast<SpotifyDJApp *>(context)->handleDjResponseText(text, audioUrl, spoken);
+bool SpotifyDJApp::djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType) {
+  SpotifyDJApp *app = static_cast<SpotifyDJApp *>(context);
+  const bool displayed = app->handleDjResponseText(text, audioUrl, spoken);
+  audioType = audioUrl.isEmpty() ? "none" : app->lastDjAudioType_;
+  return displayed;
 }
 
 void SpotifyDJApp::languageProvisionedCallback(void *context, const String &languageCode) {
@@ -3055,6 +3099,7 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   }
   spoken = false;
   diagnostics_.lastDjText = text;
+  lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "unknown";
   AppLog.print("[SpotifyDJ] DJ response displayed chars=");
   AppLog.println(text.length());
   djResponseOverlayVisible_ = true;
@@ -3062,7 +3107,7 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   display_.wakeForUserActivity();
   renderNow();
   if (!audioUrl.isEmpty()) {
-    spoken = playDjResponseAudioUrl(audioUrl);
+    spoken = playDjResponseAudioUrl(audioUrl).spoken;
   }
   if (!spoken && volumeFeedbackEnabled_) {
     sound_.playConfirm();
@@ -3073,10 +3118,13 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   return true;
 }
 
-bool SpotifyDJApp::playDjResponseAudioUrl(const String &audioUrl) {
+SpotifyDJApp::DjAudioPlaybackResult SpotifyDJApp::playDjResponseAudioUrl(const String &audioUrl) {
+  DjAudioPlaybackResult result;
   if (WiFi.status() != WL_CONNECTED) {
     AppLog.println("[SpotifyDJ] DJ response audio skipped: WiFi disconnected");
-    return false;
+    result.audioType = "unknown";
+    lastDjAudioType_ = result.audioType;
+    return result;
   }
 
   HTTPClient http;
@@ -3085,27 +3133,73 @@ bool SpotifyDJApp::playDjResponseAudioUrl(const String &audioUrl) {
   if (!http.begin(audioUrl)) {
     AppLog.println("[SpotifyDJ] DJ response audio begin failed");
     activity.finishError("begin failed");
-    return false;
+    result.audioType = "unknown";
+    lastDjAudioType_ = result.audioType;
+    return result;
   }
 
   AppLog.println("[SpotifyDJ] DJ response audio download");
+  static const char *headers[] = {"Content-Type"};
+  http.collectHeaders(headers, 1);
   const int code = http.GET();
   if (code < 200 || code >= 300) {
     AppLog.print("[SpotifyDJ] DJ response audio HTTP ");
     AppLog.println(code);
     http.end();
     activity.finish(code);
-    return false;
+    result.audioType = "unknown";
+    lastDjAudioType_ = result.audioType;
+    return result;
   }
 
   const int contentLength = http.getSize();
   Stream *stream = http.getStreamPtr();
-  const bool ok = stream != nullptr && sound_.playWavStream(*stream, contentLength);
+  Logic::DjAudioType audioType = Logic::djAudioTypeFromContentType(http.header("Content-Type").c_str());
+  uint8_t prefix[12] = {};
+  size_t prefixLength = 0;
+  if (stream != nullptr && audioType == Logic::DjAudioType::Unknown) {
+    const uint32_t start = millis();
+    while (prefixLength < sizeof(prefix) && millis() - start < Config::HttpConnectTimeoutMs) {
+      const int value = stream->read();
+      if (value >= 0) {
+        prefix[prefixLength++] = static_cast<uint8_t>(value);
+      } else {
+        delay(1);
+        yield();
+      }
+    }
+    audioType = Logic::djAudioTypeFromHeaderBytes(prefix, prefixLength);
+  }
+
+  result.audioType = Logic::djAudioTypeName(audioType);
+  bool ok = false;
+  if (stream != nullptr && audioType == Logic::DjAudioType::Wav) {
+    PrefixStream prefixed(prefix, prefixLength, *stream);
+    ok = sound_.playWavStream(prefixed, contentLength);
+  } else if (audioType == Logic::DjAudioType::Mp3) {
+    http.end();
+    activity.finish(code, "mp3 dispatch");
+    ok = sound_.playMp3Stream(audioUrl);
+    result.spoken = ok;
+    lastDjAudioType_ = result.audioType;
+    AppLog.print("[SpotifyDJ] DJ response audio type=");
+    AppLog.print(result.audioType);
+    AppLog.print(" played=");
+    AppLog.println(ok ? "true" : "false");
+    return result;
+  } else {
+    AppLog.println("[SpotifyDJ] DJ response audio type unsupported");
+  }
+
   http.end();
   activity.finish(code, ok ? "played" : "playback failed");
-  AppLog.print("[SpotifyDJ] DJ response audio played: ");
+  result.spoken = ok;
+  lastDjAudioType_ = result.audioType;
+  AppLog.print("[SpotifyDJ] DJ response audio type=");
+  AppLog.print(result.audioType);
+  AppLog.print(" played=");
   AppLog.println(ok ? "true" : "false");
-  return ok;
+  return result;
 }
 
 void SpotifyDJApp::renderMenuNow() {
