@@ -3,13 +3,78 @@
 
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <LittleFS.h>
 #include <WiFi.h>
+#include <esp_task_wdt.h>
 
 #include "AppLog.h"
 #include "Config.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
+
+namespace {
+class ScopedWatchdogPause {
+public:
+  ScopedWatchdogPause() {
+    active_ = esp_task_wdt_delete(nullptr) == ESP_OK;
+  }
+
+  ~ScopedWatchdogPause() {
+    if (active_) {
+      esp_task_wdt_add(nullptr);
+      esp_task_wdt_reset();
+    }
+  }
+
+private:
+  bool active_ = false;
+};
+
+String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs) {
+  String body;
+  WiFiClient *stream = http.getStreamPtr();
+  if (stream == nullptr) {
+    return body;
+  }
+
+  const int contentLength = http.getSize();
+  if (contentLength > 0) {
+    body.reserve(contentLength);
+  }
+
+  uint32_t lastDataAt = millis();
+  int remaining = contentLength;
+  while (remaining != 0 && millis() - lastDataAt < timeoutMs) {
+    esp_task_wdt_reset();
+    const int available = stream->available();
+    if (available <= 0) {
+      delay(1);
+      yield();
+      continue;
+    }
+
+    char buffer[193] = {};
+    const size_t want = contentLength > 0
+                            ? min(static_cast<int>(sizeof(buffer) - 1), remaining)
+                            : min(static_cast<int>(sizeof(buffer) - 1), available);
+    const int got = stream->readBytes(buffer, want);
+    if (got <= 0) {
+      delay(1);
+      yield();
+      continue;
+    }
+    buffer[got] = '\0';
+    body += buffer;
+    lastDataAt = millis();
+    if (remaining > 0) {
+      remaining -= got;
+    }
+  }
+  esp_task_wdt_reset();
+  return body;
+}
+}  // namespace
 
 void VoiceHttpClient::begin(SpotifyDJDevice &device) {
   device_ = &device;
@@ -102,12 +167,107 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
 
   AppLog.print("[SpotifyDJ] voice text command chars=");
   AppLog.println(recognizedText.length());
-  const int code = http.POST(body);
+  esp_task_wdt_reset();
+  int code = 0;
+  {
+    ScopedWatchdogPause watchdogPause;
+    code = http.POST(body);
+  }
+  esp_task_wdt_reset();
   AppLog.print("[SpotifyDJ] voice command response: ");
   AppLog.println(code);
-  const String response = http.getString();
+  const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs);
   http.end();
   activity.finish(code);
+  if (code < 200 || code >= 300) {
+    pairingInvalidated_ = Logic::isHomeAssistantPairingInvalidStatus(code);
+    if (code == 404) {
+      message = I18n::text("voice_ha_endpoint_missing");
+    } else if (code == 401 || code == 403) {
+      message = I18n::text("voice_ha_auth_failed");
+    } else {
+      message = "Voice HTTP " + String(code);
+    }
+    return false;
+  }
+
+  JsonDocument responseDoc;
+  if (!response.isEmpty() && !deserializeJson(responseDoc, response)) {
+    const char *responseText = responseDoc["text"] | responseDoc["dj_text"] | "";
+    const char *responseAudioUrl = responseDoc["audio_url"] | "";
+    if (audioUrl != nullptr) {
+      *audioUrl = responseAudioUrl;
+    }
+    if (strlen(responseText) > 0) {
+      message = responseText;
+      return true;
+    }
+  }
+  message = "Voice command sent";
+  return true;
+}
+
+bool VoiceHttpClient::uploadWav(const String &path, String &message, String *audioUrl) {
+  pairingInvalidated_ = false;
+  if (device_ == nullptr || !device_->isPaired()) {
+    message = "No HA pairing";
+    return false;
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    message = "WiFi disconnected";
+    return false;
+  }
+  const String token = device_->getDeviceToken();
+  const String url = endpoint("/api/spotify_dj/voice");
+  if (token.isEmpty()) {
+    message = "No device token";
+    return false;
+  }
+  if (url.isEmpty()) {
+    message = "No HA URL";
+    return false;
+  }
+
+  fs::File file = LittleFS.open(path, "r");
+  if (!file) {
+    message = "Voice file open failed";
+    return false;
+  }
+  const size_t fileSize = file.size();
+  if (fileSize == 0 || fileSize > Config::VoiceMaxWavBytes) {
+    file.close();
+    message = "Audio too large";
+    return false;
+  }
+
+  HTTPClient http;
+  NetworkActivity activity("voice_wav_upload", Config::VoiceCommandIoTimeoutMs);
+  NetworkActivity::configureHttp(http, Config::HttpConnectTimeoutMs, Config::VoiceCommandIoTimeoutMs);
+  if (!http.begin(url)) {
+    file.close();
+    message = "Voice HTTP begin failed";
+    activity.finishError("begin failed");
+    return false;
+  }
+  http.addHeader("Content-Type", "audio/wav");
+  http.addHeader("Authorization", "Bearer " + token);
+  http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
+  AppLog.print("[SpotifyDJ] voice WAV upload bytes=");
+  AppLog.println(fileSize);
+
+  int code = 0;
+  {
+    ScopedWatchdogPause watchdogPause;
+    code = http.sendRequest("POST", &file, fileSize);
+  }
+  file.close();
+  esp_task_wdt_reset();
+  AppLog.print("[SpotifyDJ] voice WAV response: ");
+  AppLog.println(code);
+  const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs);
+  http.end();
+  activity.finish(code);
+
   if (code < 200 || code >= 300) {
     pairingInvalidated_ = Logic::isHomeAssistantPairingInvalidStatus(code);
     if (code == 404) {

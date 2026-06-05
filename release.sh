@@ -193,7 +193,7 @@ fi
 
 replace_version_examples "$VERSION" "$TAG"
 
-export SPOTIFYDJ_BUILD_FLAGS="-DSPOTIFYDJ_VERSION=\\\"$VERSION\\\" -DSPOTIFYDJ_VERSION_TAG=\\\"$TAG\\\""
+export SPOTIFYDJ_BUILD_FLAGS="-DSPOTIFYDJ_VERSION=$VERSION -DSPOTIFYDJ_VERSION_TAG=$TAG"
 run "$PIO_BIN" run -e t_embed_cc1101
 
 FIRMWARE_BIN="$(find .pio/build -path '*/firmware.bin' -type f | sort | head -n 1)"

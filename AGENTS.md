@@ -54,7 +54,8 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `include/Secrets.h`: optional non-secret build flags only. Do not put WiFi or Spotify credentials here.
 - `include/Secrets.example.h`: template for optional build flags.
 - `src/SpotifyDJDevice.*`, `src/SpotifyDJDiscovery.*`, `src/SpotifyDJPairing.*`, `src/SpotifyDJApiServer.*`, `src/SpotifyDJOTA.*`: Home Assistant device-layer modules.
-- `src/SpotifyDJAssistClient.*`, `include/VoiceRecorder.h`, `src/VoiceRecorder.cpp`, `include/VoiceHttpClient.h`, `src/VoiceHttpClient.cpp`: push-to-talk Assist STT and recognized-text command flow.
+- `include/VoiceRecorder.h`, `src/VoiceRecorder.cpp`, `include/VoiceHttpClient.h`, `src/VoiceHttpClient.cpp`: push-to-talk WAV recording and upload to the Home Assistant integration.
+- `src/SpotifyDJAssistClient.*`: deprecated direct Assist websocket client retained as source only; do not route physical PTT through it.
 - `src/WebPortal.cpp`: embedded mobile web UI, diagnostics, settings, logs and HA pairing panel.
 - `include/SoundManager.h`, `src/SoundManager.cpp`: generated built-in speaker cues and cue volume scaling.
 - `README.md`: user-facing English project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
@@ -84,7 +85,7 @@ Build firmware:
 Build with an explicit release version:
 
 ```sh
-SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION="X.Y.Z" -DSPOTIFYDJ_VERSION_TAG="vX.Y.Z"' \
+SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION=X.Y.Z -DSPOTIFYDJ_VERSION_TAG=vX.Y.Z' \
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
@@ -177,6 +178,8 @@ HA may provision UI language through `device_language` with `language` as fallba
 
 HA may provision Spotify OAuth credentials during pairing, status responses, or `POST /api/device/provision_spotify`. Use `SpotifyProvisioning::parseCredentials()` for every path. Support top-level `spotify_client_id`/`spotify_refresh_token`/`spotify_market`, compat top-level `client_id`/`refresh_token`/`market`, and nested `spotify` equivalents. Prefer nested `spotify.spotify_refresh_token`, then `spotify.refresh_token`, then top-level `spotify_refresh_token`, then top-level `refresh_token`; client id follows the same priority. If either client id or refresh token is missing, leave existing stored credentials untouched. Never log refresh tokens.
 
+If Spotify returns `invalid_grant`, the firmware marks local Spotify credentials stale and reports `spotify_configured=false` in the next HA status payload even when NVS still contains `sp_client`/`sp_refresh`. The HA integration is expected to return the latest rotated refresh token in its status response. Keep this behavior intact; it prevents HA/ESP token-rotation races from becoming permanent invalid-token loops.
+
 The web portal may repair Spotify OAuth credentials manually. Keep the refresh token write-only in the UI: do not render existing tokens, clear submitted fields after the request, store credentials in the `spotifydj` NVS namespace only, and immediately run an authorization test. Do not reintroduce the old `spotify/refresh` NVS namespace.
 
 mDNS:
@@ -204,7 +207,6 @@ Credentials are provisioned and stored in NVS.
 NVS namespaces:
 
 - `provision`: existing device provisioning/settings, including display timeouts/brightness, speaker cue volume, WiFi and MQTT.
-- `spotify`: rotated Spotify token cache.
 - `spotifydj`: Home Assistant device-layer storage.
 
 `spotifydj` keys:
@@ -224,9 +226,9 @@ The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postma
 
 ## Architecture Decisions
 
-- Treat Home Assistant as the trusted backend for pairing, Spotify command interpretation, Assist STT/TTS, OTA offer handling and optional MQTT provisioning.
+- Treat Home Assistant as the trusted backend for pairing, Spotify command interpretation, Assist STT/TTS, OTA offer handling, Spotify refresh-token reprovisioning and optional MQTT provisioning.
 - Keep the ESP focused on local edge behavior: display, buttons/encoder, LED ring, battery/power policy, speaker cues, microphone capture and playback of HA-provided DJ response audio.
-- Keep PTT on Route B: ESP streams raw PCM16 to HA Assist, sends recognized text to the SpotifyDJ integration, then displays/plays the returned DJ response. Do not add direct OpenAI calls or browser microphone uploads.
+- Keep PTT on the integration-backed WAV-upload route: ESP records WAV, uploads it to `/api/spotify_dj/voice`, then displays/plays the returned DJ response. Do not add direct ESP Assist websocket auth, direct OpenAI calls or browser microphone uploads.
 - Pairing validity is runtime state. On HA 401/403/404, mark Home Assistant as stale/red and disable PTT, but do not erase NVS pairing automatically.
 - Keep external JSON payload names compatible with HA, but keep internal ESP32 Preferences keys at 15 characters or less.
 - Route slow network operations through explicit timeout/backoff policy and avoid making input/display responsiveness depend on an unbounded HTTP call.
@@ -246,18 +248,14 @@ Do not introduce a Spotify client secret. The firmware should use PKCE/public-cl
 
 ## Voice / Assist Rules
 
-Push-to-talk uses Route B:
+Physical push-to-talk uses the Home Assistant integration as the backend boundary:
 
-- The ESP streams raw PCM16 mono 16 kHz microphone chunks to Home Assistant Assist over `/api/websocket`.
-- Start the HA pipeline with `assist_pipeline/run`, `start_stage=stt`, `end_stage=stt`.
-- Binary audio frames must be prefixed with the `stt_binary_handler_id` from the HA `run-start` event.
-- End audio by sending a binary frame containing only the `stt_binary_handler_id`.
-- Do not upload WAV audio to `/api/spotify_dj/voice` for STT.
-- `/api/spotify_dj/voice` receives recognized text only, via `X-SpotifyDJ-Text` and JSON body `{ "text": "..." }`.
-- The HA integration is responsible for Spotify command handling, `dj_text`, and optional backend TTS generation.
-- HA pushes DJ response text plus optional WAV/MP3 `audio_url` back to the ESP with `POST /api/device/dj_response`.
-- The ESP displays the DJ text, plays compatible WAV through `SoundManager::playWavStream()` or MP3 through `SoundManager::playMp3Stream()`, and then returns to the normal UI.
-- Web portal PTT is a compact simulation button: it sends a fixed localized test command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on Spotify credentials or active playback. Do not upload browser WAV audio to the ESP.
+- The ESP records mono 16 kHz PCM WAV to LittleFS while the encoder button is held.
+- On release, the ESP uploads the WAV as raw request body to `/api/spotify_dj/voice` with `Content-Type: audio/wav`, `Authorization: Bearer <device_token>` and `X-SpotifyDJ-Device-ID`.
+- The Home Assistant integration/backend owns any Home Assistant core auth needed for Assist, STT or TTS. If Assist requires `/api/websocket`, that websocket connection belongs in the HA integration, not on the ESP.
+- `/api/spotify_dj/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
+- Do not route physical PTT through `SpotifyDJAssistClient`; direct ESP Assist websocket auth causes `auth_invalid` because the SpotifyDJ device token is for the integration API, not Home Assistant core.
+- The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on Spotify credentials or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/spotify_dj/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
 - Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
 - Optional wake-word support must remain inert without a linked model hook. A trained model may expose `extern "C" bool spotifydj_micro_wake_word_detect(const int16_t *samples, size_t sampleCount);`; the detector must be fast, local-only, and must not perform network I/O from the audio poll path.

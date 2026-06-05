@@ -3,9 +3,12 @@
 
 #include <AudioFileSourceBuffer.h>
 #include <AudioFileSourceHTTPStream.h>
+#include <AudioFileSourceID3.h>
+#include <AudioFileSource.h>
 #include <AudioGeneratorMP3.h>
 #include <AudioOutputI2S.h>
 #include <driver/i2s.h>
+#include <esp_task_wdt.h>
 #include <cstring>
 
 #include "AppLog.h"
@@ -14,6 +17,64 @@
 // Speaker/DAC output uses I2S1 so it does not collide with the PDM microphone.
 static constexpr i2s_port_t SpeakerI2sPort = I2S_NUM_1;
 static constexpr uint32_t MinVolumeTickIntervalMs = 90;
+
+namespace {
+class AudioFileSourceArduinoStream : public AudioFileSource {
+public:
+  AudioFileSourceArduinoStream(Stream &stream, const uint8_t *prefix, size_t prefixLength, int contentLength)
+      : stream_(stream),
+        prefix_(prefix),
+        prefixLength_(prefixLength),
+        contentLength_(contentLength > 0 ? static_cast<uint32_t>(contentLength) : 0),
+        open_(true) {}
+
+  uint32_t read(void *data, uint32_t len) override {
+    if (!open_ || data == nullptr || len == 0) {
+      return 0;
+    }
+    uint8_t *target = static_cast<uint8_t *>(data);
+    uint32_t copied = 0;
+    while (copied < len && prefixOffset_ < prefixLength_) {
+      target[copied++] = prefix_[prefixOffset_++];
+      position_++;
+    }
+    if (copied < len) {
+      const uint32_t got = stream_.readBytes(target + copied, len - copied);
+      copied += got;
+      position_ += got;
+    }
+    esp_task_wdt_reset();
+    yield();
+    return copied;
+  }
+
+  bool close() override {
+    open_ = false;
+    return true;
+  }
+
+  bool isOpen() override {
+    return open_;
+  }
+
+  uint32_t getSize() override {
+    return contentLength_;
+  }
+
+  uint32_t getPos() override {
+    return position_;
+  }
+
+private:
+  Stream &stream_;
+  const uint8_t *prefix_ = nullptr;
+  size_t prefixLength_ = 0;
+  size_t prefixOffset_ = 0;
+  uint32_t contentLength_ = 0;
+  uint32_t position_ = 0;
+  bool open_ = false;
+};
+}  // namespace
 
 void SoundManager::begin() {
   if (ready_) {
@@ -167,6 +228,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   }
 
   auto readExact = [&](uint8_t *target, size_t length) -> bool {
+    esp_task_wdt_reset();
     return stream.readBytes(target, length) == length;
   };
   auto readLe16 = [](const uint8_t *data) -> uint16_t {
@@ -216,6 +278,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
       bitsPerSample = readLe16(fmt + 14);
       foundFormat = true;
       for (uint32_t skip = sizeof(fmt); skip < chunkSize; skip++) {
+        esp_task_wdt_reset();
         if (stream.read() < 0) {
           return finish(false);
         }
@@ -227,6 +290,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
       break;
     } else {
       for (uint32_t skip = 0; skip < chunkSize; skip++) {
+        esp_task_wdt_reset();
         if (stream.read() < 0) {
           return finish(false);
         }
@@ -262,6 +326,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   uint8_t buffer[512];
   uint32_t remaining = dataBytes;
   while (remaining > 0) {
+    esp_task_wdt_reset();
     const size_t want = min(static_cast<uint32_t>(sizeof(buffer)), remaining);
     const size_t got = stream.readBytes(buffer, want);
     if (got == 0) {
@@ -270,6 +335,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
     size_t written = 0;
     i2s_write(SpeakerI2sPort, buffer, got, &written, pdMS_TO_TICKS(100));
     remaining -= got;
+    yield();
   }
   i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
   return finish(remaining == 0);
@@ -291,15 +357,17 @@ bool SoundManager::playMp3Stream(const String &url) {
   i2s_driver_uninstall(SpeakerI2sPort);
 
   AudioFileSourceHTTPStream source(url.c_str());
-  AudioFileSourceBuffer buffered(&source, 2048);
+  AudioFileSourceBuffer buffered(&source, 4096);
+  AudioFileSourceID3 id3(&buffered);
   AudioOutputI2S output(SpeakerI2sPort);
   output.SetPinout(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
   output.SetGain(static_cast<float>(volumePercent_) / 100.0f);
 
   AudioGeneratorMP3 mp3;
-  const bool started = mp3.begin(&buffered, &output);
+  const bool started = mp3.begin(&id3, &output);
   if (!started) {
     AppLog.println("[SpotifyDJ] MP3 decoder start failed");
+    id3.close();
     buffered.close();
     source.close();
     if (!installI2s()) {
@@ -313,6 +381,7 @@ bool SoundManager::playMp3Stream(const String &url) {
   AppLog.println("[SpotifyDJ] DJ response MP3 playback started");
   const uint32_t startedAt = millis();
   while (mp3.isRunning()) {
+    esp_task_wdt_reset();
     if (!mp3.loop()) {
       break;
     }
@@ -324,6 +393,71 @@ bool SoundManager::playMp3Stream(const String &url) {
     yield();
   }
   mp3.stop();
+  id3.close();
+  buffered.close();
+  source.close();
+  output.stop();
+
+  const bool restored = installI2s();
+  if (!restored) {
+    AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3");
+    ready_ = false;
+  }
+  endAudioState();
+  AppLog.println("[SpotifyDJ] DJ response MP3 playback finished");
+  return restored;
+}
+
+bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t prefixLength, int contentLength) {
+  if (!ready_) {
+    AppLog.println("[SpotifyDJ] MP3 response audio skipped: speaker not ready");
+    return false;
+  }
+  if (!beginAudioState(AudioState::StreamingMp3, 250)) {
+    AppLog.println("[SpotifyDJ] MP3 response audio skipped: speaker busy");
+    return false;
+  }
+
+  i2s_driver_uninstall(SpeakerI2sPort);
+
+  AudioFileSourceArduinoStream source(stream, prefix, prefixLength, contentLength);
+  AudioFileSourceBuffer buffered(&source, 4096);
+  AudioFileSourceID3 id3(&buffered);
+  AudioOutputI2S output(SpeakerI2sPort);
+  output.SetPinout(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
+  output.SetGain(static_cast<float>(volumePercent_) / 100.0f);
+
+  AudioGeneratorMP3 mp3;
+  const bool started = mp3.begin(&id3, &output);
+  if (!started) {
+    AppLog.println("[SpotifyDJ] MP3 decoder start failed");
+    id3.close();
+    buffered.close();
+    source.close();
+    if (!installI2s()) {
+      AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3 start error");
+      ready_ = false;
+    }
+    endAudioState();
+    return false;
+  }
+
+  AppLog.println("[SpotifyDJ] DJ response MP3 playback started");
+  const uint32_t startedAt = millis();
+  while (mp3.isRunning()) {
+    esp_task_wdt_reset();
+    if (!mp3.loop()) {
+      break;
+    }
+    if (millis() - startedAt > Config::DjAudioIoTimeoutMs) {
+      AppLog.println("[SpotifyDJ] MP3 playback timeout");
+      break;
+    }
+    delay(1);
+    yield();
+  }
+  mp3.stop();
+  id3.close();
   buffered.close();
   source.close();
   output.stop();

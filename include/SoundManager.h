@@ -62,6 +62,9 @@ public:
   // Streams an MP3 URL directly to the on-board speaker using a small decoder.
   bool playMp3Stream(const String &url);
 
+  // Plays an already opened MP3 HTTP stream. Used after content-type/header sniffing.
+  bool playMp3Stream(Stream &stream, const uint8_t *prefix, size_t prefixLength, int contentLength);
+
 private:
   enum class AudioState : uint8_t {
     Idle,

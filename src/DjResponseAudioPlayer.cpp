@@ -119,16 +119,8 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
   if (stream != nullptr && audioType == Logic::DjAudioType::Wav) {
     PrefixStream prefixed(prefix, prefixLength, *stream);
     ok = sound_->playWavStream(prefixed, contentLength);
-  } else if (audioType == Logic::DjAudioType::Mp3) {
-    http.end();
-    activity.finish(code, "mp3 dispatch");
-    ok = sound_->playMp3Stream(audioUrl);
-    result.spoken = ok;
-    AppLog.print("[SpotifyDJ] DJ response audio type=");
-    AppLog.print(result.audioType);
-    AppLog.print(" played=");
-    AppLog.println(ok ? "true" : "false");
-    return result;
+  } else if (stream != nullptr && audioType == Logic::DjAudioType::Mp3) {
+    ok = sound_->playMp3Stream(*stream, prefix, prefixLength, contentLength);
   } else {
     AppLog.println("[SpotifyDJ] DJ response audio type unsupported");
   }

@@ -106,6 +106,7 @@ void SpotifyClient::useCredentialsForProvisioning(const String &clientId, const 
   refreshTokenSource_ = "Portal";
   accessToken_ = "";
   accessTokenExpiresAt_ = 0;
+  tokenInvalidGrant_ = false;
 }
 
 void SpotifyClient::clearStoredTokens() {
@@ -114,11 +115,16 @@ void SpotifyClient::clearStoredTokens() {
   accessToken_ = "";
   accessTokenExpiresAt_ = 0;
   refreshTokenFromStorage_ = false;
+  tokenInvalidGrant_ = false;
   refreshTokenSource_ = "Cleared";
 }
 
 bool SpotifyClient::isAuthorized() const {
   return !accessToken_.isEmpty() && static_cast<int32_t>(millis() - accessTokenExpiresAt_) < 0;
+}
+
+bool SpotifyClient::needsCredentialRefresh() const {
+  return tokenInvalidGrant_;
 }
 
 uint32_t SpotifyClient::accessTokenExpiresInSeconds() const {
@@ -966,10 +972,14 @@ bool SpotifyClient::refreshAccessToken() {
         loadSpotifyCredentials();
         if (refreshToken_.isEmpty() || refreshToken_ == previousRefreshToken) {
           AppLog.println("Spotify token retry skipped: no newer refresh token in NVS");
+          tokenInvalidGrant_ = true;
           state_.error = tokenErrorFromPayload(code, payload);
           return false;
         }
         continue;
+      }
+      if (tokenError == "invalid_grant") {
+        tokenInvalidGrant_ = true;
       }
       state_.error = tokenErrorFromPayload(code, payload);
       return false;
@@ -1000,6 +1010,7 @@ bool SpotifyClient::refreshAccessToken() {
     accessToken_ = token;
     const int refreshInSeconds = max(30, expiresIn - 60);
     accessTokenExpiresAt_ = millis() + (static_cast<uint32_t>(refreshInSeconds) * 1000UL);
+    tokenInvalidGrant_ = false;
     state_.error = "";
     return true;
   }

@@ -28,6 +28,7 @@ public:
   void reloadCredentials();
 
   bool isAuthorized() const;
+  bool needsCredentialRefresh() const;
   uint32_t accessTokenExpiresInSeconds() const;
   String refreshTokenSource() const;
 
@@ -115,6 +116,7 @@ private:
   String refreshToken_;
   String market_;
   bool refreshTokenFromStorage_ = false;
+  bool tokenInvalidGrant_ = false;
   String refreshTokenSource_ = "Unknown";
   uint32_t accessTokenExpiresAt_ = 0;
 };

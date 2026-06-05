@@ -35,18 +35,18 @@ jobs:
       - name: Build firmware
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          export SPOTIFYDJ_BUILD_FLAGS="-DSPOTIFYDJ_VERSION=\\\"${VERSION}\\\" -DSPOTIFYDJ_VERSION_TAG=\\\"v${VERSION}\\\""
+          export SPOTIFYDJ_BUILD_FLAGS="-DSPOTIFYDJ_VERSION=${VERSION} -DSPOTIFYDJ_VERSION_TAG=v${VERSION}"
           pio run -e t_embed_cc1101
 
       - name: Verify embedded firmware version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          if ! strings .pio/build/t_embed_cc1101/firmware.elf | grep -q "v${VERSION}"; then
-            echo "Firmware does not contain expected version tag v${VERSION}" >&2
+          if ! strings .pio/build/t_embed_cc1101/firmware.elf | grep -q "SpotifyDJ v${VERSION} / ${VERSION} booting"; then
+            echo "Firmware boot marker does not contain expected release version v${VERSION} / ${VERSION}" >&2
             exit 1
           fi
-          if strings .pio/build/t_embed_cc1101/firmware.bin | grep -q "vdev"; then
-            echo "Firmware binary still contains dev version placeholder vdev" >&2
+          if strings .pio/build/t_embed_cc1101/firmware.bin | grep -Eq "(^|[^[:alnum:]])vdev([^[:alnum:]]|$)|SpotifyDJ dev / dev booting"; then
+            echo "Firmware binary still contains a dev version placeholder" >&2
             exit 1
           fi
 

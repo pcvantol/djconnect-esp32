@@ -47,11 +47,18 @@ static void testTrackTimeFormatting() {
 
 static void testOtaComparableFirmwareVersion() {
   assert(std::strcmp(Logic::otaComparableFirmwareVersion("dev", "vdev"), "0.0.0") == 0);
-  assert(std::strcmp(Logic::otaComparableFirmwareVersion("dev", "v2.7.6"), "0.0.0") == 0);
-  assert(std::strcmp(Logic::otaComparableFirmwareVersion("2.7.6", "vdev"), "0.0.0") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("dev", "v2.7.6"), "2.7.6") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("2.7.6", "vdev"), "2.7.6") == 0);
   assert(std::strcmp(Logic::otaComparableFirmwareVersion(nullptr, nullptr), "0.0.0") == 0);
   assert(std::strcmp(Logic::otaComparableFirmwareVersion("", ""), "0.0.0") == 0);
   assert(std::strcmp(Logic::otaComparableFirmwareVersion("2.7.6", "v2.7.6"), "2.7.6") == 0);
+}
+
+static void testSpotifyConfiguredForHomeAssistantStatus() {
+  assert(!Logic::spotifyConfiguredForHomeAssistantStatus(false, false));
+  assert(!Logic::spotifyConfiguredForHomeAssistantStatus(false, true));
+  assert(Logic::spotifyConfiguredForHomeAssistantStatus(true, false));
+  assert(!Logic::spotifyConfiguredForHomeAssistantStatus(true, true));
 }
 
 static void testProgressEstimation() {
@@ -497,6 +504,7 @@ static void testNetworkActivityLogicWithFakeHttp() {
 int main() {
   testTrackTimeFormatting();
   testOtaComparableFirmwareVersion();
+  testSpotifyConfiguredForHomeAssistantStatus();
   testProgressEstimation();
   testLedRingBrightness();
   testDisplayPowerPolicy();

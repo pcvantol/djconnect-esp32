@@ -25,7 +25,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - Top button held for 10 seconds: restart/soft reset.
 - Encoder button + top button held for 10 seconds: factory reset when battery state allows it.
 - Menus for Up Next, Playlists, Sound Outputs, Settings, About and Logs.
-- Mobile web portal with Now Playing, browser push-to-talk, album art, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update and OTA upload.
+- Mobile web portal with Now Playing, DJ-response simulation, album art, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update and OTA upload.
 - Home Assistant pairing with mDNS discovery and device-token authentication.
 - BLE WiFi provisioning in setup mode for apps/flows that actively write credentials to the device.
 - MQTT/Home Assistant discovery, periodic status publishing and two-way commands, including selected settings such as log level.
@@ -226,11 +226,11 @@ If OAuth credentials become invalid, the web portal Spotify panel includes a man
 Physical PTT:
 
 1. Hold the encoder button.
-2. The device streams raw PCM16 microphone audio to the Home Assistant Assist WebSocket pipeline.
+2. The device records mono PCM16 audio as a WAV file on LittleFS.
 3. Release the encoder button.
-4. Home Assistant returns recognized text.
-5. The ESP sends recognized text to the SpotifyDJ HA integration at `/api/spotify_dj/voice`.
-6. The HA integration can return DJ text and an optional WAV or MP3 `audio_url`.
+4. The ESP uploads the raw WAV body to the SpotifyDJ HA integration at `/api/spotify_dj/voice` with the paired device token.
+5. The HA integration performs the Home Assistant Assist/STT/TTS work on the backend. If Assist needs the HA WebSocket API, that WebSocket connection belongs inside the HA integration, not on the ESP.
+6. The HA integration returns DJ text and an optional WAV or MP3 `audio_url`.
 7. The ESP displays the DJ text briefly, detects the audio type from `Content-Type` or magic bytes, and plays compatible WAV/MP3 audio through the built-in speaker.
 8. The UI returns to Now Playing.
 
@@ -295,9 +295,9 @@ Keep new provisioning writes in `ProvisioningController`, power/sleep/watchdog d
 
 - Home Assistant is the trusted backend for pairing, Spotify command interpretation, Assist STT/TTS orchestration, OTA offer handling and optional MQTT provisioning. The ESP stores only the device token and the credentials required for local operation.
 - The ESP remains the local edge device for display, controls, LED ring, battery policy, speaker cues, microphone capture and playback of HA-provided DJ response audio. It must keep working when optional HA/MQTT/web features are unused.
-- Push-to-talk uses Route B: the ESP streams raw PCM16 to Home Assistant Assist, sends recognized text to the SpotifyDJ integration, then displays/plays the returned DJ response. The ESP does not call OpenAI or upload browser microphone audio.
+- Push-to-talk uses the SpotifyDJ integration as the backend boundary: the ESP records WAV audio and uploads it to `/api/spotify_dj/voice`; the HA integration owns Assist/STT/TTS and returns DJ text plus optional audio URL. The ESP does not authenticate directly to Home Assistant core `/api/websocket`, call OpenAI directly or upload browser microphone audio.
 - Home Assistant pairing validity is a runtime state. Stored NVS pairing is not deleted automatically on HA 401/403/404, but the `H` indicator turns red, PTT/web PTT are disabled and the UI instructs the user to reset pairing.
-- Spotify OAuth credentials are accepted through HA provisioning, setup portal or the web repair form. Refresh tokens are never logged or shown back to the user.
+- Spotify OAuth credentials are accepted through HA provisioning, setup portal or the web repair form. Refresh tokens are never logged or shown back to the user. If Spotify returns `invalid_grant`, the firmware marks the stored credentials stale and reports `spotify_configured=false` in the next HA status update so the HA integration can push the latest rotated refresh token back to the ESP.
 - External API payload field names stay integration-friendly, for example `spotify_refresh_token`. Internal ESP32 Preferences keys must stay at 15 characters or less, so Spotify credentials are stored as `sp_client`, `sp_refresh` and `sp_market`.
 - Long network operations are bounded by explicit timeout policy and tracked through `NetworkActivity`; UI/input responsiveness should not depend on a blocking Spotify, HA, OTA or audio download call finishing quickly.
 - Web portal polling is visibility-aware for logs, queue, playlist and sound-output data. Keep root/status/log API responses uncached, but cache embedded static assets with explicit cache headers.
@@ -355,7 +355,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.8.2 --dry-run` validates the release plan without touching files. Both `2.8.2` and `v2.8.2` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.0 --dry-run` validates the release plan without touching files. Both `2.9.0` and `v2.9.0` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
@@ -387,7 +387,7 @@ Run release-script checks:
 bash test/native/test_release.sh
 ```
 
-The native test binary covers pure logic such as battery estimation, menu option counts/values including log-level options, Spotify provisioning parsing, Spotify credential repair validation and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
+The native test binary covers pure logic such as battery estimation, menu option counts/values including log-level options, Spotify provisioning parsing, Spotify credential repair validation, HA Spotify reprovisioning status decisions and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
 
 ## Security Checklist
 
@@ -414,6 +414,7 @@ Security defaults:
 - Spotify controls do nothing: check Spotify authorization, Spotify Premium and the active Spotify Connect output.
 - `MQTT waiting for broker` or `rc=5`: check host, port, username and password. `rc=5` usually means authentication failed.
 - No Home Assistant pairing code: check the web portal pairing banner, mDNS discovery and `/api/device/pairing-info`.
-- PTT fails: check Home Assistant pairing, `ha_url`, `device_token`, Assist pipeline and logs.
+- PTT fails: check Home Assistant pairing, `ha_url`, `device_token`, the HA integration `/api/spotify_dj/voice` handler and HA Assist/TTS logs. The ESP should not report `Assist auth_invalid`; Assist WebSocket authentication belongs on the HA integration side.
+- Spotify token becomes invalid after reboot: ensure the HA integration stores rotated Spotify refresh tokens and returns the latest token when the ESP reports `spotify_configured=false` after `invalid_grant`.
 - OTA fails: check battery/charging state, firmware URL, device type and network reachability.
 - Device becomes sluggish: check logs for `Responsiveness: slow loop`, `free_heap`, `min_free_heap` and `largest_block`.

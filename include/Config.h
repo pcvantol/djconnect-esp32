@@ -3,18 +3,23 @@
 #pragma once
 
 #ifndef SPOTIFYDJ_VERSION
-#define SPOTIFYDJ_VERSION "dev"
+#define SPOTIFYDJ_VERSION dev
 #endif
 
 #ifndef SPOTIFYDJ_VERSION_TAG
-#define SPOTIFYDJ_VERSION_TAG "vdev"
+#define SPOTIFYDJ_VERSION_TAG vdev
 #endif
 
 #include <Arduino.h>
 
+#define SPOTIFYDJ_STRINGIFY_VALUE(value) #value
+#define SPOTIFYDJ_STRINGIFY(value) SPOTIFYDJ_STRINGIFY_VALUE(value)
+
 namespace Config {
-static const char *const AppVersion = SPOTIFYDJ_VERSION_TAG;
-static const char *const AppVersionNumber = SPOTIFYDJ_VERSION;
+static const char *const AppVersion = SPOTIFYDJ_STRINGIFY(SPOTIFYDJ_VERSION_TAG);
+static const char *const AppVersionNumber = SPOTIFYDJ_STRINGIFY(SPOTIFYDJ_VERSION);
+static const char *const BuildMarker =
+    "SpotifyDJ " SPOTIFYDJ_STRINGIFY(SPOTIFYDJ_VERSION_TAG) " / " SPOTIFYDJ_STRINGIFY(SPOTIFYDJ_VERSION) " booting";
 
 // Board power, storage, radio, display, I2C, encoder, and WS2812 pin mapping.
 static constexpr uint8_t BoardUserKeyPin = 6;

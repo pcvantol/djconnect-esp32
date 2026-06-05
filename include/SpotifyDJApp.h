@@ -19,7 +19,6 @@
 #include "SoftResetMonitor.h"
 #include "SpotifyDJMenu.h"
 #include "SpotifyClient.h"
-#include "../src/SpotifyDJAssistClient.h"
 #include "../src/SpotifyDJApiServer.h"
 #include "../src/SpotifyDJDevice.h"
 #include "../src/SpotifyDJDiscovery.h"
@@ -224,7 +223,6 @@ private:
   DjResponseAudioPlayer djAudio_;
   VoiceRecorder voiceRecorder_;
   WakeWordEngine wakeWord_;
-  SpotifyDJAssistClient assistClient_;
   VoiceHttpClient voiceClient_;
   SoftResetMonitor softResetMonitor_;
   SpotifyClient spotify_{playback_};

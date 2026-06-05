@@ -53,11 +53,7 @@ void SpotifyDJApp::begin() {
 
   Serial.begin(115200);
   AppLog.begin();
-  AppLog.print("SpotifyDJ ");
-  AppLog.print(Config::AppVersion);
-  AppLog.print(" / ");
-  AppLog.print(Config::AppVersionNumber);
-  AppLog.println(" booting");
+  AppLog.println(Config::BuildMarker);
   configureWatchdog();
   responsiveDelay(500);
 
@@ -85,7 +81,6 @@ void SpotifyDJApp::begin() {
   voiceRecorder_.begin();
   wakeWord_.begin();
   wakeWord_.setCallback(wakeWordDetectedCallback, this);
-  assistClient_.begin(haDevice_);
   voiceClient_.begin(haDevice_);
   homeAssistantPaired_ = haDevice_.isPaired();
   loadProvisioning();
@@ -177,21 +172,9 @@ void SpotifyDJApp::loop() {
     renderNow();
   }
   if (voiceRecording_) {
-    uint8_t audioChunk[Config::VoicePcmChunkBytes];
-    size_t bytesRead = 0;
-    if (!voiceRecorder_.readPcmChunk(audioChunk, sizeof(audioChunk), bytesRead)) {
+    if (!voiceRecorder_.update()) {
       const String error = voiceRecorder_.error();
       voiceRecorder_.abort();
-      assistClient_.close();
-      voiceRecording_ = false;
-      voiceState_ = VoiceState::Error;
-      voiceClient_.sendStatus(false, "error", error);
-      showNotice(error, 3000);
-      renderNow();
-    } else if (bytesRead > 0 && !assistClient_.sendAudio(audioChunk, bytesRead)) {
-      const String error = "Assist audio failed";
-      voiceRecorder_.abort();
-      assistClient_.close();
       voiceRecording_ = false;
       voiceState_ = VoiceState::Error;
       voiceClient_.sendStatus(false, "error", error);
@@ -1928,27 +1911,13 @@ void SpotifyDJApp::handleVoiceButton() {
 
   String message;
   voiceState_ = VoiceState::Connecting;
-  AppLog.println("[SpotifyDJ] voice: connecting Assist websocket");
+  AppLog.println("[SpotifyDJ] voice: starting WAV recording");
   showNotice(I18n::text("voice_connecting"), 3000);
   renderNow();
-  if (!assistClient_.start(message)) {
-    AppLog.print("[SpotifyDJ] voice: Assist start failed: ");
-    AppLog.println(message);
-    voiceState_ = VoiceState::Error;
-    voiceClient_.sendStatus(false, "error", message);
-    if (message == "Assist auth_invalid") {
-      markHomeAssistantPairingInvalid(I18n::text("ha_pairing_invalid"));
-      return;
-    }
-    showNotice(message, 3500);
-    renderNow();
-    return;
-  }
-  if (!voiceRecorder_.startRaw()) {
+  if (!voiceRecorder_.start()) {
     const String error = voiceRecorder_.error();
     AppLog.print("[SpotifyDJ] voice: mic start failed: ");
     AppLog.println(error);
-    assistClient_.close();
     voiceState_ = VoiceState::Error;
     voiceClient_.sendStatus(false, "error", error);
     showNotice(error, 3000);
@@ -1977,7 +1946,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   }
   voiceRecording_ = false;
   voiceState_ = VoiceState::WaitingForResult;
-  AppLog.println("[SpotifyDJ] voice: recording stopped, waiting for STT result");
+  AppLog.println("[SpotifyDJ] voice: recording stopped, uploading WAV");
   if (volumeFeedbackEnabled_) {
     sound_.playPttStop();
   }
@@ -1987,11 +1956,10 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   djResponseOverlayUntil_ = millis() + 3000;
   showNotice(I18n::text("voice_processing"), 3000);
   renderNow();
-  if (!voiceRecorder_.stopRaw()) {
+  if (!voiceRecorder_.stop()) {
     const String error = voiceRecorder_.error();
     AppLog.print("[SpotifyDJ] voice: mic stop failed: ");
     AppLog.println(error);
-    assistClient_.close();
     voiceState_ = VoiceState::Error;
     voiceClient_.sendStatus(false, "error", error);
     showNotice(error, 3500);
@@ -1999,27 +1967,14 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
     return;
   }
 
-  String recognizedText;
   String message;
-  if (!assistClient_.finish(recognizedText, message)) {
-    AppLog.print("[SpotifyDJ] voice: STT failed: ");
-    AppLog.println(message);
-    voiceState_ = VoiceState::Error;
-    voiceClient_.sendStatus(false, "error", message);
-    showNotice(message, 3500);
-    renderNow();
-    return;
-  }
-
   voiceState_ = VoiceState::SendingCommand;
-  AppLog.print("[SpotifyDJ] voice: recognized text chars=");
-  AppLog.println(recognizedText.length());
-  AppLog.println("[SpotifyDJ] voice: sending text command to HA integration");
+  AppLog.println("[SpotifyDJ] voice: uploading WAV to HA integration");
   voiceClient_.sendStatus(false, "sending_command");
   showNotice("SpotifyDJ...", 2500);
   renderNow();
   String audioUrl;
-  if (voiceClient_.sendRecognizedText(recognizedText, message, &audioUrl)) {
+  if (voiceClient_.uploadWav(voiceRecorder_.wavPath(), message, &audioUrl)) {
     voiceState_ = VoiceState::Done;
     AppLog.println("[SpotifyDJ] voice: command accepted");
     ledRing_.playPulse(CRGB::Green);
@@ -2031,7 +1986,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
       spoken = djAudio_.play(audioUrl).spoken;
       showNotice(spoken ? I18n::text("voice_response_played") : I18n::text("voice_response_audio_failed"), 3500);
     } else {
-      showNotice(recognizedText, 3500);
+      showNotice(message, 3500);
     }
   } else {
     voiceState_ = VoiceState::Error;
@@ -2955,7 +2910,12 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
     return;
   }
   lastHaStatusAt_ = now;
-  const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, haDevice_.isSpotifyConfigured());
+  const bool spotifyCredentialsUsable =
+      Logic::spotifyConfiguredForHomeAssistantStatus(haDevice_.isSpotifyConfigured(), spotify_.needsCredentialRefresh());
+  if (haDevice_.isSpotifyConfigured() && !spotifyCredentialsUsable) {
+    AppLog.println("Spotify credentials marked stale; requesting HA reprovisioning");
+  }
+  const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, spotifyCredentialsUsable);
   if (result == SpotifyDJPairing::StatusResult::Ok) {
     homeAssistantPaired_ = true;
   } else if (result == SpotifyDJPairing::StatusResult::PairingInvalid) {

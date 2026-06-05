@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.8.2
+## v2.9.0
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -13,7 +13,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Theme setting for the device, web portal and MQTT: Auto, Dark and Light.
 - Playlist browsing and playlist start from both the device and web portal.
 - Current Song screen with on-demand album art download/cache and scrolling title/artist text.
-- Mobile web portal with Now Playing, browser push-to-talk, album art, volume slider, sound output selection, queue, logs, diagnostics, settings, WiFi update and OTA upload.
+- Mobile web portal with Now Playing, DJ-response simulation, album art, volume slider, sound output selection, queue, logs, diagnostics, settings, WiFi update and OTA upload.
 - Home Assistant device layer with pairing, mDNS discovery, device-token storage, status updates, OTA endpoint and Spotify provisioning endpoint.
 - Device API endpoint `/api/device/dj_response` for DJ text responses from the Home Assistant integration, with optional backend-generated WAV/MP3 playback on the ESP speaker.
 - BLE WiFi provisioning in setup mode through a writable JSON characteristic.
@@ -42,7 +42,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.8.2` / `v2.8.2`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.0` / `v2.9.0`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
@@ -75,15 +75,15 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Web portal firmware upload no longer shows a temporary `Uploading firmware...` / `Firmware uploaden...` status label before the final upload response.
 - Web interface logs can be paused and selected/copied.
 - `Restart device` and `Turn off device` are available from settings.
-- Push-to-talk uses Route B: microphone audio streams as raw PCM16 to the Home Assistant Assist WebSocket pipeline; only recognized text is sent to `/api/spotify_dj/voice`.
-- The PTT flow is documented: Assist STT, text to the HA integration, then DJ text plus optional WAV/MP3 URL back to the ESP device.
-- `assist_pipeline_id` can optionally be stored in NVS; an empty value uses the default Home Assistant Assist pipeline.
+- Push-to-talk now records a WAV file on the ESP and uploads it as raw `audio/wav` to the Home Assistant integration endpoint `/api/spotify_dj/voice`.
+- The PTT flow is documented: ESP WAV upload to the HA integration, backend Assist/STT/TTS in Home Assistant, then DJ text plus optional WAV/MP3 URL back to the ESP device.
+- Direct Home Assistant Assist WebSocket authentication has been removed from the physical PTT path; the websocket, if required, belongs on the Home Assistant integration backend.
 - Encoder short press performs pause/resume, double press opens Current Song and long press starts push-to-talk until release.
 - Current Song is blocked from Now Playing when there is no active playback.
 - Turn-off sleep periodically probes for USB-C charger attach; with a charger detected the device continues booting, otherwise it returns to sleep.
 - Push-to-talk logs listening steps to serial and the web logs screen.
 - LED-ring animations are yellow on PTT start, blue on PTT stop/processing, and green on accepted voice command response.
-- The old WAV upload path to `/api/spotify_dj/voice` was removed from the voice command client.
+- The old recognized-text-only physical PTT path was replaced by raw WAV upload to `/api/spotify_dj/voice`; the web portal still keeps a compact text-based DJ-response simulation path.
 - Voice status messages use `recording`, `sending_command` and `error`.
 - DJ responses are displayed locally, optionally played, published as `last_dj_text` in runtime state and emitted as MQTT events.
 - DJ response audio now supports MP3 streams in addition to PCM WAV, with content-type and magic-byte detection plus text-only fallback for unsupported audio.
@@ -93,7 +93,8 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Home Assistant voice endpoint stale-pairing messages are translated through the firmware language setting.
 - Web portal Spotify refresh-token repair accepts JSON, form-encoded and compatibility field names so a broken token can be replaced without factory reset.
 - Spotify OAuth credentials are stored with short ESP32 Preferences keys so NVS writes no longer silently fail because of the 15-character key limit.
-- Architecture decisions are documented explicitly for Home Assistant, ESP edge behavior, PTT Route B, runtime pairing validity, NVS key limits, network timeout policy and release separation.
+- Spotify `invalid_grant` now marks local OAuth credentials as stale and reports `spotify_configured=false` in the next Home Assistant status update so the integration can reprovision the latest rotated refresh token.
+- Architecture decisions are documented explicitly for Home Assistant, ESP edge behavior, integration-backed PTT, runtime pairing validity, NVS key limits, network timeout policy and release separation.
 - When no music is playing, the device and web portal offer an action to start the `SpotifyDJ Liked Proxy` playlist.
 - Volume control is disabled when there is no active playback.
 - WiFi boot label is `Connecting to WiFi...`.

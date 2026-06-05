@@ -11,6 +11,7 @@ public:
 
   bool sendStatus(bool recording, const String &state, const String &lastError = "");
   bool sendRecognizedText(const String &recognizedText, String &message, String *audioUrl = nullptr);
+  bool uploadWav(const String &path, String &message, String *audioUrl = nullptr);
   bool pairingInvalidated() const;
 
 private:

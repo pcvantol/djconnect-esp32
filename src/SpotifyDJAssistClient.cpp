@@ -3,6 +3,7 @@
 
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <esp_task_wdt.h>
 #include <esp_system.h>
 #include <mbedtls/base64.h>
 
@@ -362,11 +363,13 @@ bool SpotifyDJAssistClient::readFrame(uint8_t &opcode, String &textPayload, uint
   const uint32_t startedAt = millis();
   auto readByte = [&](uint8_t &value) -> bool {
     while (millis() - startedAt < timeoutMs) {
+      esp_task_wdt_reset();
       if (socket->available()) {
         value = socket->read();
         return true;
       }
       delay(2);
+      yield();
     }
     return false;
   };
@@ -465,6 +468,8 @@ bool SpotifyDJAssistClient::sendFrame(uint8_t opcode, const uint8_t *data, size_
     if (socket->write(buffer, chunk) != chunk) {
       return false;
     }
+    esp_task_wdt_reset();
+    yield();
     offset += chunk;
   }
   return true;

@@ -20,17 +20,26 @@ inline int clampPercent(int value) {
 }
 
 // Converts local dev build identifiers into a semver baseline that OTA clients can compare safely.
+// A fully local build reports 0.0.0 so Home Assistant always offers the newest public OTA release.
+// If a release build injects only the numeric version, keep that version instead of falling back.
 inline const char *otaComparableFirmwareVersion(const char *version, const char *versionTag) {
   if (version == nullptr || version[0] == '\0') {
     return "0.0.0";
   }
-  if (strcmp(version, "dev") == 0 || strcmp(version, "vdev") == 0) {
+  const bool versionIsDev = strcmp(version, "dev") == 0 || strcmp(version, "vdev") == 0;
+  const bool tagIsDev = versionTag == nullptr || versionTag[0] == '\0' || strcmp(versionTag, "vdev") == 0;
+  if (versionIsDev && tagIsDev) {
     return "0.0.0";
   }
-  if (versionTag != nullptr && strcmp(versionTag, "vdev") == 0) {
-    return "0.0.0";
+  if (versionIsDev && !tagIsDev && versionTag[0] == 'v') {
+    return versionTag + 1;
   }
   return version;
+}
+
+// Home Assistant should reprovision Spotify credentials when local OAuth storage is stale.
+inline bool spotifyConfiguredForHomeAssistantStatus(bool credentialsStored, bool tokenInvalidGrant) {
+  return credentialsStored && !tokenInvalidGrant;
 }
 
 // Computes one LED's brightness for the volume ring, independent of the final UI color.
