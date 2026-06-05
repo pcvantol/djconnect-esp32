@@ -485,6 +485,9 @@ void MqttPublisher::publishDeviceStatus() {
   JsonDocument doc;
   doc["device_id"] = deviceId_;
   doc["state"] = "online";
+  doc["status"] = "online";
+  doc["ota_state"] = "idle";
+  doc["update_state"] = "idle";
   doc["firmware"] = Config::AppVersionNumber;
   doc["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   doc["battery_percent"] = battery_->percent;
