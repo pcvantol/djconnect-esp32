@@ -190,6 +190,26 @@ inline bool shouldSendRecognizedVoiceText(size_t textLength) {
   return textLength > 0;
 }
 
+// Converts HA voice endpoint failures into user-facing diagnostics.
+inline bool isHomeAssistantPairingInvalidStatus(int statusCode) {
+  return statusCode == 401 || statusCode == 403 || statusCode == 404;
+}
+
+inline const char *voiceHttpFailureMessage(int statusCode) {
+  if (statusCode == 404) {
+    return "HA voice endpoint not found. Reset pairing and set up the SpotifyDJ integration again.";
+  }
+  if (statusCode == 401 || statusCode == 403) {
+    return "HA authorization failed. Reset pairing and pair again.";
+  }
+  return nullptr;
+}
+
+// ESP32 Preferences/NVS keys are limited to 15 characters.
+inline bool preferencesKeyFits(const char *key) {
+  return key != nullptr && strlen(key) <= 15;
+}
+
 // Formats the HA-provisioned per-device MQTT topics without depending on Arduino String.
 inline bool formatMqttDeviceTopic(const char *deviceId, const char *suffix, char *buffer, size_t bufferSize) {
   if (deviceId == nullptr || suffix == nullptr || buffer == nullptr || bufferSize == 0) {

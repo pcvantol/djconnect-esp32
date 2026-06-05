@@ -8,6 +8,7 @@
 #include <WiFi.h>
 
 #include "Config.h"
+#include "I18n.h"
 #include "NetworkActivity.h"
 #include "TextHelpers.h"
 
@@ -456,7 +457,7 @@ bool SpotifyClient::startLikedProxyPlaylist() {
     refreshDevicesOnly();
   }
   if (state_.deviceId.isEmpty()) {
-    state_.error = "Select a Spotify output first";
+    state_.error = I18n::text("spotify_select_output_first");
     AppLog.println("Spotify: cannot start Liked Proxy, no output selected");
     return false;
   }
@@ -474,7 +475,7 @@ bool SpotifyClient::startPlaylist(const String &playlistUri) {
     refreshDevicesOnly();
   }
   if (state_.deviceId.isEmpty()) {
-    state_.error = "Select a Spotify output first";
+    state_.error = I18n::text("spotify_select_output_first");
     AppLog.println("Spotify: cannot start playlist, no output selected");
     return false;
   }
@@ -716,9 +717,9 @@ void SpotifyClient::loadSpotifyCredentials() {
   provision.begin("provision", true);
   Preferences spotifydj;
   spotifydj.begin("spotifydj", true);
-  clientId_ = spotifydj.getString("spotify_client_id", "");
-  market_ = spotifydj.getString("spotify_market", "");
-  refreshToken_ = spotifydj.getString("spotify_refresh_token", "");
+  clientId_ = spotifydj.getString("sp_client", "");
+  market_ = spotifydj.getString("sp_market", "");
+  refreshToken_ = spotifydj.getString("sp_refresh", "");
   spotifydj.end();
   refreshTokenFromStorage_ = !refreshToken_.isEmpty();
   refreshTokenSource_ = refreshTokenFromStorage_ ? "SpotifyDJ NVS" : "";
@@ -754,7 +755,7 @@ void SpotifyClient::saveRefreshToken(const String &newRefreshToken) {
 
   Preferences spotifydj;
   spotifydj.begin("spotifydj", false);
-  const bool spotifydjSaved = spotifydj.putString("spotify_refresh_token", newRefreshToken) > 0;
+  const bool spotifydjSaved = spotifydj.putString("sp_refresh", newRefreshToken) > 0;
   spotifydj.end();
   if (!spotifydjSaved) {
     AppLog.println("Failed to save rotated refresh token to SpotifyDJ NVS");

@@ -78,6 +78,8 @@ void SpotifyDJApp::begin() {
   ledRing_.begin();
   sound_.begin();
   voiceRecorder_.begin();
+  wakeWord_.begin();
+  wakeWord_.setCallback(wakeWordDetectedCallback, this);
   assistClient_.begin(haDevice_);
   voiceClient_.begin(haDevice_);
   homeAssistantPaired_ = haDevice_.isPaired();
@@ -95,7 +97,7 @@ void SpotifyDJApp::begin() {
   }
 
   ledRing_.playBootBounce();
-  display_.showBootMessage("Booting...", battery_);
+  display_.showBootMessage(I18n::text("boot_booting"), battery_);
   connectWiFi(Config::WifiConnectTimeoutMs, true);
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -110,7 +112,7 @@ void SpotifyDJApp::begin() {
       loopMetricsWindowStartedAt_ = millis();
       return;
     }
-    display_.showBootMessage("Authorizing Spotify...", battery_);
+    display_.showBootMessage(I18n::text("boot_authorizing_spotify"), battery_);
     if (spotify_.authorize()) {
       showNotice(I18n::text("spotify_connected"));
       lastPlaybackPollAt_ = millis();
@@ -194,13 +196,16 @@ void SpotifyDJApp::loop() {
       stopVoiceRecordingAndSendText();
     }
   }
+  if (!voiceRecording_ && voiceState_ == VoiceState::Idle && homeAssistantPaired_) {
+    wakeWord_.loop(voiceRecorder_);
+  }
   flushPendingVolume();
   processVolumeResult();
   webPortal_.handle();
   processPendingWifiSettings();
   haApiServer_.loop();
   syncHomeAssistantMqttSettings();
-  mqttPublisher_.setDeviceFlags(haDevice_.isPaired(), haDevice_.isSpotifyConfigured());
+  mqttPublisher_.setDeviceFlags(homeAssistantPaired_, haDevice_.isSpotifyConfigured());
   mqttPublisher_.loop();
   processMqttCommands();
   albumArt_.cleanupIfDue();
@@ -354,7 +359,7 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
     showNotice("Retry WiFi", 1500);
     if (connectWiFi(Config::WifiConnectTimeoutMs, true) && WiFi.status() == WL_CONNECTED) {
       startWebPortalIfNeeded();
-      display_.showBootMessage("Authorizing Spotify...", battery_);
+      display_.showBootMessage(I18n::text("boot_authorizing_spotify"), battery_);
       if (spotify_.authorize()) {
         showNotice(I18n::text("spotify_connected"));
         lastPlaybackPollAt_ = millis();
@@ -394,7 +399,7 @@ bool SpotifyDJApp::connectWiFi(uint32_t timeoutMs, bool bootScreen) {
   } else {
     display_.wakeForUserActivity();
   }
-  display_.showBootMessage("Connecting to WiFi...", battery_);
+  display_.showBootMessage(I18n::text("boot_connecting_wifi"), battery_);
   if (wifiSsid_.isEmpty()) {
     playback_.error = "WiFi credentials missing";
     showNotice(playback_.error, 5000);
@@ -496,7 +501,7 @@ bool SpotifyDJApp::syncClock() {
   return true;
 #else
   // TLS certificate validation needs a sane wall clock on ESP32.
-  display_.showBootMessage("Syncing clock...", battery_);
+  display_.showBootMessage(I18n::text("boot_syncing_clock"), battery_);
   configTime(0, 0, "pool.ntp.org", "time.google.com", "time.nist.gov");
 
   const uint32_t startedAt = millis();
@@ -525,7 +530,7 @@ bool SpotifyDJApp::syncClock() {
 void SpotifyDJApp::runCaptivePortal() {
   display_.wakeForUserActivity();
   display_.forceBacklightPercent(100);
-  display_.showBootMessage("Setup device\nConnect to WiFi" + String(Config::ProvisioningApSsid), battery_);
+  display_.showBootMessage(String(I18n::text("boot_setup_device")) + "\n" + I18n::text("boot_connect_setup_wifi") + " " + String(Config::ProvisioningApSsid), battery_);
   ledRing_.showSetupRainbowBreath();
   bleProvisioning_.begin(haDevice_.getDeviceId());
 
@@ -638,7 +643,7 @@ void SpotifyDJApp::runCaptivePortal() {
       if (handleBleProvisioningPayload(blePayload, message)) {
         bleProvisioning_.setStatus("success", "WiFi saved, restarting");
         bleProvisioning_.end();
-        display_.showBootMessage("BLE setup OK...", battery_);
+        display_.showBootMessage(I18n::text("boot_ble_setup_ok"), battery_);
         responsiveDelay(1200);
         ESP.restart();
         return;
@@ -646,7 +651,7 @@ void SpotifyDJApp::runCaptivePortal() {
       portalMessage = message;
       portalError = true;
       bleProvisioning_.setStatus("error", message);
-      display_.showBootMessage("BLE setup failed\nUse setup page", battery_);
+      display_.showBootMessage(I18n::text("boot_ble_setup_failed"), battery_);
     }
     display_.forceBacklightPercent(100);
     ledRing_.showSetupRainbowBreath();
@@ -656,7 +661,7 @@ void SpotifyDJApp::runCaptivePortal() {
       lastBatteryRefreshAt = now;
       batteryMonitor_.refresh();
       evaluateBatteryTransition();
-      display_.showBootMessage("Device setup\nConnect to WiFi \"" + String(Config::ProvisioningApSsid) + "\"", battery_);
+      display_.showBootMessage(String(I18n::text("boot_device_setup")) + "\n" + I18n::text("boot_connect_setup_wifi") + " \"" + String(Config::ProvisioningApSsid) + "\"", battery_);
     }
 
     if (now - setupStartedAt <= Config::SetupPromptBeepDurationMs &&
@@ -666,7 +671,7 @@ void SpotifyDJApp::runCaptivePortal() {
     }
 
     if (!deepSleepStarted_ && now - setupStartedAt >= Config::ProvisioningPortalTimeoutMs) {
-      display_.showBootMessage("Setup timeout\nSleeping...", battery_);
+      display_.showBootMessage(I18n::text("boot_setup_timeout_sleeping"), battery_);
       responsiveDelay(600);
       enterDeepSleep();
     }
@@ -787,7 +792,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
     const String &spotifyMarket,
     const MqttSettings &mqttSettings,
     String &message) {
-  display_.showBootMessage("Testing WiFi...", battery_);
+  display_.showBootMessage(I18n::text("boot_testing_wifi"), battery_);
   ledRing_.showSolid(CRGB::Yellow, 100);
 
   WiFi.mode(WIFI_AP_STA);
@@ -817,10 +822,10 @@ bool SpotifyDJApp::testAndSaveProvisioning(
 
   const bool hasSpotifyCredentials = !clientId.isEmpty() && !refreshToken.isEmpty();
   if (hasSpotifyCredentials) {
-    display_.showBootMessage("Testing Spotify...", battery_);
+    display_.showBootMessage(I18n::text("boot_testing_spotify"), battery_);
     spotify_.useCredentialsForProvisioning(clientId, refreshToken);
     if (!spotify_.authorize()) {
-      message = playback_.error.isEmpty() ? "Spotify authorization failed." : playback_.error;
+      message = playback_.error.isEmpty() ? I18n::text("spotify_authorization_failed_sentence") : playback_.error;
       WiFi.disconnect(false);
       return false;
     }
@@ -836,7 +841,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
   }
   setupModeRequested_ = false;
   message = I18n::text("setup_success_restart");
-  display_.showBootMessage("Setup OK...", battery_);
+  display_.showBootMessage(I18n::text("boot_setup_ok"), battery_);
   return true;
 }
 
@@ -904,12 +909,12 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
     handleEncoderTurn(events.encoderSteps);
   }
 
-  if (haDevice_.isPaired() && events.encoderRelease && voiceRecording_) {
+  if (homeAssistantPaired_ && events.encoderRelease && voiceRecording_) {
     input_.clearPendingButtonActions();
     stopVoiceRecordingAndSendText();
     return;
   }
-  if (haDevice_.isPaired() && events.encoderRelease && !voiceRecording_ && voiceState_ == VoiceState::Idle) {
+  if (homeAssistantPaired_ && events.encoderRelease && !voiceRecording_ && voiceState_ == VoiceState::Idle) {
     AppLog.println("[SpotifyDJ] voice: encoder released without active PTT");
   }
 
@@ -1285,7 +1290,7 @@ void SpotifyDJApp::hardResetToProvisioning() {
   AppLog.println("Factory reset: clearing local credentials, tokens, settings and caches");
   sound_.playHardReset();
   display_.wakeForUserActivity();
-  display_.showBootMessage("Factory reset...", battery_);
+  display_.showBootMessage(I18n::text("boot_factory_reset"), battery_);
   ledRing_.showSolid(CRGB::Yellow, 100);
 
   voiceRecorder_.abort();
@@ -1316,7 +1321,7 @@ void SpotifyDJApp::hardResetToProvisioning() {
 
 void SpotifyDJApp::resetHomeAssistantPairing() {
   AppLog.println("Home Assistant: clearing pairing and restarting to pairing mode");
-  display_.showBootMessage("Reset pairing...", battery_);
+  display_.showBootMessage(I18n::text("boot_reset_pairing"), battery_);
   haDevice_.clearHomeAssistantPairing();
   responsiveDelay(350);
   ESP.restart();
@@ -1714,7 +1719,7 @@ void SpotifyDJApp::startLikedProxyPlaylist() {
 }
 
 void SpotifyDJApp::handleVoiceButton() {
-  if (!haDevice_.isPaired()) {
+  if (!homeAssistantPaired_) {
     AppLog.println("[SpotifyDJ] voice: HA not paired, using pause/resume");
     pauseOrResume();
     return;
@@ -1752,6 +1757,10 @@ void SpotifyDJApp::handleVoiceButton() {
     AppLog.println(message);
     voiceState_ = VoiceState::Error;
     voiceClient_.sendStatus(false, "error", message);
+    if (message == "Assist auth_invalid") {
+      markHomeAssistantPairingInvalid("Home Assistant pairing invalid. Reset pairing and pair again.");
+      return;
+    }
     showNotice(message, 3500);
     renderNow();
     return;
@@ -1850,6 +1859,10 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
     AppLog.print("[SpotifyDJ] voice: command failed: ");
     AppLog.println(message);
     voiceClient_.sendStatus(false, "error", message);
+    if (voiceClient_.pairingInvalidated()) {
+      markHomeAssistantPairingInvalid(message);
+      return;
+    }
     showNotice(message, 3500);
   }
   voiceRecorder_.abort();
@@ -2124,7 +2137,7 @@ void SpotifyDJApp::renderNow() {
         battery_,
         notice_,
         displayedVolume(),
-        haDevice_.isPaired(),
+        homeAssistantPaired_,
         spotify_.isAuthorized(),
         mqttSettings_.enabled && mqttPublisher_.connected());
   }
@@ -2245,7 +2258,7 @@ bool SpotifyDJApp::updateLowBatteryGuard() {
 
 void SpotifyDJApp::renderLowBatteryGuard() {
   const uint8_t brightness = criticalBatteryGuardActive_ ? 25 : 50;
-  const String message = chargingBatteryGuardActive_ ? "Charging..." : "Please charge device";
+  const String message = chargingBatteryGuardActive_ ? I18n::text("charging") : I18n::text("boot_please_charge");
   display_.forceBacklightPercent(brightness);
   display_.renderLowBatteryScreen(battery_, message);
 
@@ -2276,7 +2289,7 @@ AboutStatus SpotifyDJApp::aboutStatus() {
   status.wifiConnected = WiFi.status() == WL_CONNECTED;
   status.ipAddress = status.wifiConnected ? WiFi.localIP().toString() : "";
   status.webAddress = status.wifiConnected ? "http://" + WiFi.localIP().toString() : "";
-  status.haPaired = haDevice_.isPaired();
+  status.haPaired = homeAssistantPaired_;
   status.mqttState = mqttPublisher_.connectionState();
   status.mqttConnected = mqttPublisher_.connected();
   status.spotifyConnected = spotify_.isAuthorized();
@@ -2527,8 +2540,8 @@ bool SpotifyDJApp::repairSpotifyCredentialsFromWeb(
   const String storedClientId = haDevice_.getSpotifyClientId();
   if (!Logic::spotifyRepairCredentialsValid(storedClientId.c_str(), submittedClientId.c_str(), submittedRefreshToken.c_str())) {
     message = storedClientId.isEmpty()
-                  ? "Spotify client ID and refresh token are required"
-                  : "Spotify refresh token is required";
+                  ? I18n::text("spotify_client_and_refresh_required")
+                  : I18n::text("refresh_token_missing");
     return false;
   }
 
@@ -2539,10 +2552,13 @@ bool SpotifyDJApp::repairSpotifyCredentialsFromWeb(
   AppLog.print(" market=");
   AppLog.println(effectiveMarket);
 
-  haDevice_.saveSpotifyCredentials(effectiveClientId, submittedRefreshToken, effectiveMarket);
+  if (!haDevice_.saveSpotifyCredentials(effectiveClientId, submittedRefreshToken, effectiveMarket)) {
+    message = "Spotify credentials could not be saved to NVS";
+    return false;
+  }
   spotify_.reloadCredentials();
   if (!spotify_.authorize()) {
-    message = playback_.error.isEmpty() ? "Spotify authorization failed" : playback_.error;
+    message = playback_.error.isEmpty() ? I18n::text("spotify_authorization_failed") : playback_.error;
     return false;
   }
 
@@ -2550,7 +2566,7 @@ bool SpotifyDJApp::repairSpotifyCredentialsFromWeb(
   refreshMqttControlLists();
   showNotice(I18n::text("spotify_connected"), 2500);
   renderNow();
-  message = "Spotify refresh token saved and authorization OK";
+  message = I18n::text("spotify_refresh_saved_ok");
   return true;
 }
 
@@ -2648,7 +2664,7 @@ void SpotifyDJApp::processPendingWifiSettings() {
   AppLog.print("Testing web WiFi credentials, SSID chars=");
   AppLog.println(pendingWifiSsid_.length());
   display_.wakeForUserActivity();
-  display_.showBootMessage("Testing WiFi...", battery_);
+  display_.showBootMessage(I18n::text("boot_testing_wifi"), battery_);
   ledRing_.showSolid(CRGB::Yellow, 100);
 
   WiFi.disconnect(false, false);
@@ -2723,7 +2739,21 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
     return;
   }
   lastHaStatusAt_ = now;
-  haPairing_.sendStatusToHA(battery_, haDevice_.isSpotifyConfigured());
+  const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, haDevice_.isSpotifyConfigured());
+  if (result == SpotifyDJPairing::StatusResult::Ok) {
+    homeAssistantPaired_ = true;
+  } else if (result == SpotifyDJPairing::StatusResult::PairingInvalid) {
+    markHomeAssistantPairingInvalid("Home Assistant pairing invalid. Reset pairing and pair again.");
+  }
+}
+
+void SpotifyDJApp::markHomeAssistantPairingInvalid(const String &message) {
+  if (homeAssistantPaired_) {
+    AppLog.println("Home Assistant: pairing invalid or stale");
+  }
+  homeAssistantPaired_ = false;
+  showNotice(message, 5000);
+  renderNow();
 }
 
 bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
@@ -2734,7 +2764,7 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
       haPairingStartedAt_ = 0;
       haDevice_.displayPaired();
       responsiveDelay(700);
-      display_.showBootMessage("Authorizing Spotify...", battery_);
+      display_.showBootMessage(I18n::text("boot_authorizing_spotify"), battery_);
       if (spotify_.authorize()) {
         showNotice(I18n::text("spotify_connected"));
         lastPlaybackPollAt_ = millis();
@@ -2773,7 +2803,7 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   visualState_.screenBrightnessLevel = display_.backlightPercent();
   visualState_.ledOn = ledRing_.isOn();
   if (!deepSleepStarted_ && now - haPairingStartedAt_ >= Config::PairingModeTimeoutMs) {
-    display_.showBootMessage("Pair timeout\nSleeping...", battery_);
+    display_.showBootMessage(I18n::text("boot_pair_timeout_sleeping"), battery_);
     responsiveDelay(600);
     enterDeepSleep();
   }
@@ -2824,6 +2854,8 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
     } else if (!audioUrl.isEmpty()) {
       spoken = app->playDjResponseAudioUrl(audioUrl);
     }
+  } else if (app->voiceClient_.pairingInvalidated()) {
+    app->markHomeAssistantPairingInvalid(message);
   }
   app->voiceClient_.sendStatus(false, ok ? "idle" : "error", ok ? "" : message);
   return ok;
@@ -2840,6 +2872,19 @@ bool SpotifyDJApp::repairSpotifyCredentialsFromWebCallback(
     return false;
   }
   return static_cast<SpotifyDJApp *>(context)->repairSpotifyCredentialsFromWeb(clientId, refreshToken, market, message);
+}
+
+void SpotifyDJApp::wakeWordDetectedCallback(void *context) {
+  if (context == nullptr) {
+    return;
+  }
+  SpotifyDJApp *app = static_cast<SpotifyDJApp *>(context);
+  if (app->voiceRecording_ || app->voiceState_ != VoiceState::Idle || !app->homeAssistantPaired_) {
+    return;
+  }
+  AppLog.println("Wake word: starting push-to-talk flow");
+  app->display_.wakeForUserActivity();
+  app->handleVoiceButton();
 }
 
 void SpotifyDJApp::refreshFromWebCallback(void *context) {
@@ -3181,7 +3226,7 @@ void SpotifyDJApp::renderMenuNow() {
           battery_,
           notice_,
           displayedVolume(),
-          haDevice_.isPaired(),
+          homeAssistantPaired_,
           spotify_.isAuthorized(),
           mqttSettings_.enabled && mqttPublisher_.connected());
       break;

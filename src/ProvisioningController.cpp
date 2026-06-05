@@ -106,13 +106,13 @@ void ProvisioningController::saveSetupProvisioning(
   Preferences spotifydj;
   spotifydj.begin("spotifydj", false);
   if (hasSpotifyCredentials) {
-    spotifydj.putString("spotify_client_id", clientId);
-    spotifydj.putString("spotify_refresh_token", refreshToken);
+    spotifydj.putString("sp_client", clientId);
+    spotifydj.putString("sp_refresh", refreshToken);
   } else {
-    spotifydj.remove("spotify_client_id");
-    spotifydj.remove("spotify_refresh_token");
+    spotifydj.remove("sp_client");
+    spotifydj.remove("sp_refresh");
   }
-  spotifydj.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  spotifydj.putString("sp_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
   spotifydj.end();
 }
 

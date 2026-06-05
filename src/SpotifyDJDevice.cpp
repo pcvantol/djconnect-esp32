@@ -5,11 +5,20 @@
 #include <esp_system.h>
 
 #include "AppLog.h"
+#include "I18n.h"
 
 namespace {
 const char *Namespace = "spotifydj";
 const char *DefaultDeviceName = "SpotifyDJ";
 const char *Model = "lilygo-t-embed-s3";
+const char *SpotifyClientIdKey = "sp_client";
+const char *SpotifyRefreshKey = "sp_refresh";
+const char *SpotifyMarketKey = "sp_market";
+const char *AssistPipelineKey = "assist_pipe";
+const char *MqttHostKey = "mqtt_host";
+const char *MqttPortKey = "mqtt_port";
+const char *MqttUserKey = "mqtt_user";
+const char *MqttPassKey = "mqtt_pass";
 
 String sixDigitCode(uint32_t value) {
   char buffer[7] = {};
@@ -37,7 +46,7 @@ bool SpotifyDJDevice::isPaired() const {
 }
 
 bool SpotifyDJDevice::isSpotifyConfigured() const {
-  return !readString("spotify_client_id").isEmpty() && !readString("spotify_refresh_token").isEmpty();
+  return !readString(SpotifyClientIdKey).isEmpty() && !readString(SpotifyRefreshKey).isEmpty();
 }
 
 String SpotifyDJDevice::getDeviceId() const {
@@ -73,26 +82,26 @@ String SpotifyDJDevice::getLocalUrl() const {
 }
 
 String SpotifyDJDevice::getSpotifyClientId() const {
-  return readString("spotify_client_id");
+  return readString(SpotifyClientIdKey);
 }
 
 String SpotifyDJDevice::getSpotifyMarket() const {
-  return readString("spotify_market", "NL");
+  return readString(SpotifyMarketKey, "NL");
 }
 
 String SpotifyDJDevice::getAssistPipelineId() const {
-  return readString("assist_pipeline_id");
+  return readString(AssistPipelineKey);
 }
 
 MqttSettings SpotifyDJDevice::getMqttSettings() const {
   MqttSettings settings;
-  settings.host = readString("mqtt_host");
-  settings.port = static_cast<uint16_t>(readString("mqtt_port", "1883").toInt());
+  settings.host = readString(MqttHostKey);
+  settings.port = static_cast<uint16_t>(readString(MqttPortKey, "1883").toInt());
   if (settings.port == 0) {
     settings.port = 1883;
   }
-  settings.username = readString("mqtt_username");
-  settings.password = readString("mqtt_password");
+  settings.username = readString(MqttUserKey);
+  settings.password = readString(MqttPassKey);
   settings.enabled = !settings.host.isEmpty();
   return settings;
 }
@@ -146,9 +155,9 @@ void SpotifyDJDevice::displayPairingCode() {
 void SpotifyDJDevice::displayPaired() {
   if (display_ != nullptr) {
     if (battery_ != nullptr) {
-      display_->showBootMessage("SpotifyDJ\nPaired", *battery_);
+      display_->showBootMessage(I18n::text("boot_paired"), *battery_);
     } else {
-      display_->showBootMessage("SpotifyDJ\nPaired");
+      display_->showBootMessage(I18n::text("boot_paired"));
     }
   }
 }
@@ -159,26 +168,30 @@ void SpotifyDJDevice::savePairing(const String &haUrl, const String &deviceToken
   AppLog.println("[SpotifyDJ] paired with Home Assistant URL stored");
 }
 
-void SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market) {
-  writeString("spotify_client_id", clientId);
-  writeString("spotify_refresh_token", refreshToken);
-  writeString("spotify_market", market.isEmpty() ? "NL" : market);
+bool SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market) {
+  const bool clientSaved = writeString(SpotifyClientIdKey, clientId);
+  const bool refreshSaved = writeString(SpotifyRefreshKey, refreshToken);
+  const bool marketSaved = writeString(SpotifyMarketKey, market.isEmpty() ? "NL" : market);
 
   AppLog.print("[SpotifyDJ] Spotify credentials provisioned: client_id=");
   AppLog.print(clientId.isEmpty() ? "missing" : "present");
-  AppLog.println(", refresh_token=present");
+  AppLog.print(", refresh_token=present saved=");
+  AppLog.println(clientSaved && refreshSaved && marketSaved ? "true" : "false");
+  return clientSaved && refreshSaved && marketSaved;
 }
 
-void SpotifyDJDevice::saveSpotifyRefreshToken(const String &refreshToken) {
-  writeString("spotify_refresh_token", refreshToken);
-  AppLog.println("[SpotifyDJ] Spotify refresh token provisioned manually");
+bool SpotifyDJDevice::saveSpotifyRefreshToken(const String &refreshToken) {
+  const bool saved = writeString(SpotifyRefreshKey, refreshToken);
+  AppLog.print("[SpotifyDJ] Spotify refresh token provisioned manually saved=");
+  AppLog.println(saved ? "true" : "false");
+  return saved;
 }
 
 void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
   if (pipelineId.isEmpty()) {
-    removeKey("assist_pipeline_id");
+    removeKey(AssistPipelineKey);
   } else {
-    writeString("assist_pipeline_id", pipelineId);
+    writeString(AssistPipelineKey, pipelineId);
   }
   AppLog.println("[SpotifyDJ] Assist pipeline setting saved");
 }
@@ -187,10 +200,10 @@ void SpotifyDJDevice::saveMqttSettings(const MqttSettings &settings) {
   if (settings.host.isEmpty()) {
     return;
   }
-  writeString("mqtt_host", settings.host);
-  writeString("mqtt_port", String(settings.port == 0 ? 1883 : settings.port));
-  writeString("mqtt_username", settings.username);
-  writeString("mqtt_password", settings.password);
+  writeString(MqttHostKey, settings.host);
+  writeString(MqttPortKey, String(settings.port == 0 ? 1883 : settings.port));
+  writeString(MqttUserKey, settings.username);
+  writeString(MqttPassKey, settings.password);
   AppLog.print("[SpotifyDJ] MQTT settings saved host=");
   AppLog.print(settings.host);
   AppLog.print(" port=");
@@ -210,9 +223,9 @@ void SpotifyDJDevice::clearHomeAssistantPairing() {
 }
 
 void SpotifyDJDevice::clearSpotifyCredentials() {
-  removeKey("spotify_client_id");
-  removeKey("spotify_refresh_token");
-  removeKey("spotify_market");
+  removeKey(SpotifyClientIdKey);
+  removeKey(SpotifyRefreshKey);
+  removeKey(SpotifyMarketKey);
   AppLog.println("[SpotifyDJ] Spotify credentials cleared");
 }
 
@@ -228,11 +241,14 @@ String SpotifyDJDevice::readString(const char *key, const String &fallback) cons
   return value;
 }
 
-void SpotifyDJDevice::writeString(const char *key, const String &value) {
+bool SpotifyDJDevice::writeString(const char *key, const String &value) {
   Preferences preferences;
-  preferences.begin(Namespace, false);
-  preferences.putString(key, value);
+  if (!preferences.begin(Namespace, false)) {
+    return false;
+  }
+  const bool saved = preferences.putString(key, value) > 0 || value.isEmpty();
   preferences.end();
+  return saved;
 }
 
 void SpotifyDJDevice::removeKey(const char *key) {

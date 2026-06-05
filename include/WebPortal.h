@@ -69,6 +69,7 @@ private:
   void configureRoutes();
   void handleRoot();
   void handleStatusJson();
+  void handleDiagnosticsJson();
 
   // Returns the live in-memory serial/framework log buffer as text/plain.
   void handleLogsText();

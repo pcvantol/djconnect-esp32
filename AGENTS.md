@@ -212,11 +212,25 @@ NVS namespaces:
 - `ha_url`
 - `device_token`
 - `device_name`
-- `spotify_client_id`
-- `spotify_refresh_token`
-- `spotify_market`
-- `firmware_channel`
-- `assist_pipeline_id`
+- `sp_client`
+- `sp_refresh`
+- `sp_market`
+- `fw_channel`
+- `assist_pipe`
+
+Keep ESP32 Preferences keys at 15 characters or less. External Home Assistant JSON payload field names may remain long, for example `spotify_refresh_token`; only the internal NVS key must be shortened.
+
+The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postman_collection.json`. Keep all credentials as variables/placeholders; never commit real device tokens, Spotify refresh tokens, MQTT passwords or Home Assistant URLs that identify a private instance.
+
+## Architecture Decisions
+
+- Treat Home Assistant as the trusted backend for pairing, Spotify command interpretation, Assist STT/TTS, OTA offer handling and optional MQTT provisioning.
+- Keep the ESP focused on local edge behavior: display, buttons/encoder, LED ring, battery/power policy, speaker cues, microphone capture and playback of HA-provided DJ response audio.
+- Keep PTT on Route B: ESP streams raw PCM16 to HA Assist, sends recognized text to the SpotifyDJ integration, then displays/plays the returned DJ response. Do not add direct OpenAI calls or browser microphone uploads.
+- Pairing validity is runtime state. On HA 401/403/404, mark Home Assistant as stale/red and disable PTT, but do not erase NVS pairing automatically.
+- Keep external JSON payload names compatible with HA, but keep internal ESP32 Preferences keys at 15 characters or less.
+- Route slow network operations through explicit timeout/backoff policy and avoid making input/display responsiveness depend on an unbounded HTTP call.
+- Keep release binaries/manifests separate from the closed-source firmware source repo workflow.
 
 Never log:
 
@@ -243,6 +257,9 @@ Push-to-talk uses Route B:
 - HA pushes DJ response text plus optional PCM WAV `audio_url` back to the ESP with `POST /api/device/dj_response`.
 - The ESP displays the DJ text, plays compatible PCM WAV through `SoundManager::playWavStream()`, and then returns to the normal UI.
 - Web portal PTT is a compact simulation button: it sends a fixed localized test command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on Spotify credentials or active playback. Do not upload browser WAV audio to the ESP.
+- If `/api/spotify_dj/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
+- Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
+- Optional wake-word support must remain inert without a linked model hook. A trained model may expose `extern "C" bool spotifydj_micro_wake_word_detect(const int16_t *samples, size_t sampleCount);`; the detector must be fast, local-only, and must not perform network I/O from the audio poll path.
 - Do not call OpenAI directly from ESP firmware.
 - Keep `SPOTIFYDJ_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.
 
@@ -331,7 +348,7 @@ MQTT is two-way:
 - Do not perform blocking Spotify HTTPS work inside the MQTT callback; queue an `MqttCommand` and let `SpotifyDJApp::loop()` execute it.
 - Keep Home Assistant MQTT discovery aligned with command topics for buttons, number and selects.
 - Current two-way MQTT scope includes Spotify-facing controls, status, next/previous, volume, sound output, playlist start, status command, OTA command placeholder, DJ response command, and settings commands for brightness, dim timeout, turn-off timeout, speaker cue volume, language, and theme.
-- HA-provisioned MQTT settings live in `spotifydj` NVS keys `mqtt_host`, `mqtt_port`, `mqtt_username`, `mqtt_password` and take precedence over legacy `provision` MQTT settings.
+- HA-provisioned MQTT settings live in `spotifydj` NVS keys `mqtt_host`, `mqtt_port`, `mqtt_user`, `mqtt_pass` and take precedence over legacy `provision` MQTT settings.
 - Captive portal MQTT settings are optional. Empty host means keep existing config and do not attempt MQTT setup.
 - Never log MQTT passwords.
 

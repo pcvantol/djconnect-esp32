@@ -11,9 +11,11 @@ public:
 
   bool sendStatus(bool recording, const String &state, const String &lastError = "");
   bool sendRecognizedText(const String &recognizedText, String &message, String *audioUrl = nullptr);
+  bool pairingInvalidated() const;
 
 private:
   String endpoint(const char *path) const;
 
   SpotifyDJDevice *device_ = nullptr;
+  bool pairingInvalidated_ = false;
 };

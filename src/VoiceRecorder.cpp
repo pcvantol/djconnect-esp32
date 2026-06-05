@@ -125,6 +125,25 @@ bool VoiceRecorder::readPcmChunk(uint8_t *buffer, size_t capacity, size_t &bytes
   return true;
 }
 
+bool VoiceRecorder::readMonitorChunk(uint8_t *buffer, size_t capacity, size_t &bytesRead) {
+  bytesRead = 0;
+  if (recording_) {
+    return true;
+  }
+  if (!ready_ && !begin()) {
+    return false;
+  }
+  const esp_err_t result = i2s_read(MicI2sPort, buffer, capacity, &bytesRead, 0);
+  if (result != ESP_OK) {
+    error_ = "Mic monitor read failed";
+    AppLog.print(error_);
+    AppLog.print(": ");
+    AppLog.println(esp_err_to_name(result));
+    return false;
+  }
+  return true;
+}
+
 bool VoiceRecorder::start() {
   if (!ready_ && !begin()) {
     return false;

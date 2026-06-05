@@ -18,6 +18,94 @@
 #define WEB_SHOW_WIFI_PASSWORD 0
 #endif
 
+namespace {
+int hexNibble(char value) {
+  if (value >= '0' && value <= '9') {
+    return value - '0';
+  }
+  if (value >= 'a' && value <= 'f') {
+    return value - 'a' + 10;
+  }
+  if (value >= 'A' && value <= 'F') {
+    return value - 'A' + 10;
+  }
+  return -1;
+}
+
+String decodeFormValue(const String &value) {
+  String decoded;
+  decoded.reserve(value.length());
+  for (size_t index = 0; index < value.length(); index++) {
+    const char c = value[index];
+    if (c == '+') {
+      decoded += ' ';
+    } else if (c == '%' && index + 2 < value.length()) {
+      const int high = hexNibble(value[index + 1]);
+      const int low = hexNibble(value[index + 2]);
+      if (high >= 0 && low >= 0) {
+        decoded += static_cast<char>((high << 4) | low);
+        index += 2;
+      } else {
+        decoded += c;
+      }
+    } else {
+      decoded += c;
+    }
+  }
+  return decoded;
+}
+
+String formValueFromBody(const String &body, const char *key) {
+  const String prefix = String(key) + "=";
+  size_t start = 0;
+  while (start < body.length()) {
+    size_t end = body.indexOf('&', start);
+    if (end == static_cast<size_t>(-1)) {
+      end = body.length();
+    }
+    const String pair = body.substring(start, end);
+    if (pair.startsWith(prefix)) {
+      return decodeFormValue(pair.substring(prefix.length()));
+    }
+    start = end + 1;
+  }
+  return "";
+}
+
+String jsonValueFromBody(const String &body, const char *key) {
+  if (body.isEmpty()) {
+    return "";
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, body)) {
+    return "";
+  }
+  return doc[key] | "";
+}
+
+String postedValue(WebServer &server, const String &rawBody, const char *primaryKey, const char *fallbackKey = nullptr) {
+  if (server.hasArg(primaryKey)) {
+    return server.arg(primaryKey);
+  }
+  String value = jsonValueFromBody(rawBody, primaryKey);
+  if (!value.isEmpty()) {
+    return value;
+  }
+  value = formValueFromBody(rawBody, primaryKey);
+  if (!value.isEmpty() || fallbackKey == nullptr) {
+    return value;
+  }
+  if (server.hasArg(fallbackKey)) {
+    return server.arg(fallbackKey);
+  }
+  value = jsonValueFromBody(rawBody, fallbackKey);
+  if (!value.isEmpty()) {
+    return value;
+  }
+  return formValueFromBody(rawBody, fallbackKey);
+}
+}  // namespace
+
 static const char IndexHtml[] PROGMEM = R"rawliteral(
 <!doctype html>
 <html lang="en">
@@ -80,8 +168,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
     button.warning { background:#a57912; border-color:#d6a329; color:#fff3c4; }
     button.firmware { background:#6f3bd8; border-color:#9b72ff; color:#f4edff; }
-    button.ptt { width:auto; min-width:160px; min-height:40px; justify-self:start; background:#243238; border-color:#d3a018; color:#ffe4a0; font-size:14px; }
-    button.ptt.recording { background:#2f7fe8; border-color:#78b4ff; color:#eef6ff; }
+    button.ptt { width:auto; min-width:160px; min-height:40px; justify-self:start; background:#1f6fd1; border-color:#2f8cff; color:#f2f8ff; font-size:14px; }
+    button.ptt.recording { background:#1559b0; border-color:#4aa3ff; color:#eef6ff; }
     button:disabled, select:disabled, input:disabled { opacity:.45; cursor:not-allowed; }
     .section-action { margin-top:10px; }
     button.danger { background:#3a1714; border-color:#632b25; color:#ffd1c9; }
@@ -148,7 +236,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div id="webPttStatus" class="status"></div>
     </section>
 
-    <section class="panel">
+    <section id="diagnosticsPanel" class="panel">
       <h2 data-i18n="upNext">Up Next</h2>
       <div id="queueList" class="queue"><div class="fine" data-i18n="loadingQueue">Loading queue...</div></div>
       <div id="queueStatus" class="status"></div>
@@ -304,7 +392,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <button id="rebootButton" data-i18n="restart" class="warning section-action" type="button">Restart device</button>
     </section>
 
-    <section class="panel wide">
+    <section id="logsPanel" class="panel wide">
       <h2 data-i18n="logs">Logs</h2>
       <div class="two">
         <button id="pauseLogsButton" data-i18n="pauseLogs" class="secondary" type="button">Pause logs</button>
@@ -371,7 +459,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         ha:"Home Assistant", pairing:"Pairing", pairCode:"Pair code", firmware:"Firmware", model:"Model", resetPairing:"Reset pairing",
         spotify:"Spotify", connection:"Connection", token:"Token", error:"Error", refreshSpotify:"Refresh Spotify", spotifyClientIdRepair:"Spotify client ID (optional)",
         spotifyClientIdRepairPlaceholder:"leave blank to keep current", spotifyRefreshRepair:"New Spotify refresh token", spotifyMarketRepair:"Spotify market",
-        saveSpotifyToken:"Save token & test", spotifyTokenFine:"The refresh token is saved and tested immediately. It is never shown after submission.", broker:"Broker",
+        saveSpotifyToken:"Save token & test", spotifyTokenFine:"The refresh token is saved and tested immediately. Fill the client ID too if this device does not have one stored yet. The token is never shown after submission.", broker:"Broker",
         username:"Username", discovery:"HA discovery", lastPublished:"Last published", diagnostics:"Diagnostics", screen:"Screen",
         ledRing:"LED ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Storage", sketch:"Sketch", restart:"Restart device",
         logs:"Logs", pauseLogs:"Pause logs", selectAll:"Select all", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -410,7 +498,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         ha:"Home Assistant", pairing:"Koppeling", pairCode:"Koppelcode", firmware:"Firmware", model:"Model", resetPairing:"Home Assistant koppeling resetten",
         spotify:"Spotify", connection:"Verbinding", token:"Token", error:"Fout", refreshSpotify:"Spotify verversen", spotifyClientIdRepair:"Spotify client ID (optioneel)",
         spotifyClientIdRepairPlaceholder:"leeg laten om huidige te behouden", spotifyRefreshRepair:"Nieuwe Spotify refresh token", spotifyMarketRepair:"Spotify market",
-        saveSpotifyToken:"Token opslaan & testen", spotifyTokenFine:"De refresh token wordt opgeslagen en direct getest. Hij wordt na verzenden nooit getoond.", broker:"Broker",
+        saveSpotifyToken:"Token opslaan & testen", spotifyTokenFine:"De refresh token wordt opgeslagen en direct getest. Vul ook de client ID in als dit device er nog geen heeft opgeslagen. De token wordt na verzenden nooit getoond.", broker:"Broker",
         username:"Gebruikersnaam", discovery:"HA discovery", lastPublished:"Laatst gepubliceerd", diagnostics:"Diagnostiek", screen:"Scherm",
         ledRing:"LED-ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Opslag", sketch:"Sketch", restart:"Device herstarten",
         logs:"Logs", pauseLogs:"Pauzeer logs", selectAll:"Selecteer alles", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -485,6 +573,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let pairingInfoLoadedAt = 0;
     let spotifyControlsEnabled = false;
     let webPttRunning = false;
+    let homeAssistantRuntimePaired = false;
+    let albumArtUrl = "";
+    let logsVisible = false;
+    let diagnosticsVisible = false;
     async function startWebPtt() {
       if ($("webPttButton").disabled) return;
       if (webPttRunning) return;
@@ -531,9 +623,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       text("artist", data.playback.hasPlayback ? (data.playback.artist || data.playback.type || "-") : "");
       const albumArt = $("albumArt");
       if (data.playback.albumImageUrl) {
-        albumArt.src = data.playback.albumImageUrl;
+        if (albumArtUrl !== data.playback.albumImageUrl) {
+          albumArtUrl = data.playback.albumImageUrl;
+          albumArt.src = albumArtUrl;
+        }
         albumArt.style.display = "block";
       } else {
+        albumArtUrl = "";
         albumArt.removeAttribute("src");
         albumArt.style.display = "none";
       }
@@ -561,14 +657,19 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setSpotifyControlsEnabled(!!data.spotify.authorized);
       text("spotifyToken", data.spotify.authorized ? `${data.spotify.tokenExpiresInSec}s left` : "-");
       text("spotifyError", data.spotify.error || "-");
+      homeAssistantRuntimePaired = !!(data.ha && data.ha.paired);
+      setStatusDot("haHeaderStatus", homeAssistantRuntimePaired);
+      text("haPaired", homeAssistantRuntimePaired ? tr("paired") : tr("pairingMode"));
       $("webPttButton").disabled = !(data.voice && data.voice.available);
       text("screenState", `${data.screen.state} (${data.screen.brightnessLevel}%)`);
       text("ledState", data.led.state);
       text("uptime", duration(data.app.uptimeMs));
-      text("cpu", `${data.system.cpuUsagePercent}% loop load`);
-      text("heap", `${bytes(data.system.heapUsed)} used / ${bytes(data.system.heapTotal)} total, ${bytes(data.system.heapFree)} free`);
-      text("storage", `${bytes(data.system.otaFree)} OTA free / ${bytes(data.system.otaTotal)} OTA total`);
-      text("sketch", `${bytes(data.system.sketchSize)} sketch / ${bytes(data.system.flashSize)} flash`);
+      if (data.system) {
+        text("cpu", `${data.system.cpuUsagePercent}% loop load`);
+        text("heap", `${bytes(data.system.heapUsed)} used / ${bytes(data.system.heapTotal)} total, ${bytes(data.system.heapFree)} free`);
+        text("storage", `${bytes(data.system.otaFree)} OTA free / ${bytes(data.system.otaTotal)} OTA total`);
+        text("sketch", `${bytes(data.system.sketchSize)} sketch / ${bytes(data.system.flashSize)} flash`);
+      }
       setInput("brightness", String(data.settings.screenBrightnessPercent));
       setInput("offTimeout", String(data.settings.screenOffTimeoutMs));
       setInput("sleepTimeout", String(data.settings.deviceSleepTimeoutMs));
@@ -599,15 +700,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       try {
         const infoResponse = await fetch("/api/device/info", { cache: "no-store" });
         const info = await infoResponse.json();
-        setStatusDot("haHeaderStatus", !!info.paired);
-        text("haPaired", info.paired ? tr("paired") : tr("pairingMode"));
         text("haDeviceId", info.device_id || "-");
         text("haMdnsUrl", info.device_id ? `http://${info.device_id}.local` : "-");
         text("haFirmware", info.firmware || "-");
         text("haModel", info.model || "-");
         text("haUrl", info.ha_url || "-");
         text("haStatus", "");
-        if (info.paired) {
+        if (homeAssistantRuntimePaired) {
           $("haPairBanner").style.display = "none";
           text("haPairCode", "-");
           return;
@@ -816,13 +915,17 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     $("spotifyCredentialForm").addEventListener("submit", async event => {
       event.preventDefault();
       $("spotifyCredentialStatus").textContent = tr("saving");
-      const body = new URLSearchParams({
-        clientId: $("spotifyRepairClientId").value,
-        refreshToken: $("spotifyRepairRefreshToken").value,
-        market: $("spotifyRepairMarket").value
+      const body = JSON.stringify({
+        clientId: $("spotifyRepairClientId").value.trim(),
+        refreshToken: $("spotifyRepairRefreshToken").value.trim(),
+        market: $("spotifyRepairMarket").value.trim()
       });
       try {
-        const response = await fetch("/api/spotify-credentials", { method:"POST", body });
+        const response = await fetch("/api/spotify-credentials", {
+          method:"POST",
+          headers: { "Content-Type":"application/json" },
+          body
+        });
         $("spotifyCredentialStatus").textContent = await response.text();
       } finally {
         $("spotifyRepairClientId").value = "";
@@ -1083,6 +1186,9 @@ void WebPortal::handleStatusJson() {
   spotify["authorized"] = spotify_->isAuthorized();
   spotify["tokenExpiresInSec"] = spotify_->accessTokenExpiresInSeconds();
   spotify["error"] = playback_->error;
+
+  JsonObject ha = doc["ha"].to<JsonObject>();
+  ha["paired"] = homeAssistantPaired_ != nullptr && *homeAssistantPaired_;
 
   JsonObject voice = doc["voice"].to<JsonObject>();
   voice["available"] = voiceTextCallback_ != nullptr &&
@@ -1423,17 +1529,22 @@ void WebPortal::handleVoiceTextPost() {
 }
 
 void WebPortal::handleSpotifyCredentialsPost() {
-  if (spotifyCredentialsCallback_ == nullptr || !server_.hasArg("refreshToken")) {
+  if (spotifyCredentialsCallback_ == nullptr) {
     server_.send(400, "text/plain", localizedText("Missing refresh token", "Refresh token ontbreekt"));
     return;
   }
 
-  String clientId = server_.arg("clientId");
-  String refreshToken = server_.arg("refreshToken");
-  String market = server_.arg("market");
+  const String rawBody = server_.arg("plain");
+  String clientId = postedValue(server_, rawBody, "clientId", "client_id");
+  String refreshToken = postedValue(server_, rawBody, "refreshToken", "refresh_token");
+  String market = postedValue(server_, rawBody, "market", "spotify_market");
   clientId.trim();
   refreshToken.trim();
   market.trim();
+  AppLog.print("Web Spotify repair: refresh_token=");
+  AppLog.print(refreshToken.isEmpty() ? "missing" : "present");
+  AppLog.print(" raw_len=");
+  AppLog.println(rawBody.length());
   if (refreshToken.isEmpty()) {
     server_.send(400, "text/plain", localizedText("Missing refresh token", "Refresh token ontbreekt"));
     return;

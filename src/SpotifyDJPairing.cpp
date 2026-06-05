@@ -8,6 +8,7 @@
 #include "AppLog.h"
 #include "Config.h"
 #include "I18n.h"
+#include "LogicHelpers.h"
 #include "NetworkActivity.h"
 #include "SpotifyProvisioning.h"
 
@@ -84,11 +85,11 @@ void SpotifyDJPairing::applyProvisionedSpotifyCredentials(JsonVariantConst paylo
   if (!credentials.complete()) {
     return;
   }
-  device_->saveSpotifyCredentials(
+  const bool saved = device_->saveSpotifyCredentials(
       credentials.clientId,
       credentials.refreshToken,
       credentials.market == nullptr ? "NL" : credentials.market);
-  if (spotifyProvisionedCallback_ != nullptr) {
+  if (saved && spotifyProvisionedCallback_ != nullptr) {
     spotifyProvisionedCallback_(spotifyProvisionedContext_);
   }
 }
@@ -162,14 +163,14 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   return true;
 }
 
-bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyConfigured) {
+SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyConfigured) {
   if (device_ == nullptr || !device_->isPaired()) {
-    return false;
+    return StatusResult::Skipped;
   }
   const String haUrl = device_->getHaUrl();
   const String token = device_->getDeviceToken();
   if (haUrl.isEmpty() || token.isEmpty()) {
-    return false;
+    return StatusResult::Skipped;
   }
 
   JsonDocument request;
@@ -194,7 +195,7 @@ bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyC
   if (!http.begin(url)) {
     AppLog.println("[SpotifyDJ] HA status HTTP begin failed");
     activity.finishError("begin failed");
-    return false;
+    return StatusResult::Failed;
   }
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
@@ -206,6 +207,10 @@ bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyC
 
   AppLog.print("[SpotifyDJ] HA status response: ");
   AppLog.println(code);
+  if (Logic::isHomeAssistantPairingInvalidStatus(code)) {
+    AppLog.println("[SpotifyDJ] HA pairing appears invalid");
+    return StatusResult::PairingInvalid;
+  }
   if (code >= 200 && code < 300 && !payload.isEmpty()) {
     JsonDocument response;
     if (!deserializeJson(response, payload)) {
@@ -217,5 +222,5 @@ bool SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyC
       applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());
     }
   }
-  return code >= 200 && code < 300;
+  return code >= 200 && code < 300 ? StatusResult::Ok : StatusResult::Failed;
 }

@@ -35,8 +35,8 @@ public:
   void displayPaired();
 
   void savePairing(const String &haUrl, const String &deviceToken);
-  void saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market);
-  void saveSpotifyRefreshToken(const String &refreshToken);
+  bool saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market);
+  bool saveSpotifyRefreshToken(const String &refreshToken);
   void saveAssistPipelineId(const String &pipelineId);
   void saveMqttSettings(const MqttSettings &settings);
   void clearHomeAssistantPairing();
@@ -47,7 +47,7 @@ public:
 
 private:
   String readString(const char *key, const String &fallback = "") const;
-  void writeString(const char *key, const String &value);
+  bool writeString(const char *key, const String &value);
   void removeKey(const char *key);
   static String macSuffix();
 

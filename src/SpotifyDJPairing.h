@@ -10,11 +10,18 @@
 
 class SpotifyDJPairing {
 public:
+  enum class StatusResult {
+    Skipped,
+    Ok,
+    Failed,
+    PairingInvalid,
+  };
+
   void begin(SpotifyDJDevice &device, SpotifyDJDiscovery *discovery = nullptr);
   void setLanguageProvisionedCallback(void (*callback)(void *context, const String &languageCode), void *context);
   void setSpotifyProvisionedCallback(void (*callback)(void *context), void *context);
   bool pairWithHomeAssistant(const String &haUrl);
-  bool sendStatusToHA(const BatteryState &battery, bool spotifyConfigured);
+  StatusResult sendStatusToHA(const BatteryState &battery, bool spotifyConfigured);
 
 private:
   void applyProvisionedLanguage(JsonVariantConst payload);

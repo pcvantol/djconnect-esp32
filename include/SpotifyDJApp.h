@@ -27,6 +27,7 @@
 #include "VoiceHttpClient.h"
 #include "VoiceRecorder.h"
 #include "VoiceState.h"
+#include "WakeWordEngine.h"
 #include "WebPortal.h"
 
 class SpotifyDJApp {
@@ -175,6 +176,7 @@ private:
   void applyProvisionedSpotifyCredentials();
   void setupHomeAssistantLayer();
   void sendHomeAssistantStatusIfDue(bool force = false);
+  void markHomeAssistantPairingInvalid(const String &message);
   bool handleHomeAssistantPairingMode(uint32_t loopStartedAt);
   static void applyWebSettingsCallback(
       void *context,
@@ -188,6 +190,7 @@ private:
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
   static bool repairSpotifyCredentialsFromWebCallback(void *context, const String &clientId, const String &refreshToken, const String &market, String &message);
+  static void wakeWordDetectedCallback(void *context);
   static void refreshFromWebCallback(void *context);
   static void resetPairingFromWebCallback(void *context);
   static void hardResetFromWebCallback(void *context);
@@ -211,6 +214,7 @@ private:
   LedRing ledRing_;
   SoundManager sound_;
   VoiceRecorder voiceRecorder_;
+  WakeWordEngine wakeWord_;
   SpotifyDJAssistClient assistClient_;
   VoiceHttpClient voiceClient_;
   SoftResetMonitor softResetMonitor_;

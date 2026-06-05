@@ -8,6 +8,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "I18n.h"
 #include "NetworkActivity.h"
 
 namespace {
@@ -91,9 +92,9 @@ bool SpotifyDJOTA::performUpdate(
   if (display != nullptr) {
     display->forceBacklightPercent(100);
     if (battery != nullptr) {
-      display->showBootMessage("Firmware update\nin progress..", *battery);
+      display->showBootMessage(I18n::text("firmware_update_progress"), *battery);
     } else {
-      display->showBootMessage("Firmware update\nin progress..");
+      display->showBootMessage(I18n::text("firmware_update_progress"));
     }
   }
   if (ledRing != nullptr) {

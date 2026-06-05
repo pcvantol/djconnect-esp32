@@ -233,6 +233,24 @@ static void testVoiceChunkHelpers() {
   assert(!Logic::shouldSendRecognizedVoiceText(0));
   assert(Logic::shouldSendRecognizedVoiceText(1));
   assert(Logic::shouldSendRecognizedVoiceText(64));
+
+  assert(!Logic::isHomeAssistantPairingInvalidStatus(200));
+  assert(Logic::isHomeAssistantPairingInvalidStatus(401));
+  assert(Logic::isHomeAssistantPairingInvalidStatus(403));
+  assert(Logic::isHomeAssistantPairingInvalidStatus(404));
+  assert(!Logic::isHomeAssistantPairingInvalidStatus(500));
+  assert(std::strcmp(
+             Logic::voiceHttpFailureMessage(404),
+             "HA voice endpoint not found. Reset pairing and set up the SpotifyDJ integration again.") == 0);
+  assert(std::strcmp(Logic::voiceHttpFailureMessage(401), "HA authorization failed. Reset pairing and pair again.") == 0);
+  assert(std::strcmp(Logic::voiceHttpFailureMessage(403), "HA authorization failed. Reset pairing and pair again.") == 0);
+  assert(Logic::voiceHttpFailureMessage(500) == nullptr);
+
+  assert(Logic::preferencesKeyFits("sp_client"));
+  assert(Logic::preferencesKeyFits("sp_refresh"));
+  assert(Logic::preferencesKeyFits("sp_market"));
+  assert(!Logic::preferencesKeyFits("spotify_client_id"));
+  assert(!Logic::preferencesKeyFits("spotify_refresh_token"));
 }
 
 static void testPlayModeMapping() {

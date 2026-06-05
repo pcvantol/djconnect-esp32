@@ -1,0 +1,321 @@
+{
+  "info": {
+    "_postman_id": "1bfe1a4a-bf33-4a86-9dc5-spotifydj-esp-api",
+    "name": "SpotifyDJ ESP API",
+    "description": "Public/local ESP API for a SpotifyDJ device. Import this collection into Postman and set base_url to the device IP or mDNS URL, for example http://spotifydj-lilygo-XXXXXXXXXXXX.local. Protected endpoints require device_token from Home Assistant pairing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://spotifydj-lilygo-XXXXXXXXXXXX.local",
+      "type": "string"
+    },
+    {
+      "key": "device_token",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "ha_url",
+      "value": "http://homeassistant.local:8123",
+      "type": "string"
+    },
+    {
+      "key": "spotify_client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spotify_refresh_token",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "firmware_url",
+      "value": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/v2.5.0/spotifydj-device-v2.5.0.bin",
+      "type": "string"
+    },
+    {
+      "key": "firmware_sha256",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "Open",
+      "item": [
+        {
+          "name": "Device Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/device/info",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "info"
+              ]
+            },
+            "description": "Returns device identity, firmware, model, pairing state, Spotify config state, battery, WiFi RSSI, HA URL and last DJ text. No bearer token required."
+          },
+          "response": []
+        },
+        {
+          "name": "Pairing Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/device/pairing-info",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "pairing-info"
+              ]
+            },
+            "description": "Returns the current pairing code and local URL. No bearer token required."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pairing",
+      "item": [
+        {
+          "name": "Pair With Home Assistant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ha_url\": \"{{ha_url}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/pair",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "pair"
+              ]
+            },
+            "description": "Asks the ESP to pair with the configured Home Assistant URL. The ESP posts its device id, pair code, firmware and local URL to HA."
+          },
+          "response": []
+        },
+        {
+          "name": "Forget Pairing",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/device/forget",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "forget"
+              ]
+            },
+            "description": "Clears HA pairing and Spotify credentials, updates mDNS TXT records, then restarts into pairing mode."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Provisioning",
+      "item": [
+        {
+          "name": "Provision Spotify Credentials",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"spotify_client_id\": \"{{spotify_client_id}}\",\n  \"spotify_refresh_token\": \"{{spotify_refresh_token}}\",\n  \"spotify_market\": \"NL\",\n  \"device_language\": \"nl\",\n  \"assist_pipeline_id\": \"\",\n  \"mqtt\": {\n    \"host\": \"\",\n    \"port\": 1883,\n    \"username\": \"\",\n    \"password\": \"\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/provision_spotify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "provision_spotify"
+              ]
+            },
+            "description": "Stores Spotify OAuth credentials in ESP NVS. MQTT, language and assist pipeline id are optional."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "DJ Response",
+      "item": [
+        {
+          "name": "Display DJ Response Text",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Daar gaan we. SpotifyDJ is klaar voor je volgende plaat.\",\n  \"audio_url\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/dj_response",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "dj_response"
+              ]
+            },
+            "description": "Pushes a DJ response to the ESP display. If audio_url points to a compatible PCM WAV, the ESP attempts speaker playback."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Firmware",
+      "item": [
+        {
+          "name": "Start OTA Firmware Update",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{firmware_url}}\",\n  \"sha256\": \"{{firmware_sha256}}\",\n  \"version\": \"2.5.0\",\n  \"device\": \"lilygo-t-embed-s3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/ota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "ota"
+              ]
+            },
+            "description": "Starts OTA firmware update after bearer validation and battery/charging checks. The ESP responds before rebooting."
+          },
+          "response": []
+        },
+        {
+          "name": "Restart Device",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/device/reboot",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "reboot"
+              ]
+            },
+            "description": "Returns success and restarts the ESP after a short delay."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

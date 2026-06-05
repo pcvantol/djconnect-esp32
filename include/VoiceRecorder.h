@@ -9,6 +9,7 @@ public:
   bool start();
   bool startRaw();
   bool readPcmChunk(uint8_t *buffer, size_t capacity, size_t &bytesRead);
+  bool readMonitorChunk(uint8_t *buffer, size_t capacity, size_t &bytesRead);
   bool update();
   bool stop();
   bool stopRaw();

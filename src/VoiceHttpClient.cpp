@@ -7,6 +7,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
 
@@ -15,6 +16,7 @@ void VoiceHttpClient::begin(SpotifyDJDevice &device) {
 }
 
 bool VoiceHttpClient::sendStatus(bool recording, const String &state, const String &lastError) {
+  pairingInvalidated_ = false;
   if (device_ == nullptr || !device_->isPaired()) {
     return false;
   }
@@ -49,10 +51,14 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   activity.finish(code);
   AppLog.print("[SpotifyDJ] voice status response: ");
   AppLog.println(code);
+  if (Logic::isHomeAssistantPairingInvalidStatus(code)) {
+    pairingInvalidated_ = true;
+  }
   return code >= 200 && code < 300;
 }
 
 bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &message, String *audioUrl) {
+  pairingInvalidated_ = false;
   if (device_ == nullptr || !device_->isPaired()) {
     message = "No HA pairing";
     return false;
@@ -103,7 +109,14 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   http.end();
   activity.finish(code);
   if (code < 200 || code >= 300) {
-    message = "Voice HTTP " + String(code);
+    pairingInvalidated_ = Logic::isHomeAssistantPairingInvalidStatus(code);
+    if (code == 404) {
+      message = I18n::text("voice_ha_endpoint_missing");
+    } else if (code == 401 || code == 403) {
+      message = I18n::text("voice_ha_auth_failed");
+    } else {
+      message = "Voice HTTP " + String(code);
+    }
     return false;
   }
 
@@ -121,6 +134,10 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   }
   message = "Voice command sent";
   return true;
+}
+
+bool VoiceHttpClient::pairingInvalidated() const {
+  return pairingInvalidated_;
 }
 
 String VoiceHttpClient::endpoint(const char *path) const {

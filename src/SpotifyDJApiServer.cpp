@@ -171,10 +171,13 @@ void SpotifyDJApiServer::handleProvisionSpotify() {
     return;
   }
 
-  device_->saveSpotifyCredentials(
-      credentials.clientId,
-      credentials.refreshToken,
-      credentials.market == nullptr ? "NL" : credentials.market);
+  if (!device_->saveSpotifyCredentials(
+          credentials.clientId,
+          credentials.refreshToken,
+          credentials.market == nullptr ? "NL" : credentials.market)) {
+    sendJson(500, "{\"error\":\"spotify credentials save failed\"}");
+    return;
+  }
   if (doc["assist_pipeline_id"].is<const char *>()) {
     device_->saveAssistPipelineId(assistPipelineId);
   }

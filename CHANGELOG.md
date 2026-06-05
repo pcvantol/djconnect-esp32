@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.5.0
+## v2.5.1
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -28,16 +28,18 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Built-in speaker cue volume setting: 25%, 50%, 75% or 100%.
 - Battery/charging guard screens, low-battery turn-off sleep and charger-aware wake behavior.
 - WiFi-failure boot menu with encoder selection for retry connect, factory reset, restart device and turn off.
+- Optional local micro wake word hook for a trained `Spotify DJ` detector.
 - Watchdog, slow-loop diagnostics and periodic heap diagnostics for long-running device stability.
 - `ProvisioningController` for centralized NVS provisioning storage and reduced `SpotifyDJApp` responsibility.
 - `PowerController` for charger/wake/watchdog policy.
 - Host-testable menu and network helper models plus release-script shell tests.
 - `release.sh` helper for local firmware release preparation, dry-run validation, manifest generation, tagging and optional public firmware repo publishing.
+- Postman collection for the public/local ESP device API.
 
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.5.0` / `v2.5.0`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.5.1` / `v2.5.1`; local builds without release flags remain `dev` / `vdev`.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
 - Spotify credentials are provisioned through the setup portal or Home Assistant and stored in NVS.
 - The web portal can manually repair Spotify OAuth credentials with a one-shot refresh-token submit field, immediately testing authorization and clearing the submitted fields from the page.
@@ -67,6 +69,12 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Voice status messages use `recording`, `sending_command` and `error`.
 - DJ responses are displayed locally, optionally played, published as `last_dj_text` in runtime state and emitted as MQTT events.
 - Web portal PTT is now a compact DJ-response simulation button that sends a fixed localized test command through the ESP to Home Assistant; it requires HA pairing but not Spotify credentials, active playback or browser microphone access.
+- Stale Home Assistant pairing is reported clearly when the HA voice endpoint returns 404.
+- Home Assistant status and push-to-talk calls now mark runtime pairing as stale on HA 401/403/404 responses without automatically deleting stored pairing data.
+- Home Assistant voice endpoint stale-pairing messages are translated through the firmware language setting.
+- Web portal Spotify refresh-token repair accepts JSON, form-encoded and compatibility field names so a broken token can be replaced without factory reset.
+- Spotify OAuth credentials are stored with short ESP32 Preferences keys so NVS writes no longer silently fail because of the 15-character key limit.
+- Architecture decisions are documented explicitly for Home Assistant, ESP edge behavior, PTT Route B, runtime pairing validity, NVS key limits, network timeout policy and release separation.
 - When no music is playing, the device and web portal offer an action to start the `SpotifyDJ Liked Proxy` playlist.
 - Volume control is disabled when there is no active playback.
 - WiFi boot label is `Connecting to WiFi...`.
