@@ -12,6 +12,7 @@ version releases by default.
 Options:
   --repo OWNER/REPO       GitHub repository, for example pcvantol/spotify-dj-firmware.
   --keep N                Number of newest semver releases/tags to keep. Default: 1.
+                          Use 0 to delete all semver releases/tags.
   --dry-run               Show what would be deleted without changing anything.
   --execute               Actually delete releases and tags.
   --yes                   Do not prompt before destructive deletion.
@@ -72,8 +73,8 @@ if [[ -z "$repo" || ! "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
   exit 2
 fi
 
-if [[ ! "$keep_count" =~ ^[0-9]+$ || "$keep_count" -lt 1 ]]; then
-  echo "Error: --keep must be a positive integer." >&2
+if [[ ! "$keep_count" =~ ^[0-9]+$ ]]; then
+  echo "Error: --keep must be zero or a positive integer." >&2
   exit 2
 fi
 
@@ -113,7 +114,11 @@ if [[ "$total_versions" -le "$keep_count" ]]; then
   exit 0
 fi
 
-tail -n "$keep_count" "$all_versions_file" > "$keep_file"
+if [[ "$keep_count" -eq 0 ]]; then
+  : > "$keep_file"
+else
+  tail -n "$keep_count" "$all_versions_file" > "$keep_file"
+fi
 
 awk 'NR==FNR { keep[$1]=1; next } !($1 in keep)' "$keep_file" "$releases_file" > "$delete_releases_file"
 awk 'NR==FNR { keep[$1]=1; next } !($1 in keep)' "$keep_file" "$tags_file" > "$delete_tags_file"

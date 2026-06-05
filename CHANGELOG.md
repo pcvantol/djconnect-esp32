@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.7.9
+## v2.7.10
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -41,7 +41,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.7.9` / `v2.7.9`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.7.10` / `v2.7.10`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
@@ -69,6 +69,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - The Home Assistant pairing banner setup link opens in a new browser tab.
 - Firmware manifests now target `lilygo-t-embed-s3` while keeping the distributable binary asset name `spotifydj-device-vX.Y.Z.bin`, matching the ESP OTA endpoint validation.
 - GitHub Actions now injects the release version into the PlatformIO build, verifies the compiled firmware contains `vX.Y.Z`, and publishes the single OTA asset `spotifydj-device-vX.Y.Z.bin`.
+- The embedded web portal no longer contains a static `vdev` app-version placeholder in release binaries, and the release workflow rejects firmware assets that still contain that dev marker.
 - `release.sh` now lets GitHub Actions publish the public firmware release by default; local GitHub release creation is an explicit `--gh-release` fallback.
 - Web portal firmware upload no longer shows a temporary `Uploading firmware...` / `Firmware uploaden...` status label before the final upload response.
 - Web interface logs can be paused and selected/copied.
