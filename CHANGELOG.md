@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.8
+## v2.9.9
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -8,7 +8,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 
 - Spotify Connect remote control with Now Playing, track progress, volume, pause/resume, next and previous controls.
 - Device menus for Up Next, Playlists, Sound Outputs, Settings, About and Logs.
-- Spotify play mode settings on the device and web portal: normal, shuffle, repeat once and repeat infinite.
+- Spotify play mode control on the device main menu and Now Playing web portal: normal, shuffle, magic shuffle, repeat once and repeat infinite.
 - Language setting for the device UI, web portal and captive portal with English and Dutch support.
 - Theme setting for the device, web portal and MQTT: Auto, Dark and Light.
 - Playlist browsing and playlist start from both the device and web portal.
@@ -42,7 +42,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.8` / `v2.9.8`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.9` / `v2.9.9`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.

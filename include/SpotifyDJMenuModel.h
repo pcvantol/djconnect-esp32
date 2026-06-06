@@ -41,13 +41,13 @@ constexpr size_t LanguageOptionCount = 2;
 constexpr size_t ThemeOptionCount = 3;
 constexpr size_t LogLevelOptionCount = 4;
 constexpr size_t SpeakerVolumeOptionCount = 4;
-constexpr size_t PlayModeOptionCount = 4;
+constexpr size_t PlayModeOptionCount = 5;
 constexpr size_t SleepTimeoutOptionCount = 4;
 constexpr size_t ConfirmOptionCount = 2;
 constexpr size_t HardResetOptionCount = ConfirmOptionCount;
 constexpr size_t WifiFailureOptionCount = 4;
-constexpr size_t SettingsItemCount = 14;
-constexpr size_t RootMenuItemCount = 7;
+constexpr size_t SettingsItemCount = 13;
+constexpr size_t RootMenuItemCount = 8;
 constexpr size_t AboutItemCount = 10;
 constexpr size_t FixedSoundOutputCount = 2;
 constexpr size_t MaxVisibleOutputs = 6;
@@ -125,6 +125,7 @@ inline const char *playModeValue(size_t index) {
   static const char *const values[PlayModeOptionCount] = {
       "normal",
       "shuffle",
+      "magic_shuffle",
       "repeat_once",
       "repeat_infinite",
   };

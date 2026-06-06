@@ -375,9 +375,10 @@ Spotify play mode is controlled through `SpotifyClient::setPlayMode()`:
 
 - `normal`: shuffle off, repeat off.
 - `shuffle`: shuffle on, repeat off.
+- `magic_shuffle`: shown as Magic Shuffle in the UI, currently sent as shuffle on/repeat off because Spotify's Web API does not expose Smart/Magic Shuffle separately.
 - `repeat_once`: shuffle off, repeat track.
 - `repeat_infinite`: shuffle off, repeat context.
-- Keep device menu and web settings labels aligned when changing these modes.
+- Keep the device main menu and Now Playing web control labels aligned when changing these modes.
 
 Built-in speaker cue volume is separate from Spotify volume:
 

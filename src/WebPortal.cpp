@@ -285,6 +285,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <button id="playButton" type="button">Play</button>
         <button id="pauseButton" type="button">Pause</button>
       </div>
+      <label data-i18n-label="playMode">Spotify play mode
+        <select id="playMode">
+          <option value="normal" data-i18n="noShuffle">No shuffle</option><option value="shuffle" data-i18n="shuffle">Shuffle</option><option value="magic_shuffle" data-i18n="magicShuffle">Magic shuffle</option><option value="repeat_once" data-i18n="repeatOnce">Repeat once</option><option value="repeat_infinite" data-i18n="repeatInfinite">Repeat infinite</option>
+        </select>
+      </label>
+      <div id="playModeStatus" class="status"></div>
       <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start SpotifyDJ Liked Proxy</button>
       <div id="playbackCommandStatus" class="status"></div>
       <div class="row"><span class="key" data-i18n="output">Sound output</span><span id="device" class="value">-</span></div>
@@ -348,11 +354,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <label data-i18n-label="logLevel">Log level
           <select id="logLevel">
             <option value="debug" data-i18n="logLevelDebug">Debug</option><option value="info" data-i18n="logLevelInfo">Info</option><option value="warning" data-i18n="logLevelWarning">Warning</option><option value="error" data-i18n="logLevelError">Error</option>
-          </select>
-        </label>
-        <label data-i18n-label="playMode">Spotify play mode
-          <select id="playMode">
-            <option value="normal" data-i18n="noShuffle">No shuffle</option><option value="shuffle" data-i18n="shuffle">Shuffle</option><option value="repeat_once" data-i18n="repeatOnce">Repeat once</option><option value="repeat_infinite" data-i18n="repeatInfinite">Repeat infinite</option>
           </select>
         </label>
         <label data-i18n-label="mqttHost">MQTT host
@@ -538,7 +539,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
         language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error", playMode:"Spotify play mode", noShuffle:"No shuffle",
         timeout30s:"30 seconds", timeout1m:"1 minute", timeout2m:"2 minutes", timeout4m:"4 minutes", timeout5m:"5 minutes", timeout15m:"15 minutes", timeout30m:"30 minutes", timeout60m:"60 minutes",
-        shuffle:"Shuffle", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", mqttHost:"MQTT host", mqttPort:"MQTT port",
+        shuffle:"Shuffle", magicShuffle:"Magic shuffle", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", mqttHost:"MQTT host", mqttPort:"MQTT port",
         mqttUsername:"MQTT username", mqttPassword:"MQTT password", saveSettings:"Save settings", settingsFine:"Screen turns off after the selected idle timeout. LED ring follows the screen power state.",
         wifi:"WiFi", state:"State", newWifiSsid:"New WiFi SSID", newWifiPassword:"New WiFi password", wifiButton:"Test WiFi & restart device",
         wifiFine:"The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.",
@@ -577,7 +578,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
         language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout", playMode:"Spotify speelmodus", noShuffle:"Geen shuffle",
         timeout30s:"30 seconden", timeout1m:"1 minuut", timeout2m:"2 minuten", timeout4m:"4 minuten", timeout5m:"5 minuten", timeout15m:"15 minuten", timeout30m:"30 minuten", timeout60m:"60 minuten",
-        shuffle:"Shuffle", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", mqttHost:"MQTT host", mqttPort:"MQTT poort",
+        shuffle:"Shuffle", magicShuffle:"Magic shuffle", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", mqttHost:"MQTT host", mqttPort:"MQTT poort",
         mqttUsername:"MQTT gebruikersnaam", mqttPassword:"MQTT wachtwoord", saveSettings:"Instellingen opslaan", settingsFine:"Scherm gaat uit na de ingestelde inactiviteit. LED-ring volgt de schermstatus.",
         wifi:"WiFi", state:"Status", newWifiSsid:"Nieuwe WiFi SSID", newWifiPassword:"Nieuw WiFi wachtwoord", wifiButton:"Test WiFi & herstart device",
         wifiFine:"Het device test de nieuwe WiFi nadat deze pagina antwoord krijgt. Bij succes worden credentials opgeslagen en herstart het device.",
@@ -734,12 +735,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     function setSpotifyControlsEnabled(enabled) {
       spotifyControlsEnabled = !!enabled;
-      for (const id of ["previousButton", "nextButton", "playButton", "pauseButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
+      for (const id of ["previousButton", "nextButton", "playButton", "pauseButton", "playMode", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
         $(id).disabled = !spotifyControlsEnabled;
       }
       if (!spotifyControlsEnabled) {
         $("soundOutputStatus").textContent = "";
         $("playbackCommandStatus").textContent = "";
+        $("playModeStatus").textContent = "";
         $("volumeStatus").textContent = "";
         $("soundOutputSelect").innerHTML = `<option value="none">${tr("none")}</option><option value="iPhone">iPhone</option>`;
         $("playlistSelect").innerHTML = `<option value="">${tr("spotifyUnavailable")}</option>`;
@@ -1039,7 +1041,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         language: $("language").value,
         theme: $("theme").value,
         logLevel: $("logLevel").value,
-        playMode: $("playMode").value,
         mqttHost: $("mqttHost").value,
         mqttPort: $("mqttPort").value,
         mqttUser: $("mqttUser").value,
@@ -1049,6 +1050,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("settingsStatus").textContent = await response.text();
       for (const id of ["mqttHost", "mqttPort", "mqttUser", "mqttPass"]) dirtyInputs.delete(id);
       refresh();
+    });
+    $("playMode").addEventListener("change", async () => {
+      $("playModeStatus").textContent = tr("refreshing");
+      const body = new URLSearchParams({ playMode: $("playMode").value });
+      const response = await fetch("/api/play-mode", { method:"POST", body });
+      $("playModeStatus").textContent = await response.text();
+      await refresh();
     });
     $("wifiForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -1241,6 +1249,7 @@ void WebPortal::configureRoutes() {
   server_.on("/api/status", HTTP_GET, [this]() { handleStatusJson(); });
   server_.on("/api/logs", HTTP_GET, [this]() { handleLogsText(); });
   server_.on("/api/settings", HTTP_POST, [this]() { handleSettingsPost(); });
+  server_.on("/api/play-mode", HTTP_POST, [this]() { handlePlayModePost(); });
   server_.on("/api/wifi", HTTP_POST, [this]() { handleWifiPost(); });
   server_.on("/api/volume", HTTP_POST, [this]() { handleVolumePost(); });
   server_.on("/api/devices", HTTP_GET, [this]() { handleDevicesJson(); });
@@ -1442,18 +1451,6 @@ void WebPortal::handleSettingsPost() {
     settingsCallback_(callbackContext_, brightness, offTimeoutMs, sleepTimeoutMs, speakerVolume, language, theme, logLevel);
   }
 
-  String responseText = "Settings saved";
-  if (server_.hasArg("playMode") && spotify_ != nullptr && spotify_->isAuthorized()) {
-    const String playMode = server_.arg("playMode");
-    AppLog.print("Web settings: Spotify play mode ");
-    AppLog.println(playMode);
-    if (!spotify_->setPlayMode(playMode)) {
-      AppLog.print("Web settings: Spotify play mode failed: ");
-      AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
-      responseText = playback_ == nullptr || playback_->error.isEmpty() ? "Settings saved, play mode failed" : playback_->error;
-    }
-  }
-
   if (mqttSettingsCallback_ != nullptr) {
     MqttSettings mqttSettings;
     mqttSettings.host = server_.arg("mqttHost");
@@ -1466,7 +1463,29 @@ void WebPortal::handleSettingsPost() {
     AppLog.println(mqttSettings.enabled ? "enabled/updated" : "disabled");
     mqttSettingsCallback_(callbackContext_, mqttSettings);
   }
-  server_.send(200, "text/plain", responseText);
+  server_.send(200, "text/plain", "Settings saved");
+}
+
+void WebPortal::handlePlayModePost() {
+  if (!server_.hasArg("playMode")) {
+    server_.send(400, "text/plain", "Missing play mode");
+    return;
+  }
+  if (spotify_ == nullptr || !spotify_->isAuthorized()) {
+    server_.send(409, "text/plain", localizedText("Spotify not connected", "Spotify niet verbonden"));
+    return;
+  }
+
+  const String playMode = server_.arg("playMode");
+  AppLog.print("Web playback: Spotify play mode ");
+  AppLog.println(playMode);
+  if (!spotify_->setPlayMode(playMode)) {
+    AppLog.print("Web playback: Spotify play mode failed: ");
+    AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
+    server_.send(500, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Play mode failed" : playback_->error);
+    return;
+  }
+  server_.send(200, "text/plain", Logic::playModeLabel(playMode.c_str()));
 }
 
 void WebPortal::handleWifiPost() {

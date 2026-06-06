@@ -575,7 +575,7 @@ bool SpotifyClient::startPlaylist(const String &playlistUri) {
 bool SpotifyClient::setPlayMode(const String &mode) {
   bool targetShuffle = false;
   String targetRepeat = "off";
-  if (mode == "shuffle") {
+  if (mode == "shuffle" || mode == "magic_shuffle") {
     targetShuffle = true;
   } else if (mode == "repeat_once") {
     targetRepeat = "track";

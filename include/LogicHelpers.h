@@ -367,7 +367,9 @@ inline bool formatMqttDeviceTopic(const char *deviceId, const char *suffix, char
   return written >= 0 && static_cast<size_t>(written) < bufferSize;
 }
 
-// Converts Spotify's shuffle/repeat fields into the four UI modes exposed in settings.
+// Converts Spotify's shuffle/repeat fields into the UI modes exposed in settings.
+// Spotify does not report Magic Shuffle separately through the Web API, so a
+// selected Magic Shuffle mode is read back as regular shuffle after refresh.
 inline const char *playModeFromSpotifyState(bool shuffle, const char *repeatState) {
   if (repeatState != nullptr && strcmp(repeatState, "track") == 0) {
     return "repeat_once";
@@ -382,6 +384,9 @@ inline const char *playModeFromSpotifyState(bool shuffle, const char *repeatStat
 inline const char *playModeLabel(const char *mode) {
   if (mode != nullptr && strcmp(mode, "shuffle") == 0) {
     return "Shuffle";
+  }
+  if (mode != nullptr && strcmp(mode, "magic_shuffle") == 0) {
+    return "Magic shuffle";
   }
   if (mode != nullptr && strcmp(mode, "repeat_once") == 0) {
     return "Repeat once";

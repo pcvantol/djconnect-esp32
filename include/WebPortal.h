@@ -82,6 +82,7 @@ private:
 
   // Saves display, deep-sleep, and MQTT settings submitted by the dashboard form.
   void handleSettingsPost();
+  void handlePlayModePost();
   void handleWifiPost();
   void handleVolumePost();
   void handleDevicesJson();

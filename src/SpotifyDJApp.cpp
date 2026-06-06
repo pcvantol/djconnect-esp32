@@ -1081,10 +1081,20 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         spotify_.refreshDevices(deviceList_);
         renderNow();
       } else if (rootMenuSelection_ == 4) {
-        openScreen(UiScreen::Settings);
+        playModeSelection_ = 0;
+        const String currentMode = currentPlayModeValue(playback_);
+        for (size_t index = 0; index < PlayModeOptionCount; index++) {
+          if (playModeValue(index) == currentMode) {
+            playModeSelection_ = index;
+            break;
+          }
+        }
+        openScreen(UiScreen::PlayMode);
       } else if (rootMenuSelection_ == 5) {
-        openScreen(UiScreen::About);
+        openScreen(UiScreen::Settings);
       } else if (rootMenuSelection_ == 6) {
+        openScreen(UiScreen::About);
+      } else if (rootMenuSelection_ == 7) {
         openScreen(UiScreen::Logs);
       }
       break;
@@ -1133,30 +1143,20 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       } else if (settingsSelection_ == 7) {
         openScreen(UiScreen::SpeakerVolume);
       } else if (settingsSelection_ == 8) {
-        playModeSelection_ = 0;
-        const String currentMode = currentPlayModeValue(playback_);
-        for (size_t index = 0; index < PlayModeOptionCount; index++) {
-          if (playModeValue(index) == currentMode) {
-            playModeSelection_ = index;
-            break;
-          }
-        }
-        openScreen(UiScreen::PlayMode);
-      } else if (settingsSelection_ == 9) {
         toggleStressTest();
-      } else if (settingsSelection_ == 10) {
+      } else if (settingsSelection_ == 9) {
         display_.showBootMessage(I18n::text("turning_off"), battery_);
         responsiveDelay(250);
         enterDeepSleep();
-      } else if (settingsSelection_ == 11) {
+      } else if (settingsSelection_ == 10) {
         sound_.playHardReset();
         display_.showBootMessage(I18n::text("restarting"), battery_);
         responsiveDelay(320);
         ESP.restart();
-      } else if (settingsSelection_ == 12) {
+      } else if (settingsSelection_ == 11) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::ResetPairingConfirm);
-      } else if (settingsSelection_ == 13) {
+      } else if (settingsSelection_ == 12) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::HardResetConfirm);
       }
@@ -3141,6 +3141,7 @@ void SpotifyDJApp::renderMenuNow() {
           {I18n::text("up_next")},
           {I18n::text("playlists")},
           {I18n::text("outputs")},
+          {String(I18n::text("spotify_play_mode")) + " " + playModeLabel(currentPlayModeValue(playback_))},
           {I18n::text("settings")},
           {I18n::text("about")},
           {I18n::text("logs")},
@@ -3225,7 +3226,6 @@ void SpotifyDJApp::renderMenuNow() {
           {String(I18n::text("log_level")) + " " + logLevelLabel(logLevel_)},
           {String(I18n::text("audio_feedback")) + " " + I18n::onOff(volumeFeedbackEnabled_)},
           {String(I18n::text("speaker_volume")) + " " + String(speakerVolumePercent_) + "%"},
-          {String(I18n::text("spotify_play_mode")) + " " + playModeLabel(currentPlayModeValue(playback_))},
           {String(I18n::text("stress_test")) + " " + I18n::onOff(stressTestActive_)},
           {I18n::text("turn_off_device")},
           {I18n::text("restart_device")},
