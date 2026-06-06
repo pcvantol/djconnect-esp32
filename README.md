@@ -10,7 +10,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - Shows current track/podcast, artist/show, duration and progress.
 - Scrolls long title and artist/show text once when the track changes.
 - Volume control through the encoder, web portal and MQTT, limited to `0-60`.
-- Spotify play mode from the device main menu and Now Playing web portal: normal, shuffle, magic shuffle, repeat once or repeat infinite. Spotify's Web API exposes Magic Shuffle as regular shuffle state after refresh.
+- Play mode from the device main menu and Now Playing web portal: normal, shuffle, repeat once or repeat infinite.
 - Language setting for the device UI, web portal and captive portal: English or Dutch.
 - Theme setting for the device and web portal: Auto, Dark or Light.
 - Log level setting from the device, web portal and MQTT: debug, info, warning or error. The default is info.
@@ -356,7 +356,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.9 --dry-run` validates the release plan without touching files. Both `2.9.9` and `v2.9.9` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.10 --dry-run` validates the release plan without touching files. Both `2.9.10` and `v2.9.10` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

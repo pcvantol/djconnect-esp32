@@ -332,6 +332,10 @@ bool SpotifyClient::refreshQueue(QueueState &queue) {
   queue.error = "";
   queue.count = 0;
 
+  // Keep the playback context fresh before falling back to playlist track order.
+  // Starting a playlist does not immediately update state_.contextUri/currentUri.
+  refreshPlayback();
+
   String payload;
   const int code = apiRequest("GET", "/me/player/queue", &payload);
   if (code == 204 || (code == 200 && payload.isEmpty())) {
@@ -411,52 +415,71 @@ bool SpotifyClient::fillQueueFromPlaylistContext(QueueState &queue) {
     return false;
   }
 
-  String payload;
-  const String path = "/playlists/" + playlistId + "/tracks?limit=20&fields=items(track(uri,name,artists(name)))";
-  const int code = apiRequest("GET", path, &payload, false);
-  if (code != 200 || payload.isEmpty()) {
-    AppLog.print("Spotify: playlist queue fallback failed HTTP ");
-    AppLog.println(code);
-    return false;
-  }
+  bool afterCurrent = state_.currentUri.isEmpty();
+  bool sawAnyTracks = false;
+  bool foundCurrent = afterCurrent;
 
   JsonDocument filter;
   filter["items"][0]["track"]["uri"] = true;
   filter["items"][0]["track"]["name"] = true;
   filter["items"][0]["track"]["artists"][0]["name"] = true;
+  filter["next"] = true;
 
-  JsonDocument doc;
-  const DeserializationError error = deserializeJson(
-      doc,
-      payload,
-      DeserializationOption::Filter(filter),
-      DeserializationOption::NestingLimit(32));
-  if (error) {
-    AppLog.print("Spotify: playlist queue fallback JSON failed ");
-    AppLog.println(error.c_str());
-    return false;
-  }
-
-  JsonArrayConst items = doc["items"].as<JsonArrayConst>();
-  bool afterCurrent = state_.currentUri.isEmpty();
-  for (JsonVariantConst item : items) {
-    JsonVariantConst track = item["track"];
-    const String uri = track["uri"] | "";
-    if (!afterCurrent && uri == state_.currentUri) {
-      afterCurrent = true;
-      continue;
-    }
-    if (!afterCurrent || queue.count >= 5) {
-      continue;
+  // Spotify's queue endpoint is often empty for playlist contexts. Walk playlist
+  // pages until the current track is found, then use the following tracks.
+  for (uint16_t offset = 0; offset <= 950 && queue.count < 5; offset += 50) {
+    String payload;
+    const String path = "/playlists/" + playlistId + "/tracks?limit=50&offset=" +
+                        String(offset) +
+                        "&fields=next,items(track(uri,name,artists(name)))";
+    const int code = apiRequest("GET", path, &payload, false);
+    if (code != 200 || payload.isEmpty()) {
+      AppLog.print("Spotify: playlist queue fallback failed HTTP ");
+      AppLog.println(code);
+      return false;
     }
 
-    QueueItemState &target = queue.items[queue.count];
-    target.title = track["name"] | "";
-    target.subtitle = artistList(track["artists"].as<JsonArrayConst>());
-    if (target.title.isEmpty()) {
-      continue;
+    JsonDocument doc;
+    const DeserializationError error = deserializeJson(
+        doc,
+        payload,
+        DeserializationOption::Filter(filter),
+        DeserializationOption::NestingLimit(32));
+    if (error) {
+      AppLog.print("Spotify: playlist queue fallback JSON failed ");
+      AppLog.println(error.c_str());
+      return false;
     }
-    queue.count++;
+
+    JsonArrayConst items = doc["items"].as<JsonArrayConst>();
+    for (JsonVariantConst item : items) {
+      JsonVariantConst track = item["track"];
+      const String uri = track["uri"] | "";
+      if (!uri.isEmpty()) {
+        sawAnyTracks = true;
+      }
+      if (!afterCurrent && uri == state_.currentUri) {
+        afterCurrent = true;
+        foundCurrent = true;
+        continue;
+      }
+      if (!afterCurrent || queue.count >= 5) {
+        continue;
+      }
+
+      QueueItemState &target = queue.items[queue.count];
+      target.title = track["name"] | "";
+      target.subtitle = artistList(track["artists"].as<JsonArrayConst>());
+      if (target.title.isEmpty()) {
+        continue;
+      }
+      queue.count++;
+    }
+
+    const String nextUrl = doc["next"] | "";
+    if (nextUrl.isEmpty()) {
+      break;
+    }
   }
 
   queue.available = true;
@@ -465,6 +488,9 @@ bool SpotifyClient::fillQueueFromPlaylistContext(QueueState &queue) {
     AppLog.print("Spotify: playlist queue fallback count=");
     AppLog.println(queue.count);
     return true;
+  }
+  if (!foundCurrent && sawAnyTracks) {
+    AppLog.println("Spotify: playlist queue fallback current track not found");
   }
   return false;
 }
@@ -575,7 +601,7 @@ bool SpotifyClient::startPlaylist(const String &playlistUri) {
 bool SpotifyClient::setPlayMode(const String &mode) {
   bool targetShuffle = false;
   String targetRepeat = "off";
-  if (mode == "shuffle" || mode == "magic_shuffle") {
+  if (mode == "shuffle") {
     targetShuffle = true;
   } else if (mode == "repeat_once") {
     targetRepeat = "track";

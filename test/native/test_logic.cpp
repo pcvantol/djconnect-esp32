@@ -333,7 +333,6 @@ static void testPlayModeMapping() {
 
   assert(std::strcmp(Logic::playModeLabel("normal"), "No shuffle") == 0);
   assert(std::strcmp(Logic::playModeLabel("shuffle"), "Shuffle") == 0);
-  assert(std::strcmp(Logic::playModeLabel("magic_shuffle"), "Magic shuffle") == 0);
   assert(std::strcmp(Logic::playModeLabel("repeat_once"), "Repeat once") == 0);
   assert(std::strcmp(Logic::playModeLabel("repeat_infinite"), "Repeat infinite") == 0);
   assert(std::strcmp(Logic::playModeLabel("unexpected"), "No shuffle") == 0);
@@ -486,9 +485,8 @@ static void testSpotifyDJMenuOptionValues() {
 
   assert(std::strcmp(SpotifyDJMenuModel::playModeValue(0), "normal") == 0);
   assert(std::strcmp(SpotifyDJMenuModel::playModeValue(1), "shuffle") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(2), "magic_shuffle") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(3), "repeat_once") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(4), "repeat_infinite") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(2), "repeat_once") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(3), "repeat_infinite") == 0);
   assert(std::strcmp(SpotifyDJMenuModel::playModeValue(99), "normal") == 0);
 }
 

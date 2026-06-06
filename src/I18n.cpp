@@ -107,7 +107,7 @@ constexpr Entry Entries[] = {
     {"confirm_yes_wipe_setup", "Yes, wipe setup", "Ja, setup wissen"},
     {"settings", "Settings", "Instellingen"},
     {"speaker_volume", "Speaker volume", "Speakervolume"},
-    {"spotify_play_mode", "Spotify play mode", "Spotify speelmodus"},
+    {"spotify_play_mode", "Play mode", "Speelmodus"},
     {"spotify_connected", "Spotify connected", "Spotify verbonden"},
     {"spotify_authorization_failed", "Spotify authorization failed", "Spotify autorisatie mislukt"},
     {"spotify_authorization_failed_sentence", "Spotify authorization failed.", "Spotify autorisatie mislukt."},

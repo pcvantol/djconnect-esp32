@@ -41,7 +41,7 @@ constexpr size_t LanguageOptionCount = 2;
 constexpr size_t ThemeOptionCount = 3;
 constexpr size_t LogLevelOptionCount = 4;
 constexpr size_t SpeakerVolumeOptionCount = 4;
-constexpr size_t PlayModeOptionCount = 5;
+constexpr size_t PlayModeOptionCount = 4;
 constexpr size_t SleepTimeoutOptionCount = 4;
 constexpr size_t ConfirmOptionCount = 2;
 constexpr size_t HardResetOptionCount = ConfirmOptionCount;
@@ -125,7 +125,6 @@ inline const char *playModeValue(size_t index) {
   static const char *const values[PlayModeOptionCount] = {
       "normal",
       "shuffle",
-      "magic_shuffle",
       "repeat_once",
       "repeat_infinite",
   };

@@ -371,13 +371,13 @@ Spotify volume is intentionally capped:
 - LED ring treats `60` as full.
 - Disable Spotify volume controls when there is no active playback or the active output does not support volume.
 
-Spotify play mode is controlled through `SpotifyClient::setPlayMode()`:
+Play mode is controlled through `SpotifyClient::setPlayMode()`:
 
 - `normal`: shuffle off, repeat off.
 - `shuffle`: shuffle on, repeat off.
-- `magic_shuffle`: shown as Magic Shuffle in the UI, currently sent as shuffle on/repeat off because Spotify's Web API does not expose Smart/Magic Shuffle separately.
 - `repeat_once`: shuffle off, repeat track.
 - `repeat_infinite`: shuffle off, repeat context.
+- Do not expose Smart Shuffle unless Spotify adds a public Web API control for it; regular shuffle is the only supported shuffle command today.
 - Keep the device main menu and Now Playing web control labels aligned when changing these modes.
 
 Built-in speaker cue volume is separate from Spotify volume:
