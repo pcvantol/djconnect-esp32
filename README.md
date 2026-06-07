@@ -257,7 +257,7 @@ Queue, playlist and output data are supplied by the Home Assistant integration. 
 - `ProvisioningController` owns NVS provisioning keys for WiFi, setup mode, display settings, language, theme, log level and speaker cue volume.
 - `PowerController` owns charger detection policy, timer-wake sleep decisions, button wake masks and watchdog setup/feed.
 - `SpotifyDJMenuModel` contains host-testable menu counts and option values; `SpotifyDJMenu` adapts that model to Arduino strings and display labels.
-- `NetworkActivity` applies bounded HTTP timeout policy and logs duration/result for long network flows such as Home Assistant playback proxy calls, status, OTA, album art and DJ response audio.
+- `NetworkActivity` applies bounded HTTP timeout policy and logs duration/result for long network flows such as Home Assistant playback proxy calls, status, OTA, album art and DJ response audio. Playback proxy controls use short waits plus a transient-failure cooldown so repeated HA 5xx/-1 responses cannot stack blocking commands.
 
 Keep new provisioning writes in `ProvisioningController`, power/sleep/watchdog decisions in `PowerController`, pure menu counts/options in `SpotifyDJMenuModel`, and long HTTP timeout policy through `NetworkActivity`. This keeps `SpotifyDJApp` focused on orchestration instead of becoming the owner of every subsystem.
 
@@ -290,7 +290,7 @@ Local development builds still show `vdev` on the device, but the Home Assistant
 
 Freshly provisioned, unpaired release firmware also performs a pre-pairing bootstrap update check after WiFi connects. It uses the GitHub Releases API for `pcvantol/spotify-dj-firmware`, follows the normal OTA screen/LED/sound/write flow when a newer release is available, and continues silently into pairing if the check fails. Dev builds are skipped so local development firmware is not replaced automatically.
 
-During normal boot, the LED ring plays one calm rainbow startup lap before WiFi, setup/AP, charging or playback states take over. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot.
+During normal boot, the LED ring plays one calm rainbow startup lap before WiFi, setup/AP, charging or playback states take over. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot. OTA downloads tolerate slow GitHub/CDN bursts with a longer idle window while still aborting controlled when the stream genuinely stalls.
 
 ## GitHub Firmware Release
 
@@ -327,7 +327,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.21 --dry-run` validates the release plan without touching files. Both `2.9.21` and `v2.9.21` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.22 --dry-run` validates the release plan without touching files. Both `2.9.22` and `v2.9.22` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

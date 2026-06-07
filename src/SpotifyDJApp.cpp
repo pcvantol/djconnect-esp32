@@ -1895,11 +1895,6 @@ void SpotifyDJApp::pauseOrResume() {
   }
   lastPauseToggleAt_ = now;
 
-  // Refresh first so a stale paused/playing bit does not invert the user's command.
-  showNotice(I18n::text("checking_playback"), 1200);
-  renderNow();
-  spotify_.refreshPlayback();
-
   if (playback_.isPlaying) {
     if (spotify_.pausePlayback()) {
       playback_.isPlaying = false;

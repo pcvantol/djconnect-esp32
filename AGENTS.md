@@ -340,7 +340,7 @@ Current OTA implementation streams via `Update.h`.
 
 SHA256 verification is mandatory for OTA. The endpoint rejects missing/invalid hashes, streams the image through `Update.h`, computes SHA256 while writing, and aborts before reboot if the manifest hash does not match.
 
-During OTA firmware write, show `Firmware update in progress..` on the display at 100% brightness for both HA-triggered OTA and manual web upload. Keep the LED ring in the fast purple firmware-update animation and play OTA start/progress/complete/failure cues through `SoundManager`.
+During OTA firmware write, show `Firmware update in progress..` on the display at 100% brightness for both HA-triggered OTA and manual web upload. Keep the LED ring in the fast purple firmware-update animation and play OTA start/progress/complete/failure cues through `SoundManager`. OTA streaming must keep feeding the watchdog/LED animation and tolerate slow GitHub/CDN byte bursts before declaring a controlled stream timeout.
 
 Local development builds may display `vdev`, but Home Assistant/device API version reporting must expose them as OTA-comparable `0.0.0` so every published `X.Y.Z` release is treated as an upgrade from a local flash.
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.21
+## v2.9.22
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -47,7 +47,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.21` / `v2.9.21`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.22` / `v2.9.22`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.
@@ -65,10 +65,12 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - `/api/device/pair` now also accepts a direct Home Assistant callback with `ha_url`, `device_token`, Assist pipeline id and device language, while keeping the handler lightweight to avoid watchdog stalls during pairing.
 - Playback proxy commands now wait for a successful authenticated Home Assistant status confirmation after boot/pairing, preventing stale or pending tokens from repeatedly sending playback 401 requests.
 - Home Assistant playback proxy HTTP failures such as `HA playback HTTP -1` now make the device connectivity LED state red without erasing pairing data.
+- Home Assistant playback proxy calls use shorter request waits and a transient-failure cooldown so repeated HA 5xx/-1 responses do not stack blocking commands or trip the watchdog.
 - Reset Home Assistant pairing from the device now shows a clear reset screen, plays the soft-reset cue and flashes the LED ring before restarting into pairing mode.
 - Direct Home Assistant pairing callbacks are now treated as pending until `/api/spotify_dj/status` accepts the token. If HA returns 401/403/404, the ESP clears that pending token and stays on the pairing-code screen.
 - OTA firmware write shows `Firmware update in progress..` on the display for both Home Assistant OTA and manual web upload, runs a fast purple LED-ring animation, and plays start/progress/complete/failure speaker cues.
 - OTA download and manual firmware upload now explicitly service the ESP task watchdog while hashing and writing firmware chunks.
+- OTA streaming is more tolerant of slow GitHub/CDN bursts, with a longer idle window and larger write chunks before treating the stream as stalled.
 - Home Assistant status payloads now publish `state/status=online` plus `ota_state/update_state=idle` after boot so integrations can clear a stale OTA `updating` state.
 - MP3 DJ-response playback now temporarily pauses the loop-task watchdog around the blocking decoder loop and restores it afterward.
 - Normal boot LED-ring feedback is now a calm rainbow startup lap that fades back to off before setup/AP, WiFi or playback states take over.

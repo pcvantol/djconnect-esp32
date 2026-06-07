@@ -90,6 +90,7 @@ private:
   bool proxyCommand(const String &command, int value, JsonDocument *response = nullptr);
   bool proxyRequest(JsonDocument &request, JsonDocument *response = nullptr);
   String proxyEndpoint() const;
+  bool proxyCooldownActive() const;
   void applyPlayback(JsonVariantConst playback);
   void applyDeviceList(JsonVariantConst source, DeviceListState &devices);
   void applyQueue(JsonVariantConst source, QueueState &queue);
@@ -137,4 +138,5 @@ private:
   bool tokenInvalidGrant_ = false;
   String refreshTokenSource_ = "Unknown";
   uint32_t accessTokenExpiresAt_ = 0;
+  uint32_t lastProxyFailureAt_ = 0;
 };

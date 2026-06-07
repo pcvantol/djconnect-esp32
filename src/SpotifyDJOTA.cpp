@@ -152,7 +152,7 @@ bool SpotifyDJOTA::performUpdate(
     return false;
   }
 
-  uint8_t buffer[1024];
+  uint8_t buffer[4096];
   Stream *stream = http.getStreamPtr();
   size_t written = 0;
   size_t lastLogged = 0;

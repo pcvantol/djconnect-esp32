@@ -156,19 +156,23 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
     setProxyError("Home Assistant command unavailable");
     return false;
   }
+  if (proxyCooldownActive()) {
+    setProxyError("HA playback cooling down");
+    return false;
+  }
 
   String body;
   serializeJson(doc, body);
 
-  RequestGuard guard(requestMutex_, Config::HttpLongIoTimeoutMs);
+  RequestGuard guard(requestMutex_, 1000);
   if (!guard.isLocked()) {
     setProxyError("Playback proxy busy");
     return false;
   }
 
   HTTPClient http;
-  NetworkActivity activity("ha_playback_command", Config::HttpLongIoTimeoutMs);
-  NetworkActivity::configureLongHttp(http);
+  NetworkActivity activity("ha_playback_command", Config::HttpIoTimeoutMs);
+  NetworkActivity::configureDefaultHttp(http);
   if (!http.begin(url)) {
     activity.finishError("begin failed");
     setProxyError("HA playback begin failed");
@@ -192,11 +196,15 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
     tokenInvalidGrant_ = true;
   }
   if (code < 200 || code >= 300) {
+    if (code < 0 || code >= 500) {
+      lastProxyFailureAt_ = millis();
+    }
     setProxyError("HA playback HTTP " + String(code));
     return false;
   }
 
   tokenInvalidGrant_ = false;
+  lastProxyFailureAt_ = 0;
   if (response != nullptr && !payload.isEmpty()) {
     const DeserializationError error = deserializeJson(*response, payload);
     if (error) {
@@ -211,6 +219,10 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   }
   state_.error = "";
   return true;
+}
+
+bool SpotifyClient::proxyCooldownActive() const {
+  return lastProxyFailureAt_ != 0 && millis() - lastProxyFailureAt_ < 3500;
 }
 
 void SpotifyClient::setProxyError(const String &message) {
