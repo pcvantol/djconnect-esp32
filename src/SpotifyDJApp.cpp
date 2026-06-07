@@ -2343,6 +2343,21 @@ bool SpotifyDJApp::playbackProxyReady() const {
   return homeAssistantPaired_ && spotify_.isAuthorized();
 }
 
+PlaybackConnectionState SpotifyDJApp::playbackConnectionState() const {
+  if (!playbackProxyReady()) {
+    return PlaybackConnectionState::Error;
+  }
+  if (playback_.error.startsWith("HA playback HTTP") ||
+      playback_.error == "HA playback cooling down" ||
+      playback_.error == "Playback proxy busy") {
+    return PlaybackConnectionState::Error;
+  }
+  if (!playback_.hasPlayback) {
+    return PlaybackConnectionState::Idle;
+  }
+  return PlaybackConnectionState::Ok;
+}
+
 void SpotifyDJApp::transferToSelectedOutput() {
   if (!playbackProxyReady()) {
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
@@ -2418,7 +2433,7 @@ void SpotifyDJApp::renderNow() {
         notice_,
         displayedVolume(),
         homeAssistantPaired_,
-        spotify_.isAuthorized());
+        playbackConnectionState());
   }
   if (activeScreen_ == UiScreen::Pong && display_.backlightPercent() > 0) {
     ledRing_.showPongPaddle(pongPaddleY_);
@@ -2560,9 +2575,9 @@ void SpotifyDJApp::renderLowBatteryGuard() {
 }
 
 bool SpotifyDJApp::connectionHealthy() {
-  const bool wifiOk = WiFi.status() == WL_CONNECTED;
-  const bool playbackProxyOk = playbackProxyReady() && !playback_.error.startsWith("HA playback HTTP");
-  return wifiOk && playbackProxyOk;
+  const bool homeAssistantOk = homeAssistantPaired_;
+  const bool playbackOkOrIdle = playbackConnectionState() != PlaybackConnectionState::Error;
+  return homeAssistantOk && playbackOkOrIdle;
 }
 
 AboutStatus SpotifyDJApp::aboutStatus() {
@@ -2571,7 +2586,7 @@ AboutStatus SpotifyDJApp::aboutStatus() {
   status.ipAddress = status.wifiConnected ? WiFi.localIP().toString() : "";
   status.webAddress = status.wifiConnected ? "http://" + WiFi.localIP().toString() : "";
   status.haPaired = homeAssistantPaired_;
-  status.spotifyConnected = spotify_.isAuthorized();
+  status.spotifyConnected = playbackConnectionState() == PlaybackConnectionState::Ok;
   return status;
 }
 
@@ -3596,7 +3611,7 @@ void SpotifyDJApp::renderMenuNow() {
           notice_,
           displayedVolume(),
           homeAssistantPaired_,
-          spotify_.isAuthorized());
+          playbackConnectionState());
       break;
   }
 }

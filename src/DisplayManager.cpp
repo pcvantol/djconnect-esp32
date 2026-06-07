@@ -184,20 +184,20 @@ void DisplayManager::renderPlaybackScreen(
     const StatusNotice &notice,
     int displayedVolume,
     bool homeAssistantConnected,
-    bool spotifyConnected) {
+    PlaybackConnectionState playbackConnectionState) {
   // Observing text here lets redraws notice metadata changes without app-level display bookkeeping.
   observeText(titleMarquee_, titleText(playback));
   observeText(artistMarquee_, artistText(playback));
 
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderPlayback(screen_, playback, battery, notice, displayedVolume, homeAssistantConnected, spotifyConnected);
+    renderPlayback(screen_, playback, battery, notice, displayedVolume, homeAssistantConnected, playbackConnectionState);
     screen_.pushSprite(0, 0);
     return;
   }
 
   tft_.fillScreen(TFT_BLACK);
-  renderPlayback(tft_, playback, battery, notice, displayedVolume, homeAssistantConnected, spotifyConnected);
+  renderPlayback(tft_, playback, battery, notice, displayedVolume, homeAssistantConnected, playbackConnectionState);
 }
 
 void DisplayManager::renderMenuList(
@@ -637,19 +637,23 @@ void DisplayManager::renderPlayback(
     const StatusNotice &notice,
     int displayedVolume,
     bool homeAssistantConnected,
-    bool spotifyConnected) {
+    PlaybackConnectionState playbackConnectionState) {
   canvas.setTextDatum(TL_DATUM);
 
   canvas.setTextColor(BrightYellow, TFT_BLACK);
   canvas.drawString(I18n::text("now_playing"), 8, 5, 2);
 
-  auto drawStatusBadge = [&](int x, const char *label, bool ok) {
-    const uint16_t color = ok ? SpotifyGreen : TFT_RED;
+  auto drawStatusBadge = [&](int x, const char *label, uint16_t color) {
     canvas.setTextColor(color, TFT_BLACK);
     canvas.drawString(label, x, 5, 2);
   };
-  drawStatusBadge(156, "H", homeAssistantConnected);
-  drawStatusBadge(176, "S", spotifyConnected);
+  const uint16_t playbackStatusColor = playbackConnectionState == PlaybackConnectionState::Ok
+                                           ? SpotifyGreen
+                                           : playbackConnectionState == PlaybackConnectionState::Idle
+                                                 ? NeutralLightGrey
+                                                 : TFT_RED;
+  drawStatusBadge(156, "H", homeAssistantConnected ? SpotifyGreen : TFT_RED);
+  drawStatusBadge(176, "S", playbackStatusColor);
   drawWifiIndicator(canvas, 214, 1);
   drawBatteryIndicator(canvas, battery, 250, 5);
   canvas.drawFastHLine(8, 25, 304, TFT_DARKGREY);

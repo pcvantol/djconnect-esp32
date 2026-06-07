@@ -38,6 +38,12 @@ struct SpotifyState {
   uint32_t progressSyncedAt = 0;
 };
 
+enum class PlaybackConnectionState {
+  Error,
+  Idle,
+  Ok,
+};
+
 // Snapshot of the BQ27220 fuel-gauge readings shown in the header.
 struct BatteryState {
   bool available = false;

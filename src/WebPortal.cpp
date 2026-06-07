@@ -194,6 +194,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .status-icons { display:inline-flex; gap:5px; vertical-align:middle; }
     .status-dot { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--red); color:var(--red); font-size:11px; font-weight:800; line-height:1; }
     .status-dot.ok { border-color:var(--green); color:var(--green); }
+    .status-dot.idle { border-color:var(--muted); color:var(--muted); }
     .pill { display:inline-flex; align-items:center; min-height:24px; border-radius:999px; padding:2px 10px; background:#173721; color:#9df2b9; font-size:13px; }
     .pill.warn { background:#3b2d14; color:#f3d37b; }
     .pill.bad { background:#421b17; color:#ffb4aa; }
@@ -603,9 +604,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $(id).className = `signal level-${level}`;
       $(id).title = connected ? `${tr("wifiSignal")} ${rssi} dBm` : tr("wifiDisconnected");
     }
-    function setStatusDot(id, ok) {
+    function setStatusDot(id, state) {
       const el = $(id);
-      el.className = "status-dot" + (ok ? " ok" : "");
+      el.className = "status-dot" + (state === true || state === "ok" ? " ok" : state === "idle" ? " idle" : "");
     }
     function setBatteryHeader(battery) {
       const percent = Math.max(0, Math.min(100, Number(battery.percent ?? 0)));
@@ -743,8 +744,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setWifiSignal("wifiSignal", data.wifi.connected, data.wifi.rssi);
       setWifiSignal("wifiHeaderSignal", data.wifi.connected, data.wifi.rssi);
       text("wifiMac", data.wifi.mac);
-      text("spotifyState", data.spotify.authorized ? tr("authorized") : tr("notAuthorized"));
-      setStatusDot("spotifyHeaderStatus", !!data.spotify.authorized);
+      const playbackStatus = data.spotify.status || (data.spotify.authorized ? "ok" : "error");
+      text("spotifyState", playbackStatus === "ok" ? tr("authorized") : playbackStatus === "idle" ? tr("noPlayback") : tr("notAuthorized"));
+      setStatusDot("spotifyHeaderStatus", playbackStatus);
       setSpotifyControlsEnabled(!!data.spotify.authorized);
       text("spotifyError", data.spotify.error || "-");
       homeAssistantRuntimePaired = !!(data.ha && data.ha.paired);
@@ -1262,6 +1264,12 @@ void WebPortal::handleStatusJson() {
 
   JsonObject spotify = doc["spotify"].to<JsonObject>();
   spotify["authorized"] = spotify_->isAuthorized();
+  const bool playbackError = playback_->error.startsWith("HA playback HTTP") ||
+                             playback_->error == "HA playback cooling down" ||
+                             playback_->error == "Playback proxy busy";
+  spotify["status"] = !spotify_->isAuthorized() || playbackError
+                          ? "error"
+                          : !playback_->hasPlayback ? "idle" : "ok";
   spotify["tokenExpiresInSec"] = spotify_->accessTokenExpiresInSeconds();
   spotify["error"] = playback_->error;
 

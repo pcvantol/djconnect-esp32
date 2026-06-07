@@ -238,7 +238,7 @@ Status is still posted periodically to the Home Assistant integration through `/
 
 ## Web Portal
 
-The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, S, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The IP address is shown in the WiFi details block.
+The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, S, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The `S` playback indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
 
 The device Logs screen shows the newest log tail by default and can be scrolled with the encoder to inspect older buffered entries. Serial, web and device logs use the compact `HH:mm INF` severity prefix format.
 
@@ -327,7 +327,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.22 --dry-run` validates the release plan without touching files. Both `2.9.22` and `v2.9.22` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.23 --dry-run` validates the release plan without touching files. Both `2.9.23` and `v2.9.23` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
