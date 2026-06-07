@@ -140,8 +140,13 @@ constexpr Entry Entries[] = {
     {"web", "Web", "Web"},
     {"wifi", "WiFi", "WiFi"},
     {"wifi_connected", "WiFi connected", "WiFi verbonden"},
+    {"wifi_failed", "WiFi failed", "WiFi mislukt"},
     {"wifi_disconnected", "WiFi disconnected", "WiFi niet verbonden"},
     {"wifi_test_failed", "WiFi test failed", "WiFi test mislukt"},
+    {"center_select", "Center = select", "Midden = selecteren"},
+    {"retry_connect", "Retry connect", "Opnieuw verbinden"},
+    {"setup_portal_active_10m", "Portal active: 10 min", "Portal actief: 10 min"},
+    {"setup_turn_off_hint", "Center: turn off", "Midden: uitzetten"},
 };
 }  // namespace
 

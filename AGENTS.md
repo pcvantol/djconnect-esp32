@@ -204,6 +204,17 @@ Forbidden in firmware source:
 
 Credentials are provisioned and stored in NVS.
 
+NVS encryption is not active in the current Arduino/PlatformIO firmware build.
+Do not present credential storage as encrypted unless all of these are true:
+
+- The build enables `CONFIG_NVS_ENCRYPTION=y`.
+- The active partition table contains an `nvs_keys` partition.
+- The device was factory/serial flashed with that partition table and keys; OTA alone does not update the partition layout.
+- Existing credentials were re-provisioned or migrated so old plaintext NVS entries are not kept.
+
+If encrypted NVS becomes a release requirement, treat it as a factory-image
+migration project rather than a small OTA firmware patch.
+
 NVS namespaces:
 
 - `provision`: existing device provisioning/settings, including display timeouts/brightness, speaker cue volume, WiFi and MQTT.
@@ -278,7 +289,7 @@ When WiFi is configured but Home Assistant is not paired:
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
 
-If configured WiFi cannot connect during boot, keep the screen at 100% and show the WiFi-failure menu. Rotary selects between retry connect, hard reset, reset device, and turn off; center press executes the selected action. Do not start normal playback/menu handling while this recovery menu is active.
+If configured WiFi cannot connect during boot, keep the screen at 100% and show the WiFi-failure menu. Rotary selects between retry connect, restart device, turn off, and factory reset. Factory reset must stay at the bottom and require an explicit confirmation screen before wiping setup. Center press executes the selected action. Do not start normal playback/menu handling while this recovery menu is active.
 
 BLE setup mode is active only while the captive portal is active. iOS cannot automatically expose the currently connected WiFi password to the ESP32; BLE provisioning requires an app/flow to write JSON WiFi credentials to the SpotifyDJ BLE characteristic. Home Assistant Bluetooth Proxy flows should write to `7f705001-9f8f-4f1a-9b5f-570071fd0001` and read/subscribe to status characteristic `7f705002-9f8f-4f1a-9b5f-570071fd0001`. Keep BLE provisioning WiFi-only; Spotify and MQTT stay in Home Assistant provisioning, captive portal, or web settings. Do not claim automatic iPhone credential extraction is possible.
 

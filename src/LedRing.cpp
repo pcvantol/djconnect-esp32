@@ -131,6 +131,28 @@ void LedRing::playBootBounce() {
   powerPercent_ = 0;
 }
 
+void LedRing::showWifiConnectingAnimation() {
+  if (!ready_) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - lastWifiFrameAt_ < 45) {
+    return;
+  }
+  lastWifiFrameAt_ = now;
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+  FastLED.setBrightness(Config::LedRingBrightness);
+
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+  const uint8_t head = wifiFrame_++ % Config::Ws2812LedCount;
+  leds_[head] = CRGB(0, 90, 255);
+  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = CRGB(0, 35, 120);
+  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = CRGB(0, 12, 45);
+  FastLED.show();
+}
+
 void LedRing::showChargingAnimation() {
   if (!ready_) {
     return;

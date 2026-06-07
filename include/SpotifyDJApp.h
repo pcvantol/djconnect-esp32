@@ -256,6 +256,7 @@ private:
   size_t sleepTimeoutSelection_ = 0;
   size_t hardResetSelection_ = 0;
   size_t wifiFailureSelection_ = 0;
+  bool wifiFailureConfirmHardReset_ = false;
   size_t soundOutputSelection_ = 0;
   uint32_t screenOffTimeoutMs_ = Config::DisplayOffAfterMs;
   uint32_t deviceSleepTimeoutMs_ = Config::DeviceSleepAfterMs;

@@ -30,7 +30,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - MQTT/Home Assistant discovery, periodic status publishing and two-way commands, including selected settings such as log level.
 - Battery/charging guards, turn-off sleep and low-battery screens.
 - Charger-aware wake probe while turned off.
-- WiFi-failure boot menu with retry, factory reset, restart device and turn off.
+- WiFi-failure boot menu with retry, restart device, turn off and confirmed factory reset.
 - OTA endpoint for Home Assistant-triggered firmware updates.
 - Watchdog, slow-loop logging and periodic heap diagnostics.
 
@@ -96,7 +96,7 @@ Keep `SPOTIFY_ALLOW_INSECURE_TLS` at `0` for normal builds. Set it to `1` only a
 5. Enter WiFi credentials and, optionally, Spotify and MQTT settings.
 6. The device tests WiFi and optional Spotify credentials, stores them in NVS and restarts.
 
-Setup/AP mode keeps the screen at 100% brightness, shows the rainbow LED-ring animation, keeps battery/charging state visible and turns off after 10 minutes without successful setup.
+Setup/AP mode keeps the screen at 100% brightness, shows the rainbow LED-ring animation, keeps battery/charging state visible, shows that the portal is active for 10 minutes, and turns off after 10 minutes without successful setup. The device screen also offers a center-button turn-off action while setup/AP mode is active.
 
 ## BLE WiFi Provisioning
 
@@ -356,7 +356,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.10 --dry-run` validates the release plan without touching files. Both `2.9.10` and `v2.9.10` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.11 --dry-run` validates the release plan without touching files. Both `2.9.11` and `v2.9.11` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
@@ -408,6 +408,13 @@ Security defaults:
 - Refresh tokens and device tokens are never logged.
 - MQTT passwords are never logged.
 - Factory reset clears local credentials, tokens, settings and local caches.
+
+NVS encryption status:
+
+- The firmware currently stores WiFi, Spotify, MQTT and Home Assistant credentials in ESP32 NVS, but the Arduino/PlatformIO build does not enable encrypted NVS yet.
+- True NVS Encryption requires an ESP-IDF or Arduino-as-component build with `CONFIG_NVS_ENCRYPTION=y` and a partition table that includes an `nvs_keys` partition.
+- Changing the partition table is a factory/serial-flash migration, not an OTA-only change. Existing devices must be re-provisioned or migrated carefully so old plaintext NVS data is not left behind.
+- Do not claim encrypted credential storage in releases until the build config and partition table prove that encrypted NVS is active.
 
 ## Troubleshooting
 

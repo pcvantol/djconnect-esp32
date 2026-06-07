@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.10
+## v2.9.11
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -27,7 +27,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Speaker cues for boot, reset, battery warning, factory reset, charging completed, menu/back and push-to-talk start/stop.
 - Built-in speaker cue volume setting: 25%, 50%, 75% or 100%.
 - Battery/charging guard screens, low-battery turn-off sleep and charger-aware wake behavior.
-- WiFi-failure boot menu with encoder selection for retry connect, factory reset, restart device and turn off.
+- WiFi-failure boot menu with encoder selection for retry connect, restart device, turn off and confirmed factory reset.
 - Optional local micro wake word hook for a trained `Spotify DJ` detector.
 - Watchdog, slow-loop diagnostics and periodic heap diagnostics for long-running device stability.
 - Timestamped log severity classification with `[inf]`, `[wrn]`, `[err]` and `[dbg]` markers for serial and web logs.
@@ -42,7 +42,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.10` / `v2.9.10`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.11` / `v2.9.11`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - WiFi, Spotify and Home Assistant secrets are no longer hardcoded in firmware.
@@ -101,7 +101,10 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - When no music is playing, the device and web portal offer an action to start the `SpotifyDJ Liked Proxy` playlist.
 - Volume control is disabled when there is no active playback.
 - WiFi boot label is `Connecting to WiFi...`.
+- WiFi boot connection timeout is 30 seconds and the LED ring shows a blue connecting animation while the device attempts to join WiFi.
+- WiFi-failure recovery now keeps factory reset at the bottom of the menu and requires an explicit confirmation screen before wiping setup.
 - Captive portal MQTT fields are optional; leaving them empty does not attempt MQTT setup and does not overwrite Home Assistant-provisioned MQTT settings.
+- Setup/AP mode display now shows that the portal is active for 10 minutes and exposes a center-button turn-off action.
 - The language setting is stored in NVS, can be provisioned by Home Assistant through `device_language`/`language`, and resets to English on factory reset; logs remain English.
 - Theme is stored in NVS and exposed on the device, web portal and MQTT. Device `Light` uses TFT inversion/high contrast; web `Auto` follows browser/device preference.
 - MQTT two-way support covers Spotify controls, status/discovery and settings commands for language, theme, log level, brightness, dim timeout, turn-off timeout and speaker cue volume.
@@ -113,6 +116,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Menu counts/options including log-level choices, network timeout behavior and release dry-run validation have stronger automated test coverage.
 - Web battery header state has host-side test coverage for low/medium/high and charging classes.
 - Provisioning, power policy and long-network-call responsibilities are documented as separate refactor boundaries to keep future production fixes easier to isolate.
+- Credential storage security notes now explicitly document that true encrypted NVS requires an ESP-IDF/Arduino-as-component build with `CONFIG_NVS_ENCRYPTION=y` plus an `nvs_keys` partition and cannot be enabled safely as an OTA-only change.
 
 ### Fixed
 

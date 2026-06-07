@@ -23,6 +23,9 @@ public:
   // Plays one short Spotify-green chase around the ring and fades back to off during normal boot.
   void playBootBounce();
 
+  // Advances a blue chase while the device is trying to join WiFi.
+  void showWifiConnectingAnimation();
+
   // Advances the low-battery charging animation from red through yellow toward green.
   void showChargingAnimation();
 
@@ -51,6 +54,8 @@ private:
   uint8_t chargingFrame_ = 0;
   uint32_t lastSetupFrameAt_ = 0;
   uint8_t setupFrame_ = 0;
+  uint32_t lastWifiFrameAt_ = 0;
+  uint8_t wifiFrame_ = 0;
   uint32_t lastFirmwareFrameAt_ = 0;
   uint8_t firmwareFrame_ = 0;
   uint32_t lastDjResponseFrameAt_ = 0;

@@ -307,10 +307,11 @@ void SpotifyDJApp::handleWifiConnectFailureLoop(uint32_t loopStartedAt) {
   const InputEvents events = input_.poll();
   if (events.encoderSteps != 0) {
     int nextSelection = static_cast<int>(wifiFailureSelection_) + events.encoderSteps;
+    const size_t itemCount = wifiFailureConfirmHardReset_ ? ConfirmOptionCount : WifiFailureOptionCount;
     while (nextSelection < 0) {
-      nextSelection += WifiFailureOptionCount;
+      nextSelection += itemCount;
     }
-    wifiFailureSelection_ = static_cast<size_t>(nextSelection) % WifiFailureOptionCount;
+    wifiFailureSelection_ = static_cast<size_t>(nextSelection) % itemCount;
     if (volumeFeedbackEnabled_) {
       sound_.playMenuTick(events.encoderSteps);
     }
@@ -335,14 +336,23 @@ void SpotifyDJApp::handleWifiConnectFailureLoop(uint32_t loopStartedAt) {
 
 void SpotifyDJApp::renderWifiConnectFailureMenu() {
   StatusNotice notice;
-  notice.show("Center = select", 1000);
+  notice.show(I18n::text("center_select"), 1000);
+  if (wifiFailureConfirmHardReset_) {
+    MenuItemView items[ConfirmOptionCount] = {
+        {I18n::text("confirm_no_go_back")},
+        {I18n::text("confirm_yes_wipe_setup")},
+    };
+    display_.renderMenuList(I18n::text("factory_reset_title"), items, ConfirmOptionCount, wifiFailureSelection_, notice);
+    return;
+  }
+
   MenuItemView items[WifiFailureOptionCount] = {
-      {"Retry connect"},
-      {"Hard reset"},
-      {"Reset device"},
-      {"Turn off"},
+      {I18n::text("retry_connect")},
+      {I18n::text("restart_device")},
+      {I18n::text("turn_off_device")},
+      {I18n::text("factory_reset")},
   };
-  display_.renderMenuList("WiFi failed", items, WifiFailureOptionCount, wifiFailureSelection_, notice);
+  display_.renderMenuList(I18n::text("wifi_failed"), items, WifiFailureOptionCount, wifiFailureSelection_, notice);
 }
 
 void SpotifyDJApp::applyWifiConnectFailureSelection() {
@@ -350,10 +360,23 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
     sound_.playConfirm();
   }
 
+  if (wifiFailureConfirmHardReset_) {
+    if (wifiFailureSelection_ == 0) {
+      wifiFailureConfirmHardReset_ = false;
+      wifiFailureSelection_ = WifiFailureOptionCount - 1;
+      renderWifiConnectFailureMenu();
+    } else {
+      AppLog.println("WiFi recovery: factory reset confirmed");
+      hardResetToProvisioning();
+    }
+    return;
+  }
+
   if (wifiFailureSelection_ == 0) {
     AppLog.println("WiFi recovery: retry connect selected");
     wifiConnectFailed_ = false;
     wifiConnectFailedAt_ = 0;
+    wifiFailureConfirmHardReset_ = false;
     showNotice("Retry WiFi", 1500);
     if (connectWiFi(Config::WifiConnectTimeoutMs, true) && WiFi.status() == WL_CONNECTED) {
       startWebPortalIfNeeded();
@@ -372,12 +395,6 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
   }
 
   if (wifiFailureSelection_ == 1) {
-    AppLog.println("WiFi recovery: factory reset selected");
-    hardResetToProvisioning();
-    return;
-  }
-
-  if (wifiFailureSelection_ == 2) {
     AppLog.println("WiFi recovery: restart selected");
     display_.showBootMessage(I18n::text("restarting"), battery_);
     responsiveDelay(300);
@@ -385,10 +402,18 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
     return;
   }
 
-  AppLog.println("WiFi recovery: turn off selected");
-  display_.showBootMessage(I18n::text("turning_off"), battery_);
-  responsiveDelay(300);
-  enterDeepSleep();
+  if (wifiFailureSelection_ == 2) {
+    AppLog.println("WiFi recovery: turn off selected");
+    display_.showBootMessage(I18n::text("turning_off"), battery_);
+    responsiveDelay(300);
+    enterDeepSleep();
+    return;
+  }
+
+  AppLog.println("WiFi recovery: factory reset selected");
+  wifiFailureConfirmHardReset_ = true;
+  wifiFailureSelection_ = 0;
+  renderWifiConnectFailureMenu();
 }
 
 bool SpotifyDJApp::connectWiFi(uint32_t timeoutMs, bool bootScreen) {
@@ -415,9 +440,15 @@ bool SpotifyDJApp::connectWiFi(uint32_t timeoutMs, bool bootScreen) {
   WiFi.begin(wifiSsid_.c_str(), wifiPassword_.c_str());
 
   const uint32_t startedAt = millis();
+  uint32_t lastWifiDotAt = 0;
   while (WiFi.status() != WL_CONNECTED && millis() - startedAt < timeoutMs) {
-    responsiveDelay(250);
-    AppLog.print(".");
+    ledRing_.showWifiConnectingAnimation();
+    responsiveDelay(50);
+    const uint32_t now = millis();
+    if (now - lastWifiDotAt >= 500) {
+      lastWifiDotAt = now;
+      AppLog.print(".");
+    }
   }
   AppLog.println();
 
@@ -537,7 +568,16 @@ bool SpotifyDJApp::syncClock() {
 void SpotifyDJApp::runCaptivePortal() {
   display_.wakeForUserActivity();
   display_.forceBacklightPercent(100);
-  display_.showBootMessage(String(I18n::text("boot_setup_device")) + "\n" + I18n::text("boot_connect_setup_wifi") + " " + String(Config::ProvisioningApSsid), battery_);
+  auto setupScreenMessage = []() {
+    const String connectLine = I18n::language() == Language::Dutch
+                                   ? String("Verbind met \"") + Config::ProvisioningApSsid + "\""
+                                   : String("Connect to \"") + Config::ProvisioningApSsid + "\"";
+    return String(I18n::text("boot_setup_device")) +
+           "\n" + connectLine +
+           "\n" + I18n::text("setup_portal_active_10m") +
+           "\n" + I18n::text("setup_turn_off_hint");
+  };
+  display_.showBootMessage(setupScreenMessage(), battery_);
   ledRing_.showSetupRainbowBreath();
   bleProvisioning_.begin(haDevice_.getDeviceId());
 
@@ -641,6 +681,14 @@ void SpotifyDJApp::runCaptivePortal() {
   uint32_t lastSetupPromptAt = 0;
   uint32_t lastBatteryRefreshAt = 0;
   for (;;) {
+    const InputEvents events = input_.poll();
+    if (events.encoderClick) {
+      AppLog.println("Setup portal: turn off selected");
+      display_.showBootMessage(I18n::text("turning_off"), battery_);
+      responsiveDelay(300);
+      enterDeepSleep();
+    }
+
     dnsServer.processNextRequest();
     server.handleClient();
     String blePayload;
@@ -668,7 +716,7 @@ void SpotifyDJApp::runCaptivePortal() {
       lastBatteryRefreshAt = now;
       batteryMonitor_.refresh();
       evaluateBatteryTransition();
-      display_.showBootMessage(String(I18n::text("boot_device_setup")) + "\n" + I18n::text("boot_connect_setup_wifi") + " \"" + String(Config::ProvisioningApSsid) + "\"", battery_);
+      display_.showBootMessage(setupScreenMessage(), battery_);
     }
 
     if (now - setupStartedAt <= Config::SetupPromptBeepDurationMs &&
