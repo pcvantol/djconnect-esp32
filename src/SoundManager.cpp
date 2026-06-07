@@ -219,6 +219,10 @@ void SoundManager::playBack() {
   enqueue(Event::Back);
 }
 
+void SoundManager::playTurnOff() {
+  enqueue(Event::TurnOff);
+}
+
 void SoundManager::playPttStart() {
   enqueue(Event::PttStart);
 }
@@ -272,11 +276,11 @@ void SoundManager::notifyStreamActivity() {
 
 bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   if (!ready_) {
-    AppLog.println("[SpotifyDJ] voice response audio skipped: speaker not ready");
+    AppLog.println("Voice response audio skipped: speaker not ready");
     return false;
   }
   if (!beginAudioState(AudioState::StreamingWav, 250)) {
-    AppLog.println("[SpotifyDJ] voice response audio skipped: speaker busy");
+    AppLog.println("Voice response audio skipped: speaker busy");
     return false;
   }
   auto finish = [&](bool ok) {
@@ -302,7 +306,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   if (!readExact(riff, sizeof(riff)) ||
       memcmp(riff, "RIFF", 4) != 0 ||
       memcmp(riff + 8, "WAVE", 4) != 0) {
-    AppLog.println("[SpotifyDJ] voice response is not PCM WAV");
+    AppLog.println("Voice response is not PCM WAV");
     return finish(false);
   }
 
@@ -328,7 +332,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
     if (memcmp(chunkHeader, "fmt ", 4) == 0) {
       uint8_t fmt[16] = {};
       if (chunkSize < sizeof(fmt) || !readExact(fmt, sizeof(fmt))) {
-        AppLog.println("[SpotifyDJ] invalid voice WAV fmt chunk");
+        AppLog.println("Invalid voice WAV fmt chunk");
         return finish(false);
       }
       consumed += sizeof(fmt);
@@ -367,18 +371,18 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   }
 
   if (!foundFormat || !foundData) {
-    AppLog.println("[SpotifyDJ] voice WAV missing fmt/data chunk");
+    AppLog.println("Voice WAV missing fmt/data chunk");
     return finish(false);
   }
   if (audioFormat != 1 || channels != 1 || bitsPerSample != 16 || sampleRate == 0) {
-    AppLog.println("[SpotifyDJ] unsupported voice WAV format");
+    AppLog.println("Unsupported voice WAV format");
     return finish(false);
   }
   if (contentLength > 0 && consumed + dataBytes > static_cast<uint32_t>(contentLength)) {
     dataBytes = static_cast<uint32_t>(contentLength) - consumed;
   }
 
-  AppLog.print("[SpotifyDJ] voice WAV playback: sample_rate=");
+  AppLog.print("Voice WAV playback: sample_rate=");
   AppLog.print(sampleRate);
   AppLog.print(" bytes=");
   AppLog.println(dataBytes);
@@ -404,14 +408,14 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
 
 bool SoundManager::playMp3Stream(const String &url) {
   if (!ready_) {
-    AppLog.println("[SpotifyDJ] MP3 response audio skipped: speaker not ready");
+    AppLog.println("MP3 response audio skipped: speaker not ready");
     return false;
   }
   if (url.isEmpty()) {
     return false;
   }
   if (!beginAudioState(AudioState::StreamingMp3, 250)) {
-    AppLog.println("[SpotifyDJ] MP3 response audio skipped: speaker busy");
+    AppLog.println("MP3 response audio skipped: speaker busy");
     return false;
   }
 
@@ -427,19 +431,19 @@ bool SoundManager::playMp3Stream(const String &url) {
   AudioGeneratorMP3 mp3;
   const bool started = mp3.begin(&id3, &output);
   if (!started) {
-    AppLog.println("[SpotifyDJ] MP3 decoder start failed");
+    AppLog.println("MP3 decoder start failed");
     id3.close();
     buffered.close();
     source.close();
     if (!installI2s()) {
-      AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3 start error");
+      AppLog.println("Speaker I2S restore failed after MP3 start error");
       ready_ = false;
     }
     endAudioState();
     return false;
   }
 
-  AppLog.println("[SpotifyDJ] DJ response MP3 playback started");
+  AppLog.println("DJ response MP3 playback started");
   ScopedLoopWatchdogPause watchdogPause;
   const uint32_t startedAt = millis();
   while (mp3.isRunning()) {
@@ -449,7 +453,7 @@ bool SoundManager::playMp3Stream(const String &url) {
       break;
     }
     if (millis() - startedAt > Config::DjAudioIoTimeoutMs) {
-      AppLog.println("[SpotifyDJ] MP3 playback timeout");
+      AppLog.println("MP3 playback timeout");
       break;
     }
     delay(1);
@@ -463,21 +467,21 @@ bool SoundManager::playMp3Stream(const String &url) {
 
   const bool restored = installI2s();
   if (!restored) {
-    AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3");
+    AppLog.println("Speaker I2S restore failed after MP3");
     ready_ = false;
   }
   endAudioState();
-  AppLog.println("[SpotifyDJ] DJ response MP3 playback finished");
+  AppLog.println("DJ response MP3 playback finished");
   return restored;
 }
 
 bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t prefixLength, int contentLength) {
   if (!ready_) {
-    AppLog.println("[SpotifyDJ] MP3 response audio skipped: speaker not ready");
+    AppLog.println("MP3 response audio skipped: speaker not ready");
     return false;
   }
   if (!beginAudioState(AudioState::StreamingMp3, 250)) {
-    AppLog.println("[SpotifyDJ] MP3 response audio skipped: speaker busy");
+    AppLog.println("MP3 response audio skipped: speaker busy");
     return false;
   }
 
@@ -493,19 +497,19 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   AudioGeneratorMP3 mp3;
   const bool started = mp3.begin(&id3, &output);
   if (!started) {
-    AppLog.println("[SpotifyDJ] MP3 decoder start failed");
+    AppLog.println("MP3 decoder start failed");
     id3.close();
     buffered.close();
     source.close();
     if (!installI2s()) {
-      AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3 start error");
+      AppLog.println("Speaker I2S restore failed after MP3 start error");
       ready_ = false;
     }
     endAudioState();
     return false;
   }
 
-  AppLog.println("[SpotifyDJ] DJ response MP3 playback started");
+  AppLog.println("DJ response MP3 playback started");
   ScopedLoopWatchdogPause watchdogPause;
   const uint32_t startedAt = millis();
   while (mp3.isRunning()) {
@@ -515,7 +519,7 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
       break;
     }
     if (millis() - startedAt > Config::DjAudioIoTimeoutMs) {
-      AppLog.println("[SpotifyDJ] MP3 playback timeout");
+      AppLog.println("MP3 playback timeout");
       break;
     }
     delay(1);
@@ -529,11 +533,11 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
 
   const bool restored = installI2s();
   if (!restored) {
-    AppLog.println("[SpotifyDJ] speaker I2S restore failed after MP3");
+    AppLog.println("Speaker I2S restore failed after MP3");
     ready_ = false;
   }
   endAudioState();
-  AppLog.println("[SpotifyDJ] DJ response MP3 playback finished");
+  AppLog.println("DJ response MP3 playback finished");
   return restored;
 }
 
@@ -582,6 +586,11 @@ void SoundManager::runTask() {
         break;
       case Event::Back:
         playTone(587, 36, 10);
+        break;
+      case Event::TurnOff:
+        playTone(784, 70, 12);
+        playSilence(30);
+        playTone(392, 110, 12);
         break;
       case Event::PttStart:
         playTone(1319, 42, 12);

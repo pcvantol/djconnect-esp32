@@ -68,7 +68,7 @@ void showDjResponseLedFrame(void *context) {
 DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
   DjResponseAudioResult result;
   if (sound_ == nullptr) {
-    AppLog.println("[SpotifyDJ] DJ response audio skipped: speaker unavailable");
+    AppLog.println("DJ response audio skipped: speaker unavailable");
     result.audioType = "unknown";
     return result;
   }
@@ -76,7 +76,7 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
     return result;
   }
   if (WiFi.status() != WL_CONNECTED) {
-    AppLog.println("[SpotifyDJ] DJ response audio skipped: WiFi disconnected");
+    AppLog.println("DJ response audio skipped: WiFi disconnected");
     result.audioType = "unknown";
     return result;
   }
@@ -85,18 +85,18 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
   NetworkActivity activity("dj_audio_download", Config::DjAudioIoTimeoutMs);
   NetworkActivity::configureHttp(http, Config::HttpConnectTimeoutMs, Config::DjAudioIoTimeoutMs);
   if (!http.begin(audioUrl)) {
-    AppLog.println("[SpotifyDJ] DJ response audio begin failed");
+    AppLog.println("DJ response audio begin failed");
     activity.finishError("begin failed");
     result.audioType = "unknown";
     return result;
   }
 
-  AppLog.println("[SpotifyDJ] DJ response audio download");
+  AppLog.println("DJ response audio download");
   static const char *headers[] = {"Content-Type"};
   http.collectHeaders(headers, 1);
   const int code = http.GET();
   if (code < 200 || code >= 300) {
-    AppLog.print("[SpotifyDJ] DJ response audio HTTP ");
+    AppLog.print("DJ response audio HTTP ");
     AppLog.println(code);
     http.end();
     activity.finish(code);
@@ -135,14 +135,14 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
   } else if (stream != nullptr && audioType == Logic::DjAudioType::Mp3) {
     ok = sound_->playMp3Stream(*stream, prefix, prefixLength, contentLength);
   } else {
-    AppLog.println("[SpotifyDJ] DJ response audio type unsupported");
+    AppLog.println("DJ response audio type unsupported");
   }
   sound_->setStreamActivityCallback(nullptr, nullptr);
 
   http.end();
   activity.finish(code, ok ? "played" : "playback failed");
   result.spoken = ok;
-  AppLog.print("[SpotifyDJ] DJ response audio type=");
+  AppLog.print("DJ response audio type=");
   AppLog.print(result.audioType);
   AppLog.print(" played=");
   AppLog.println(ok ? "true" : "false");

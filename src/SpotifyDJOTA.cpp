@@ -89,7 +89,7 @@ bool SpotifyDJOTA::performUpdate(
     return false;
   }
 
-  AppLog.print("[SpotifyDJ] OTA target version: ");
+  AppLog.print("OTA target version: ");
   AppLog.println(request.version);
   if (sound != nullptr) {
     sound->playOtaStart();
@@ -134,7 +134,6 @@ bool SpotifyDJOTA::performUpdate(
   const int code = http.GET();
   if (code != HTTP_CODE_OK) {
     message = "OTA download failed " + String(code);
-    AppLog.print("[SpotifyDJ] ");
     AppLog.println(message);
     http.end();
     activity.finish(code);
@@ -145,7 +144,7 @@ bool SpotifyDJOTA::performUpdate(
   const int contentLength = http.getSize();
   if (!Update.begin(contentLength > 0 ? contentLength : UPDATE_SIZE_UNKNOWN)) {
     message = "OTA Update.begin failed";
-    AppLog.print("[SpotifyDJ] ");
+    AppLog.print("OTA Update.begin error: ");
     AppLog.println(Update.errorString());
     http.end();
     activity.finishError("Update.begin failed");
@@ -179,7 +178,7 @@ bool SpotifyDJOTA::performUpdate(
       }
       if (millis() - lastProgressAt > Config::OtaStreamIdleTimeoutMs) {
         message = "OTA stream timeout";
-        AppLog.println("[SpotifyDJ] OTA stream timeout");
+        AppLog.println("OTA stream timeout");
         Update.abort();
         http.end();
         mbedtls_sha256_free(&shaContext);
@@ -201,7 +200,7 @@ bool SpotifyDJOTA::performUpdate(
     serviceOtaLoop(ledRing);
     if (mbedtls_sha256_update_ret(&shaContext, buffer, read) != 0) {
       message = "OTA SHA256 update failed";
-      AppLog.println("[SpotifyDJ] OTA SHA256 update failed");
+      AppLog.println("OTA SHA256 update failed");
       Update.abort();
       http.end();
       mbedtls_sha256_free(&shaContext);
@@ -213,7 +212,7 @@ bool SpotifyDJOTA::performUpdate(
     const size_t chunkWritten = Update.write(buffer, read);
     if (chunkWritten != read) {
       message = "OTA write failed";
-      AppLog.println("[SpotifyDJ] OTA write failed");
+      AppLog.println("OTA write failed");
       Update.abort();
       http.end();
       mbedtls_sha256_free(&shaContext);
@@ -229,7 +228,7 @@ bool SpotifyDJOTA::performUpdate(
       lastProgressCue = written;
     }
     if (written - lastLogged >= 65536 || (contentLength > 0 && written == static_cast<size_t>(contentLength))) {
-      AppLog.print("[SpotifyDJ] OTA written bytes=");
+      AppLog.print("OTA written bytes=");
       AppLog.println(written);
       lastLogged = written;
     }
@@ -238,7 +237,7 @@ bool SpotifyDJOTA::performUpdate(
 
   if (contentLength > 0 && written != static_cast<size_t>(contentLength)) {
     message = "OTA short write";
-    AppLog.println("[SpotifyDJ] OTA short write");
+    AppLog.println("OTA short write");
     Update.abort();
     http.end();
     mbedtls_sha256_free(&shaContext);
@@ -250,7 +249,7 @@ bool SpotifyDJOTA::performUpdate(
   unsigned char digest[32] = {};
   if (mbedtls_sha256_finish_ret(&shaContext, digest) != 0) {
     message = "OTA SHA256 finalize failed";
-    AppLog.println("[SpotifyDJ] OTA SHA256 finalize failed");
+    AppLog.println("OTA SHA256 finalize failed");
     Update.abort();
     http.end();
     mbedtls_sha256_free(&shaContext);
@@ -262,18 +261,18 @@ bool SpotifyDJOTA::performUpdate(
   const String actualSha = sha256Hex(digest);
   if (!equalsIgnoreCase(actualSha, request.sha256)) {
     message = "OTA SHA256 mismatch";
-    AppLog.println("[SpotifyDJ] OTA SHA256 mismatch");
+    AppLog.println("OTA SHA256 mismatch");
     Update.abort();
     http.end();
     activity.finishError("sha mismatch");
     failWithCue();
     return false;
   }
-  AppLog.println("[SpotifyDJ] OTA SHA256 verified");
+  AppLog.println("OTA SHA256 verified");
 
   if (!Update.end(true)) {
     message = "OTA finalize failed";
-    AppLog.print("[SpotifyDJ] ");
+    AppLog.print("OTA finalize error: ");
     AppLog.println(Update.errorString());
     http.end();
     activity.finishError("finalize failed");
@@ -283,7 +282,7 @@ bool SpotifyDJOTA::performUpdate(
 
   http.end();
   message = "OTA started";
-  AppLog.println("[SpotifyDJ] OTA update written successfully");
+  AppLog.println("OTA update written successfully");
   if (sound != nullptr) {
     sound->playOtaComplete();
     delay(320);

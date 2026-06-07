@@ -13,12 +13,12 @@ bool SpotifyDJDiscovery::begin(SpotifyDJDevice &device) {
     return true;
   }
   if (WiFi.status() != WL_CONNECTED) {
-    AppLog.println("[SpotifyDJ] mDNS skipped: WiFi disconnected");
+    AppLog.println("mDNS skipped: WiFi disconnected");
     return false;
   }
 
   if (!MDNS.begin(device.getDeviceId().c_str())) {
-    AppLog.println("[SpotifyDJ] mDNS begin failed");
+    AppLog.println("mDNS begin failed");
     return false;
   }
 
@@ -26,7 +26,7 @@ bool SpotifyDJDiscovery::begin(SpotifyDJDevice &device) {
   running_ = true;
   updateTxtRecords();
 
-  AppLog.print("[SpotifyDJ] mDNS URL: ");
+  AppLog.print("mDNS URL: ");
   AppLog.println(device.getLocalUrl());
   return true;
 }

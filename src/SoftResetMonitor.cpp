@@ -28,7 +28,7 @@ void SoftResetMonitor::resetMonitorTask(void *parameter) {
   uint32_t comboPressedAt = 0;
 
   for (;;) {
-    // This runs outside the main loop so a stuck Spotify request cannot block manual recovery.
+    // This runs outside the main loop so a stuck playback request cannot block manual recovery.
     const uint32_t now = millis();
     const bool topButtonPressed = digitalRead(Config::BoardUserKeyPin) == LOW;
     const bool encoderButtonPressed = digitalRead(Config::EncoderButtonPin) == LOW;

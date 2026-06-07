@@ -33,9 +33,9 @@ void SpotifyDJDevice::begin(const BatteryState *battery, DisplayManager *display
   }
   clearSpotifyCredentials();
 
-  AppLog.print("[SpotifyDJ] device_id: ");
+  AppLog.print("Device ID: ");
   AppLog.println(deviceId_);
-  AppLog.print("[SpotifyDJ] pairing: ");
+  AppLog.print("Home Assistant pairing: ");
   AppLog.println(isPaired() ? "paired" : "unpaired");
 }
 
@@ -107,7 +107,7 @@ bool SpotifyDJDevice::saveProvisionedLanguage(const String &languageCode) {
   preferences.begin("provision", false);
   preferences.putString("language", normalized);
   preferences.end();
-  AppLog.print("[SpotifyDJ] Provisioned UI language: ");
+  AppLog.print("Provisioned UI language: ");
   AppLog.println(normalized);
   return true;
 }
@@ -117,7 +117,7 @@ void SpotifyDJDevice::ensurePairingCode() {
     return;
   }
   pairCode_ = sixDigitCode(esp_random());
-  AppLog.print("[SpotifyDJ] pairing code generated: ");
+  AppLog.print("Pairing code generated: ");
   AppLog.print(pairCode_);
   AppLog.print(" for ");
   AppLog.println(deviceId_);
@@ -126,7 +126,7 @@ void SpotifyDJDevice::ensurePairingCode() {
 void SpotifyDJDevice::displayPairingCode() {
   ensurePairingCode();
   if (display_ == nullptr) {
-    AppLog.println("[SpotifyDJ] TODO displayPairingCode: display unavailable");
+    AppLog.println("Pairing code display unavailable");
     return;
   }
   display_->forceBacklightPercent(100);
@@ -150,7 +150,7 @@ void SpotifyDJDevice::displayPaired() {
 void SpotifyDJDevice::savePairing(const String &haUrl, const String &deviceToken) {
   writeString("ha_url", haUrl);
   writeString("device_token", deviceToken);
-  AppLog.println("[SpotifyDJ] paired with Home Assistant URL stored");
+  AppLog.println("Home Assistant pairing stored");
 }
 
 bool SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market) {
@@ -158,14 +158,14 @@ bool SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const Strin
   (void)refreshToken;
   (void)market;
   clearSpotifyCredentials();
-  AppLog.println("[SpotifyDJ] legacy playback credential save ignored");
+  AppLog.println("Legacy playback credential save ignored");
   return false;
 }
 
 bool SpotifyDJDevice::saveSpotifyRefreshToken(const String &refreshToken) {
   (void)refreshToken;
   clearSpotifyCredentials();
-  AppLog.println("[SpotifyDJ] legacy refresh token save ignored");
+  AppLog.println("Legacy playback token save ignored");
   return false;
 }
 
@@ -175,7 +175,7 @@ void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
   } else {
     writeString(AssistPipelineKey, pipelineId);
   }
-  AppLog.println("[SpotifyDJ] Assist pipeline setting saved");
+  AppLog.println("Assist pipeline setting saved");
 }
 
 void SpotifyDJDevice::clearPairing() {
@@ -187,7 +187,7 @@ void SpotifyDJDevice::clearHomeAssistantPairing() {
   removeKey("ha_url");
   removeKey("device_token");
   pairCode_ = "";
-  AppLog.println("[SpotifyDJ] Home Assistant pairing cleared");
+  AppLog.println("Home Assistant pairing cleared");
 }
 
 void SpotifyDJDevice::clearSpotifyCredentials() {
@@ -200,7 +200,7 @@ void SpotifyDJDevice::clearSpotifyCredentials() {
   provision.remove("sp_refresh");
   provision.remove("spotify_market");
   provision.end();
-  AppLog.println("[SpotifyDJ] legacy playback credentials cleared");
+  AppLog.println("Legacy playback credentials cleared");
 }
 
 const BatteryState *SpotifyDJDevice::battery() const {

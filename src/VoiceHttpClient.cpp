@@ -153,7 +153,7 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   const int code = http.POST(body);
   http.end();
   activity.finish(code);
-  AppLog.print("[SpotifyDJ] voice status response: ");
+  AppLog.print("Voice status response: ");
   AppLog.println(code);
   updatePairingInvalidationForStatus(code);
   return code >= 200 && code < 300;
@@ -202,7 +202,7 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
   http.addHeader("X-SpotifyDJ-Text", recognizedText);
 
-  AppLog.print("[SpotifyDJ] voice text command chars=");
+  AppLog.print("Voice text command chars=");
   AppLog.println(recognizedText.length());
   esp_task_wdt_reset();
   int code = 0;
@@ -211,14 +211,14 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
     code = http.POST(body);
   }
   esp_task_wdt_reset();
-  AppLog.print("[SpotifyDJ] voice command response: ");
+  AppLog.print("Voice command response: ");
   AppLog.println(code);
-  logVoiceHttpClientError("[SpotifyDJ] voice command client error", code);
+  logVoiceHttpClientError("Voice command client error", code);
   const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs);
   http.end();
   activity.finish(code);
   if (code < 200 || code >= 300) {
-    logVoiceHttpErrorBody("[SpotifyDJ] voice command error body", response);
+    logVoiceHttpErrorBody("Voice command error body", response);
     updatePairingInvalidationForStatus(code);
     if (code == 404) {
       message = I18n::text("voice_ha_endpoint_missing");
@@ -291,7 +291,7 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   http.addHeader("Content-Type", "audio/wav");
   http.addHeader("Authorization", "Bearer " + token);
   http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
-  AppLog.print("[SpotifyDJ] voice WAV upload bytes=");
+  AppLog.print("Voice WAV upload bytes=");
   AppLog.println(fileSize);
 
   int code = 0;
@@ -301,15 +301,15 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   }
   file.close();
   esp_task_wdt_reset();
-  AppLog.print("[SpotifyDJ] voice WAV response: ");
+  AppLog.print("Voice WAV response: ");
   AppLog.println(code);
-  logVoiceHttpClientError("[SpotifyDJ] voice WAV client error", code);
+  logVoiceHttpClientError("Voice WAV client error", code);
   const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs);
   http.end();
   activity.finish(code);
 
   if (code < 200 || code >= 300) {
-    logVoiceHttpErrorBody("[SpotifyDJ] voice WAV error body", response);
+    logVoiceHttpErrorBody("Voice WAV error body", response);
     updatePairingInvalidationForStatus(code);
     if (code == 404) {
       message = I18n::text("voice_ha_endpoint_missing");
@@ -349,7 +349,7 @@ bool VoiceHttpClient::updatePairingInvalidationForStatus(int statusCode) {
       consecutiveHaNotFoundCount_ = 0;
     }
     consecutiveHaNotFoundCount_++;
-    AppLog.print("[SpotifyDJ] Home Assistant route not found count=");
+    AppLog.print("Home Assistant route not found count=");
     AppLog.println(consecutiveHaNotFoundCount_);
     pairingInvalidated_ = consecutiveHaNotFoundCount_ >= HaNotFoundInvalidationThreshold;
     return pairingInvalidated_;

@@ -569,8 +569,8 @@ void SpotifyDJApp::runCaptivePortal() {
   display_.forceBacklightPercent(100);
   auto setupScreenMessage = []() {
     const String connectLine = I18n::language() == Language::Dutch
-                                   ? String("Verbind met \"") + Config::ProvisioningApSsid + "\""
-                                   : String("Connect to \"") + Config::ProvisioningApSsid + "\"";
+                                   ? String("Verbind a.u.b. met \"") + Config::ProvisioningApSsid + "\""
+                                   : String("Please connect to \"") + Config::ProvisioningApSsid + "\"";
     return connectLine +
            "\n" + I18n::text("setup_portal_active_10m") +
            "\n" + I18n::text("setup_turn_off_hint");
@@ -901,7 +901,7 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
   }
 
   if (homeAssistantPaired_ && events.encoderRelease && !voiceRecording_ && voiceState_ == VoiceState::Idle) {
-    AppLog.println("voice: encoder released without active PTT");
+    AppLog.println("Voice: encoder released without active PTT");
   }
 
   if (events.encoderClick) {
@@ -921,7 +921,7 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
   }
 
   if (events.encoderLongClick) {
-    AppLog.println("voice: encoder long press");
+    AppLog.println("Voice: encoder long press");
     handleVoiceButton();
   }
 
@@ -1252,17 +1252,17 @@ void SpotifyDJApp::applyLogLevelSelection() {
 
 void SpotifyDJApp::applyPlayModeSelection() {
   const String mode = playModeValue(playModeSelection_);
-  AppLog.print("Spotify: setting play mode ");
+  AppLog.print("Playback: setting play mode ");
   AppLog.println(mode);
   showNotice(I18n::text("spotify_play_mode"), 1600);
   renderNow();
   if (spotify_.setPlayMode(mode)) {
-    AppLog.print("Spotify: play mode set to ");
+    AppLog.print("Playback: play mode set to ");
     AppLog.println(mode);
     showNotice(playModeLabel(mode), 2200);
     lastPlaybackPollAt_ = 0;
   } else {
-    AppLog.print("Spotify: play mode failed: ");
+    AppLog.print("Playback: play mode failed: ");
     AppLog.println(playback_.error);
     showNotice(playback_.error, 3500);
   }
@@ -1318,7 +1318,7 @@ void SpotifyDJApp::hardResetToProvisioning() {
       file = root.openNextFile();
     }
     root.close();
-    AppLog.println("[SpotifyDJ] local LittleFS caches cleared");
+    AppLog.println("Local LittleFS caches cleared");
   }
 
   WiFi.disconnect(true, true);
@@ -1762,7 +1762,7 @@ bool SpotifyDJApp::handleDeviceCommand(const DeviceCommand &command, String &mes
   }
 
   if (!spotify_.isAuthorized()) {
-    AppLog.println("Device command ignored: Spotify not connected");
+    AppLog.println("Device command ignored: playback not connected");
     message = I18n::text("spotify_not_connected");
     return false;
   }
@@ -1878,11 +1878,11 @@ void SpotifyDJApp::pauseOrResume() {
 }
 
 void SpotifyDJApp::startLikedProxyPlaylist() {
-  AppLog.println("Spotify: starting Liked Proxy playlist");
+  AppLog.println("Playback: starting Liked Proxy playlist");
   showNotice(I18n::text("starting_liked_proxy"), 1600);
   renderNow();
   if (spotify_.startLikedProxyPlaylist()) {
-    AppLog.println("Spotify: Liked Proxy playlist command accepted");
+    AppLog.println("Playback: Liked Proxy playlist command accepted");
     playback_.trackName = I18n::text("starting_liked_proxy");
     playback_.artistName = "";
     playback_.hasPlayback = true;
@@ -1895,7 +1895,7 @@ void SpotifyDJApp::startLikedProxyPlaylist() {
     showNotice(I18n::text("liked_proxy_started"), 2200);
     lastPlaybackPollAt_ = 0;
   } else {
-    AppLog.print("Spotify: Liked Proxy playlist failed: ");
+    AppLog.print("Playback: Liked Proxy playlist failed: ");
     AppLog.println(playback_.error);
     showNotice(playback_.error, 3500);
   }
@@ -1904,18 +1904,18 @@ void SpotifyDJApp::startLikedProxyPlaylist() {
 
 void SpotifyDJApp::handleVoiceButton() {
   if (!homeAssistantPaired_) {
-    AppLog.println("[SpotifyDJ] voice: HA not paired, using pause/resume");
+    AppLog.println("Voice: HA not paired, using pause/resume");
     pauseOrResume();
     return;
   }
   if (voiceRecording_) {
-    AppLog.println("[SpotifyDJ] voice: stop requested while recording");
+    AppLog.println("Voice: stop requested while recording");
     stopVoiceRecordingAndSendText();
     return;
   }
 
 #if defined(SPOTIFYDJ_DEBUG_TEXT_COMMAND)
-  AppLog.println("[SpotifyDJ] voice: debug text command");
+  AppLog.println("Voice: debug text command");
   String message;
   voiceState_ = VoiceState::SendingCommand;
   voiceClient_.sendStatus(false, "sending_command");
@@ -1933,12 +1933,12 @@ void SpotifyDJApp::handleVoiceButton() {
 
   String message;
   voiceState_ = VoiceState::Connecting;
-  AppLog.println("[SpotifyDJ] voice: starting WAV recording");
+  AppLog.println("Voice: starting WAV recording");
   showNotice(I18n::text("voice_connecting"), 3000);
   renderNow();
   if (!voiceRecorder_.start()) {
     const String error = voiceRecorder_.error();
-    AppLog.print("[SpotifyDJ] voice: mic start failed: ");
+    AppLog.print("Voice: mic start failed: ");
     AppLog.println(error);
     voiceState_ = VoiceState::Error;
     voiceClient_.sendStatus(false, "error", error);
@@ -1948,7 +1948,7 @@ void SpotifyDJApp::handleVoiceButton() {
   }
   voiceRecording_ = true;
   voiceState_ = VoiceState::Listening;
-  AppLog.println("[SpotifyDJ] voice: listening");
+  AppLog.println("Voice: listening");
   if (volumeFeedbackEnabled_) {
     sound_.playPttStart();
   }
@@ -1968,7 +1968,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   }
   voiceRecording_ = false;
   voiceState_ = VoiceState::WaitingForResult;
-  AppLog.println("[SpotifyDJ] voice: recording stopped, uploading WAV");
+  AppLog.println("Voice: recording stopped, uploading WAV");
   if (volumeFeedbackEnabled_) {
     sound_.playPttStop();
   }
@@ -1981,7 +1981,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   renderNow();
   if (!voiceRecorder_.stop()) {
     const String error = voiceRecorder_.error();
-    AppLog.print("[SpotifyDJ] voice: mic stop failed: ");
+    AppLog.print("Voice: mic stop failed: ");
     AppLog.println(error);
     voiceState_ = VoiceState::Error;
     voiceClient_.sendStatus(false, "error", error);
@@ -1992,14 +1992,14 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
 
   String message;
   voiceState_ = VoiceState::SendingCommand;
-  AppLog.println("[SpotifyDJ] voice: uploading WAV to HA integration");
+  AppLog.println("Voice: uploading WAV to HA integration");
   voiceClient_.sendStatus(false, "sending_command");
   showNotice("SpotifyDJ...", 2500);
   renderNow();
   String audioUrl;
   if (voiceClient_.uploadWav(voiceRecorder_.wavPath(), message, &audioUrl)) {
     voiceState_ = VoiceState::Done;
-    AppLog.println("[SpotifyDJ] voice: command accepted");
+    AppLog.println("Voice: command accepted");
     ledRing_.playPulse(CRGB::Green);
     voiceClient_.sendStatus(false, "idle");
     bool spoken = false;
@@ -2013,7 +2013,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
     }
   } else {
     voiceState_ = VoiceState::Error;
-    AppLog.print("[SpotifyDJ] voice: command failed: ");
+    AppLog.print("Voice: command failed: ");
     AppLog.println(message);
     voiceClient_.sendStatus(false, "error", message);
     if (voiceClient_.pairingInvalidated()) {
@@ -2077,12 +2077,12 @@ void SpotifyDJApp::startSelectedPlaylist() {
   }
 
   const PlaylistItemState &playlist = playlists_.items[playlistSelection_];
-  AppLog.print("Spotify: starting playlist ");
+  AppLog.print("Playback: starting playlist ");
   AppLog.println(playlist.name);
   showNotice(I18n::text("starting_playlist"), 1600);
   renderNow();
   if (spotify_.startPlaylist(playlist.uri)) {
-    AppLog.println("Spotify: playlist command accepted");
+    AppLog.println("Playback: playlist command accepted");
     playback_.hasPlayback = true;
     playback_.isPlaying = true;
     playback_.trackName = I18n::text("starting_playlist");
@@ -2095,7 +2095,7 @@ void SpotifyDJApp::startSelectedPlaylist() {
     showNotice(I18n::text("playlist_started"), 2200);
     lastPlaybackPollAt_ = 0;
   } else {
-    AppLog.print("Spotify: playlist failed: ");
+    AppLog.print("Playback: playlist failed: ");
     AppLog.println(playback_.error);
     showNotice(playback_.error, 3500);
   }
@@ -2552,6 +2552,8 @@ void SpotifyDJApp::logHeapIfDue() {
 void SpotifyDJApp::enterDeepSleep() {
   deepSleepStarted_ = true;
   AppLog.println("Entering deep sleep");
+  sound_.playTurnOff();
+  responsiveDelay(220);
 
   if (activeScreen_ != UiScreen::NowPlaying) {
     activeScreen_ = UiScreen::NowPlaying;
@@ -2570,6 +2572,8 @@ void SpotifyDJApp::enterDeepSleep() {
 
 void SpotifyDJApp::enterDeepSleepWithoutDisplay() {
   deepSleepStarted_ = true;
+  sound_.playTurnOff();
+  responsiveDelay(220);
   esp_sleep_enable_ext1_wakeup(power_.buttonWakeMask(), ESP_EXT1_WAKEUP_ANY_LOW);
   esp_sleep_enable_timer_wakeup(power_.sleepTimerWakeUs(false));
   WiFi.disconnect(true, false);
@@ -2674,7 +2678,7 @@ void SpotifyDJApp::applyProvisionedLanguage(const String &languageCode) {
   I18n::setLanguage(language_);
   languageCode_ = I18n::languageCode();
   languageSelection_ = language_ == Language::Dutch ? 1 : 0;
-  AppLog.print("[SpotifyDJ] UI language applied: ");
+  AppLog.print("UI language applied: ");
   AppLog.println(languageCode_);
   renderNow();
 }
@@ -2895,10 +2899,10 @@ void SpotifyDJApp::setupHomeAssistantLayer() {
       languageProvisionedCallback,
       deviceCommandCallback);
 
-  AppLog.print("[SpotifyDJ] paired: ");
+  AppLog.print("Home Assistant paired: ");
   AppLog.println(haDevice_.isPaired() ? "true" : "false");
   if (haDevice_.isPaired()) {
-    AppLog.println("[SpotifyDJ] HA URL: configured");
+    AppLog.println("Home Assistant URL configured");
   } else {
     haDevice_.displayPairingCode();
   }
@@ -3018,7 +3022,7 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
     return false;
   }
   SpotifyDJApp *app = static_cast<SpotifyDJApp *>(context);
-  AppLog.print("[SpotifyDJ] web voice: sending text chars=");
+  AppLog.print("Web voice: sending text chars=");
   AppLog.println(text.length());
   app->voiceState_ = VoiceState::SendingCommand;
   app->voiceRecording_ = false;
@@ -3104,7 +3108,7 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   spoken = false;
   diagnostics_.lastDjText = text;
   lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "unknown";
-  AppLog.print("[SpotifyDJ] DJ response displayed chars=");
+  AppLog.print("DJ response displayed chars=");
   AppLog.println(text.length());
   display_.resetDjResponseOverlayCache();
   djResponseOverlayVisible_ = true;

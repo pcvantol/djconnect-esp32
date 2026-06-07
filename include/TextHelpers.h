@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-// Percent-encodes URL query/body values for Spotify requests.
+// Percent-encodes URL query/body values.
 String urlEncode(const String &value);
 
 // Formats milliseconds as M:SS or H:MM:SS for the playback footer.

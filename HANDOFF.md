@@ -13,6 +13,7 @@ Current repo state includes:
 - Web portal includes Now Playing, DJ-response simulation, outputs, playlists, logs, diagnostics, OTA upload, WiFi update, settings and status indicators.
 - Device main menu includes a small Pong mini game.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
+- Home Assistant should expose the proxied playback as a native `media_player` entity if user-facing HA media controls are desired. That entity represents the backend playback session, not the ESP speaker.
 - WiFi boot connection timeout is 30 seconds. During WiFi connect, the LED ring shows a blue animation.
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed.
@@ -49,12 +50,15 @@ Core data/security boundaries:
 - Device API uses `Authorization: Bearer <device_token>` for protected endpoints.
 - Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase stored pairing automatically.
 - Playback-backend refresh tokens are never stored on the ESP and therefore are never logged or shown back to users.
+- The ESP is not a Spotify Connect speaker/player and should not be modeled as the actual music sink. It mirrors and controls the playback state supplied by Home Assistant.
 - Internal ESP32 Preferences keys must be 15 chars or less.
 
 ## Decisions Made
 
 - Home Assistant is the trusted backend for pairing, playback command interpretation, backend credentials, Assist/STT/TTS orchestration, OTA offer handling and native command entities.
 - The ESP stays focused on local edge behavior: display, controls, LED ring, battery/power policy, mic capture and playback of HA-provided DJ response audio.
+- A Home Assistant `media_player` entity may be implemented in the integration for the playback proxy. HA `media_player.pause`, `media_player.play_media`, `media_player.volume_set`, source selection and next/previous should be translated by the integration into backend playback actions and/or ESP `/api/device/command` updates. Do not make this entity imply that Spotify/Sonos music audio is played by the ESP.
+- The ESP speaker remains reserved for local cues and DJ/voice response audio. Treat that as device-local feedback, separate from the backend music `media_player`.
 - Physical PTT must stay on the WAV-upload route to `/api/spotify_dj/voice`; do not reintroduce direct ESP Home Assistant Assist WebSocket authentication.
 - Web PTT is a compact DJ-response simulation path. It requires HA pairing but not playback-backend credentials on the ESP, active playback or browser microphone permission.
 - Smart Shuffle was removed because Spotify does not expose a useful public Web API control for it.
@@ -68,6 +72,7 @@ Core data/security boundaries:
 
 - NVS credentials are currently stored in ESP32 NVS but not encrypted by this Arduino/PlatformIO build.
 - OTA status clearing in Home Assistant depends on the integration processing the post-boot status payload correctly.
+- The Home Assistant integration still needs a final synchronization pass for the post-MQTT architecture: native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payload compatibility.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
 - MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
 - Home Assistant STT/TTS failures are backend/integration dependent. Firmware surfaces error bodies but cannot fix missing HA STT provider configuration.
@@ -85,8 +90,13 @@ Recommended next work:
 2. Add automated tests for WiFi-failure menu ordering and factory-reset confirmation behavior.
 3. Add a host-testable model for setup/AP screen state and timeout labels.
 4. Add integration-side verification for OTA status clearing after successful firmware boot.
-5. Implement native Home Assistant entities for every command previously handled locally, using `/api/device/command`.
-6. Stress-test DJ-response MP3 playback with several short and long files.
-7. Continue reducing `SpotifyDJApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
-8. Add release checklist item for confirming public GitHub Action firmware contains the expected `vX.Y.Z` marker.
-9. Add product security review for local HTTP device API, bearer-token lifetime, replay behavior and factory reset behavior.
+5. Implement/verify native Home Assistant entities for every command previously handled locally, using `/api/device/command`.
+6. Add a Home Assistant `media_player` entity for proxied playback state/control:
+   - state: playing, paused, idle/unavailable from integration playback state;
+   - attributes: title, artist, album art, output/source, volume and supported features;
+   - commands: play/pause, next/previous, volume, source/output selection and playlist/media start;
+   - keep actual backend credentials and playback API calls in Home Assistant.
+7. Stress-test DJ-response MP3 playback with several short and long files.
+8. Continue reducing `SpotifyDJApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
+9. Add release checklist item for confirming public GitHub Action firmware contains the expected `vX.Y.Z` marker.
+10. Add product security review for local HTTP device API, bearer-token lifetime, replay behavior and factory reset behavior.

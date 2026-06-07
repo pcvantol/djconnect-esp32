@@ -94,7 +94,7 @@ bool VoiceRecorder::startRaw() {
   recording_ = true;
   error_ = "";
   i2s_zero_dma_buffer(MicI2sPort);
-  AppLog.println("[SpotifyDJ] voice PCM recording started");
+  AppLog.println("Voice PCM recording started");
   return true;
 }
 
@@ -159,7 +159,7 @@ bool VoiceRecorder::start() {
   recording_ = true;
   error_ = "";
   i2s_zero_dma_buffer(MicI2sPort);
-  AppLog.println("[SpotifyDJ] voice recording started");
+  AppLog.println("Voice recording started");
   return true;
 }
 
@@ -212,7 +212,7 @@ bool VoiceRecorder::stop() {
   if (!rewriteWavHeader()) {
     return false;
   }
-  AppLog.print("[SpotifyDJ] voice WAV bytes: ");
+  AppLog.print("Voice WAV bytes: ");
   AppLog.println(wavSize());
   return true;
 }
@@ -222,7 +222,7 @@ bool VoiceRecorder::stopRaw() {
     return false;
   }
   recording_ = false;
-  AppLog.print("[SpotifyDJ] voice PCM bytes: ");
+  AppLog.print("Voice PCM bytes: ");
   AppLog.println(dataBytes_);
   if (dataBytes_ == 0) {
     error_ = "No audio recorded";

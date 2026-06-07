@@ -72,7 +72,7 @@ bool SpotifyDJAssistClient::start(String &message) {
   }
 
   connected_ = true;
-  AppLog.println("[SpotifyDJ] Assist listening");
+  AppLog.println("Assist listening");
   return true;
 }
 
@@ -117,7 +117,7 @@ bool SpotifyDJAssistClient::finish(String &recognizedText, String &message) {
       continue;
     }
     if (extractRecognizedText(payload, recognizedText) && !recognizedText.isEmpty()) {
-      AppLog.print("[SpotifyDJ] Assist recognized chars=");
+      AppLog.print("Assist recognized chars=");
       AppLog.println(recognizedText.length());
       close();
       return true;
@@ -128,7 +128,7 @@ bool SpotifyDJAssistClient::finish(String &recognizedText, String &message) {
       const char *messageType = doc["type"] | "";
       const char *eventType = doc["event"]["type"] | "";
       if (strlen(eventType) > 0) {
-        AppLog.print("[SpotifyDJ] Assist event: ");
+        AppLog.print("Assist event: ");
         AppLog.println(eventType);
       }
       if (strcmp(messageType, "result") == 0 || strcmp(eventType, "run-end") == 0) {
@@ -204,7 +204,7 @@ bool SpotifyDJAssistClient::connectSocket(const ParsedUrl &url, String &message)
   }
   WiFiClient *socket = client();
   socket->setTimeout(ConnectTimeoutMs);
-  AppLog.println("[SpotifyDJ] Assist websocket connect");
+  AppLog.println("Assist websocket connect");
   if (!socket->connect(url.host.c_str(), url.port, ConnectTimeoutMs)) {
     message = "Assist connect failed";
     return false;
@@ -240,7 +240,7 @@ bool SpotifyDJAssistClient::sendHandshake(const ParsedUrl &url, String &message)
   }
   if (statusLine.indexOf("101") < 0) {
     message = "Assist handshake failed";
-    AppLog.print("[SpotifyDJ] Assist handshake: ");
+    AppLog.print("Assist handshake: ");
     AppLog.println(statusLine);
     return false;
   }
@@ -265,7 +265,7 @@ bool SpotifyDJAssistClient::authenticate(String &message) {
   if (!waitForJsonType("auth_ok", AuthTimeoutMs, payload, message)) {
     return false;
   }
-  AppLog.println("[SpotifyDJ] Assist auth_ok");
+  AppLog.println("Assist auth_ok");
   return true;
 }
 
@@ -302,7 +302,7 @@ bool SpotifyDJAssistClient::startPipeline(String &message) {
     const char *messageType = event["type"] | "";
     const char *eventType = event["event"]["type"] | "";
     if (strlen(eventType) > 0) {
-      AppLog.print("[SpotifyDJ] Assist event: ");
+      AppLog.print("Assist event: ");
       AppLog.println(eventType);
     }
     if (strcmp(messageType, "result") == 0 && !(event["success"] | true)) {
@@ -334,7 +334,7 @@ bool SpotifyDJAssistClient::waitForJsonType(const String &type, uint32_t timeout
     }
     if (found == "auth_invalid") {
       message = "Assist auth_invalid";
-      AppLog.println("[SpotifyDJ] Assist auth_invalid");
+      AppLog.println("Assist auth_invalid");
       return false;
     }
   }
@@ -506,7 +506,7 @@ bool SpotifyDJAssistClient::extractSttHandlerId(const String &payload) {
     return false;
   }
   sttHandlerId_ = static_cast<uint8_t>(id);
-  AppLog.print("[SpotifyDJ] Assist STT binary handler: ");
+  AppLog.print("Assist STT binary handler: ");
   AppLog.println(sttHandlerId_);
   return true;
 }

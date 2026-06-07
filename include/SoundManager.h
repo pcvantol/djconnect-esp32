@@ -34,6 +34,9 @@ public:
   // Single bleep when navigating back.
   void playBack();
 
+  // Soft descending cue immediately before the device enters turn-off sleep.
+  void playTurnOff();
+
   // Distinct cue when push-to-talk starts listening.
   void playPttStart();
 
@@ -88,6 +91,7 @@ private:
     Confirm,
     MenuOpen,
     Back,
+    TurnOff,
     PttStart,
     PttStop,
     HardReset,

@@ -89,7 +89,7 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   NetworkActivity::configureLongHttp(http);
   const String url = joinUrl(haUrl, "/api/spotify_dj/pair");
   if (!http.begin(url)) {
-    AppLog.println("[SpotifyDJ] HA pair HTTP begin failed");
+    AppLog.println("HA pair HTTP begin failed");
     activity.finishError("begin failed");
     return false;
   }
@@ -99,7 +99,7 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   http.end();
   activity.finish(code);
 
-  AppLog.print("[SpotifyDJ] HA pair response: ");
+  AppLog.print("HA pair response: ");
   AppLog.println(code);
   if (code != 200 && code != 201) {
     return false;
@@ -107,14 +107,14 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
 
   JsonDocument response;
   if (deserializeJson(response, payload)) {
-    AppLog.println("[SpotifyDJ] HA pair JSON failed");
+    AppLog.println("HA pair JSON failed");
     return false;
   }
   const bool success = response["success"] | false;
   const char *deviceToken = response["device_token"] | "";
   const char *assistPipelineId = response["assist_pipeline_id"] | "";
   if (!success || strlen(deviceToken) == 0) {
-    AppLog.println("[SpotifyDJ] HA pair missing token");
+    AppLog.println("HA pair missing token");
     return false;
   }
 
@@ -165,7 +165,7 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(const BatterySta
   NetworkActivity::configureLongHttp(http);
   const String url = joinUrl(haUrl, "/api/spotify_dj/status");
   if (!http.begin(url)) {
-    AppLog.println("[SpotifyDJ] HA status HTTP begin failed");
+    AppLog.println("HA status HTTP begin failed");
     activity.finishError("begin failed");
     return StatusResult::Failed;
   }
@@ -177,10 +177,10 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(const BatterySta
   http.end();
   activity.finish(code);
 
-  AppLog.print("[SpotifyDJ] HA status response: ");
+  AppLog.print("HA status response: ");
   AppLog.println(code);
   if (Logic::isHomeAssistantPairingInvalidStatus(code)) {
-    AppLog.println("[SpotifyDJ] HA pairing appears invalid");
+    AppLog.println("HA pairing appears invalid");
     return StatusResult::PairingInvalid;
   }
   if (code >= 200 && code < 300 && !payload.isEmpty()) {

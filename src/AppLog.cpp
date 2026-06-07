@@ -226,6 +226,7 @@ String AppLogger::severityForLine(const String &line) const {
 
   if (lower.startsWith("network start:") ||
       lower.startsWith("network done:") ||
+      lower.startsWith("ha playback command:") ||
       lower.startsWith("spotify request:") ||
       lower.startsWith("spotify response:") ||
       lower.startsWith("battery:") ||

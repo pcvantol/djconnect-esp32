@@ -54,7 +54,7 @@ void SpotifyDJApiServer::begin(
   server_->on("/api/device/reboot", HTTP_POST, [this]() { handleReboot(); });
   server_->on("/api/device/forget", HTTP_POST, [this]() { handleForget(); });
   running_ = true;
-  AppLog.println("[SpotifyDJ] device API routes registered");
+  AppLog.println("Device API routes registered");
 }
 
 void SpotifyDJApiServer::loop() {
@@ -177,7 +177,7 @@ void SpotifyDJApiServer::handleOta() {
     delay(500);
     ESP.restart();
   }
-  AppLog.print("[SpotifyDJ] OTA failed after response: ");
+  AppLog.print("OTA failed after response: ");
   AppLog.println(message);
 }
 
@@ -200,7 +200,7 @@ void SpotifyDJApiServer::handleDjResponse() {
     return;
   }
 
-  AppLog.print("[SpotifyDJ] DJ response received chars=");
+  AppLog.print("DJ response received chars=");
   AppLog.println(text.length());
   bool displayed = false;
   bool spoken = false;
