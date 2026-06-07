@@ -94,14 +94,16 @@ String AppLogger::text() const {
   return output;
 }
 
-size_t AppLogger::newestLines(String *target, size_t maxLines) const {
+size_t AppLogger::newestLines(String *target, size_t maxLines, size_t scrollBack) const {
   if (target == nullptr || maxLines == 0) {
     return 0;
   }
 
   const size_t available = lineCount_ + (currentLength_ == 0 ? 0 : 1);
   const size_t count = min(maxLines, available);
-  const size_t firstVisible = available - count;
+  const size_t maxScrollBack = available > count ? available - count : 0;
+  scrollBack = min(scrollBack, maxScrollBack);
+  const size_t firstVisible = available - count - scrollBack;
   const size_t firstStored = lineCount_ == MaxLines ? nextLine_ : 0;
 
   for (size_t index = 0; index < count; index++) {
@@ -116,6 +118,10 @@ size_t AppLogger::newestLines(String *target, size_t maxLines) const {
     }
   }
   return count;
+}
+
+size_t AppLogger::availableLines() const {
+  return lineCount_ + (currentLength_ == 0 ? 0 : 1);
 }
 
 void AppLogger::appendChar(char value) {
@@ -163,13 +169,15 @@ void AppLogger::commitCurrentLine() {
 String AppLogger::linePrefix(const String &severity) const {
   time_t now = time(nullptr);
   struct tm local = {};
-  char buffer[40] = {};
+  char buffer[8] = {};
   if (now >= 1704067200 && localtime_r(&now, &local) != nullptr) {
-    strftime(buffer, sizeof(buffer), "[%d-%m-%Y %H:%M:%S]", &local);
+    strftime(buffer, sizeof(buffer), "%H:%M", &local);
   } else {
-    snprintf(buffer, sizeof(buffer), "[00-00-0000 00:00:00]");
+    snprintf(buffer, sizeof(buffer), "00:00");
   }
-  return String(buffer) + " [" + severity + "] ";
+  String level = severity;
+  level.toUpperCase();
+  return String(buffer) + " " + level + " ";
 }
 
 String AppLogger::normalizedLine(const String &line) const {

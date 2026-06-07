@@ -28,6 +28,12 @@ public:
   // Gentle confirmation cue for completed UI actions.
   void playConfirm();
 
+  // Subtle game cue when the Pong ball bounces off a wall.
+  void playPongBounce();
+
+  // Low game cue when the Pong ball is missed.
+  void playPongMiss();
+
   // Single bleep when opening the menu.
   void playMenuOpen();
 
@@ -92,6 +98,8 @@ private:
     MenuRight,
     ButtonPress,
     Confirm,
+    PongBounce,
+    PongMiss,
     MenuOpen,
     Back,
     TurnOff,

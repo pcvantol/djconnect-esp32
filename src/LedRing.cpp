@@ -59,6 +59,24 @@ void LedRing::showVolume(int volume, bool force) {
   FastLED.show();
 }
 
+void LedRing::showPongPaddle(int paddleY) {
+  if (!ready_) {
+    return;
+  }
+
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+  FastLED.setBrightness(Config::LedRingBrightness);
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+
+  const int clampedY = constrain(paddleY, 42, 126);
+  const uint8_t head = map(clampedY, 42, 126, 0, Config::Ws2812LedCount - 1);
+  leds_[head] = CRGB(255, 95, 0);
+  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = CRGB(110, 35, 0);
+  leds_[(head + 1) % Config::Ws2812LedCount] = CRGB(110, 35, 0);
+  FastLED.show();
+}
+
 void LedRing::showSolid(const CRGB &color, uint8_t brightnessPercent) {
   if (!ready_) {
     return;

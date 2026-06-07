@@ -69,7 +69,10 @@ void BleWifiProvisioning::end() {
   if (!started_) {
     return;
   }
-  BLEDevice::deinit(true);
+  BLEAdvertising *advertising = BLEDevice::getAdvertising();
+  if (advertising != nullptr) {
+    advertising->stop();
+  }
   activeProvisioning = nullptr;
   started_ = false;
   payloadPending_ = false;

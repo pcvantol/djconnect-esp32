@@ -933,6 +933,27 @@ void SpotifyDJApp::handleMenuInputEvents(const InputEvents &events) {
     return;
   }
 
+  if (activeScreen_ == UiScreen::Logs && events.encoderSteps != 0) {
+    const size_t available = AppLog.availableLines();
+    const size_t maxScrollBack = available > 9 ? available - 9 : 0;
+    const int next = static_cast<int>(logsScrollBack_) - events.encoderSteps;
+    logsScrollBack_ = static_cast<size_t>(constrain(next, 0, static_cast<int>(maxScrollBack)));
+    if (volumeFeedbackEnabled_) {
+      sound_.playMenuTick(events.encoderSteps);
+    }
+    renderNow();
+    return;
+  }
+
+  if (activeScreen_ == UiScreen::Pong && events.encoderLongClick) {
+    resetPong();
+    if (volumeFeedbackEnabled_) {
+      sound_.playConfirm();
+    }
+    renderNow();
+    return;
+  }
+
   if (events.encoderSteps != 0) {
     moveMenuSelection(events.encoderSteps);
   }
@@ -1067,6 +1088,7 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       } else if (rootMenuSelection_ == 6) {
         openScreen(UiScreen::About);
       } else if (rootMenuSelection_ == 7) {
+        logsScrollBack_ = 0;
         openScreen(UiScreen::Logs);
       } else if (rootMenuSelection_ == 8) {
         resetPong();
@@ -1594,11 +1616,16 @@ void SpotifyDJApp::resetPong() {
   pongVelocityX_ = 3;
   pongVelocityY_ = 2;
   pongScore_ = 0;
+  pongMissFlashUntil_ = 0;
   lastPongFrameAt_ = 0;
 }
 
 void SpotifyDJApp::updatePong() {
   const uint32_t now = millis();
+  if (!display_.isOn() || display_.backlightPercent() == 0) {
+    lastPongFrameAt_ = now;
+    return;
+  }
   if (now - lastPongFrameAt_ < 33) {
     return;
   }
@@ -1609,9 +1636,15 @@ void SpotifyDJApp::updatePong() {
   if (pongBallY_ <= 42 || pongBallY_ >= 156) {
     pongVelocityY_ = -pongVelocityY_;
     pongBallY_ = constrain(pongBallY_, 42, 156);
+    if (volumeFeedbackEnabled_) {
+      sound_.playPongBounce();
+    }
   }
   if (pongBallX_ >= 306) {
     pongVelocityX_ = -abs(pongVelocityX_);
+    if (volumeFeedbackEnabled_) {
+      sound_.playPongBounce();
+    }
   }
   if (pongBallX_ <= 30) {
     if (pongBallY_ >= pongPaddleY_ - 4 && pongBallY_ <= pongPaddleY_ + 38) {
@@ -1626,8 +1659,9 @@ void SpotifyDJApp::updatePong() {
       pongVelocityX_ = 3;
       pongVelocityY_ = (esp_random() & 1) ? 2 : -2;
       pongScore_ = 0;
+      pongMissFlashUntil_ = now + 450;
       if (volumeFeedbackEnabled_) {
-        sound_.playBack();
+        sound_.playPongMiss();
       }
     }
   }
@@ -2246,6 +2280,20 @@ void SpotifyDJApp::pollPlaybackIfDue() {
     return;
   }
   spotify_.refreshPlayback();
+  if (spotify_.needsCredentialRefresh()) {
+    if (haPairingPendingValidation_) {
+      AppLog.println("Home Assistant: pending pairing rejected by playback proxy");
+      haDevice_.clearHomeAssistantPairing();
+      homeAssistantPaired_ = false;
+      haPairingPendingValidation_ = false;
+      haPairingScreenActive_ = true;
+      lastHaStatusAt_ = 0;
+      haDevice_.displayPairingCode();
+      return;
+    }
+    markHomeAssistantPairingInvalid(I18n::text("ha_pairing_invalid"));
+    return;
+  }
   if (activeScreen_ == UiScreen::AlbumArt) {
     albumArt_.requestCurrentSongArt(playback_);
   }
@@ -2376,6 +2424,14 @@ void SpotifyDJApp::renderNow() {
         displayedVolume(),
         homeAssistantPaired_,
         spotify_.isAuthorized());
+  }
+  if (activeScreen_ == UiScreen::Pong && display_.backlightPercent() > 0) {
+    ledRing_.showPongPaddle(pongPaddleY_);
+    ledRing_.setPowerPercent(display_.backlightPercent());
+    visualState_.screenOn = display_.isOn();
+    visualState_.screenBrightnessLevel = display_.backlightPercent();
+    visualState_.ledOn = ledRing_.isOn();
+    return;
   }
   if (connectionHealthy()) {
     if (playback_.hasPlayback && playback_.supportsVolume && displayedVolume() >= 0) {
@@ -2960,7 +3016,8 @@ void SpotifyDJApp::setupHomeAssistantLayer() {
       this,
       djResponseCallback,
       languageProvisionedCallback,
-      deviceCommandCallback);
+      deviceCommandCallback,
+      directPairCallback);
 
   AppLog.print("Home Assistant paired: ");
   AppLog.println(haDevice_.isPaired() ? "true" : "false");
@@ -2988,7 +3045,18 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
   const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, playbackProxyUsable);
   if (result == SpotifyDJPairing::StatusResult::Ok) {
     homeAssistantPaired_ = true;
+    haPairingPendingValidation_ = false;
   } else if (result == SpotifyDJPairing::StatusResult::PairingInvalid) {
+    if (haPairingPendingValidation_) {
+      AppLog.println("Home Assistant: pending pairing rejected by status endpoint");
+      haDevice_.clearHomeAssistantPairing();
+      homeAssistantPaired_ = false;
+      haPairingPendingValidation_ = false;
+      haPairingScreenActive_ = true;
+      lastHaStatusAt_ = 0;
+      haDevice_.displayPairingCode();
+      return;
+    }
     markHomeAssistantPairingInvalid(I18n::text("ha_pairing_invalid"));
   }
 }
@@ -2998,6 +3066,7 @@ void SpotifyDJApp::markHomeAssistantPairingInvalid(const String &message) {
     AppLog.println("Home Assistant: pairing invalid or stale");
   }
   homeAssistantPaired_ = false;
+  haPairingPendingValidation_ = false;
   showNotice(message, 5000);
   renderNow();
 }
@@ -3005,38 +3074,21 @@ void SpotifyDJApp::markHomeAssistantPairingInvalid(const String &message) {
 bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   if (haDevice_.isPaired()) {
     if (haPairingScreenActive_) {
-      const uint32_t now = millis();
-      if (lastHaStatusAt_ == 0 || now - lastHaStatusAt_ >= 2000) {
-        lastHaStatusAt_ = now;
-        const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, false);
-        if (result == SpotifyDJPairing::StatusResult::Ok) {
-          homeAssistantPaired_ = true;
-          if (bleProvisioning_.isStarted()) {
-            bleProvisioning_.end();
-          }
-          haPairingScreenActive_ = false;
-          haPairingStartedAt_ = 0;
-          haDevice_.displayPaired();
-          responsiveDelay(700);
-          display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
-          lastPlaybackPollAt_ = millis();
-          renderNow();
-          return false;
-        }
-        if (result == SpotifyDJPairing::StatusResult::PairingInvalid) {
-          AppLog.println("Home Assistant: direct pairing rejected, staying in pairing mode");
-          haDevice_.clearHomeAssistantPairing();
-          homeAssistantPaired_ = false;
-          lastHaStatusAt_ = 0;
-          haDevice_.displayPairingCode();
-        }
+      homeAssistantPaired_ = true;
+      haPairingPendingValidation_ = true;
+      haPairingScreenActive_ = false;
+      haPairingStartedAt_ = 0;
+      lastHaStatusAt_ = millis();
+      if (bleProvisioning_.isStarted()) {
+        bleProvisioning_.end();
       }
-      webPortal_.handle();
-      processPendingWifiSettings();
-      haApiServer_.loop();
+      haDevice_.displayPaired();
+      responsiveDelay(700);
+      display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
+      lastPlaybackPollAt_ = millis();
+      renderNow();
       recordLoopMetrics(loopStartedAt);
-      responsiveDelay(10);
-      return true;
+      return false;
     }
     return false;
   }
@@ -3218,6 +3270,28 @@ bool SpotifyDJApp::deviceCommandCallback(void *context, const DeviceCommand &com
   return static_cast<SpotifyDJApp *>(context)->handleDeviceCommand(command, message);
 }
 
+void SpotifyDJApp::directPairCallback(void *context) {
+  if (context == nullptr) {
+    return;
+  }
+  static_cast<SpotifyDJApp *>(context)->noteDirectPairingReceived();
+}
+
+void SpotifyDJApp::noteDirectPairingReceived() {
+  homeAssistantPaired_ = true;
+  haPairingPendingValidation_ = true;
+  playback_.error = "";
+  spotify_.reloadCredentials();
+  if (haPairingScreenActive_) {
+    haPairingScreenActive_ = false;
+    haPairingStartedAt_ = 0;
+  }
+  lastHaStatusAt_ = millis();
+  lastPlaybackPollAt_ = millis();
+  showNotice(I18n::text("boot_paired"), 1500);
+  renderNow();
+}
+
 bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioUrl, bool &spoken) {
   if (text.isEmpty()) {
     return false;
@@ -3329,14 +3403,17 @@ void SpotifyDJApp::renderMenuNow() {
 
     case UiScreen::Logs: {
       String lines[9];
-      const size_t lineCount = AppLog.newestLines(lines, 9);
+      const size_t available = AppLog.availableLines();
+      const size_t maxScrollBack = available > 9 ? available - 9 : 0;
+      logsScrollBack_ = min(logsScrollBack_, maxScrollBack);
+      const size_t lineCount = AppLog.newestLines(lines, 9, logsScrollBack_);
       lastLogsRenderAt_ = millis();
       display_.renderLogsScreen(lines, lineCount, notice_);
       break;
     }
 
     case UiScreen::Pong:
-      display_.renderPongScreen(pongPaddleY_, pongBallX_, pongBallY_, pongScore_, notice_);
+      display_.renderPongScreen(pongPaddleY_, pongBallX_, pongBallY_, pongScore_, millis() < pongMissFlashUntil_, notice_);
       break;
 
     case UiScreen::Settings: {

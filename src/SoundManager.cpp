@@ -211,6 +211,14 @@ void SoundManager::playConfirm() {
   enqueue(Event::Confirm);
 }
 
+void SoundManager::playPongBounce() {
+  enqueue(Event::PongBounce);
+}
+
+void SoundManager::playPongMiss() {
+  enqueue(Event::PongMiss);
+}
+
 void SoundManager::playMenuOpen() {
   enqueue(Event::MenuOpen);
 }
@@ -584,6 +592,14 @@ void SoundManager::runTask() {
         break;
       case Event::Confirm:
         playTone(988, 32, 10);
+        break;
+      case Event::PongBounce:
+        playTone(740, 14, 6);
+        break;
+      case Event::PongMiss:
+        playTone(330, 75, 14);
+        playSilence(20);
+        playTone(220, 120, 14);
         break;
       case Event::MenuOpen:
         playTone(1047, 36, 10);

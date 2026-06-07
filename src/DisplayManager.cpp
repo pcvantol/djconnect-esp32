@@ -259,15 +259,15 @@ void DisplayManager::renderLogsScreen(const String *lines, size_t lineCount, con
   renderLogs(tft_, lines, lineCount, notice);
 }
 
-void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int score, const StatusNotice &notice) {
+void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int score, bool missFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderPong(screen_, paddleY, ballX, ballY, score, notice);
+    renderPong(screen_, paddleY, ballX, ballY, score, missFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderPong(tft_, paddleY, ballX, ballY, score, notice);
+  renderPong(tft_, paddleY, ballX, ballY, score, missFlash, notice);
 }
 
 void DisplayManager::renderAlbumArtScreen(
@@ -845,16 +845,22 @@ void DisplayManager::renderLogs(Canvas &canvas, const String *lines, size_t line
 }
 
 template <typename Canvas>
-void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, const StatusNotice &notice) {
+void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, bool missFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
-  drawMenuTitle(canvas, "Pong");
+  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.drawString("Pong", 8, 5, 2);
+  const String scoreText = String("Score ") + String(score);
+  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
+  canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
   canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
   canvas.drawFastVLine(160, 42, 118, TFT_DARKGREY);
   canvas.fillRoundRect(18, paddleY, 8, 34, 3, TFT_GREEN);
   canvas.fillCircle(ballX, ballY, 4, TFT_ORANGE);
-  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  canvas.drawString(String(score), 282, 10, 2);
+  if (missFlash) {
+    canvas.drawRect(0, 0, 320, 170, TFT_RED);
+    canvas.drawRect(1, 1, 318, 168, TFT_RED);
+  }
   drawMenuFooter(canvas, notice);
 }
 

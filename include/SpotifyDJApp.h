@@ -194,6 +194,8 @@ private:
   static void languageProvisionedCallback(void *context, const String &languageCode);
   static void spotifyProvisionedCallback(void *context);
   static bool deviceCommandCallback(void *context, const DeviceCommand &command, String &message);
+  static void directPairCallback(void *context);
+  void noteDirectPairingReceived();
   void showNotice(const String &message, uint32_t ttlMs = 2500);
   int displayedVolume() const;
 
@@ -253,6 +255,7 @@ private:
   int pongVelocityX_ = 3;
   int pongVelocityY_ = 2;
   int pongScore_ = 0;
+  uint32_t pongMissFlashUntil_ = 0;
   uint32_t screenOffTimeoutMs_ = Config::DisplayOffAfterMs;
   uint32_t deviceSleepTimeoutMs_ = Config::DeviceSleepAfterMs;
   uint8_t screenBrightnessPercent_ = 100;
@@ -285,6 +288,7 @@ private:
   bool topHoldMenuHintVisible_ = false;
   bool menuTopHoldActive_ = false;
   bool haPairingScreenActive_ = false;
+  bool haPairingPendingValidation_ = false;
   uint32_t pendingWifiSettingsRequestedAt_ = 0;
   uint32_t menuTopHoldStartedAt_ = 0;
   uint32_t wifiConnectFailedAt_ = 0;
@@ -298,6 +302,7 @@ private:
   uint32_t lastPauseToggleAt_ = 0;
   uint32_t lastReconnectAttemptAt_ = 0;
   uint32_t lastLogsRenderAt_ = 0;
+  size_t logsScrollBack_ = 0;
   uint32_t lastHaStatusAt_ = 0;
   uint32_t haPairingStartedAt_ = 0;
   uint32_t lastHaPairingScreenAt_ = 0;

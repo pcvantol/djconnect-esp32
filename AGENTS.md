@@ -136,7 +136,7 @@ Keep concerns separated:
 - `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
 - `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
 - User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated. Loglevel UI labels still need translated strings.
-- App logs are centrally formatted as `[dd-mm-yyyy HH:MM:SS] [inf|wrn|err|dbg] ...`. Do not manually add timestamps, severity labels, or `[SpotifyDJ]` to new log messages; the central logger strips that legacy prefix when it appears at the start of older callsites.
+- App logs are centrally formatted as `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`. Do not manually add timestamps, severity labels, or `[SpotifyDJ]` to new log messages; the central logger strips that legacy prefix when it appears at the start of older callsites.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.
 

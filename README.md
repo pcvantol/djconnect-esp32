@@ -185,11 +185,13 @@ Physical PTT, from the Now Playing screen:
 
 The Current Song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
+Pong is a local mini game in the device menu. The score is shown in the title bar, the encoder moves the paddle, encoder long press restarts the game, wall bounces use a subtle cue, and the LED ring shows a dedicated bright-orange paddle position while Pong is active. When the screen turns off, Pong pauses so game sounds do not continue in the background.
+
 Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
 
 If the Home Assistant integration has been removed while the ESP still has an old pairing token, the web PTT simulation can return a Home Assistant voice endpoint 404. Reset Home Assistant pairing on the device or web portal, add the SpotifyDJ integration again, and pair the device with the new code.
 
-The ESP also checks pairing health during periodic Home Assistant status updates and during device/web push-to-talk calls. HTTP 401, 403 or 404 responses from the Home Assistant SpotifyDJ endpoints mark the pairing as stale in runtime status, show a reset-pairing message, and turn the Home Assistant status indicator red. The stored pairing is not erased automatically; use Reset Home Assistant pairing to intentionally return to the pairing screen.
+The ESP also checks pairing health during periodic Home Assistant status updates and during device/web push-to-talk calls. HTTP 401, 403 or 404 responses from the Home Assistant SpotifyDJ endpoints mark the pairing as stale in runtime status, show a reset-pairing message, and turn the Home Assistant status indicator red. A freshly received direct-pairing token is treated as pending until HA accepts a status/playback command; if HA immediately rejects that pending token, the ESP clears only that pending pairing and returns to the pairing-code screen. Established pairings are not erased automatically; use Reset Home Assistant pairing to intentionally return to the pairing screen.
 
 Optional micro wake word support is scaffolded for a trained `Spotify DJ` detector. Link a model implementation that provides:
 
@@ -237,6 +239,8 @@ Status is still posted periodically to the Home Assistant integration through `/
 ## Web Portal
 
 The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, S, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The IP address is shown in the WiFi details block.
+
+The device Logs screen shows the newest log tail by default and can be scrolled with the encoder to inspect older buffered entries. Serial, web and device logs use the compact `HH:mm INF` severity prefix format.
 
 Playback controls are disabled when Home Assistant reports playback is not connected or when there is no active playback where that action would not make sense.
 
@@ -323,7 +327,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.20 --dry-run` validates the release plan without touching files. Both `2.9.20` and `v2.9.20` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.21 --dry-run` validates the release plan without touching files. Both `2.9.21` and `v2.9.21` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

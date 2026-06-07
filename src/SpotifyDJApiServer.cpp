@@ -22,7 +22,8 @@ void SpotifyDJApiServer::begin(
     void *callbackContext,
     DjResponseCallback djResponseCallback,
     LanguageProvisionedCallback languageProvisionedCallback,
-    DeviceCommandCallback deviceCommandCallback) {
+    DeviceCommandCallback deviceCommandCallback,
+    DirectPairCallback directPairCallback) {
   if (running_) {
     return;
   }
@@ -41,6 +42,7 @@ void SpotifyDJApiServer::begin(
   djResponseCallback_ = djResponseCallback;
   languageProvisionedCallback_ = languageProvisionedCallback;
   deviceCommandCallback_ = deviceCommandCallback;
+  directPairCallback_ = directPairCallback;
 
   static const char *headers[] = {"Authorization"};
   server_->collectHeaders(headers, 1);
@@ -145,6 +147,9 @@ void SpotifyDJApiServer::handlePair() {
     }
     SpotifyDJDevice::saveProvisionedLanguage(provisionedLanguage);
     AppLog.println("Home Assistant direct pairing stored: device_token=present");
+    if (directPairCallback_ != nullptr) {
+      directPairCallback_(callbackContext_);
+    }
     sendJson(200, "{\"success\":true,\"paired\":true}");
     return;
   }

@@ -14,6 +14,9 @@ public:
   // Shows volume as orange segments around the ring; partially lit LEDs represent partial steps.
   void showVolume(int volume, bool force = false);
 
+  // Shows a bright orange Pong paddle marker mapped to the current paddle position.
+  void showPongPaddle(int paddleY);
+
   // Shows all LEDs as one solid color, used for setup/provisioning states.
   void showSolid(const CRGB &color, uint8_t brightnessPercent = 100);
 

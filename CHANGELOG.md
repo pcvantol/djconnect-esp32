@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.20
+## v2.9.21
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -26,12 +26,16 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Proprietary firmware license for closed-source distribution on sold devices.
 - WS2812 LED-ring feedback for volume, status, setup/AP mode, charging, connectivity and firmware update state.
 - Speaker cues for boot, reset, battery warning, factory reset, charging completed, menu/back and push-to-talk start/stop.
+- Pong score display, restart-on-encoder-long-press, subtle wall-bounce cues, miss feedback sound/red border and dedicated bright-orange paddle LED-ring feedback that pauses when the screen turns off.
+- Direct Home Assistant pairing now treats the first token as pending; if HA rejects it with 401/403/404 during first validation, the device returns to pairing mode instead of staying half-paired.
 - Built-in speaker cue volume setting: 25%, 50%, 75% or 100%.
 - Battery/charging guard screens, low-battery turn-off sleep and charger-aware wake behavior.
 - WiFi-failure boot menu with encoder selection for retry connect, restart device, turn off and confirmed factory reset.
 - Optional local micro wake word hook for a trained `Spotify DJ` detector.
 - Watchdog, slow-loop diagnostics and periodic heap diagnostics for long-running device stability.
 - Timestamped log severity classification with `[inf]`, `[wrn]`, `[err]` and `[dbg]` markers for serial and web logs.
+- Compact serial/web log prefix format: `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`.
+- Device Logs screen is scrollable with the encoder, keeping the newest tail as the default live position.
 - Log level setting on the device, web portal and Home Assistant command API with translated UI labels and `info` as the default.
 - `ProvisioningController` for centralized NVS provisioning storage and reduced `SpotifyDJApp` responsibility.
 - `PowerController` for charger/wake/watchdog policy.
@@ -43,7 +47,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.20` / `v2.9.20`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.21` / `v2.9.21`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.

@@ -23,8 +23,11 @@ public:
   // Returns all buffered lines as newline-delimited text, oldest first.
   String text() const;
 
-  // Copies the newest lines into caller storage and returns the number copied.
-  size_t newestLines(String *target, size_t maxLines) const;
+  // Copies a visible window from the newest log tail. scrollBack=0 means live/latest.
+  size_t newestLines(String *target, size_t maxLines, size_t scrollBack = 0) const;
+
+  // Returns the number of currently buffered lines, including the in-progress line.
+  size_t availableLines() const;
 
 private:
   void appendChar(char value);
