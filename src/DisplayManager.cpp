@@ -184,21 +184,20 @@ void DisplayManager::renderPlaybackScreen(
     const StatusNotice &notice,
     int displayedVolume,
     bool homeAssistantConnected,
-    bool spotifyConnected,
-    bool mqttConnected) {
+    bool spotifyConnected) {
   // Observing text here lets redraws notice metadata changes without app-level display bookkeeping.
   observeText(titleMarquee_, titleText(playback));
   observeText(artistMarquee_, artistText(playback));
 
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderPlayback(screen_, playback, battery, notice, displayedVolume, homeAssistantConnected, spotifyConnected, mqttConnected);
+    renderPlayback(screen_, playback, battery, notice, displayedVolume, homeAssistantConnected, spotifyConnected);
     screen_.pushSprite(0, 0);
     return;
   }
 
   tft_.fillScreen(TFT_BLACK);
-  renderPlayback(tft_, playback, battery, notice, displayedVolume, homeAssistantConnected, spotifyConnected, mqttConnected);
+  renderPlayback(tft_, playback, battery, notice, displayedVolume, homeAssistantConnected, spotifyConnected);
 }
 
 void DisplayManager::renderMenuList(
@@ -620,8 +619,7 @@ void DisplayManager::renderPlayback(
     const StatusNotice &notice,
     int displayedVolume,
     bool homeAssistantConnected,
-    bool spotifyConnected,
-    bool mqttConnected) {
+    bool spotifyConnected) {
   canvas.setTextDatum(TL_DATUM);
 
   canvas.setTextColor(BrightYellow, TFT_BLACK);
@@ -633,9 +631,8 @@ void DisplayManager::renderPlayback(
     canvas.drawString(label, x, 5, 2);
   };
   drawStatusBadge(156, "H", homeAssistantConnected);
-  drawStatusBadge(176, "M", mqttConnected);
-  drawStatusBadge(196, "S", spotifyConnected);
-  drawWifiIndicator(canvas, 224, 1);
+  drawStatusBadge(176, "S", spotifyConnected);
+  drawWifiIndicator(canvas, 214, 1);
   drawBatteryIndicator(canvas, battery, 250, 5);
   canvas.drawFastHLine(8, 25, 304, TFT_DARKGREY);
 
@@ -765,7 +762,6 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
       {I18n::text("wifi"), I18n::connected(status.wifiConnected), static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
       {"Spotify", I18n::connected(status.spotifyConnected), static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
       {"Home Assistant", status.haPaired ? I18n::text("connected") : I18n::text("not_paired"), static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
-      {"MQTT", status.mqttState, static_cast<uint16_t>(status.mqttConnected ? SpotifyGreen : TFT_ORANGE)},
       {"Copyright", "2026 Peter van Tol", NeutralLightGrey},
       {"Firmware", "Proprietary", NeutralLightGrey},
       {"Spotify", "Trademark Spotify AB", NeutralLightGrey},

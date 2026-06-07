@@ -6,28 +6,8 @@
 #include <WiFi.h>
 
 #include "AppLog.h"
+#include "DeviceCommandParser.h"
 #include "SpotifyProvisioning.h"
-
-namespace {
-bool mqttSettingsFromJson(JsonVariantConst mqtt, MqttSettings &settings) {
-  if (!mqtt.is<JsonObjectConst>()) {
-    return false;
-  }
-  settings.host = mqtt["host"] | "";
-  settings.host.trim();
-  if (settings.host.isEmpty()) {
-    return false;
-  }
-  settings.port = static_cast<uint16_t>((mqtt["port"] | 1883));
-  if (settings.port == 0) {
-    settings.port = 1883;
-  }
-  settings.username = mqtt["username"] | "";
-  settings.password = mqtt["password"] | "";
-  settings.enabled = true;
-  return true;
-}
-}  // namespace
 
 void SpotifyDJApiServer::begin(
     WebServer &server,
@@ -43,7 +23,8 @@ void SpotifyDJApiServer::begin(
     const RuntimeDiagnostics &diagnostics,
     void *callbackContext,
     DjResponseCallback djResponseCallback,
-    LanguageProvisionedCallback languageProvisionedCallback) {
+    LanguageProvisionedCallback languageProvisionedCallback,
+    DeviceCommandCallback deviceCommandCallback) {
   if (running_) {
     return;
   }
@@ -61,6 +42,7 @@ void SpotifyDJApiServer::begin(
   callbackContext_ = callbackContext;
   djResponseCallback_ = djResponseCallback;
   languageProvisionedCallback_ = languageProvisionedCallback;
+  deviceCommandCallback_ = deviceCommandCallback;
 
   static const char *headers[] = {"Authorization"};
   server_->collectHeaders(headers, 1);
@@ -71,6 +53,7 @@ void SpotifyDJApiServer::begin(
   server_->on("/api/device/provision_spotify", HTTP_POST, [this]() { handleProvisionSpotify(); });
   server_->on("/api/device/ota", HTTP_POST, [this]() { handleOta(); });
   server_->on("/api/device/dj_response", HTTP_POST, [this]() { handleDjResponse(); });
+  server_->on("/api/device/command", HTTP_POST, [this]() { handleCommand(); });
   server_->on("/api/device/reboot", HTTP_POST, [this]() { handleReboot(); });
   server_->on("/api/device/forget", HTTP_POST, [this]() { handleForget(); });
   running_ = true;
@@ -193,10 +176,6 @@ void SpotifyDJApiServer::handleProvisionSpotify() {
       languageProvisionedCallback_ != nullptr) {
     languageProvisionedCallback_(callbackContext_, normalizedLanguage);
   }
-  MqttSettings mqttSettings;
-  if (mqttSettingsFromJson(doc["mqtt"], mqttSettings)) {
-    device_->saveMqttSettings(mqttSettings);
-  }
   spotify_->reloadCredentials();
   AppLog.println("[SpotifyDJ] Spotify provisioning success");
   sendJson(200, "{\"success\":true,\"spotify_configured\":true}");
@@ -290,6 +269,34 @@ void SpotifyDJApiServer::handleDjResponse() {
   String payload;
   serializeJson(response, payload);
   sendJson(spoken ? 200 : 202, payload);
+}
+
+void SpotifyDJApiServer::handleCommand() {
+  if (!validateBearerToken()) {
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, server_->arg("plain"))) {
+    sendJson(400, "{\"error\":\"invalid json\"}");
+    return;
+  }
+  const DeviceCommand command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  if (command.type == DeviceCommandType::None) {
+    sendJson(400, "{\"success\":false,\"error\":\"unknown command\"}");
+    return;
+  }
+  if (deviceCommandCallback_ == nullptr) {
+    sendJson(501, "{\"success\":false,\"error\":\"command handler unavailable\"}");
+    return;
+  }
+  String message;
+  const bool ok = deviceCommandCallback_(callbackContext_, command, message);
+  JsonDocument response;
+  response["success"] = ok;
+  response["message"] = message;
+  String payload;
+  serializeJson(response, payload);
+  sendJson(ok ? 200 : 502, payload);
 }
 
 void SpotifyDJApiServer::handleReboot() {

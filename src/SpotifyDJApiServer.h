@@ -18,6 +18,7 @@ class SpotifyDJApiServer {
 public:
   using DjResponseCallback = bool (*)(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType);
   using LanguageProvisionedCallback = void (*)(void *context, const String &languageCode);
+  using DeviceCommandCallback = bool (*)(void *context, const DeviceCommand &command, String &message);
 
   void begin(
       WebServer &server,
@@ -33,7 +34,8 @@ public:
       const RuntimeDiagnostics &diagnostics,
       void *callbackContext = nullptr,
       DjResponseCallback djResponseCallback = nullptr,
-      LanguageProvisionedCallback languageProvisionedCallback = nullptr);
+      LanguageProvisionedCallback languageProvisionedCallback = nullptr,
+      DeviceCommandCallback deviceCommandCallback = nullptr);
   void loop();
   bool isRunning() const;
 
@@ -46,6 +48,7 @@ private:
   void handleProvisionSpotify();
   void handleOta();
   void handleDjResponse();
+  void handleCommand();
   void handleReboot();
   void handleForget();
 
@@ -63,5 +66,6 @@ private:
   void *callbackContext_ = nullptr;
   DjResponseCallback djResponseCallback_ = nullptr;
   LanguageProvisionedCallback languageProvisionedCallback_ = nullptr;
+  DeviceCommandCallback deviceCommandCallback_ = nullptr;
   bool running_ = false;
 };

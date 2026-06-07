@@ -30,10 +30,6 @@ not grant additional rights to the SpotifyDJ firmware itself.
   - Used for WS2812 LED-ring control.
   - PlatformIO dependency: `fastled/FastLED`
 
-- PubSubClient
-  - Used for MQTT connectivity and command/status topics.
-  - PlatformIO dependency: `knolleary/PubSubClient`
-
 - TJpg_Decoder
   - Used for JPEG album art rendering.
   - PlatformIO dependency: `bodmer/TJpg_Decoder`

@@ -25,7 +25,6 @@ public:
   String getSpotifyClientId() const;
   String getSpotifyMarket() const;
   String getAssistPipelineId() const;
-  MqttSettings getMqttSettings() const;
 
   static bool saveProvisionedLanguage(const String &languageCode);
   static String normalizedLanguageCode(const String &languageCode);
@@ -38,8 +37,6 @@ public:
   bool saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market);
   bool saveSpotifyRefreshToken(const String &refreshToken);
   void saveAssistPipelineId(const String &pipelineId);
-  bool mqttSettingsMatch(const MqttSettings &settings) const;
-  void saveMqttSettings(const MqttSettings &settings);
   void clearHomeAssistantPairing();
   void clearPairing();
   void clearSpotifyCredentials();

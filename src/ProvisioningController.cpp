@@ -26,11 +26,6 @@ ProvisioningSettings ProvisioningController::load() const {
   preferences.begin("provision", false);
   settings.wifiSsid = preferences.getString("ssid", "");
   settings.wifiPassword = preferences.getString("pass", "");
-  settings.mqtt.host = preferences.getString("mqtt_host", "");
-  settings.mqtt.port = preferences.getUInt("mqtt_port", 1883);
-  settings.mqtt.username = preferences.getString("mqtt_user", "");
-  settings.mqtt.password = preferences.getString("mqtt_pass", "");
-  settings.mqtt.enabled = !settings.mqtt.host.isEmpty();
   settings.screenOffTimeoutMs = constrain(preferences.getUInt("screen_off_ms", Config::DisplayOffAfterMs), 30000UL, 240000UL);
   settings.deviceSleepTimeoutMs = constrain(preferences.getUInt("sleep_ms", Config::DeviceSleepAfterMs), 300000UL, 3600000UL);
   settings.screenBrightnessPercent = constrain(preferences.getUInt("screen_bright", 100), 25UL, 100UL);
@@ -74,16 +69,6 @@ void ProvisioningController::saveWifiCredentials(const String &ssid, const Strin
   provision.end();
 }
 
-void ProvisioningController::saveMqttSettings(const MqttSettings &settings) const {
-  Preferences provision;
-  provision.begin("provision", false);
-  provision.putString("mqtt_host", settings.host);
-  provision.putUInt("mqtt_port", settings.port == 0 ? 1883 : settings.port);
-  provision.putString("mqtt_user", settings.username);
-  provision.putString("mqtt_pass", settings.password);
-  provision.end();
-}
-
 void ProvisioningController::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &spotifyMarket) const {
   Preferences provision;
   provision.begin("provision", false);
@@ -105,8 +90,7 @@ void ProvisioningController::saveSetupProvisioning(
     const String &password,
     const String &clientId,
     const String &refreshToken,
-    const String &spotifyMarket,
-    const MqttSettings &mqttSettings) const {
+    const String &spotifyMarket) const {
   const bool hasSpotifyCredentials = !clientId.isEmpty() && !refreshToken.isEmpty();
 
   Preferences provision;
@@ -121,12 +105,6 @@ void ProvisioningController::saveSetupProvisioning(
     provision.remove("sp_refresh");
   }
   provision.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
-  if (!mqttSettings.host.isEmpty()) {
-    provision.putString("mqtt_host", mqttSettings.host);
-    provision.putUInt("mqtt_port", mqttSettings.port == 0 ? 1883 : mqttSettings.port);
-    provision.putString("mqtt_user", mqttSettings.username);
-    provision.putString("mqtt_pass", mqttSettings.password);
-  }
   provision.putBool("setup", false);
   provision.end();
 

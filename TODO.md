@@ -87,11 +87,14 @@ Concrete backlog for follow-up implementation and validation.
 - [ ] Add smoke tests for key generated web HTML fragments if feasible.
 - [ ] Re-test web portal speed on weak WiFi and note any remaining slow endpoints.
 
-## MQTT
+## Home Assistant Native Entities
 
-- [ ] Re-test MQTT auth-failure lock after three `rc=4`/`rc=5` failures.
-- [ ] Confirm changing MQTT credentials clears the auth-failure lock.
-- [ ] Confirm all settings exposed via MQTT commands still match web/device settings:
+- [ ] Implement matching Home Assistant entities for every ESP `/api/device/command` payload:
+  - status refresh;
+  - next/previous;
+  - volume;
+  - sound output;
+  - playlist start;
   - language;
   - theme;
   - log level;
@@ -99,7 +102,8 @@ Concrete backlog for follow-up implementation and validation.
   - brightness;
   - screen timeout;
   - turn-off timeout.
-- [ ] Confirm MQTT discovery payloads remain valid after adding/removing settings.
+- [ ] Confirm HA entity changes use bearer-token auth and handle 401/403/404 as stale pairing.
+- [ ] Confirm removed broker configuration does not appear in setup, diagnostics or options flows.
 
 ## Power / Battery
 

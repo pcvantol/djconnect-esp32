@@ -12,7 +12,6 @@
 #include "InputController.h"
 #include "I18n.h"
 #include "LedRing.h"
-#include "MqttPublisher.h"
 #include "PowerController.h"
 #include "ProvisioningController.h"
 #include "SoundManager.h"
@@ -55,15 +54,13 @@ private:
       const String &ssid = "",
       const String &clientId = "",
       const String &refreshToken = "",
-      const String &spotifyMarket = "NL",
-      const MqttSettings &mqttSettings = MqttSettings()) const;
+      const String &spotifyMarket = "NL") const;
   bool testAndSaveProvisioning(
       const String &ssid,
       const String &password,
       const String &clientId,
       const String &refreshToken,
       const String &spotifyMarket,
-      const MqttSettings &mqttSettings,
       String &message);
   bool handleBleProvisioningPayload(const String &payload, String &message);
 
@@ -112,8 +109,7 @@ private:
   // Sends the latest encoder volume change after the user stops turning the knob.
   void flushPendingVolume();
   void processVolumeResult();
-  void processMqttCommands();
-  void handleMqttCommand(const MqttCommand &command);
+  bool handleDeviceCommand(const DeviceCommand &command, String &message);
   void processStressTest();
   void toggleStressTest();
   void stopStressTest(const String &reason);
@@ -129,7 +125,6 @@ private:
   void goToNextTrack();
   void goToPreviousTrack();
   void refreshPlaybackAndBattery();
-  void refreshMqttControlLists();
   void openAlbumArtScreen();
   void openQueueScreen();
   void startSelectedPlaylist();
@@ -168,9 +163,7 @@ private:
   void recordLoopMetrics(uint32_t loopStartedAt);
   // Applies settings posted from the web dashboard and persists them.
   void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode, const String &logLevel);
-  void applyWebMqttSettings(const MqttSettings &settings);
   bool repairSpotifyCredentialsFromWeb(const String &clientId, const String &refreshToken, const String &market, String &message);
-  void syncHomeAssistantMqttSettings();
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
 
@@ -180,6 +173,7 @@ private:
   // Applies credentials and language pushed by Home Assistant without touching local fallbacks.
   void applyProvisionedLanguage(const String &languageCode);
   void applyProvisionedSpotifyCredentials();
+  bool checkBootstrapFirmwareUpdate();
   void setupHomeAssistantLayer();
   void sendHomeAssistantStatusIfDue(bool force = false);
   void markHomeAssistantPairingInvalid(const String &message);
@@ -193,7 +187,6 @@ private:
       const String &languageCode,
       const String &themeCode,
       const String &logLevel);
-  static void applyWebMqttSettingsCallback(void *context, const MqttSettings &settings);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
   static bool repairSpotifyCredentialsFromWebCallback(void *context, const String &clientId, const String &refreshToken, const String &market, String &message);
@@ -204,6 +197,7 @@ private:
   static bool djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType);
   static void languageProvisionedCallback(void *context, const String &languageCode);
   static void spotifyProvisionedCallback(void *context);
+  static bool deviceCommandCallback(void *context, const DeviceCommand &command, String &message);
   void showNotice(const String &message, uint32_t ttlMs = 2500);
   int displayedVolume() const;
 
@@ -232,7 +226,6 @@ private:
   SpotifyDJPairing haPairing_;
   SpotifyDJApiServer haApiServer_;
   SpotifyDJOTA haOta_;
-  MqttPublisher mqttPublisher_;
   PowerController power_;
   ProvisioningController provisioning_;
   RuntimeDiagnostics diagnostics_;
@@ -271,7 +264,6 @@ private:
   String wifiPassword_;
   String pendingWifiSsid_;
   String pendingWifiPassword_;
-  MqttSettings mqttSettings_;
   bool setupModeRequested_ = false;
   bool suppressInputUntilRelease_ = false;
   bool deepSleepStarted_ = false;
@@ -305,7 +297,6 @@ private:
   uint32_t lastReconnectAttemptAt_ = 0;
   uint32_t lastLogsRenderAt_ = 0;
   uint32_t lastHaStatusAt_ = 0;
-  uint32_t lastMqttProvisioningSyncAt_ = 0;
   uint32_t haPairingStartedAt_ = 0;
   uint32_t lastHaPairingScreenAt_ = 0;
   uint32_t djResponseOverlayUntil_ = 0;

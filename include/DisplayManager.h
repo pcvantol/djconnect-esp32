@@ -36,8 +36,7 @@ public:
       const StatusNotice &notice,
       int displayedVolume,
       bool homeAssistantConnected,
-      bool spotifyConnected,
-      bool mqttConnected);
+      bool spotifyConnected);
 
   // Renders a selectable menu list with a clear title and highlighted cursor row.
   void renderMenuList(
@@ -135,8 +134,7 @@ private:
       const StatusNotice &notice,
       int displayedVolume,
       bool homeAssistantConnected,
-      bool spotifyConnected,
-      bool mqttConnected);
+      bool spotifyConnected);
 
   template <typename Canvas>
   void renderMenu(

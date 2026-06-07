@@ -6,6 +6,7 @@
 
 #include <ArduinoJson.h>
 
+#include "DeviceCommandParser.h"
 #include "LogicHelpers.h"
 #include "NetworkActivityLogic.h"
 #include "SpotifyDJMenuModel.h"
@@ -52,6 +53,20 @@ static void testOtaComparableFirmwareVersion() {
   assert(std::strcmp(Logic::otaComparableFirmwareVersion(nullptr, nullptr), "0.0.0") == 0);
   assert(std::strcmp(Logic::otaComparableFirmwareVersion("", ""), "0.0.0") == 0);
   assert(std::strcmp(Logic::otaComparableFirmwareVersion("2.7.6", "v2.7.6"), "2.7.6") == 0);
+}
+
+static void testSemverComparison() {
+  int parts[3] = {};
+  assert(Logic::parseSemver("2.9.11", parts));
+  assert(parts[0] == 2 && parts[1] == 9 && parts[2] == 11);
+  assert(Logic::parseSemver("v2.9.11", parts));
+  assert(Logic::compareSemver("2.9.12", "2.9.11") > 0);
+  assert(Logic::compareSemver("2.10.0", "2.9.99") > 0);
+  assert(Logic::compareSemver("2.9.11", "2.9.11") == 0);
+  assert(Logic::compareSemver("2.9.10", "2.9.11") < 0);
+  assert(Logic::compareSemver("dev", "2.9.11") < 0);
+  assert(!Logic::parseSemver("2.9", parts));
+  assert(!Logic::parseSemver("2.9.x", parts));
 }
 
 static void testSpotifyConfiguredForHomeAssistantStatus() {
@@ -310,13 +325,6 @@ static void testVoiceChunkHelpers() {
   assert(!Logic::preferencesKeyFits("spotify_client_id"));
   assert(!Logic::preferencesKeyFits("spotify_refresh_token"));
 
-  assert(!Logic::shouldLockMqttAuthRetries(5, 1, 3));
-  assert(!Logic::shouldLockMqttAuthRetries(5, 2, 3));
-  assert(Logic::shouldLockMqttAuthRetries(5, 3, 3));
-  assert(Logic::shouldLockMqttAuthRetries(4, 3, 3));
-  assert(!Logic::shouldLockMqttAuthRetries(3, 3, 3));
-  assert(!Logic::shouldLockMqttAuthRetries(5, 3, 0));
-
   assert(Logic::isSpotifyPlaylistContextUri("spotify:playlist:abc123"));
   assert(!Logic::isSpotifyPlaylistContextUri("spotify:album:abc123"));
   assert(!Logic::isSpotifyPlaylistContextUri("spotify:playlist:"));
@@ -338,26 +346,123 @@ static void testPlayModeMapping() {
   assert(std::strcmp(Logic::playModeLabel("unexpected"), "No shuffle") == 0);
 }
 
-static void testMqttDeviceTopicFormatting() {
-  char buffer[64] = {};
-  assert(Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", "status", buffer, sizeof(buffer)));
-  assert(std::strcmp(buffer, "spotifydj/spotifydj-ABCDEF123456/status") == 0);
-
-  assert(Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", "command", buffer, sizeof(buffer)));
-  assert(std::strcmp(buffer, "spotifydj/spotifydj-ABCDEF123456/command") == 0);
-
-  char tiny[8] = {};
-  assert(!Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", "status", tiny, sizeof(tiny)));
-  assert(!Logic::formatMqttDeviceTopic(nullptr, "status", buffer, sizeof(buffer)));
-  assert(!Logic::formatMqttDeviceTopic("spotifydj-ABCDEF123456", nullptr, buffer, sizeof(buffer)));
-}
-
 static void testLanguageCodeNormalization() {
   assert(std::strcmp(Logic::languageCodeOrDefault("en"), "en") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("nl"), "nl") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("NL"), "nl") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("de"), "en") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault(nullptr), "en") == 0);
+}
+
+static void testDeviceCommandParserSpotifyControls() {
+  JsonDocument doc;
+
+  deserializeJson(doc, "{\"command\":\"next_track\"}");
+  DeviceCommand command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Next);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"previous\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Previous);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_volume\",\"volume\":42}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Volume);
+  assert(command.numericValue == 42);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_output\",\"output\":\"iPhone\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::TransferOutput);
+  assert(command.value == "iPhone");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"start_playlist\",\"uri\":\"spotify:playlist:abc\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::StartPlaylist);
+  assert(command.value == "spotify:playlist:abc");
+}
+
+static void testDeviceCommandParserSettings() {
+  JsonDocument doc;
+
+  deserializeJson(doc, "{\"command\":\"status\"}");
+  DeviceCommand command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Status);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_brightness\",\"brightness\":75}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::ScreenBrightness);
+  assert(command.numericValue == 75);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_screen_timeout\",\"seconds\":120}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::ScreenDimTimeout);
+  assert(command.numericValue == 120);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_turn_off_after\",\"minutes\":15}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::DeepSleepTimeout);
+  assert(command.numericValue == 15);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_speaker_volume\",\"value\":50}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::SpeakerVolume);
+  assert(command.numericValue == 50);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_language\",\"language\":\"nl\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Language);
+  assert(command.value == "nl");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_theme\",\"theme\":\"dark\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Theme);
+  assert(command.value == "dark");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_log_level\",\"log_level\":\"debug\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::LogLevel);
+  assert(command.value == "debug");
+}
+
+static void testDeviceCommandParserDjResponseAndUnknown() {
+  JsonDocument doc;
+
+  deserializeJson(doc, "{\"command\":\"  NEXT_TRACK  \"}");
+  DeviceCommand command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Next);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"dj_response\",\"text\":\"Daar gaan we\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::DjResponse);
+  assert(command.value == "Daar gaan we");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_brightness\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::ScreenBrightness);
+  assert(command.numericValue == 100);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"does_not_exist\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::None);
+
+  doc.clear();
+  deserializeJson(doc, "{}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::None);
 }
 
 static void testSpotifyProvisioningTopLevel() {
@@ -505,6 +610,7 @@ static void testNetworkActivityLogicWithFakeHttp() {
 int main() {
   testTrackTimeFormatting();
   testOtaComparableFirmwareVersion();
+  testSemverComparison();
   testSpotifyConfiguredForHomeAssistantStatus();
   testProgressEstimation();
   testLedRingBrightness();
@@ -519,8 +625,10 @@ int main() {
   testBq27220Interpretation();
   testVoiceChunkHelpers();
   testPlayModeMapping();
-  testMqttDeviceTopicFormatting();
   testLanguageCodeNormalization();
+  testDeviceCommandParserSpotifyControls();
+  testDeviceCommandParserSettings();
+  testDeviceCommandParserDjResponseAndUnknown();
   testSpotifyProvisioningTopLevel();
   testSpotifyProvisioningCompatTopLevel();
   testSpotifyProvisioningNestedPriority();

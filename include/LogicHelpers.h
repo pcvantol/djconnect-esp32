@@ -37,6 +37,48 @@ inline const char *otaComparableFirmwareVersion(const char *version, const char 
   return version;
 }
 
+inline bool parseSemver(const char *version, int parts[3]) {
+  if (version == nullptr || parts == nullptr) {
+    return false;
+  }
+  if (*version == 'v') {
+    version++;
+  }
+  for (int index = 0; index < 3; index++) {
+    if (*version < '0' || *version > '9') {
+      return false;
+    }
+    int value = 0;
+    while (*version >= '0' && *version <= '9') {
+      value = value * 10 + (*version - '0');
+      version++;
+    }
+    parts[index] = value;
+    if (index < 2) {
+      if (*version != '.') {
+        return false;
+      }
+      version++;
+    }
+  }
+  return *version == '\0';
+}
+
+// Positive when candidate is newer, zero when equal, negative when older/invalid.
+inline int compareSemver(const char *candidate, const char *current) {
+  int candidateParts[3] = {};
+  int currentParts[3] = {};
+  if (!parseSemver(candidate, candidateParts) || !parseSemver(current, currentParts)) {
+    return -1;
+  }
+  for (int index = 0; index < 3; index++) {
+    if (candidateParts[index] != currentParts[index]) {
+      return candidateParts[index] > currentParts[index] ? 1 : -1;
+    }
+  }
+  return 0;
+}
+
 // Home Assistant should reprovision Spotify credentials when local OAuth storage is stale.
 inline bool spotifyConfiguredForHomeAssistantStatus(bool credentialsStored, bool tokenInvalidGrant) {
   return credentialsStored && !tokenInvalidGrant;
@@ -248,11 +290,6 @@ inline bool preferencesKeyFits(const char *key) {
   return key != nullptr && strlen(key) <= 15;
 }
 
-inline bool shouldLockMqttAuthRetries(int connectCode, uint8_t authFailureCount, uint8_t maxAuthFailures) {
-  const bool authFailure = connectCode == 4 || connectCode == 5;
-  return authFailure && maxAuthFailures > 0 && authFailureCount >= maxAuthFailures;
-}
-
 inline bool isSpotifyPlaylistContextUri(const char *uri) {
   static constexpr const char *prefix = "spotify:playlist:";
   return uri != nullptr && strncmp(uri, prefix, strlen(prefix)) == 0 && uri[strlen(prefix)] != '\0';
@@ -356,15 +393,6 @@ inline bool shouldFetchNextSpotifyPlaylistPage(size_t itemCount, int total, int 
     return false;
   }
   return total <= 0 || offset + static_cast<int>(itemCount) < total;
-}
-
-// Formats the HA-provisioned per-device MQTT topics without depending on Arduino String.
-inline bool formatMqttDeviceTopic(const char *deviceId, const char *suffix, char *buffer, size_t bufferSize) {
-  if (deviceId == nullptr || suffix == nullptr || buffer == nullptr || bufferSize == 0) {
-    return false;
-  }
-  const int written = snprintf(buffer, bufferSize, "spotifydj/%s/%s", deviceId, suffix);
-  return written >= 0 && static_cast<size_t>(written) < bufferSize;
 }
 
 // Converts Spotify's shuffle/repeat fields into the UI modes exposed in settings.

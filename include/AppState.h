@@ -4,6 +4,8 @@
 
 #include <Arduino.h>
 
+#include "DeviceCommandTypes.h"
+
 // Snapshot of the Spotify Connect playback/device state shown on the display.
 struct SpotifyState {
   // Spotify Connect device identity and capabilities.
@@ -92,10 +94,8 @@ struct VolumeResult {
 struct AboutStatus {
   String ipAddress;
   String webAddress;
-  String mqttState;
   bool wifiConnected = false;
   bool haPaired = false;
-  bool mqttConnected = false;
   bool spotifyConnected = false;
 };
 
@@ -149,43 +149,9 @@ struct RuntimeDiagnostics {
   String lastDjText;
 };
 
-// Live visual output state published to MQTT and shown on the web dashboard.
+// Live visual output state shown on the web dashboard and Home Assistant status.
 struct VisualState {
   bool screenOn = true;
   uint8_t screenBrightnessLevel = 100;
   bool ledOn = true;
-};
-
-// MQTT broker settings used for Home Assistant state publishing.
-struct MqttSettings {
-  bool enabled = false;
-  String host;
-  uint16_t port = 1883;
-  String username;
-  String password;
-};
-
-enum class MqttCommandType {
-  None,
-  Next,
-  Previous,
-  Status,
-  Ota,
-  Volume,
-  TransferOutput,
-  StartPlaylist,
-  DjResponse,
-  ScreenBrightness,
-  ScreenDimTimeout,
-  DeepSleepTimeout,
-  SpeakerVolume,
-  Language,
-  Theme,
-  LogLevel,
-};
-
-struct MqttCommand {
-  MqttCommandType type = MqttCommandType::None;
-  String value;
-  int numericValue = 0;
 };

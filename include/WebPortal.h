@@ -7,7 +7,6 @@
 #include "AppState.h"
 #include "DisplayManager.h"
 #include "LedRing.h"
-#include "MqttPublisher.h"
 #include "SoundManager.h"
 #include "SpotifyClient.h"
 
@@ -22,7 +21,6 @@ public:
       const String &languageCode,
       const String &themeCode,
       const String &logLevel);
-  using MqttSettingsCallback = void (*)(void *context, const MqttSettings &settings);
   using WifiSettingsCallback = void (*)(void *context, const String &ssid, const String &password);
   using VoiceTextCallback = bool (*)(void *context, const String &text, String &message, String &audioUrl);
   using SpotifyCredentialsCallback = bool (*)(
@@ -43,8 +41,6 @@ public:
       LedRing &ledRing,
       DisplayManager &display,
       SoundManager &sound,
-      MqttPublisher &mqttPublisher,
-      const MqttSettings &mqttSettings,
       const uint8_t &screenBrightnessPercent,
       const uint8_t &speakerVolumePercent,
       const bool &homeAssistantPaired,
@@ -55,7 +51,6 @@ public:
       const uint32_t &deviceSleepTimeoutMs,
       void *callbackContext,
       SettingsCallback settingsCallback,
-      MqttSettingsCallback mqttSettingsCallback,
       WifiSettingsCallback wifiSettingsCallback,
       VoiceTextCallback voiceTextCallback,
       SpotifyCredentialsCallback spotifyCredentialsCallback,
@@ -80,7 +75,7 @@ private:
   // Returns the live in-memory serial/framework log buffer as text/plain.
   void handleLogsText();
 
-  // Saves display, deep-sleep, and MQTT settings submitted by the dashboard form.
+  // Saves display and deep-sleep settings submitted by the dashboard form.
   void handleSettingsPost();
   void handlePlayModePost();
   void handleWifiPost();
@@ -123,8 +118,6 @@ private:
   LedRing *ledRing_ = nullptr;
   DisplayManager *display_ = nullptr;
   SoundManager *sound_ = nullptr;
-  MqttPublisher *mqttPublisher_ = nullptr;
-  const MqttSettings *mqttSettings_ = nullptr;
   const uint8_t *screenBrightnessPercent_ = nullptr;
   const uint8_t *speakerVolumePercent_ = nullptr;
   const bool *homeAssistantPaired_ = nullptr;
@@ -135,7 +128,6 @@ private:
   const uint32_t *deviceSleepTimeoutMs_ = nullptr;
   void *callbackContext_ = nullptr;
   SettingsCallback settingsCallback_ = nullptr;
-  MqttSettingsCallback mqttSettingsCallback_ = nullptr;
   WifiSettingsCallback wifiSettingsCallback_ = nullptr;
   VoiceTextCallback voiceTextCallback_ = nullptr;
   SpotifyCredentialsCallback spotifyCredentialsCallback_ = nullptr;

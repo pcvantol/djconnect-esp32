@@ -256,7 +256,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <body>
   <header>
     <h1><img class="brand-icon" src="/icon-192.png" alt="">SpotifyDJ <span id="appVersion" class="sub">-</span></h1>
-    <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="mqttHeaderStatus" class="status-dot" title="MQTT">M</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
+    <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">
     <strong data-i18n="deviceNotPaired">Device not paired with Home Assistant</strong>
@@ -356,18 +356,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
             <option value="debug" data-i18n="logLevelDebug">Debug</option><option value="info" data-i18n="logLevelInfo">Info</option><option value="warning" data-i18n="logLevelWarning">Warning</option><option value="error" data-i18n="logLevelError">Error</option>
           </select>
         </label>
-        <label data-i18n-label="mqttHost">MQTT host
-          <input id="mqttHost" name="mqttHost" placeholder="192.168.1.10">
-        </label>
-        <label data-i18n-label="mqttPort">MQTT port
-          <input id="mqttPort" name="mqttPort" inputmode="numeric" placeholder="1883">
-        </label>
-        <label data-i18n-label="mqttUsername">MQTT username
-          <input id="mqttUser" name="mqttUser" autocomplete="off">
-        </label>
-        <label data-i18n-label="mqttPassword">MQTT password
-          <input id="mqttPass" name="mqttPass" type="password" autocomplete="off">
-        </label>
         <button data-i18n="saveSettings" type="submit">Save settings</button>
       </form>
       <div id="settingsStatus" class="status"></div>
@@ -434,17 +422,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       </form>
       <div class="fine" data-i18n="spotifyTokenFine">The refresh token is saved and tested immediately. It is never shown after submission.</div>
       <div id="spotifyCredentialStatus" class="status"></div>
-    </section>
-
-    <section class="panel">
-      <h2>MQTT</h2>
-      <div class="grid">
-        <div class="row"><span class="key" data-i18n="state">State</span><span id="mqttState" class="value">-</span></div>
-        <div class="row"><span class="key" data-i18n="broker">Broker</span><span id="mqttBroker" class="value">-</span></div>
-        <div class="row"><span class="key" data-i18n="username">Username</span><span id="mqttUsername" class="value">-</span></div>
-        <div class="row"><span class="key" data-i18n="discovery">HA discovery</span><span id="mqttDiscovery" class="value">-</span></div>
-        <div class="row"><span class="key" data-i18n="lastPublished">Last published</span><span id="mqttLastPublished" class="value">-</span></div>
-      </div>
     </section>
 
     <section class="panel">
@@ -539,8 +516,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
         language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error", playMode:"Play mode", noShuffle:"No shuffle",
         timeout30s:"30 seconds", timeout1m:"1 minute", timeout2m:"2 minutes", timeout4m:"4 minutes", timeout5m:"5 minutes", timeout15m:"15 minutes", timeout30m:"30 minutes", timeout60m:"60 minutes",
-        shuffle:"Shuffle", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", mqttHost:"MQTT host", mqttPort:"MQTT port",
-        mqttUsername:"MQTT username", mqttPassword:"MQTT password", saveSettings:"Save settings", settingsFine:"Screen turns off after the selected idle timeout. LED ring follows the screen power state.",
+        shuffle:"Shuffle", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", saveSettings:"Save settings", settingsFine:"Screen turns off after the selected idle timeout. LED ring follows the screen power state.",
         wifi:"WiFi", state:"State", newWifiSsid:"New WiFi SSID", newWifiPassword:"New WiFi password", wifiButton:"Test WiFi & restart device",
         wifiFine:"The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.",
         wifiPasswordPlaceholder:"leave blank to keep current",
@@ -578,8 +554,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
         language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout", playMode:"Speelmodus", noShuffle:"Geen shuffle",
         timeout30s:"30 seconden", timeout1m:"1 minuut", timeout2m:"2 minuten", timeout4m:"4 minuten", timeout5m:"5 minuten", timeout15m:"15 minuten", timeout30m:"30 minuten", timeout60m:"60 minuten",
-        shuffle:"Shuffle", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", mqttHost:"MQTT host", mqttPort:"MQTT poort",
-        mqttUsername:"MQTT gebruikersnaam", mqttPassword:"MQTT wachtwoord", saveSettings:"Instellingen opslaan", settingsFine:"Scherm gaat uit na de ingestelde inactiviteit. LED-ring volgt de schermstatus.",
+        shuffle:"Shuffle", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", saveSettings:"Instellingen opslaan", settingsFine:"Scherm gaat uit na de ingestelde inactiviteit. LED-ring volgt de schermstatus.",
         wifi:"WiFi", state:"Status", newWifiSsid:"Nieuwe WiFi SSID", newWifiPassword:"Nieuw WiFi wachtwoord", wifiButton:"Test WiFi & herstart device",
         wifiFine:"Het device test de nieuwe WiFi nadat deze pagina antwoord krijgt. Bij succes worden credentials opgeslagen en herstart het device.",
         wifiPasswordPlaceholder:"leeg laten om huidige te behouden",
@@ -636,9 +611,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     function setInput(id, value) {
       const el = $(id);
       if (document.activeElement !== el && !dirtyInputs.has(id)) el.value = value ?? "";
-    }
-    for (const id of ["mqttHost", "mqttPort", "mqttUser", "mqttPass"]) {
-      $(id).addEventListener("input", () => dirtyInputs.add(id));
     }
     function wifiSignalLevel(connected, rssi) {
       if (!connected || !Number.isFinite(rssi) || rssi === 0) return 0;
@@ -818,15 +790,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setInput("theme", data.settings.theme || "dark");
       setInput("logLevel", data.settings.logLevel || "info");
       setInput("playMode", data.playback.playMode || "normal");
-      setInput("mqttHost", data.mqtt.host || "");
-      setInput("mqttPort", String(data.mqtt.port || 1883));
-      setInput("mqttUser", data.mqtt.username || "");
-      text("mqttState", data.mqtt.state || tr("disabled"));
-      setStatusDot("mqttHeaderStatus", !!data.mqtt.connected);
-      text("mqttBroker", data.mqtt.host ? `${data.mqtt.host}:${data.mqtt.port}` : "-");
-      text("mqttUsername", data.mqtt.username || "-");
-      text("mqttDiscovery", data.mqtt.connected ? tr("publishedAfterConnect") : data.mqtt.enabled ? (data.mqtt.state || tr("waitingForBroker")) : tr("disabled"));
-      text("mqttLastPublished", data.mqtt.lastPublishedMs ? `${duration(data.mqtt.lastPublishedMs)} uptime, ${duration(Math.max(0, data.app.uptimeMs - data.mqtt.lastPublishedMs))} ${tr("ago")}` : "-");
     }
     async function refresh() {
       const response = await fetch("/api/status", { cache: "no-store" });
@@ -1040,15 +1003,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         speakerVolume: $("speakerVolume").value,
         language: $("language").value,
         theme: $("theme").value,
-        logLevel: $("logLevel").value,
-        mqttHost: $("mqttHost").value,
-        mqttPort: $("mqttPort").value,
-        mqttUser: $("mqttUser").value,
-        mqttPass: $("mqttPass").value
+        logLevel: $("logLevel").value
       });
       const response = await fetch("/api/settings", { method:"POST", body });
       $("settingsStatus").textContent = await response.text();
-      for (const id of ["mqttHost", "mqttPort", "mqttUser", "mqttPass"]) dirtyInputs.delete(id);
       refresh();
     });
     $("playMode").addEventListener("change", async () => {
@@ -1139,8 +1097,6 @@ void WebPortal::begin(
     LedRing &ledRing,
     DisplayManager &display,
     SoundManager &sound,
-    MqttPublisher &mqttPublisher,
-    const MqttSettings &mqttSettings,
     const uint8_t &screenBrightnessPercent,
     const uint8_t &speakerVolumePercent,
     const bool &homeAssistantPaired,
@@ -1151,7 +1107,6 @@ void WebPortal::begin(
     const uint32_t &deviceSleepTimeoutMs,
     void *callbackContext,
     SettingsCallback settingsCallback,
-    MqttSettingsCallback mqttSettingsCallback,
     WifiSettingsCallback wifiSettingsCallback,
     VoiceTextCallback voiceTextCallback,
     SpotifyCredentialsCallback spotifyCredentialsCallback,
@@ -1166,8 +1121,6 @@ void WebPortal::begin(
   ledRing_ = &ledRing;
   display_ = &display;
   sound_ = &sound;
-  mqttPublisher_ = &mqttPublisher;
-  mqttSettings_ = &mqttSettings;
   screenBrightnessPercent_ = &screenBrightnessPercent;
   speakerVolumePercent_ = &speakerVolumePercent;
   homeAssistantPaired_ = &homeAssistantPaired;
@@ -1178,7 +1131,6 @@ void WebPortal::begin(
   deviceSleepTimeoutMs_ = &deviceSleepTimeoutMs;
   callbackContext_ = callbackContext;
   settingsCallback_ = settingsCallback;
-  mqttSettingsCallback_ = mqttSettingsCallback;
   wifiSettingsCallback_ = wifiSettingsCallback;
   voiceTextCallback_ = voiceTextCallback;
   spotifyCredentialsCallback_ = spotifyCredentialsCallback;
@@ -1368,16 +1320,6 @@ void WebPortal::handleStatusJson() {
                        homeAssistantPaired_ != nullptr &&
                        *homeAssistantPaired_;
 
-  JsonObject mqtt = doc["mqtt"].to<JsonObject>();
-  mqtt["enabled"] = mqttSettings_ != nullptr && mqttSettings_->enabled;
-  mqtt["state"] = mqttPublisher_ == nullptr ? "Unknown" : mqttPublisher_->connectionState();
-  mqtt["connected"] = mqttPublisher_ != nullptr && mqttPublisher_->connected();
-  mqtt["host"] = mqttSettings_ == nullptr ? "" : mqttSettings_->host;
-  mqtt["port"] = mqttSettings_ == nullptr ? 1883 : mqttSettings_->port;
-  mqtt["username"] = mqttSettings_ == nullptr ? "" : mqttSettings_->username;
-  mqtt["password"] = mqttSettings_ == nullptr ? "" : maskedSecret(mqttSettings_->password.c_str());
-  mqtt["lastPublishedMs"] = mqttPublisher_ == nullptr ? 0 : mqttPublisher_->lastPublishAtMs();
-
   JsonObject system = doc["system"].to<JsonObject>();
   const uint32_t heapTotal = ESP.getHeapSize();
   const uint32_t heapFree = ESP.getFreeHeap();
@@ -1451,18 +1393,6 @@ void WebPortal::handleSettingsPost() {
     settingsCallback_(callbackContext_, brightness, offTimeoutMs, sleepTimeoutMs, speakerVolume, language, theme, logLevel);
   }
 
-  if (mqttSettingsCallback_ != nullptr) {
-    MqttSettings mqttSettings;
-    mqttSettings.host = server_.arg("mqttHost");
-    mqttSettings.host.trim();
-    mqttSettings.port = server_.arg("mqttPort").toInt() > 0 ? server_.arg("mqttPort").toInt() : 1883;
-    mqttSettings.username = server_.arg("mqttUser");
-    mqttSettings.password = server_.arg("mqttPass");
-    mqttSettings.enabled = !mqttSettings.host.isEmpty();
-    AppLog.print("Web settings: MQTT ");
-    AppLog.println(mqttSettings.enabled ? "enabled/updated" : "disabled");
-    mqttSettingsCallback_(callbackContext_, mqttSettings);
-  }
   server_.send(200, "text/plain", "Settings saved");
 }
 

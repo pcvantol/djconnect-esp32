@@ -19,25 +19,6 @@ String joinUrl(const String &base, const char *path) {
   }
   return base + path;
 }
-
-bool mqttSettingsFromJson(JsonVariantConst mqtt, MqttSettings &settings) {
-  if (!mqtt.is<JsonObjectConst>()) {
-    return false;
-  }
-  settings.host = mqtt["host"] | "";
-  settings.host.trim();
-  if (settings.host.isEmpty()) {
-    return false;
-  }
-  settings.port = static_cast<uint16_t>((mqtt["port"] | 1883));
-  if (settings.port == 0) {
-    settings.port = 1883;
-  }
-  settings.username = mqtt["username"] | "";
-  settings.password = mqtt["password"] | "";
-  settings.enabled = true;
-  return true;
-}
 }  // namespace
 
 void SpotifyDJPairing::begin(SpotifyDJDevice &device, SpotifyDJDiscovery *discovery) {
@@ -155,10 +136,6 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   }
   applyProvisionedLanguage(response.as<JsonVariantConst>());
   applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());
-  MqttSettings mqttSettings;
-  if (mqttSettingsFromJson(response["mqtt"], mqttSettings)) {
-    device_->saveMqttSettings(mqttSettings);
-  }
   if (discovery_ != nullptr) {
     discovery_->updateTxtRecords();
   }
@@ -221,11 +198,6 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(const BatterySta
   if (code >= 200 && code < 300 && !payload.isEmpty()) {
     JsonDocument response;
     if (!deserializeJson(response, payload)) {
-      MqttSettings mqttSettings;
-      if (mqttSettingsFromJson(response["mqtt"], mqttSettings) &&
-          !device_->mqttSettingsMatch(mqttSettings)) {
-        device_->saveMqttSettings(mqttSettings);
-      }
       applyProvisionedLanguage(response.as<JsonVariantConst>());
       if (!spotifyConfigured) {
         applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());

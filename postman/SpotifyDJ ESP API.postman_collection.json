@@ -180,7 +180,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"spotify_client_id\": \"{{spotify_client_id}}\",\n  \"spotify_refresh_token\": \"{{spotify_refresh_token}}\",\n  \"spotify_market\": \"NL\",\n  \"device_language\": \"nl\",\n  \"assist_pipeline_id\": \"\",\n  \"mqtt\": {\n    \"host\": \"\",\n    \"port\": 1883,\n    \"username\": \"\",\n    \"password\": \"\"\n  }\n}"
+              "raw": "{\n  \"spotify_client_id\": \"{{spotify_client_id}}\",\n  \"spotify_refresh_token\": \"{{spotify_refresh_token}}\",\n  \"spotify_market\": \"NL\",\n  \"device_language\": \"nl\",\n  \"assist_pipeline_id\": \"\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/device/provision_spotify",
@@ -193,7 +193,7 @@
                 "provision_spotify"
               ]
             },
-            "description": "Stores Spotify OAuth credentials in ESP NVS. MQTT, language and assist pipeline id are optional."
+            "description": "Stores Spotify OAuth credentials in ESP NVS. Language and assist pipeline id are optional."
           },
           "response": []
         }
@@ -238,6 +238,362 @@
               ]
             },
             "description": "Pushes a DJ response to the ESP display. If audio_url points to a compatible PCM WAV, the ESP attempts speaker playback."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Device Commands",
+      "item": [
+        {
+          "name": "Status Refresh",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"status\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
+          },
+          "response": []
+        },
+        {
+          "name": "Next Track",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"next\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
+          },
+          "response": []
+        },
+        {
+          "name": "Previous Track",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"previous\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Volume",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"set_volume\",\n  \"value\": 35\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Sound Output",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"set_output\",\n  \"value\": \"iPhone\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
+          },
+          "response": []
+        },
+        {
+          "name": "Start Playlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"start_playlist\",\n  \"value\": \"spotify:playlist:example\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Language",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"set_language\",\n  \"value\": \"nl\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Theme",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"set_theme\",\n  \"value\": \"dark\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Log Level",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"set_log_level\",\n  \"value\": \"info\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/device/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "device",
+                "command"
+              ]
+            },
+            "description": "Sends a native Home Assistant device command to the ESP firmware."
           },
           "response": []
         }

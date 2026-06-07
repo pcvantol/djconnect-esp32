@@ -11,7 +11,7 @@ SpotifyDJ is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP3
 - Battery/charging guards, turn-off sleep and reset handling.
 - WS2812 LED ring feedback.
 - Local mobile web portal.
-- MQTT/Home Assistant state publishing.
+- Home Assistant status publishing and native device command handling.
 - Home Assistant device-layer support: pairing, mDNS discovery, device API, status posting and OTA trigger endpoints.
 
 The current PlatformIO environment is `t_embed_cc1101`.
@@ -46,7 +46,8 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `include/AppState.h`: shared state structs.
 - `include/LogicHelpers.h`: pure helper functions with native unit tests.
 - `include/SpotifyDJMenuModel.h`: pure menu counts/options with native unit tests.
-- `include/ProvisioningController.h`, `src/ProvisioningController.cpp`: NVS provisioning keys for WiFi, MQTT, setup mode, display settings, language/theme/log-level and cue volume.
+- `include/ProvisioningController.h`, `src/ProvisioningController.cpp`: NVS provisioning keys for WiFi, setup mode, display settings, language/theme/log-level and cue volume.
+- `include/DeviceCommandParser.h`: host-testable parser for Home Assistant native `/api/device/command` payloads.
 - `include/PowerController.h`, `src/PowerController.cpp`: charger policy, deep-sleep wake policy and watchdog setup/feed.
 - `include/NetworkActivityLogic.h`: testable network-timeout helper used by `NetworkActivity`.
 - `test/native/test_logic.cpp`: host-side unit tests.
@@ -127,7 +128,7 @@ Keep concerns separated:
 - `WebPortal` owns the existing mobile dashboard and shared port-80 `WebServer`.
 - Home Assistant device-layer code belongs in the `SpotifyDJ*` modules under `src/`.
 - `LogicHelpers.h` is for pure, host-testable calculations.
-- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, MQTT, setup-mode, display-setting, language/theme/log-level or cue-volume NVS reads/writes directly in `SpotifyDJApp`.
+- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, setup-mode, display-setting, language/theme/log-level or cue-volume NVS reads/writes directly in `SpotifyDJApp`.
 - `PowerController` owns charger/wake/watchdog policy. Keep low-battery rendering in the app/display layer, but keep wake masks, timer-wake decisions and watchdog setup/feed out of `SpotifyDJApp`.
 - `SpotifyDJMenuModel` is the host-testable source for menu counts and option values. Keep display labels in `SpotifyDJMenu`/i18n and pure counts/options in the model.
 - `NetworkActivityLogic` is the host-testable timeout/reuse helper for long HTTP flows.
@@ -217,7 +218,7 @@ migration project rather than a small OTA firmware patch.
 
 NVS namespaces:
 
-- `provision`: existing device provisioning/settings, including display timeouts/brightness, speaker cue volume, WiFi and MQTT.
+- `provision`: existing device provisioning/settings, including display timeouts/brightness, speaker cue volume and WiFi.
 - `spotifydj`: Home Assistant device-layer storage.
 
 `spotifydj` keys:
@@ -233,11 +234,11 @@ NVS namespaces:
 
 Keep ESP32 Preferences keys at 15 characters or less. External Home Assistant JSON payload field names may remain long, for example `spotify_refresh_token`; only the internal NVS key must be shortened.
 
-The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postman_collection.json`. Keep all credentials as variables/placeholders; never commit real device tokens, Spotify refresh tokens, MQTT passwords or Home Assistant URLs that identify a private instance.
+The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postman_collection.json`. Keep all credentials as variables/placeholders; never commit real device tokens, Spotify refresh tokens or Home Assistant URLs that identify a private instance.
 
 ## Architecture Decisions
 
-- Treat Home Assistant as the trusted backend for pairing, Spotify command interpretation, Assist STT/TTS, OTA offer handling, Spotify refresh-token reprovisioning and optional MQTT provisioning.
+- Treat Home Assistant as the trusted backend for pairing, Spotify command interpretation, Assist STT/TTS, OTA offer handling, Spotify refresh-token reprovisioning and native entity commands.
 - Keep the ESP focused on local edge behavior: display, buttons/encoder, LED ring, battery/power policy, speaker cues, microphone capture and playback of HA-provided DJ response audio.
 - Keep PTT on the integration-backed WAV-upload route: ESP records WAV, uploads it to `/api/spotify_dj/voice`, then displays/plays the returned DJ response. Do not add direct ESP Assist websocket auth, direct OpenAI calls or browser microphone uploads.
 - Pairing validity is runtime state. On HA 401/403/404, mark Home Assistant as stale/red and disable PTT, but do not erase NVS pairing automatically.
@@ -291,7 +292,7 @@ If WiFi is not configured, the device starts in setup/AP provisioning mode befor
 
 If configured WiFi cannot connect during boot, keep the screen at 100% and show the WiFi-failure menu. Rotary selects between retry connect, restart device, turn off, and factory reset. Factory reset must stay at the bottom and require an explicit confirmation screen before wiping setup. Center press executes the selected action. Do not start normal playback/menu handling while this recovery menu is active.
 
-BLE setup mode is active only while the captive portal is active. iOS cannot automatically expose the currently connected WiFi password to the ESP32; BLE provisioning requires an app/flow to write JSON WiFi credentials to the SpotifyDJ BLE characteristic. Home Assistant Bluetooth Proxy flows should write to `7f705001-9f8f-4f1a-9b5f-570071fd0001` and read/subscribe to status characteristic `7f705002-9f8f-4f1a-9b5f-570071fd0001`. Keep BLE provisioning WiFi-only; Spotify and MQTT stay in Home Assistant provisioning, captive portal, or web settings. Do not claim automatic iPhone credential extraction is possible.
+BLE setup mode is active only while the captive portal is active. iOS cannot automatically expose the currently connected WiFi password to the ESP32; BLE provisioning requires an app/flow to write JSON WiFi credentials to the SpotifyDJ BLE characteristic. Home Assistant Bluetooth Proxy flows should write to `7f705001-9f8f-4f1a-9b5f-570071fd0001` and read/subscribe to status characteristic `7f705002-9f8f-4f1a-9b5f-570071fd0001`. Keep BLE provisioning WiFi-only; Spotify stays in Home Assistant provisioning, captive portal, or web settings. Do not claim automatic iPhone credential extraction is possible.
 
 ## Display And UI Rules
 
@@ -313,7 +314,6 @@ Important current UI details:
 Current statusbar badges:
 
 - `H`: Home Assistant paired
-- `M`: MQTT connected
 - `S`: Spotify authorized
 
 Green means OK; red means not OK.
@@ -346,29 +346,44 @@ During OTA firmware write, show `Firmware update in progress..` on the display a
 
 Local development builds may display `vdev`, but Home Assistant/device API version reporting must expose them as OTA-comparable `0.0.0` so every published `X.Y.Z` release is treated as an upgrade from a local flash.
 
-## MQTT Rules
+Pre-pairing bootstrap OTA:
 
-MQTT is separate from the HA device API. Do not conflate the two.
+- Runs only after WiFi connects and before Home Assistant pairing setup when the device is not paired yet.
+- Checks the latest public firmware release through the GitHub Releases API for `pcvantol/spotify-dj-firmware`.
+- Must never auto-update local `dev` / `vdev` firmware. Dev builds are intentionally local and should only be replaced by explicit serial/web/HA update actions.
+- Must use TLS verification for the GitHub release/manifest check. Do not use `setInsecure()` for deciding whether an update exists.
+- Reuse `SpotifyDJOTA::performUpdate()` for the actual firmware write so display text, 100% brightness, purple LED-ring animation, speaker cues, SHA256 validation and reboot behavior remain consistent.
+- If the bootstrap check fails, log the reason and continue gracefully into normal pairing/setup flow without notifying or blocking the user.
 
-MQTT publishes retained state and Home Assistant discovery for dashboard status. HA pairing/status uses HTTP endpoints and device token auth.
+## Home Assistant Native Command Rules
 
-MQTT connection failures should not block Spotify controls or local web UI.
+Device status and commands use the Home Assistant integration HTTP boundary. Do not add broker-based control paths.
 
-MQTT is two-way:
+Protected local ESP routes require `Authorization: Bearer <device_token>`.
 
-- Device status publishes retained to `spotifydj/<device_id>/status`.
-- Commands are subscribed on `spotifydj/<device_id>/command` plus specific command topics under `spotifydj/<device_id>/command/`.
-- Do not perform blocking Spotify HTTPS work inside the MQTT callback; queue an `MqttCommand` and let `SpotifyDJApp::loop()` execute it.
-- Keep Home Assistant MQTT discovery aligned with command topics for buttons, number and selects.
-- Current two-way MQTT scope includes Spotify-facing controls, status, next/previous, volume, sound output, playlist start, status command, OTA command placeholder, DJ response command, and settings commands for brightness, dim timeout, turn-off timeout, speaker cue volume, language, theme, and log level.
-- HA-provisioned MQTT settings live in `spotifydj` NVS keys `mqtt_host`, `mqtt_port`, `mqtt_user`, `mqtt_pass` and take precedence over legacy `provision` MQTT settings.
-- After three consecutive MQTT auth failures (`rc=4` or `rc=5`), stop reconnect attempts and report `Auth failed; update MQTT credentials`. Reset that lock only when MQTT host/port/username/password changes or after restart.
-- Captive portal MQTT settings are optional. Empty host means keep existing config and do not attempt MQTT setup.
-- Never log MQTT passwords.
+The generic command endpoint is `POST /api/device/command`. Keep its parser in `DeviceCommandParser` so command behavior stays host-testable.
 
-MQTT/HA/Spotify status indicators:
+Current native command scope includes:
 
-- Device statusbar: `H`, `M`, `S`.
+- status request;
+- next/previous;
+- volume;
+- sound output transfer;
+- playlist start;
+- DJ response text;
+- brightness;
+- screen timeout;
+- turn-off timeout;
+- speaker cue volume;
+- language;
+- theme;
+- log level.
+
+Do not perform unbounded blocking Spotify HTTPS work inside the HTTP route itself. Parse and validate in `SpotifyDJApiServer`, then route through `SpotifyDJApp::handleDeviceCommand()` with existing timeout-aware Spotify helpers.
+
+HA/Spotify status indicators:
+
+- Device statusbar: `H`, `S`.
 - Web header mirrors the same indicators.
 - LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup animations.
 
@@ -475,7 +490,7 @@ README should document:
 - No hardcoded WiFi/Spotify secrets.
 - Spotify refresh token generation via PKCE.
 - Web portal capabilities.
-- MQTT/HA behavior.
+- Home Assistant command/status behavior.
 - OTA release flow through the GitHub repo `pcvantol/spotify-dj-firmware` using a git tag.
 - Current build/upload/test commands.
 - Legal/trademark notice and reference to `THIRD_PARTY_NOTICES.md`.

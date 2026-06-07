@@ -16,10 +16,6 @@ const char *SpotifyClientIdKey = "sp_client";
 const char *SpotifyRefreshKey = "sp_refresh";
 const char *SpotifyMarketKey = "sp_market";
 const char *AssistPipelineKey = "assist_pipe";
-const char *MqttHostKey = "mqtt_host";
-const char *MqttPortKey = "mqtt_port";
-const char *MqttUserKey = "mqtt_user";
-const char *MqttPassKey = "mqtt_pass";
 
 String sixDigitCode(uint32_t value) {
   char buffer[7] = {};
@@ -92,19 +88,6 @@ String SpotifyDJDevice::getSpotifyMarket() const {
 
 String SpotifyDJDevice::getAssistPipelineId() const {
   return readString(AssistPipelineKey);
-}
-
-MqttSettings SpotifyDJDevice::getMqttSettings() const {
-  MqttSettings settings;
-  settings.host = readString(MqttHostKey);
-  settings.port = static_cast<uint16_t>(readString(MqttPortKey, "1883").toInt());
-  if (settings.port == 0) {
-    settings.port = 1883;
-  }
-  settings.username = readString(MqttUserKey);
-  settings.password = readString(MqttPassKey);
-  settings.enabled = !settings.host.isEmpty();
-  return settings;
 }
 
 String SpotifyDJDevice::normalizedLanguageCode(const String &languageCode) {
@@ -203,31 +186,6 @@ void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
     writeString(AssistPipelineKey, pipelineId);
   }
   AppLog.println("[SpotifyDJ] Assist pipeline setting saved");
-}
-
-bool SpotifyDJDevice::mqttSettingsMatch(const MqttSettings &settings) const {
-  const uint16_t normalizedPort = settings.port == 0 ? 1883 : settings.port;
-  return readString(MqttHostKey) == settings.host &&
-         static_cast<uint16_t>(readString(MqttPortKey, "1883").toInt()) == normalizedPort &&
-         readString(MqttUserKey) == settings.username &&
-         readString(MqttPassKey) == settings.password;
-}
-
-void SpotifyDJDevice::saveMqttSettings(const MqttSettings &settings) {
-  if (settings.host.isEmpty()) {
-    return;
-  }
-  if (mqttSettingsMatch(settings)) {
-    return;
-  }
-  writeString(MqttHostKey, settings.host);
-  writeString(MqttPortKey, String(settings.port == 0 ? 1883 : settings.port));
-  writeString(MqttUserKey, settings.username);
-  writeString(MqttPassKey, settings.password);
-  AppLog.print("[SpotifyDJ] MQTT settings saved host=");
-  AppLog.print(settings.host);
-  AppLog.print(" port=");
-  AppLog.println(settings.port == 0 ? 1883 : settings.port);
 }
 
 void SpotifyDJDevice::clearPairing() {

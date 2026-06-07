@@ -9,7 +9,6 @@
 struct ProvisioningSettings {
   String wifiSsid;
   String wifiPassword;
-  MqttSettings mqtt;
   uint32_t screenOffTimeoutMs = Config::DisplayOffAfterMs;
   uint32_t deviceSleepTimeoutMs = Config::DeviceSleepAfterMs;
   uint8_t screenBrightnessPercent = 100;
@@ -37,14 +36,12 @@ public:
       bool volumeFeedbackEnabled) const;
 
   void saveWifiCredentials(const String &ssid, const String &password) const;
-  void saveMqttSettings(const MqttSettings &settings) const;
   void saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &spotifyMarket) const;
   void saveSetupProvisioning(
       const String &ssid,
       const String &password,
       const String &clientId,
       const String &refreshToken,
-      const String &spotifyMarket,
-      const MqttSettings &mqttSettings) const;
+      const String &spotifyMarket) const;
   void requestSetupMode() const;
 };
