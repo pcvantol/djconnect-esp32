@@ -183,7 +183,6 @@ void SpotifyDJApp::loop() {
   }
 
   startWebPortalIfNeeded();
-  homeAssistantPaired_ = false;
 
   if (handleHomeAssistantPairingMode(loopStartedAt)) {
     return;
@@ -3005,19 +3004,39 @@ void SpotifyDJApp::markHomeAssistantPairingInvalid(const String &message) {
 
 bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   if (haDevice_.isPaired()) {
-    homeAssistantPaired_ = true;
-    if (bleProvisioning_.isStarted()) {
-      bleProvisioning_.end();
-    }
     if (haPairingScreenActive_) {
-      haPairingScreenActive_ = false;
-      haPairingStartedAt_ = 0;
-      haDevice_.displayPaired();
-      responsiveDelay(700);
-      display_.showBootMessage(I18n::text("boot_authorizing_spotify"), battery_);
-      lastPlaybackPollAt_ = millis();
-      sendHomeAssistantStatusIfDue(true);
-      renderNow();
+      const uint32_t now = millis();
+      if (lastHaStatusAt_ == 0 || now - lastHaStatusAt_ >= 2000) {
+        lastHaStatusAt_ = now;
+        const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, false);
+        if (result == SpotifyDJPairing::StatusResult::Ok) {
+          homeAssistantPaired_ = true;
+          if (bleProvisioning_.isStarted()) {
+            bleProvisioning_.end();
+          }
+          haPairingScreenActive_ = false;
+          haPairingStartedAt_ = 0;
+          haDevice_.displayPaired();
+          responsiveDelay(700);
+          display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
+          lastPlaybackPollAt_ = millis();
+          renderNow();
+          return false;
+        }
+        if (result == SpotifyDJPairing::StatusResult::PairingInvalid) {
+          AppLog.println("Home Assistant: direct pairing rejected, staying in pairing mode");
+          haDevice_.clearHomeAssistantPairing();
+          homeAssistantPaired_ = false;
+          lastHaStatusAt_ = 0;
+          haDevice_.displayPairingCode();
+        }
+      }
+      webPortal_.handle();
+      processPendingWifiSettings();
+      haApiServer_.loop();
+      recordLoopMetrics(loopStartedAt);
+      responsiveDelay(10);
+      return true;
     }
     return false;
   }
