@@ -2,7 +2,16 @@
 // These structs deliberately contain data only; controllers update them and renderers read them.
 #pragma once
 
+#if __has_include(<Arduino.h>)
 #include <Arduino.h>
+#else
+#include <stdint.h>
+#include <string>
+using String = std::string;
+inline uint32_t millis() {
+  return 0;
+}
+#endif
 
 #include "DeviceCommandTypes.h"
 
@@ -160,4 +169,15 @@ struct VisualState {
   bool screenOn = true;
   uint8_t screenBrightnessLevel = 100;
   bool ledOn = true;
+};
+
+// User-configurable device settings mirrored to Home Assistant status/entities.
+struct DeviceSettingsStatus {
+  uint8_t screenBrightnessPercent = 100;
+  uint32_t screenOffTimeoutMs = 60000;
+  uint32_t turnOffAfterMs = 300000;
+  uint8_t speakerVolumePercent = 100;
+  String language = "en";
+  String theme = "dark";
+  String logLevel = "info";
 };

@@ -131,7 +131,11 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   return true;
 }
 
-SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(const BatteryState &battery, bool spotifyConfigured) {
+SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
+    const BatteryState &battery,
+    bool spotifyConfigured,
+    const DeviceSettingsStatus &settings,
+    const VisualState &visualState) {
   if (device_ == nullptr || !device_->isPaired()) {
     return StatusResult::Skipped;
   }
@@ -153,6 +157,33 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(const BatterySta
   request["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   request["firmware"] = device_->getFirmwareVersion();
   request["language"] = I18n::languageCode();
+  request["device_language"] = I18n::languageCode();
+  request["theme"] = settings.theme;
+  request["log_level"] = settings.logLevel;
+  request["screen_brightness"] = settings.screenBrightnessPercent;
+  request["screen_brightness_percent"] = settings.screenBrightnessPercent;
+  request["screen_dim_timeout"] = settings.screenOffTimeoutMs;
+  request["screen_off_timeout_ms"] = settings.screenOffTimeoutMs;
+  request["turn_off_after"] = settings.turnOffAfterMs;
+  request["turn_off_after_ms"] = settings.turnOffAfterMs;
+  request["speaker_volume"] = settings.speakerVolumePercent;
+  request["speaker_volume_percent"] = settings.speakerVolumePercent;
+  request["screen_state"] = visualState.screenOn ? "on" : "off";
+  request["screen_brightness_level"] = visualState.screenBrightnessLevel;
+  request["led_state"] = visualState.ledOn ? "on" : "off";
+  JsonObject settingsObject = request["settings"].to<JsonObject>();
+  settingsObject["screen_brightness_percent"] = settings.screenBrightnessPercent;
+  settingsObject["screen_off_timeout_ms"] = settings.screenOffTimeoutMs;
+  settingsObject["turn_off_after_ms"] = settings.turnOffAfterMs;
+  settingsObject["speaker_volume_percent"] = settings.speakerVolumePercent;
+  settingsObject["language"] = settings.language;
+  settingsObject["theme"] = settings.theme;
+  settingsObject["log_level"] = settings.logLevel;
+  JsonObject screenObject = request["screen"].to<JsonObject>();
+  screenObject["state"] = visualState.screenOn ? "on" : "off";
+  screenObject["brightness_level"] = visualState.screenBrightnessLevel;
+  JsonObject ledObject = request["led"].to<JsonObject>();
+  ledObject["state"] = visualState.ledOn ? "on" : "off";
   request["spotify_configured"] = spotifyConfigured;
   request["free_heap"] = ESP.getFreeHeap();
   request["uptime_ms"] = millis();

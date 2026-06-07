@@ -234,7 +234,9 @@ Supported command payloads:
 {"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/spotify_dj/tts/example.mp3"}
 ```
 
-Status is still posted periodically to the Home Assistant integration through `/api/spotify_dj/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback.
+Status is still posted periodically to the Home Assistant integration through `/api/spotify_dj/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. The status payload mirrors user device settings both top-level and under `settings`, including `screen_brightness_percent`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume_percent`, `language`, `theme` and `log_level`. It also includes `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to minimum values.
+
+Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing.
 
 ## Web Portal
 
@@ -327,7 +329,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.23 --dry-run` validates the release plan without touching files. Both `2.9.23` and `v2.9.23` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.24 --dry-run` validates the release plan without touching files. Both `2.9.24` and `v2.9.24` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

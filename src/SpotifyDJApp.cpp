@@ -2347,9 +2347,7 @@ PlaybackConnectionState SpotifyDJApp::playbackConnectionState() const {
   if (!playbackProxyReady()) {
     return PlaybackConnectionState::Error;
   }
-  if (playback_.error.startsWith("HA playback HTTP") ||
-      playback_.error == "HA playback cooling down" ||
-      playback_.error == "Playback proxy busy") {
+  if (Logic::haPlaybackErrorIsConnectionError(playback_.error.c_str())) {
     return PlaybackConnectionState::Error;
   }
   if (!playback_.hasPlayback) {
@@ -3052,7 +3050,16 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
   if (haDevice_.isSpotifyConfigured() && !playbackProxyUsable) {
     AppLog.println("Playback proxy marked stale; requesting HA status refresh");
   }
-  const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, playbackProxyUsable);
+  DeviceSettingsStatus settings;
+  settings.screenBrightnessPercent = screenBrightnessPercent_;
+  settings.screenOffTimeoutMs = screenOffTimeoutMs_;
+  settings.turnOffAfterMs = deviceSleepTimeoutMs_;
+  settings.speakerVolumePercent = speakerVolumePercent_;
+  settings.language = languageCode_;
+  settings.theme = themeCode_;
+  settings.logLevel = logLevel_;
+  const SpotifyDJPairing::StatusResult result =
+      haPairing_.sendStatusToHA(battery_, playbackProxyUsable, settings, visualState_);
   if (result == SpotifyDJPairing::StatusResult::Ok) {
     homeAssistantPaired_ = true;
     haPairingPendingValidation_ = false;

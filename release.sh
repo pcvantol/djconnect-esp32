@@ -9,6 +9,7 @@ Usage:
 
 Environment:
   PIO_BIN                 PlatformIO executable override.
+  PIO_JOBS                PlatformIO build jobs for release builds, default 1.
   FIRMWARE_RELEASE_REPO   GitHub release repo, default pcvantol/spotify-dj-firmware.
 EOF
 }
@@ -156,6 +157,7 @@ MANIFEST="firmware_manifest.json"
 RELEASE_DIR="release"
 FIRMWARE_RELEASE_REPO="${FIRMWARE_RELEASE_REPO:-pcvantol/spotify-dj-firmware}"
 PIO_BIN="${PIO_BIN:-/Users/pcvantol/.platformio/penv/bin/pio}"
+PIO_JOBS="${PIO_JOBS:-1}"
 [[ -x "$PIO_BIN" ]] || PIO_BIN="pio"
 
 [[ -f platformio.ini && -d src && -d include && -d .git ]] || fail "run this script from the spotify-dj-app repo root"
@@ -194,7 +196,7 @@ fi
 replace_version_examples "$VERSION" "$TAG"
 
 export SPOTIFYDJ_BUILD_FLAGS="-DSPOTIFYDJ_VERSION=$VERSION -DSPOTIFYDJ_VERSION_TAG=$TAG"
-run "$PIO_BIN" run -e t_embed_cc1101
+run "$PIO_BIN" run -e t_embed_cc1101 -j "$PIO_JOBS"
 
 FIRMWARE_BIN="$(find .pio/build -path '*/firmware.bin' -type f | sort | head -n 1)"
 [[ -n "$FIRMWARE_BIN" ]] || fail "no PlatformIO firmware.bin found"

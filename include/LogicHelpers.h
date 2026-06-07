@@ -79,6 +79,18 @@ inline int compareSemver(const char *candidate, const char *current) {
   return 0;
 }
 
+// Classifies playback proxy errors that should turn the S status indicator red.
+// User-facing "no playback" states stay grey/idle instead of being treated as a broken connection.
+inline bool haPlaybackErrorIsConnectionError(const char *message) {
+  if (message == nullptr || message[0] == '\0') {
+    return false;
+  }
+  return strncmp(message, "HA playback HTTP", 16) == 0 ||
+         strcmp(message, "HA playback cooling down") == 0 ||
+         strcmp(message, "Playback proxy busy") == 0 ||
+         strcmp(message, "HA playback backend unavailable") == 0;
+}
+
 // Home Assistant pairing/backends are usable while the runtime proxy is not marked stale.
 inline bool spotifyConfiguredForHomeAssistantStatus(bool credentialsStored, bool tokenInvalidGrant) {
   return credentialsStored && !tokenInvalidGrant;

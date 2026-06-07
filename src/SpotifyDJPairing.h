@@ -21,7 +21,11 @@ public:
   void setLanguageProvisionedCallback(void (*callback)(void *context, const String &languageCode), void *context);
   void setSpotifyProvisionedCallback(void (*callback)(void *context), void *context);
   bool pairWithHomeAssistant(const String &haUrl);
-  StatusResult sendStatusToHA(const BatteryState &battery, bool spotifyConfigured);
+  StatusResult sendStatusToHA(
+      const BatteryState &battery,
+      bool spotifyConfigured,
+      const DeviceSettingsStatus &settings,
+      const VisualState &visualState);
 
 private:
   void applyProvisionedLanguage(JsonVariantConst payload);

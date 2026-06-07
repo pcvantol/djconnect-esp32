@@ -213,7 +213,13 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
     }
     const bool success = (*response)["success"] | true;
     if (!success) {
-      setProxyError((*response)["message"] | (*response)["error"] | "HA playback failed");
+      const bool backendAvailable = (*response)["backend_available"] | true;
+      if (!backendAvailable) {
+        lastProxyFailureAt_ = millis();
+        setProxyError("HA playback backend unavailable");
+      } else {
+        setProxyError((*response)["message"] | (*response)["error"] | "HA playback failed");
+      }
       return false;
     }
   }

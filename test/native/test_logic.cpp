@@ -6,6 +6,7 @@
 
 #include <ArduinoJson.h>
 
+#include "AppState.h"
 #include "DeviceCommandParser.h"
 #include "LogicHelpers.h"
 #include "NetworkActivityLogic.h"
@@ -66,6 +67,35 @@ static void testSemverComparison() {
   assert(Logic::compareSemver("dev", "2.9.11") < 0);
   assert(!Logic::parseSemver("2.9", parts));
   assert(!Logic::parseSemver("2.9.x", parts));
+}
+
+static void testHaPlaybackConnectionErrorClassification() {
+  assert(!Logic::haPlaybackErrorIsConnectionError(nullptr));
+  assert(!Logic::haPlaybackErrorIsConnectionError(""));
+  assert(!Logic::haPlaybackErrorIsConnectionError("No active playback"));
+  assert(!Logic::haPlaybackErrorIsConnectionError("Liked Proxy playlist not found"));
+
+  assert(Logic::haPlaybackErrorIsConnectionError("HA playback HTTP -1"));
+  assert(Logic::haPlaybackErrorIsConnectionError("HA playback HTTP 503"));
+  assert(Logic::haPlaybackErrorIsConnectionError("HA playback cooling down"));
+  assert(Logic::haPlaybackErrorIsConnectionError("Playback proxy busy"));
+  assert(Logic::haPlaybackErrorIsConnectionError("HA playback backend unavailable"));
+}
+
+static void testHomeAssistantStatusMirroredSettingsDefaults() {
+  DeviceSettingsStatus settings;
+  assert(settings.screenBrightnessPercent == 100);
+  assert(settings.screenOffTimeoutMs == 60000UL);
+  assert(settings.turnOffAfterMs == 300000UL);
+  assert(settings.speakerVolumePercent == 100);
+  assert(settings.language == "en");
+  assert(settings.theme == "dark");
+  assert(settings.logLevel == "info");
+
+  VisualState visual;
+  assert(visual.screenOn);
+  assert(visual.screenBrightnessLevel == 100);
+  assert(visual.ledOn);
 }
 
 static void testSpotifyConfiguredForHomeAssistantStatus() {
@@ -603,6 +633,8 @@ int main() {
   testTrackTimeFormatting();
   testOtaComparableFirmwareVersion();
   testSemverComparison();
+  testHaPlaybackConnectionErrorClassification();
+  testHomeAssistantStatusMirroredSettingsDefaults();
   testSpotifyConfiguredForHomeAssistantStatus();
   testProgressEstimation();
   testLedRingBrightness();

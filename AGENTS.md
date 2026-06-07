@@ -151,6 +151,10 @@ The HA custom integration uses:
 - ESP OTA endpoint: `POST /api/device/ota`
 - ESP DJ response endpoint: `POST /api/device/dj_response`
 
+Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, screen state and LED state. Keep both top-level compatibility fields and the nested `settings`, `screen` and `led` objects unless the HA integration contract is changed in lockstep.
+
+For `/api/spotify_dj/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404 means stale pairing. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
+
 Local ESP endpoints currently include:
 
 - `GET /api/device/info`
