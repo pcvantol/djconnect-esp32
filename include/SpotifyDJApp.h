@@ -126,6 +126,7 @@ private:
   void startSelectedPlaylist();
   void openSoundOutputsScreen();
   void transferToSelectedOutput();
+  bool playbackProxyReady() const;
 
   // Periodic background polling for data shown on the playback screen.
   void pollBatteryIfDue();

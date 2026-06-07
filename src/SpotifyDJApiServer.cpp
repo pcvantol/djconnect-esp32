@@ -126,8 +126,10 @@ void SpotifyDJApiServer::handlePair() {
   const String haUrl = doc["ha_url"] | "";
   const String deviceToken = doc["device_token"] | "";
   const String assistPipelineId = doc["assist_pipeline_id"] | "";
-  const String deviceLanguage = doc["device_language"] | "";
-  const String language = doc["language"] | "";
+  String provisionedLanguage = doc["device_language"] | "";
+  if (provisionedLanguage.isEmpty()) {
+    provisionedLanguage = doc["language"] | "";
+  }
   if (haUrl.isEmpty()) {
     sendJson(400, "{\"error\":\"ha_url missing\"}");
     return;
@@ -141,12 +143,7 @@ void SpotifyDJApiServer::handlePair() {
     if (!assistPipelineId.isEmpty()) {
       device_->saveAssistPipelineId(assistPipelineId);
     }
-    const String provisionedLanguage = !deviceLanguage.isEmpty() ? deviceLanguage : language;
-    if (languageProvisionedCallback_ != nullptr && !provisionedLanguage.isEmpty()) {
-      languageProvisionedCallback_(callbackContext_, provisionedLanguage);
-    }
-    discovery_->updateTxtRecords();
-    device_->displayPaired();
+    SpotifyDJDevice::saveProvisionedLanguage(provisionedLanguage);
     AppLog.println("Home Assistant direct pairing stored: device_token=present");
     sendJson(200, "{\"success\":true,\"paired\":true}");
     return;

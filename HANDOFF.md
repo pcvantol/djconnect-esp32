@@ -18,7 +18,7 @@ Current repo state includes:
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed.
 - Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
-- HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `ha_url` and `device_token`, stores it, updates mDNS and leaves the pairing screen.
+- HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `ha_url` and `device_token`, stores it with minimal in-route work, and lets the main loop confirm the pairing through `/api/spotify_dj/status`.
 - Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Freshly provisioned unpaired release firmware performs a graceful pre-pairing bootstrap update check after WiFi connects. It skips local `dev`/`vdev` builds and continues to pairing silently if the check fails.
 
@@ -51,7 +51,7 @@ Main module boundaries:
 Core data/security boundaries:
 
 - Device API uses `Authorization: Bearer <device_token>` for protected endpoints.
-- Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase stored pairing automatically.
+- Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase stored pairing automatically. Playback proxy commands are disabled until a successful authenticated HA status post confirms the stored token.
 - Playback-backend refresh tokens are never stored on the ESP and therefore are never logged or shown back to users.
 - The ESP is not a Spotify Connect speaker/player and should not be modeled as the actual music sink. It mirrors and controls the playback state supplied by Home Assistant.
 - Internal ESP32 Preferences keys must be 15 chars or less.

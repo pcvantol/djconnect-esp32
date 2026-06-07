@@ -45,6 +45,7 @@ Concrete backlog for follow-up implementation and validation.
 - [ ] Validate OTA status clearing after successful update and reboot.
 - [ ] Validate runtime stale-pairing behavior for HA 401, 403 and 404.
 - [ ] Confirm HA reports pairing as pending until ESP confirms token storage through `/api/device/pair`.
+- [ ] Confirm playback commands stay disabled until `/api/spotify_dj/status` accepts the stored device token.
 - [ ] Confirm HA integration owns backend OAuth/credential refresh without sending backend tokens to the ESP.
 - [ ] Confirm HA integration can return DJ response text plus WAV URL.
 - [ ] Confirm HA integration can return DJ response text plus MP3 URL.

@@ -117,7 +117,7 @@ In setup/AP mode, write WiFi credentials as JSON:
 
 Playback-backend credentials are not provisioned through BLE or stored on the ESP. Configure Spotify, Sonos or other backend credentials in the Home Assistant integration.
 
-In Home Assistant pairing mode, BLE advertising remains active so a Home Assistant Bluetooth Proxy config flow can discover the ESP while the pairing code is visible. The BLE status characteristic reports the current pairing state and visible pair code. Home Assistant should not mark the device as paired merely because HA has generated a local token; the ESP must confirm pairing by storing the device token or the integration should show the pairing as pending.
+In Home Assistant pairing mode, BLE advertising remains active so a Home Assistant Bluetooth Proxy config flow can discover the ESP while the pairing code is visible. The BLE status characteristic reports the current pairing state and visible pair code. Home Assistant should not mark the device as paired merely because HA has generated a local token; the ESP must confirm pairing by storing the device token, and playback commands remain disabled until the next authenticated Home Assistant status check succeeds.
 
 ## Playback Backend
 
@@ -162,7 +162,7 @@ Protected endpoints require `Authorization: Bearer <device_token>`:
 - `POST /api/device/forget`
 - `POST /api/device/dj_response`
 
-The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` supports both the original ESP-initiated HA pair request and a direct Home Assistant callback that supplies `ha_url` plus `device_token`. The ESP leaves pairing mode only after the token is stored locally.
+The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` supports both the original ESP-initiated HA pair request and a direct Home Assistant callback that supplies `ha_url` plus `device_token`. The direct callback only stores the token and lightweight settings such as Assist pipeline id and `device_language`/`language`; the main loop then confirms the pairing through `/api/spotify_dj/status`. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
 
 A Postman collection for these local ESP endpoints is available at `postman/SpotifyDJ ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
 
@@ -262,7 +262,7 @@ Keep new provisioning writes in `ProvisioningController`, power/sleep/watchdog d
 - Home Assistant is the trusted backend for pairing, playback command interpretation, backend credentials, Assist STT/TTS orchestration and OTA offer handling. The ESP stores only WiFi settings and its Home Assistant device token.
 - The ESP remains the local edge device for display, controls, LED ring, battery policy, speaker cues, microphone capture and playback of HA-provided DJ response audio. It must keep working when optional HA/web features are unused.
 - Push-to-talk uses the SpotifyDJ integration as the backend boundary: the ESP records WAV audio and uploads it to `/api/spotify_dj/voice`; the HA integration owns Assist/STT/TTS and returns DJ text plus optional audio URL. The ESP does not authenticate directly to Home Assistant core `/api/websocket`, call OpenAI directly or upload browser microphone audio.
-- Home Assistant pairing validity is a runtime state. Stored NVS pairing is not deleted automatically on HA 401/403/404, but the `H` indicator turns red, PTT/web PTT are disabled and the UI instructs the user to reset pairing.
+- Home Assistant pairing validity is a runtime state. Stored NVS pairing is not deleted automatically on HA 401/403/404, but the `H` indicator turns red, PTT/web PTT and playback proxy commands are disabled, and the UI instructs the user to reset pairing.
 - Spotify OAuth and other playback-backend credentials are never stored on the ESP. Legacy `sp_client`, `sp_refresh` and `sp_market` NVS keys are cleared at boot.
 - Long network operations are bounded by explicit timeout policy and tracked through `NetworkActivity`; UI/input responsiveness should not depend on a blocking Spotify, HA, OTA or audio download call finishing quickly.
 - Pre-pairing bootstrap OTA is a safety net for freshly provisioned devices: after WiFi connects but before Home Assistant pairing, release firmware checks the public GitHub firmware release manifest and updates itself if a newer release exists. Local `dev` / `vdev` firmware is intentionally excluded from this automatic path.
@@ -323,7 +323,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.17 --dry-run` validates the release plan without touching files. Both `2.9.17` and `v2.9.17` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.18 --dry-run` validates the release plan without touching files. Both `2.9.18` and `v2.9.18` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

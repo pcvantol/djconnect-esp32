@@ -284,7 +284,7 @@ When WiFi is configured but Home Assistant is not paired:
 - Consume top-button press/hold/long-click UI events in pairing mode so holding the top button for the 10-second soft reset never flashes the normal menu first.
 - Soft reset and hard reset must remain available through the reset monitor.
 - The pairing code should also be available in Serial logging and the web pairing panel.
-- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token. `/api/device/pair` may receive a direct HA callback with `ha_url` and `device_token`; on success the ESP stores the token, updates mDNS and leaves the pairing screen.
+- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token. `/api/device/pair` may receive a direct HA callback with `ha_url` and `device_token`; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/spotify_dj/status`; playback proxy commands must stay disabled until that authenticated status call succeeds.
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
 

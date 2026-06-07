@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.17
+## v2.9.18
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -43,7 +43,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.17` / `v2.9.17`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.18` / `v2.9.18`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.
@@ -58,7 +58,9 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Pairing mode shows the SpotifyDJ logo/name, battery state, instruction text and a large pairing code.
 - Pairing code is also visible in serial logs and the web interface.
 - Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off. Pairing mode also keeps BLE advertising active, shows a center-button turn-off hint and uses a deeply fading blue LED-ring breath.
-- `/api/device/pair` now also accepts a direct Home Assistant callback with `ha_url` and `device_token`, so the ESP leaves the pairing screen only after the local token has actually been stored.
+- `/api/device/pair` now also accepts a direct Home Assistant callback with `ha_url`, `device_token`, Assist pipeline id and device language, while keeping the handler lightweight to avoid watchdog stalls during pairing.
+- Playback proxy commands now wait for a successful authenticated Home Assistant status confirmation after boot/pairing, preventing stale or pending tokens from repeatedly sending playback 401 requests.
+- Home Assistant playback proxy HTTP failures such as `HA playback HTTP -1` now make the device connectivity LED state red without erasing pairing data.
 - OTA firmware write shows `Firmware update in progress..` on the display for both Home Assistant OTA and manual web upload, runs a fast purple LED-ring animation, and plays start/progress/complete/failure speaker cues.
 - OTA download and manual firmware upload now explicitly service the ESP task watchdog while hashing and writing firmware chunks.
 - Home Assistant status payloads now publish `state/status=online` plus `ota_state/update_state=idle` after boot so integrations can clear a stale OTA `updating` state.
@@ -67,6 +69,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Turn-off/deep-sleep always plays a rainbow LED-ring fade-out; top-button soft reset plays a dedicated speaker cue and bright white LED-ring flashes before reboot.
 - Display idle behavior keeps the configured brightness until the selected timeout, then turns the screen fully off.
 - The first button/encoder action while the screen is off only wakes the screen and does not execute the underlying action.
+- Device menu selected rows leave clear space for the right-side scrollbar.
 - Web interface shows H/S status indicators, WiFi signal bars and a CSS battery icon with percentage/charging flash.
 - Web statusbar order now matches the device: H, S, WiFi signal bars, battery.
 - Web Now Playing includes previous, next, play and pause controls with compact CSS icons.

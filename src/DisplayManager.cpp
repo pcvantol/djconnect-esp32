@@ -261,10 +261,12 @@ void DisplayManager::renderLogsScreen(const String *lines, size_t lineCount, con
 
 void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int score, const StatusNotice &notice) {
   if (screenBufferReady_) {
+    screen_.fillSprite(TFT_BLACK);
     renderPong(screen_, paddleY, ballX, ballY, score, notice);
     screen_.pushSprite(0, 0);
     return;
   }
+  tft_.fillScreen(TFT_BLACK);
   renderPong(tft_, paddleY, ballX, ballY, score, notice);
 }
 
@@ -731,8 +733,8 @@ void DisplayManager::renderMenu(
     const bool selected = index == selectedIndex;
 
     if (selected) {
-      canvas.fillRoundRect(8, y - 2, 304, rowHeight - 2, 4, TFT_DARKGREEN);
-      canvas.drawRoundRect(8, y - 2, 304, rowHeight - 2, 4, TFT_GREEN);
+      canvas.fillRoundRect(8, y - 2, 296, rowHeight - 2, 4, TFT_DARKGREEN);
+      canvas.drawRoundRect(8, y - 2, 296, rowHeight - 2, 4, TFT_GREEN);
       canvas.setTextColor(TFT_WHITE, TFT_DARKGREEN);
     } else {
       canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);

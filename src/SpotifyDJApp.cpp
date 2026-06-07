@@ -108,7 +108,7 @@ void SpotifyDJApp::begin() {
   wakeWord_.begin();
   wakeWord_.setCallback(wakeWordDetectedCallback, this);
   voiceClient_.begin(haDevice_);
-  homeAssistantPaired_ = haDevice_.isPaired();
+  homeAssistantPaired_ = false;
   loadProvisioning();
   sound_.playStartup();
   spotify_.setHomeAssistantDevice(haDevice_);
@@ -143,11 +143,7 @@ void SpotifyDJApp::begin() {
       return;
     }
     display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
-    if (spotify_.authorize()) {
-      showNotice(I18n::text("playback_connected"));
-      lastPlaybackPollAt_ = millis();
-      spotify_.refreshPlayback();
-    }
+    lastPlaybackPollAt_ = millis();
     sendHomeAssistantStatusIfDue(true);
   }
 
@@ -187,7 +183,7 @@ void SpotifyDJApp::loop() {
   }
 
   startWebPortalIfNeeded();
-  homeAssistantPaired_ = haDevice_.isPaired();
+  homeAssistantPaired_ = false;
 
   if (handleHomeAssistantPairingMode(loopStartedAt)) {
     return;
@@ -402,11 +398,7 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
     if (connectWiFi(Config::WifiConnectTimeoutMs, true) && WiFi.status() == WL_CONNECTED) {
       startWebPortalIfNeeded();
       display_.showBootMessage(I18n::text("boot_authorizing_spotify"), battery_);
-      if (spotify_.authorize()) {
-        showNotice(I18n::text("spotify_connected"));
-        lastPlaybackPollAt_ = millis();
-        spotify_.refreshPlayback();
-      }
+      lastPlaybackPollAt_ = millis();
       renderNow();
     } else {
       renderWifiConnectFailureMenu();
@@ -1764,7 +1756,7 @@ bool SpotifyDJApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     return true;
   }
 
-  if (!spotify_.isAuthorized()) {
+  if (!playbackProxyReady()) {
     AppLog.println("Device command ignored: playback not connected");
     message = I18n::text("spotify_not_connected");
     return false;
@@ -1846,6 +1838,12 @@ bool SpotifyDJApp::handleDeviceCommand(const DeviceCommand &command, String &mes
 }
 
 void SpotifyDJApp::pauseOrResume() {
+  if (!playbackProxyReady()) {
+    showNotice(I18n::text("ha_pairing_invalid"), 3000);
+    renderNow();
+    return;
+  }
+
   const uint32_t now = millis();
   if (now - lastPauseToggleAt_ < 900) {
     return;
@@ -1881,6 +1879,12 @@ void SpotifyDJApp::pauseOrResume() {
 }
 
 void SpotifyDJApp::startLikedProxyPlaylist() {
+  if (!playbackProxyReady()) {
+    showNotice(I18n::text("ha_pairing_invalid"), 3000);
+    renderNow();
+    return;
+  }
+
   AppLog.println("Playback: starting Liked Proxy playlist");
   showNotice(I18n::text("starting_liked_proxy"), 1600);
   renderNow();
@@ -2033,6 +2037,12 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
 }
 
 void SpotifyDJApp::goToNextTrack() {
+  if (!playbackProxyReady()) {
+    showNotice(I18n::text("ha_pairing_invalid"), 3000);
+    renderNow();
+    return;
+  }
+
   if (spotify_.nextTrack()) {
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
     playback_.trackName = I18n::text("loading_next_track");
@@ -2057,6 +2067,12 @@ void SpotifyDJApp::goToNextTrack() {
 }
 
 void SpotifyDJApp::goToPreviousTrack() {
+  if (!playbackProxyReady()) {
+    showNotice(I18n::text("ha_pairing_invalid"), 3000);
+    renderNow();
+    return;
+  }
+
   if (spotify_.previousTrack()) {
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
     playback_.trackName = I18n::text("loading_previous_track");
@@ -2073,6 +2089,12 @@ void SpotifyDJApp::goToPreviousTrack() {
 }
 
 void SpotifyDJApp::startSelectedPlaylist() {
+  if (!playbackProxyReady()) {
+    showNotice(I18n::text("ha_pairing_invalid"), 3000);
+    renderNow();
+    return;
+  }
+
   if (!playlists_.available || playlists_.count == 0 || playlistSelection_ >= playlists_.count) {
     showNotice(playlists_.error.isEmpty() ? I18n::text("no_playlists") : playlists_.error.c_str(), 3000);
     renderNow();
@@ -2178,7 +2200,12 @@ void SpotifyDJApp::refreshPlaybackAndBattery() {
   showNotice(I18n::text("refreshing"));
   batteryMonitor_.refresh();
   evaluateBatteryTransition();
-  spotify_.refreshPlayback();
+  if (playbackProxyReady()) {
+    spotify_.refreshPlayback();
+  } else {
+    playback_.error = I18n::text("ha_pairing_invalid");
+    showNotice(playback_.error, 2500);
+  }
   if (activeScreen_ == UiScreen::AlbumArt) {
     albumArt_.requestCurrentSongArt(playback_);
   }
@@ -2204,6 +2231,9 @@ void SpotifyDJApp::pollPlaybackIfDue() {
   }
 
   lastPlaybackPollAt_ = millis();
+  if (!playbackProxyReady()) {
+    return;
+  }
   spotify_.refreshPlayback();
   if (activeScreen_ == UiScreen::AlbumArt) {
     albumArt_.requestCurrentSongArt(playback_);
@@ -2231,7 +2261,12 @@ void SpotifyDJApp::openQueueScreen() {
   menuStackSize_ = 0;
   showNotice(I18n::text("loading_queue"), 1200);
   renderNow();
-  spotify_.refreshQueue(queue_);
+  if (playbackProxyReady()) {
+    spotify_.refreshQueue(queue_);
+  } else {
+    queue_.available = false;
+    queue_.error = I18n::text("ha_pairing_invalid");
+  }
   renderNow();
 }
 
@@ -2241,11 +2276,26 @@ void SpotifyDJApp::openSoundOutputsScreen() {
   soundOutputSelection_ = 0;
   showNotice(I18n::text("loading_outputs"), 1200);
   renderNow();
-  spotify_.refreshDevices(deviceList_);
+  if (playbackProxyReady()) {
+    spotify_.refreshDevices(deviceList_);
+  } else {
+    deviceList_.available = false;
+    deviceList_.error = I18n::text("ha_pairing_invalid");
+  }
   renderNow();
 }
 
+bool SpotifyDJApp::playbackProxyReady() const {
+  return homeAssistantPaired_ && spotify_.isAuthorized();
+}
+
 void SpotifyDJApp::transferToSelectedOutput() {
+  if (!playbackProxyReady()) {
+    showNotice(I18n::text("ha_pairing_invalid"), 3000);
+    renderNow();
+    return;
+  }
+
   if (soundOutputSelection_ == 0) {
     if (spotify_.pausePlayback()) {
       playback_.isPlaying = false;
@@ -2449,8 +2499,8 @@ void SpotifyDJApp::renderLowBatteryGuard() {
 
 bool SpotifyDJApp::connectionHealthy() {
   const bool wifiOk = WiFi.status() == WL_CONNECTED;
-  const bool spotifyOk = spotify_.isAuthorized();
-  return wifiOk && spotifyOk;
+  const bool playbackProxyOk = playbackProxyReady() && !playback_.error.startsWith("HA playback HTTP");
+  return wifiOk && playbackProxyOk;
 }
 
 AboutStatus SpotifyDJApp::aboutStatus() {
@@ -2690,9 +2740,7 @@ void SpotifyDJApp::applyProvisionedLanguage(const String &languageCode) {
 void SpotifyDJApp::applyProvisionedSpotifyCredentials() {
   spotify_.reloadCredentials();
   AppLog.println("Playback proxy refreshed after HA provisioning");
-  if (!spotify_.isAuthorized() && WiFi.status() == WL_CONNECTED) {
-    spotify_.authorize();
-  }
+  lastPlaybackPollAt_ = millis();
 }
 
 bool SpotifyDJApp::checkBootstrapFirmwareUpdate() {
@@ -2955,11 +3003,7 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
       haDevice_.displayPaired();
       responsiveDelay(700);
       display_.showBootMessage(I18n::text("boot_authorizing_spotify"), battery_);
-      if (spotify_.authorize()) {
-        showNotice(I18n::text("spotify_connected"));
-        lastPlaybackPollAt_ = millis();
-        spotify_.refreshPlayback();
-      }
+      lastPlaybackPollAt_ = millis();
       sendHomeAssistantStatusIfDue(true);
       renderNow();
     }
