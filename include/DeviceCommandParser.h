@@ -66,6 +66,7 @@ inline DeviceCommand parse(JsonVariantConst payload) {
   } else if (commandNameEquals(name, "dj_response")) {
     command.type = DeviceCommandType::DjResponse;
     command.value = firstString(payload, "text");
+    command.audioUrl = firstString(payload, "audio_url", "audioUrl");
   } else if (commandNameEquals(name, "set_volume") || commandNameEquals(name, "volume")) {
     command.type = DeviceCommandType::Volume;
     command.numericValue = firstInt(payload, "value", "volume", 0);
@@ -75,25 +76,27 @@ inline DeviceCommand parse(JsonVariantConst payload) {
   } else if (commandNameEquals(name, "start_playlist")) {
     command.type = DeviceCommandType::StartPlaylist;
     command.value = firstString(payload, "value", "playlist", "uri");
-  } else if (commandNameEquals(name, "set_brightness")) {
+  } else if (commandNameEquals(name, "screen_brightness") || commandNameEquals(name, "set_brightness")) {
     command.type = DeviceCommandType::ScreenBrightness;
     command.numericValue = firstInt(payload, "value", "brightness", 100);
-  } else if (commandNameEquals(name, "set_screen_timeout") || commandNameEquals(name, "set_dim_timeout")) {
+  } else if (commandNameEquals(name, "screen_dim_timeout") ||
+             commandNameEquals(name, "set_screen_timeout") ||
+             commandNameEquals(name, "set_dim_timeout")) {
     command.type = DeviceCommandType::ScreenDimTimeout;
     command.numericValue = firstInt(payload, "value", "seconds", 60);
-  } else if (commandNameEquals(name, "set_turn_off_after")) {
+  } else if (commandNameEquals(name, "turn_off_after") || commandNameEquals(name, "set_turn_off_after")) {
     command.type = DeviceCommandType::DeepSleepTimeout;
     command.numericValue = firstInt(payload, "value", "minutes", 5);
-  } else if (commandNameEquals(name, "set_speaker_volume")) {
+  } else if (commandNameEquals(name, "speaker_volume") || commandNameEquals(name, "set_speaker_volume")) {
     command.type = DeviceCommandType::SpeakerVolume;
     command.numericValue = firstInt(payload, "value", "volume", 100);
-  } else if (commandNameEquals(name, "set_language")) {
+  } else if (commandNameEquals(name, "language") || commandNameEquals(name, "set_language")) {
     command.type = DeviceCommandType::Language;
     command.value = firstString(payload, "value", "language");
-  } else if (commandNameEquals(name, "set_theme")) {
+  } else if (commandNameEquals(name, "theme") || commandNameEquals(name, "set_theme")) {
     command.type = DeviceCommandType::Theme;
     command.value = firstString(payload, "value", "theme");
-  } else if (commandNameEquals(name, "set_log_level")) {
+  } else if (commandNameEquals(name, "log_level") || commandNameEquals(name, "set_log_level")) {
     command.type = DeviceCommandType::LogLevel;
     command.value = firstString(payload, "value", "log_level");
   }

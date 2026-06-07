@@ -92,7 +92,7 @@ constexpr Entry Entries[] = {
     {"previous_track", "Previous track", "Vorig nummer"},
     {"queue_empty", "Queue empty", "Wachtrij leeg"},
     {"refreshing", "Refreshing", "Verversen"},
-    {"refresh_token_missing", "Playback credentials unavailable", "Afspeelgegevens niet beschikbaar"},
+    {"playback_credentials_unavailable", "Playback credentials unavailable", "Afspeelgegevens niet beschikbaar"},
     {"reset_pairing", "Reset Home Assistant pairing", "Home Assistant koppeling resetten"},
     {"reset_pairing_title", "Reset Home Assistant pairing?", "Home Assistant koppeling resetten?"},
     {"restart_device", "Restart device", "Device herstarten"},

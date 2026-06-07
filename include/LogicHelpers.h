@@ -290,7 +290,7 @@ inline bool preferencesKeyFits(const char *key) {
   return key != nullptr && strlen(key) <= 15;
 }
 
-inline bool isSpotifyPlaylistContextUri(const char *uri) {
+inline bool isBackendPlaylistContextUri(const char *uri) {
   static constexpr const char *prefix = "spotify:playlist:";
   return uri != nullptr && strncmp(uri, prefix, strlen(prefix)) == 0 && uri[strlen(prefix)] != '\0';
 }
@@ -384,8 +384,8 @@ inline bool isSha256Hex(const char *value) {
   return value[64] == '\0';
 }
 
-// True when Spotify's paged playlist response indicates there can be another page to inspect.
-inline bool shouldFetchNextSpotifyPlaylistPage(size_t itemCount, int total, int offset, int pageSize) {
+// True when a backend paged playlist response indicates there can be another page to inspect.
+inline bool shouldFetchNextBackendPlaylistPage(size_t itemCount, int total, int offset, int pageSize) {
   if (itemCount == 0 || pageSize <= 0 || offset < 0) {
     return false;
   }

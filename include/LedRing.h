@@ -20,8 +20,8 @@ public:
   // Plays one short color lap for transient actions such as push-to-talk state changes.
   void playPulse(const CRGB &color);
 
-  // Plays one short Spotify-green chase around the ring and fades back to off during normal boot.
-  void playBootBounce();
+  // Plays one short rainbow lap and fades back to off before normal boot/setup states take over.
+  void playStartupRainbow();
 
   // Advances a blue chase while the device is trying to join WiFi.
   void showWifiConnectingAnimation();

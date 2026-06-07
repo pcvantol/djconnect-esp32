@@ -72,7 +72,7 @@ Core data/security boundaries:
 
 - NVS credentials are currently stored in ESP32 NVS but not encrypted by this Arduino/PlatformIO build.
 - OTA status clearing in Home Assistant depends on the integration processing the post-boot status payload correctly.
-- The Home Assistant integration still needs a final synchronization pass for the post-MQTT architecture: native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payload compatibility.
+- Keep the Home Assistant integration and firmware contract synchronized around native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payload compatibility.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
 - MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
 - Home Assistant STT/TTS failures are backend/integration dependent. Firmware surfaces error bodies but cannot fix missing HA STT provider configuration.

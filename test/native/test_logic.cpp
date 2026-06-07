@@ -324,10 +324,10 @@ static void testVoiceChunkHelpers() {
   assert(!Logic::preferencesKeyFits("spotify_client_id"));
   assert(!Logic::preferencesKeyFits("spotify_refresh_token"));
 
-  assert(Logic::isSpotifyPlaylistContextUri("spotify:playlist:abc123"));
-  assert(!Logic::isSpotifyPlaylistContextUri("spotify:album:abc123"));
-  assert(!Logic::isSpotifyPlaylistContextUri("spotify:playlist:"));
-  assert(!Logic::isSpotifyPlaylistContextUri(nullptr));
+  assert(Logic::isBackendPlaylistContextUri("spotify:playlist:abc123"));
+  assert(!Logic::isBackendPlaylistContextUri("spotify:album:abc123"));
+  assert(!Logic::isBackendPlaylistContextUri("spotify:playlist:"));
+  assert(!Logic::isBackendPlaylistContextUri(nullptr));
 }
 
 static void testPlayModeMapping() {
@@ -353,11 +353,16 @@ static void testLanguageCodeNormalization() {
   assert(std::strcmp(Logic::languageCodeOrDefault(nullptr), "en") == 0);
 }
 
-static void testDeviceCommandParserSpotifyControls() {
+static void testDeviceCommandParserPlaybackControls() {
   JsonDocument doc;
 
   deserializeJson(doc, "{\"command\":\"next_track\"}");
   DeviceCommand command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Next);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"next\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::Next);
 
   doc.clear();
@@ -370,6 +375,12 @@ static void testDeviceCommandParserSpotifyControls() {
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::Volume);
   assert(command.numericValue == 42);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_volume\",\"value\":37}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Volume);
+  assert(command.numericValue == 37);
 
   doc.clear();
   deserializeJson(doc, "{\"command\":\"set_output\",\"output\":\"iPhone\"}");
@@ -392,10 +403,22 @@ static void testDeviceCommandParserSettings() {
   assert(command.type == DeviceCommandType::Status);
 
   doc.clear();
+  deserializeJson(doc, "{\"command\":\"screen_brightness\",\"value\":75}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::ScreenBrightness);
+  assert(command.numericValue == 75);
+
+  doc.clear();
   deserializeJson(doc, "{\"command\":\"set_brightness\",\"brightness\":75}");
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::ScreenBrightness);
   assert(command.numericValue == 75);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"screen_dim_timeout\",\"value\":120000}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::ScreenDimTimeout);
+  assert(command.numericValue == 120000);
 
   doc.clear();
   deserializeJson(doc, "{\"command\":\"set_screen_timeout\",\"seconds\":120}");
@@ -404,10 +427,22 @@ static void testDeviceCommandParserSettings() {
   assert(command.numericValue == 120);
 
   doc.clear();
+  deserializeJson(doc, "{\"command\":\"turn_off_after\",\"value\":900000}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::DeepSleepTimeout);
+  assert(command.numericValue == 900000);
+
+  doc.clear();
   deserializeJson(doc, "{\"command\":\"set_turn_off_after\",\"minutes\":15}");
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::DeepSleepTimeout);
   assert(command.numericValue == 15);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"speaker_volume\",\"value\":50}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::SpeakerVolume);
+  assert(command.numericValue == 50);
 
   doc.clear();
   deserializeJson(doc, "{\"command\":\"set_speaker_volume\",\"value\":50}");
@@ -416,16 +451,34 @@ static void testDeviceCommandParserSettings() {
   assert(command.numericValue == 50);
 
   doc.clear();
+  deserializeJson(doc, "{\"command\":\"language\",\"value\":\"nl\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Language);
+  assert(command.value == "nl");
+
+  doc.clear();
   deserializeJson(doc, "{\"command\":\"set_language\",\"language\":\"nl\"}");
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::Language);
   assert(command.value == "nl");
 
   doc.clear();
+  deserializeJson(doc, "{\"command\":\"theme\",\"value\":\"dark\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Theme);
+  assert(command.value == "dark");
+
+  doc.clear();
   deserializeJson(doc, "{\"command\":\"set_theme\",\"theme\":\"dark\"}");
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::Theme);
   assert(command.value == "dark");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"log_level\",\"value\":\"debug\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::LogLevel);
+  assert(command.value == "debug");
 
   doc.clear();
   deserializeJson(doc, "{\"command\":\"set_log_level\",\"log_level\":\"debug\"}");
@@ -442,10 +495,11 @@ static void testDeviceCommandParserDjResponseAndUnknown() {
   assert(command.type == DeviceCommandType::Next);
 
   doc.clear();
-  deserializeJson(doc, "{\"command\":\"dj_response\",\"text\":\"Daar gaan we\"}");
+  deserializeJson(doc, "{\"command\":\"dj_response\",\"text\":\"Daar gaan we\",\"audio_url\":\"http://ha.local/tts/123.mp3\"}");
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::DjResponse);
   assert(command.value == "Daar gaan we");
+  assert(command.audioUrl == "http://ha.local/tts/123.mp3");
 
   doc.clear();
   deserializeJson(doc, "{\"command\":\"set_brightness\"}");
@@ -465,13 +519,13 @@ static void testDeviceCommandParserDjResponseAndUnknown() {
 }
 
 static void testSpotifyPlaylistPagingDecision() {
-  assert(Logic::shouldFetchNextSpotifyPlaylistPage(50, 120, 0, 50));
-  assert(Logic::shouldFetchNextSpotifyPlaylistPage(50, 0, 50, 50));
-  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(20, 120, 50, 50));
-  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(50, 50, 0, 50));
-  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(0, 120, 0, 50));
-  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(50, 120, -1, 50));
-  assert(!Logic::shouldFetchNextSpotifyPlaylistPage(50, 120, 0, 0));
+  assert(Logic::shouldFetchNextBackendPlaylistPage(50, 120, 0, 50));
+  assert(Logic::shouldFetchNextBackendPlaylistPage(50, 0, 50, 50));
+  assert(!Logic::shouldFetchNextBackendPlaylistPage(20, 120, 50, 50));
+  assert(!Logic::shouldFetchNextBackendPlaylistPage(50, 50, 0, 50));
+  assert(!Logic::shouldFetchNextBackendPlaylistPage(0, 120, 0, 50));
+  assert(!Logic::shouldFetchNextBackendPlaylistPage(50, 120, -1, 50));
+  assert(!Logic::shouldFetchNextBackendPlaylistPage(50, 120, 0, 0));
 }
 
 static void testSpotifyDJMenuItemCounts() {
@@ -564,7 +618,7 @@ int main() {
   testVoiceChunkHelpers();
   testPlayModeMapping();
   testLanguageCodeNormalization();
-  testDeviceCommandParserSpotifyControls();
+  testDeviceCommandParserPlaybackControls();
   testDeviceCommandParserSettings();
   testDeviceCommandParserDjResponseAndUnknown();
   testSpotifyPlaylistPagingDecision();

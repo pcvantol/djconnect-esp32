@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.15
+## v2.9.16
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -38,12 +38,12 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Host-testable menu and network helper models plus release-script shell tests.
 - `release.sh` helper for local firmware release preparation, dry-run validation, manifest generation, tagging and optional public firmware repo publishing.
 - Postman collection for the public/local ESP device API.
-- GitHub release cleanup helper to dry-run and delete older public firmware releases/tags while keeping the newest semver release.
+- GitHub release cleanup helper to dry-run and delete older releases, tags and workflow runs while keeping the newest semver release/run.
 
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.15` / `v2.9.15`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.16` / `v2.9.16`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.
@@ -62,7 +62,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - OTA download and manual firmware upload now explicitly service the ESP task watchdog while hashing and writing firmware chunks.
 - Home Assistant status payloads now publish `state/status=online` plus `ota_state/update_state=idle` after boot so integrations can clear a stale OTA `updating` state.
 - MP3 DJ-response playback now temporarily pauses the loop-task watchdog around the blocking decoder loop and restores it afterward.
-- Normal boot LED-ring bounce uses a brighter green color and fades back to off.
+- Normal boot LED-ring feedback is now a fast rainbow startup lap that fades back to off before setup/AP, WiFi or playback states take over.
 - Display idle behavior keeps the configured brightness until the selected timeout, then turns the screen fully off.
 - The first button/encoder action while the screen is off only wakes the screen and does not execute the underlying action.
 - Web interface shows H/S status indicators, WiFi signal bars and a CSS battery icon with percentage/charging flash.

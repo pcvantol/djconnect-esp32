@@ -66,7 +66,7 @@ static uint8_t jpegScaleFor(uint16_t width, uint16_t height) {
 
 static String localizedStatusText(const String &text) {
   if (text == "Refresh token missing" || text == "Playback credentials unavailable") {
-    return I18n::text("refresh_token_missing");
+    return I18n::text("playback_credentials_unavailable");
   }
   if (text == "Spotify not connected" || text == "Playback not connected" || text == "Not connected") {
     return I18n::text("spotify_not_connected");

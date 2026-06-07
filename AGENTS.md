@@ -56,7 +56,7 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `include/Secrets.example.h`: template for optional build flags.
 - `src/SpotifyDJDevice.*`, `src/SpotifyDJDiscovery.*`, `src/SpotifyDJPairing.*`, `src/SpotifyDJApiServer.*`, `src/SpotifyDJOTA.*`: Home Assistant device-layer modules.
 - `include/VoiceRecorder.h`, `src/VoiceRecorder.cpp`, `include/VoiceHttpClient.h`, `src/VoiceHttpClient.cpp`: push-to-talk WAV recording and upload to the Home Assistant integration.
-- `src/SpotifyDJAssistClient.*`: deprecated direct Assist websocket client retained as source only; do not route physical PTT through it.
+- Direct ESP Assist websocket code is intentionally absent; physical PTT must go through the HA integration voice endpoint.
 - `src/WebPortal.cpp`: embedded mobile web UI, diagnostics, settings, logs and HA pairing panel.
 - `include/SoundManager.h`, `src/SoundManager.cpp`: generated built-in speaker cues and cue volume scaling.
 - `README.md`: user-facing English project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
@@ -226,7 +226,7 @@ NVS namespaces:
 - `fw_channel`
 - `assist_pipe`
 
-Keep ESP32 Preferences keys at 15 characters or less. External Home Assistant JSON payload field names may remain long, for example `spotify_refresh_token`; only the internal NVS key must be shortened.
+Keep ESP32 Preferences keys at 15 characters or less. External Home Assistant JSON payload field names may remain longer, but playback-backend secret fields must not be accepted or persisted on the ESP.
 
 The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postman_collection.json`. Keep all credentials as variables/placeholders; never commit real device tokens, playback-backend refresh tokens or Home Assistant URLs that identify a private instance.
 
@@ -260,7 +260,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - On release, the ESP uploads the WAV as raw request body to `/api/spotify_dj/voice` with `Content-Type: audio/wav`, `Authorization: Bearer <device_token>` and `X-SpotifyDJ-Device-ID`.
 - The Home Assistant integration/backend owns any Home Assistant core auth needed for Assist, STT or TTS. If Assist requires `/api/websocket`, that websocket connection belongs in the HA integration, not on the ESP.
 - `/api/spotify_dj/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
-- Do not route physical PTT through `SpotifyDJAssistClient`; direct ESP Assist websocket auth causes `auth_invalid` because the SpotifyDJ device token is for the integration API, not Home Assistant core.
+- Do not add direct ESP Assist websocket auth; the SpotifyDJ device token is for the integration API, not Home Assistant core.
 - Do not start physical PTT from Current Song/AlbumArt. Current Song is a read-only detail screen and uses the same top-button back behavior as menu screens.
 - The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/spotify_dj/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.

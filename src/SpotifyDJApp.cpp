@@ -123,7 +123,7 @@ void SpotifyDJApp::begin() {
     return;
   }
 
-  ledRing_.playBootBounce();
+  ledRing_.playStartupRainbow();
   display_.showBootMessage(I18n::text("boot_booting"), battery_);
   connectWiFi(Config::WifiConnectTimeoutMs, true);
 
@@ -1642,7 +1642,7 @@ bool SpotifyDJApp::handleDeviceCommand(const DeviceCommand &command, String &mes
   if (command.type == DeviceCommandType::DjResponse) {
     AppLog.println("Device command: DJ response");
     bool spoken = false;
-    const bool ok = handleDjResponseText(command.value, "", spoken);
+    const bool ok = handleDjResponseText(command.value, command.audioUrl, spoken);
     message = ok ? "DJ response displayed" : "DJ response failed";
     return ok;
   }

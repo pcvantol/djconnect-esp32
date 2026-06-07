@@ -29,5 +29,6 @@ enum class DeviceCommandType {
 struct DeviceCommand {
   DeviceCommandType type = DeviceCommandType::None;
   String value;
+  String audioUrl;
   int numericValue = 0;
 };

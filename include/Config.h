@@ -104,10 +104,8 @@ static constexpr int DisplayDimBrightnessPercent = 50;
 // Captive portal setup mode.
 static const char *const ProvisioningApSsid = "SpotifyDJ Setup";
 
-// Spotify endpoints; user credentials are provisioned into NVS, never compiled into firmware.
-static const char *const SpotifyAccountsUrl = "https://accounts.spotify.com/api/token";
-static const char *const SpotifyApiBaseUrl = "https://api.spotify.com/v1";
-static const char *const SpotifyLikedProxyPlaylistName = "SpotifyDJ Liked Proxy";
+// Playback backend credentials and API endpoints live in Home Assistant, not on the ESP.
+static const char *const LikedProxyPlaylistName = "SpotifyDJ Liked Proxy";
 static const char *const BootstrapFirmwareReleaseApiUrl =
     "https://api.github.com/repos/pcvantol/spotify-dj-firmware/releases/latest";
 static const char *const BootstrapFirmwareManifestAsset = "firmware_manifest.json";

@@ -220,14 +220,14 @@ Supported command payloads:
 {"command":"set_volume","value":35}
 {"command":"set_output","value":"iPhone"}
 {"command":"start_playlist","value":"spotify:playlist:..."}
-{"command":"set_brightness","value":75}
-{"command":"set_screen_timeout","seconds":60}
-{"command":"set_turn_off_after","minutes":15}
-{"command":"set_speaker_volume","value":50}
-{"command":"set_language","value":"nl"}
-{"command":"set_theme","value":"dark"}
-{"command":"set_log_level","value":"info"}
-{"command":"dj_response","text":"Daar gaan we."}
+{"command":"screen_brightness","value":75}
+{"command":"screen_dim_timeout","value":60000}
+{"command":"turn_off_after","value":900000}
+{"command":"speaker_volume","value":50}
+{"command":"language","value":"nl"}
+{"command":"theme","value":"dark"}
+{"command":"log_level","value":"info"}
+{"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/spotify_dj/tts/example.mp3"}
 ```
 
 Status is still posted periodically to the Home Assistant integration through `/api/spotify_dj/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback.
@@ -284,7 +284,7 @@ Local development builds still show `vdev` on the device, but the Home Assistant
 
 Freshly provisioned, unpaired release firmware also performs a pre-pairing bootstrap update check after WiFi connects. It uses the GitHub Releases API for `pcvantol/spotify-dj-firmware`, follows the normal OTA screen/LED/sound/write flow when a newer release is available, and continues silently into pairing if the check fails. Dev builds are skipped so local development firmware is not replaced automatically.
 
-During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot.
+During normal boot, the LED ring plays one fast rainbow startup lap before WiFi, setup/AP, charging or playback states take over. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot.
 
 ## GitHub Firmware Release
 
@@ -321,7 +321,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.15 --dry-run` validates the release plan without touching files. Both `2.9.15` and `v2.9.15` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.16 --dry-run` validates the release plan without touching files. Both `2.9.16` and `v2.9.16` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
