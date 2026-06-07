@@ -400,28 +400,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     </section>
 
     <section class="panel">
-      <h2 data-i18n="spotify">Spotify</h2>
+      <h2 data-i18n="playback">Playback</h2>
       <div class="grid">
         <div class="row"><span class="key" data-i18n="connection">Connection</span><span id="spotifyState" class="value">-</span></div>
-        <div class="row"><span class="key" data-i18n="token">Token</span><span id="spotifyToken" class="value">-</span></div>
         <div class="row"><span class="key" data-i18n="error">Error</span><span id="spotifyError" class="value">-</span></div>
       </div>
-      <button id="refreshButton" data-i18n="refreshSpotify" class="section-action" type="button">Refresh Spotify status</button>
+      <button id="refreshButton" data-i18n="refreshPlayback" class="section-action" type="button">Refresh playback status</button>
       <div id="refreshStatus" class="status"></div>
-      <form id="spotifyCredentialForm" class="controls section-action">
-        <label data-i18n-label="spotifyClientIdRepair">Spotify client ID (optional)
-          <input id="spotifyRepairClientId" name="clientId" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-i18n-placeholder="spotifyClientIdRepairPlaceholder" placeholder="leave blank to keep current">
-        </label>
-        <label data-i18n-label="spotifyRefreshRepair">New Spotify refresh token
-          <input id="spotifyRepairRefreshToken" name="refreshToken" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required>
-        </label>
-        <label data-i18n-label="spotifyMarketRepair">Spotify market
-          <input id="spotifyRepairMarket" name="market" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="NL">
-        </label>
-        <button data-i18n="saveSpotifyToken" class="warning" type="submit">Save token &amp; test</button>
-      </form>
-      <div class="fine" data-i18n="spotifyTokenFine">The refresh token is saved and tested immediately. It is never shown after submission.</div>
-      <div id="spotifyCredentialStatus" class="status"></div>
     </section>
 
     <section class="panel">
@@ -521,9 +506,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.",
         wifiPasswordPlaceholder:"leave blank to keep current",
         ha:"Home Assistant", pairing:"Pairing", pairCode:"Pair code", firmware:"Firmware", model:"Model", resetPairing:"Reset pairing",
-        spotify:"Spotify", connection:"Connection", token:"Token", error:"Error", refreshSpotify:"Refresh Spotify status", spotifyClientIdRepair:"Spotify client ID (optional)",
-        spotifyClientIdRepairPlaceholder:"leave blank to keep current", spotifyRefreshRepair:"New Spotify refresh token", spotifyMarketRepair:"Spotify market",
-        saveSpotifyToken:"Save token & test", spotifyTokenFine:"The refresh token is saved and tested immediately. Fill the client ID too if this device does not have one stored yet. The token is never shown after submission.", broker:"Broker",
+        spotify:"Playback", connection:"Connection", token:"Token", error:"Error", refreshSpotify:"Refresh playback status", spotifyClientIdRepair:"Backend client ID",
+        spotifyClientIdRepairPlaceholder:"leave blank to keep current", spotifyRefreshRepair:"Backend refresh token", spotifyMarketRepair:"Backend market",
+        saveSpotifyToken:"Save token & test", spotifyTokenFine:"Backend credentials are managed in Home Assistant.", broker:"Broker",
         username:"Username", discovery:"HA discovery", lastPublished:"Last published", diagnostics:"Diagnostics", screen:"Screen",
         ledRing:"LED ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Storage", sketch:"Sketch", restart:"Restart device",
         logs:"Logs", pauseLogs:"Pause logs", selectAll:"Select all", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -548,7 +533,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om te koppelen", providePair:"en vul koppelcode in:",
         nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start SpotifyDJ Liked Proxy",
         webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
-        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de SpotifyDJ response flow", spotifyUnavailable:"Spotify niet verbonden",
+        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de SpotifyDJ response flow", spotifyUnavailable:"Afspelen niet verbonden",
         output:"Geluidsuitgang", loadingOutputs:"Outputs laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
@@ -559,9 +544,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"Het device test de nieuwe WiFi nadat deze pagina antwoord krijgt. Bij succes worden credentials opgeslagen en herstart het device.",
         wifiPasswordPlaceholder:"leeg laten om huidige te behouden",
         ha:"Home Assistant", pairing:"Koppeling", pairCode:"Koppelcode", firmware:"Firmware", model:"Model", resetPairing:"Home Assistant koppeling resetten",
-        spotify:"Spotify", connection:"Verbinding", token:"Token", error:"Fout", refreshSpotify:"Spotify status verversen", spotifyClientIdRepair:"Spotify client ID (optioneel)",
-        spotifyClientIdRepairPlaceholder:"leeg laten om huidige te behouden", spotifyRefreshRepair:"Nieuwe Spotify refresh token", spotifyMarketRepair:"Spotify market",
-        saveSpotifyToken:"Token opslaan & testen", spotifyTokenFine:"De refresh token wordt opgeslagen en direct getest. Vul ook de client ID in als dit device er nog geen heeft opgeslagen. De token wordt na verzenden nooit getoond.", broker:"Broker",
+        spotify:"Afspelen", connection:"Verbinding", token:"Token", error:"Fout", refreshSpotify:"Afspeelstatus verversen", spotifyClientIdRepair:"Backend client ID",
+        spotifyClientIdRepairPlaceholder:"leeg laten om huidige te behouden", spotifyRefreshRepair:"Backend refresh token", spotifyMarketRepair:"Backend market",
+        saveSpotifyToken:"Token opslaan & testen", spotifyTokenFine:"Backend credentials worden beheerd in Home Assistant.", broker:"Broker",
         username:"Gebruikersnaam", discovery:"HA discovery", lastPublished:"Laatst gepubliceerd", diagnostics:"Diagnostiek", screen:"Scherm",
         ledRing:"LED-ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Opslag", sketch:"Sketch", restart:"Device herstarten",
         logs:"Logs", pauseLogs:"Pauzeer logs", selectAll:"Selecteer alles", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -767,7 +752,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       text("spotifyState", data.spotify.authorized ? tr("authorized") : tr("notAuthorized"));
       setStatusDot("spotifyHeaderStatus", !!data.spotify.authorized);
       setSpotifyControlsEnabled(!!data.spotify.authorized);
-      text("spotifyToken", data.spotify.authorized ? `${data.spotify.tokenExpiresInSec} ${tr("tokenSecondsLeft")}` : "-");
       text("spotifyError", data.spotify.error || "-");
       homeAssistantRuntimePaired = !!(data.ha && data.ha.paired);
       setStatusDot("haHeaderStatus", homeAssistantRuntimePaired);
@@ -1033,27 +1017,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("refreshStatus").textContent = await response.text();
       refresh();
     });
-    $("spotifyCredentialForm").addEventListener("submit", async event => {
-      event.preventDefault();
-      $("spotifyCredentialStatus").textContent = tr("saving");
-      const body = JSON.stringify({
-        clientId: $("spotifyRepairClientId").value.trim(),
-        refreshToken: $("spotifyRepairRefreshToken").value.trim(),
-        market: $("spotifyRepairMarket").value.trim()
-      });
-      try {
-        const response = await fetch("/api/spotify-credentials", {
-          method:"POST",
-          headers: { "Content-Type":"application/json" },
-          body
-        });
-        $("spotifyCredentialStatus").textContent = await response.text();
-      } finally {
-        $("spotifyRepairClientId").value = "";
-        $("spotifyRepairRefreshToken").value = "";
-      }
-      refresh();
-    });
     $("rebootButton").addEventListener("click", async () => {
       if (!confirm(tr("restartConfirm"))) return;
       $("otaStatus").textContent = "";
@@ -1109,7 +1072,6 @@ void WebPortal::begin(
     SettingsCallback settingsCallback,
     WifiSettingsCallback wifiSettingsCallback,
     VoiceTextCallback voiceTextCallback,
-    SpotifyCredentialsCallback spotifyCredentialsCallback,
     SimpleCallback refreshCallback,
     SimpleCallback resetPairingCallback,
     SimpleCallback hardResetCallback) {
@@ -1133,7 +1095,6 @@ void WebPortal::begin(
   settingsCallback_ = settingsCallback;
   wifiSettingsCallback_ = wifiSettingsCallback;
   voiceTextCallback_ = voiceTextCallback;
-  spotifyCredentialsCallback_ = spotifyCredentialsCallback;
   refreshCallback_ = refreshCallback;
   resetPairingCallback_ = resetPairingCallback;
   hardResetCallback_ = hardResetCallback;
@@ -1210,7 +1171,6 @@ void WebPortal::configureRoutes() {
   server_.on("/api/transfer", HTTP_POST, [this]() { handleTransferPost(); });
   server_.on("/api/playback", HTTP_POST, [this]() { handlePlaybackCommandPost(); });
   server_.on("/api/voice-text", HTTP_POST, [this]() { handleVoiceTextPost(); });
-  server_.on("/api/spotify-credentials", HTTP_POST, [this]() { handleSpotifyCredentialsPost(); });
   server_.on("/api/refresh", HTTP_POST, [this]() { handleRefreshPost(); });
   server_.on("/api/reset-pairing", HTTP_POST, [this]() { handleResetPairingPost(); });
   server_.on("/api/reboot", HTTP_POST, [this]() { handleRebootPost(); });
@@ -1687,35 +1647,6 @@ void WebPortal::handleVoiceTextPost() {
   String payload;
   serializeJson(doc, payload);
   server_.send(ok ? 200 : 502, "application/json", payload);
-}
-
-void WebPortal::handleSpotifyCredentialsPost() {
-  if (spotifyCredentialsCallback_ == nullptr) {
-    server_.send(400, "text/plain", localizedText("Missing refresh token", "Refresh token ontbreekt"));
-    return;
-  }
-
-  const String rawBody = server_.arg("plain");
-  String clientId = postedValue(server_, rawBody, "clientId", "client_id");
-  String refreshToken = postedValue(server_, rawBody, "refreshToken", "refresh_token");
-  String market = postedValue(server_, rawBody, "market", "spotify_market");
-  clientId.trim();
-  refreshToken.trim();
-  market.trim();
-  AppLog.print("Web Spotify repair: refresh_token=");
-  AppLog.print(refreshToken.isEmpty() ? "missing" : "present");
-  AppLog.print(" raw_len=");
-  AppLog.println(rawBody.length());
-  if (refreshToken.isEmpty()) {
-    server_.send(400, "text/plain", localizedText("Missing refresh token", "Refresh token ontbreekt"));
-    return;
-  }
-
-  AppLog.print("Web Spotify repair: submitted client_id=");
-  AppLog.println(clientId.isEmpty() ? "keep-current" : "present");
-  String message;
-  const bool ok = spotifyCredentialsCallback_(callbackContext_, clientId, refreshToken, market, message);
-  server_.send(ok ? 200 : 502, "text/plain", message);
 }
 
 void WebPortal::handleRefreshPost() {

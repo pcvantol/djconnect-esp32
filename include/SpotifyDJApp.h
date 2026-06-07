@@ -31,14 +31,14 @@
 
 class SpotifyDJApp {
 public:
-  // Initializes hardware, connects WiFi, authorizes Spotify, and draws the first screen.
+  // Initializes hardware, connects WiFi, links the HA playback proxy, and draws the first screen.
   void begin();
 
-  // Runs input handling, queued Spotify work, periodic refreshes, and display power management.
+  // Runs input handling, queued playback work, periodic refreshes, and display power management.
   void loop();
 
 private:
-  // Connects to WiFi and performs the TLS clock sync when secure Spotify TLS is enabled.
+  // Loads stored setup settings before WiFi, HA and UI startup.
   void loadProvisioning();
   bool shouldStartProvisioningPortal() const;
   bool connectWiFi(uint32_t timeoutMs = Config::WifiConnectTimeoutMs, bool bootScreen = false);
@@ -51,20 +51,14 @@ private:
   String captivePortalPage(
       const String &message,
       bool error,
-      const String &ssid = "",
-      const String &clientId = "",
-      const String &refreshToken = "",
-      const String &spotifyMarket = "NL") const;
+      const String &ssid = "") const;
   bool testAndSaveProvisioning(
       const String &ssid,
       const String &password,
-      const String &clientId,
-      const String &refreshToken,
-      const String &spotifyMarket,
       String &message);
   bool handleBleProvisioningPayload(const String &payload, String &message);
 
-  // Routes physical input events to the Spotify actions or refresh commands they trigger.
+  // Routes physical input events to playback actions or refresh commands they trigger.
   void handleInputEvents(const InputEvents &events);
   void handlePlaybackInputEvents(const InputEvents &events);
   void handleMenuInputEvents(const InputEvents &events);
@@ -114,6 +108,8 @@ private:
   void toggleStressTest();
   void stopStressTest(const String &reason);
   void runStressTestStep();
+  void resetPong();
+  void updatePong();
   bool transferToOutputByNameOrId(const String &output);
   bool startPlaylistByNameOrUri(const String &playlist);
 
@@ -163,7 +159,6 @@ private:
   void recordLoopMetrics(uint32_t loopStartedAt);
   // Applies settings posted from the web dashboard and persists them.
   void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode, const String &logLevel);
-  bool repairSpotifyCredentialsFromWeb(const String &clientId, const String &refreshToken, const String &market, String &message);
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
 
@@ -189,7 +184,6 @@ private:
       const String &logLevel);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
-  static bool repairSpotifyCredentialsFromWebCallback(void *context, const String &clientId, const String &refreshToken, const String &market, String &message);
   static void wakeWordDetectedCallback(void *context);
   static void refreshFromWebCallback(void *context);
   static void resetPairingFromWebCallback(void *context);
@@ -251,6 +245,12 @@ private:
   size_t wifiFailureSelection_ = 0;
   bool wifiFailureConfirmHardReset_ = false;
   size_t soundOutputSelection_ = 0;
+  int pongPaddleY_ = 86;
+  int pongBallX_ = 160;
+  int pongBallY_ = 86;
+  int pongVelocityX_ = 3;
+  int pongVelocityY_ = 2;
+  int pongScore_ = 0;
   uint32_t screenOffTimeoutMs_ = Config::DisplayOffAfterMs;
   uint32_t deviceSleepTimeoutMs_ = Config::DeviceSleepAfterMs;
   uint8_t screenBrightnessPercent_ = 100;
@@ -306,6 +306,7 @@ private:
   uint32_t lastSlowLoopLogAt_ = 0;
   uint32_t stressTestStartedAt_ = 0;
   uint32_t lastStressTestStepAt_ = 0;
+  uint32_t lastPongFrameAt_ = 0;
   uint32_t stressTestStepCount_ = 0;
   uint32_t heapTrendBaselineMinFree_ = 0;
   uint32_t heapTrendBaselineLargestBlock_ = 0;

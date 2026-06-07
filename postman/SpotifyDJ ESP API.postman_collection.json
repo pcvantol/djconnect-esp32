@@ -22,16 +22,6 @@
       "type": "string"
     },
     {
-      "key": "spotify_client_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "spotify_refresh_token",
-      "value": "",
-      "type": "secret"
-    },
-    {
       "key": "firmware_url",
       "value": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/v2.5.0/spotifydj-device-v2.5.0.bin",
       "type": "string"
@@ -149,51 +139,7 @@
                 "forget"
               ]
             },
-            "description": "Clears HA pairing and Spotify credentials, updates mDNS TXT records, then restarts into pairing mode."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Provisioning",
-      "item": [
-        {
-          "name": "Provision Spotify Credentials",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{device_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"spotify_client_id\": \"{{spotify_client_id}}\",\n  \"spotify_refresh_token\": \"{{spotify_refresh_token}}\",\n  \"spotify_market\": \"NL\",\n  \"device_language\": \"nl\",\n  \"assist_pipeline_id\": \"\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/device/provision_spotify",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "device",
-                "provision_spotify"
-              ]
-            },
-            "description": "Stores Spotify OAuth credentials in ESP NVS. Language and assist pipeline id are optional."
+            "description": "Clears HA pairing and legacy local playback credentials, updates mDNS TXT records, then restarts into pairing mode."
           },
           "response": []
         }

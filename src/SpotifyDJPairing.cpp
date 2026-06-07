@@ -10,8 +10,6 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
-#include "SpotifyProvisioning.h"
-
 namespace {
 String joinUrl(const String &base, const char *path) {
   if (base.endsWith("/")) {
@@ -62,18 +60,8 @@ void SpotifyDJPairing::applyProvisionedLanguage(JsonVariantConst payload) {
 }
 
 void SpotifyDJPairing::applyProvisionedSpotifyCredentials(JsonVariantConst payload) {
-  if (device_ == nullptr) {
-    return;
-  }
-  const SpotifyProvisioningCredentials credentials = SpotifyProvisioning::parseCredentials(payload);
-  if (!credentials.complete()) {
-    return;
-  }
-  const bool saved = device_->saveSpotifyCredentials(
-      credentials.clientId,
-      credentials.refreshToken,
-      credentials.market == nullptr ? "NL" : credentials.market);
-  if (saved && spotifyProvisionedCallback_ != nullptr) {
+  (void)payload;
+  if (spotifyProvisionedCallback_ != nullptr) {
     spotifyProvisionedCallback_(spotifyProvisionedContext_);
   }
 }

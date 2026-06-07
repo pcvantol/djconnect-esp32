@@ -55,6 +55,9 @@ public:
   // Renders the newest firmware log lines from the in-memory Serial log buffer.
   void renderLogsScreen(const String *lines, size_t lineCount, const StatusNotice &notice);
 
+  // Renders the tiny Pong mini game screen.
+  void renderPongScreen(int paddleY, int ballX, int ballY, int score, const StatusNotice &notice);
+
   // Renders the 160x160 current-song album art view.
   void renderAlbumArtScreen(
       const SpotifyState &playback,
@@ -150,6 +153,9 @@ private:
 
   template <typename Canvas>
   void renderLogs(Canvas &canvas, const String *lines, size_t lineCount, const StatusNotice &notice);
+
+  template <typename Canvas>
+  void renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, const StatusNotice &notice);
 
   template <typename Canvas>
   String clippedText(Canvas &canvas, String text, int maxWidth, uint8_t font);

@@ -10,6 +10,7 @@ enum class UiScreen {
   Playlists,
   SoundOutputs,
   Logs,
+  Pong,
   RootMenu,
   About,
   Settings,
@@ -47,7 +48,7 @@ constexpr size_t ConfirmOptionCount = 2;
 constexpr size_t HardResetOptionCount = ConfirmOptionCount;
 constexpr size_t WifiFailureOptionCount = 4;
 constexpr size_t SettingsItemCount = 13;
-constexpr size_t RootMenuItemCount = 8;
+constexpr size_t RootMenuItemCount = 9;
 constexpr size_t AboutItemCount = 10;
 constexpr size_t FixedSoundOutputCount = 2;
 constexpr size_t MaxVisibleOutputs = 6;
@@ -61,6 +62,7 @@ inline size_t itemCount(UiScreen screen, const MenuCountInput &input) {
     case UiScreen::AlbumArt:
     case UiScreen::Queue:
     case UiScreen::Logs:
+    case UiScreen::Pong:
     case UiScreen::NowPlaying:
       return 0;
     case UiScreen::Playlists:

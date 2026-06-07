@@ -65,13 +65,13 @@ static uint8_t jpegScaleFor(uint16_t width, uint16_t height) {
 }
 
 static String localizedStatusText(const String &text) {
-  if (text == "Refresh token missing") {
+  if (text == "Refresh token missing" || text == "Playback credentials unavailable") {
     return I18n::text("refresh_token_missing");
   }
-  if (text == "Spotify not connected" || text == "Not connected") {
+  if (text == "Spotify not connected" || text == "Playback not connected" || text == "Not connected") {
     return I18n::text("spotify_not_connected");
   }
-  if (text == "Spotify connected" || text == "Spotify authorized") {
+  if (text == "Spotify connected" || text == "Playback connected" || text == "Spotify authorized") {
     return I18n::text("spotify_connected");
   }
   if (text == "WiFi disconnected") {
@@ -257,6 +257,15 @@ void DisplayManager::renderLogsScreen(const String *lines, size_t lineCount, con
 
   tft_.fillScreen(TFT_BLACK);
   renderLogs(tft_, lines, lineCount, notice);
+}
+
+void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int score, const StatusNotice &notice) {
+  if (screenBufferReady_) {
+    renderPong(screen_, paddleY, ballX, ballY, score, notice);
+    screen_.pushSprite(0, 0);
+    return;
+  }
+  renderPong(tft_, paddleY, ballX, ballY, score, notice);
 }
 
 void DisplayManager::renderAlbumArtScreen(
@@ -578,13 +587,18 @@ void DisplayManager::renderBoot(Canvas &canvas, const String &message, const Bat
   canvas.drawString(Config::AppVersion, 102, 70, 2);
 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  const int breakAt = message.indexOf('\n');
-  if (breakAt >= 0) {
-    canvas.drawString(clippedText(canvas, message.substring(0, breakAt), 292, 2), 14, 118, 2);
-    canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-    canvas.drawString(clippedText(canvas, message.substring(breakAt + 1), 292, 2), 14, 138, 2);
-  } else {
-    canvas.drawString(clippedText(canvas, message, 292, 2), 14, 124, 2);
+  String remaining = message;
+  const bool multiLine = remaining.indexOf('\n') >= 0;
+  const int startY = multiLine ? 104 : 124;
+  for (int lineIndex = 0; lineIndex < 3 && remaining.length() > 0; ++lineIndex) {
+    const int breakAt = remaining.indexOf('\n');
+    const String line = breakAt >= 0 ? remaining.substring(0, breakAt) : remaining;
+    canvas.setTextColor(lineIndex == 0 ? TFT_WHITE : TFT_LIGHTGREY, TFT_BLACK);
+    canvas.drawString(clippedText(canvas, line, 292, 2), 14, startY + (lineIndex * 20), 2);
+    if (breakAt < 0) {
+      break;
+    }
+    remaining = remaining.substring(breakAt + 1);
   }
 }
 
@@ -823,6 +837,20 @@ void DisplayManager::renderLogs(Canvas &canvas, const String *lines, size_t line
     canvas.drawString("No logs yet", 8, 58, 2);
   }
 
+  drawMenuFooter(canvas, notice);
+}
+
+template <typename Canvas>
+void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, const StatusNotice &notice) {
+  canvas.setTextDatum(TL_DATUM);
+  canvas.fillScreen(TFT_BLACK);
+  drawMenuTitle(canvas, "Pong");
+  canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
+  canvas.drawFastVLine(160, 42, 118, TFT_DARKGREY);
+  canvas.fillRoundRect(18, paddleY, 8, 34, 3, TFT_GREEN);
+  canvas.fillCircle(ballX, ballY, 4, TFT_ORANGE);
+  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
+  canvas.drawString(String(score), 282, 10, 2);
   drawMenuFooter(canvas, notice);
 }
 

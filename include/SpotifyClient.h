@@ -1,4 +1,4 @@
-// Spotify Web API client for auth, playback state, playback controls, and async volume updates.
+// Home Assistant proxy client for playback state, controls, and async volume updates.
 #pragma once
 
 #include <Arduino.h>
@@ -8,23 +8,28 @@
 
 #include "AppState.h"
 
+class SpotifyDJDevice;
+
 class SpotifyClient {
 public:
   explicit SpotifyClient(SpotifyState &state) : state_(state) {}
 
-  // Creates request locks, starts the volume worker, and loads Spotify credentials from NVS.
+  // Creates request locks and starts the volume worker.
   void begin();
 
-  // Exchanges the refresh token for an access token.
+  // Attaches the paired Home Assistant device identity used for proxy commands.
+  void setHomeAssistantDevice(SpotifyDJDevice &device);
+
+  // Checks whether Home Assistant can currently proxy playback commands.
   bool authorize();
 
-  // Temporarily uses submitted Spotify credentials for captive-portal authorization testing.
+  // Compatibility no-op: playback backend credentials live in Home Assistant.
   void useCredentialsForProvisioning(const String &clientId, const String &refreshToken);
 
-  // Clears in-memory Spotify auth state without deleting provisioned credentials.
+  // Clears in-memory proxy/auth state.
   void clearStoredTokens();
 
-  // Reloads client id, refresh token, and market from NVS after external provisioning.
+  // Kept for compatibility with older provisioning flows; HA owns playback backend credentials now.
   void reloadCredentials();
 
   bool isAuthorized() const;
@@ -32,20 +37,20 @@ public:
   uint32_t accessTokenExpiresInSeconds() const;
   String refreshTokenSource() const;
 
-  // Reads the active Spotify Connect playback, device, track, artist, progress, and volume.
+  // Reads active playback, output, track, artist, progress, and volume.
   bool refreshPlayback();
 
-  // Reads only available Connect devices, used when no active playback exists.
+  // Reads only available outputs, used when no active playback exists.
   bool refreshDevicesOnly();
 
-  // Reads all available Spotify Connect outputs for the Sound outputs screen.
+  // Reads all available outputs for the Sound outputs screen.
   bool refreshDevices(DeviceListState &devices);
 
-  // Reads the next songs from Spotify's play queue.
+  // Reads the next songs from the backend play queue.
   bool refreshQueue(QueueState &queue);
   bool refreshPlaylistContextQueue(QueueState &queue);
 
-  // Reads the user's Spotify playlists for device/web selection.
+  // Reads backend playlists for device/web selection.
   bool refreshPlaylists(PlaylistListState &playlists);
 
   // Playback control endpoints used by the current screen actions.
@@ -79,7 +84,19 @@ private:
 
   static void volumeWorkerEntry(void *parameter);
 
-  // TLS/auth helpers.
+  // Home Assistant proxy helpers.
+  bool proxyCommand(const String &command, JsonDocument *response = nullptr);
+  bool proxyCommand(const String &command, const String &value, JsonDocument *response = nullptr);
+  bool proxyCommand(const String &command, int value, JsonDocument *response = nullptr);
+  bool proxyRequest(JsonDocument &request, JsonDocument *response = nullptr);
+  String proxyEndpoint() const;
+  void applyPlayback(JsonVariantConst playback);
+  void applyDeviceList(JsonVariantConst source, DeviceListState &devices);
+  void applyQueue(JsonVariantConst source, QueueState &queue);
+  void applyPlaylists(JsonVariantConst source, PlaylistListState &playlists);
+  void setProxyError(const String &message);
+
+  // Legacy direct-backend helpers retained as guarded no-ops while callers move to proxy commands.
   void configureTls(WiFiClientSecure &client);
   void loadSpotifyCredentials();
   void saveRefreshToken(const String &newRefreshToken);
@@ -108,6 +125,7 @@ private:
   String spotifyErrorFromPayload(int code, const String &payload) const;
 
   SpotifyState &state_;
+  SpotifyDJDevice *device_ = nullptr;
   QueueHandle_t volumeCommandQueue_ = nullptr;
   QueueHandle_t volumeResultQueue_ = nullptr;
   SemaphoreHandle_t requestMutex_ = nullptr;

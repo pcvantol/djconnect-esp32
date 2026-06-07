@@ -1,16 +1,17 @@
-// Spotify Web API integration.
-// The firmware uses the Web API only; it controls an existing Spotify Connect player.
+// Playback integration.
+// Runtime playback is proxied through the paired Home Assistant integration so
+// backend OAuth tokens do not need to live on the ESP device.
 #include "SpotifyClient.h"
 
 #include "AppLog.h"
 
-#include <Preferences.h>
 #include <WiFi.h>
 
 #include "Config.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
+#include "SpotifyDJDevice.h"
 #include "TextHelpers.h"
 
 #ifndef SPOTIFY_MARKET
@@ -20,32 +21,6 @@
 #ifndef SPOTIFY_ALLOW_INSECURE_TLS
 #define SPOTIFY_ALLOW_INSECURE_TLS 0
 #endif
-
-// Spotify currently chains to DigiCert Global Root G2; keep TLS secure unless debugging demands otherwise.
-static const char SpotifyRootCa[] = R"EOF(
------BEGIN CERTIFICATE-----
-MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh
-MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
-d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH
-MjAeFw0xMzA4MDExMjAwMDBaFw0zODAxMTUxMjAwMDBaMGExCzAJBgNVBAYTAlVT
-MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j
-b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IEcyMIIBIjANBgkqhkiG
-9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzfNNNx7a8myaJCtSnX/RrohCgiN9RlUyfuI
-2/Ou8jqJkTx65qsGGmvPrC3oXgkkRLpimn7Wo6h+4FR1IAWsULecYxpsMNzaHxmx
-1x7e/dfgy5SDN67sH0NO3Xss0r0upS/kqbitOtSZpLYl6ZtrAGCSYP9PIUkY92eQ
-q2EGnI/yuum06ZIya7XzV+hdG82MHauVBJVJ8zUtluNJbd134/tJS7SsVQepj5Wz
-tCO7TG1F8PapspUwtP1MVYwnSlcUfIKdzXOS0xZKBgyMUNGPHgm+F6HmIcr9g+UQ
-vIOlCsRnKPZzFBQ9RnbDhxSJITRNrw9FDKZJobq7nMWxM4MphQIDAQABo0IwQDAP
-BgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNVHQ4EFgQUTiJUIBiV
-5uNu5g/6+rkS7QYXjzkwDQYJKoZIhvcNAQELBQADggEBAGBnKJRvDkhj6zHd6mcY
-1Yl9PMWLSn/pvtsrF9+wX3N3KjITOYFnQoQj8kVnNeyIv/iPsGEMNKSuIEyExtv4
-NeF22d+mQrvHRAiGfzZ0JFrabA0UWTW98kndth/Jsw1HKj2ZL7tcu7XUIOGZX1NG
-Fdtom/DzMNU+MeKNhJ7jitralj41E6Vf8PlwUHBHQRFXGU7Aj64GxJUTFy8bJZ91
-8rGOmaFvE7FBcf6IKshPECBV1/MUReXgRPTqh5Uykw7+U0b6LJ3/iyK5S9kJRaTe
-pLiaWN0bfVKfjllDiIGknibVb63dDcY3fe0Dkhvld1927jyNxF1WW6LZZm6zNTfl
-MrY=
------END CERTIFICATE-----
-)EOF";
 
 SpotifyClient::RequestGuard::RequestGuard(SemaphoreHandle_t mutex, uint32_t waitMs)
     : mutex_(mutex) {
@@ -67,6 +42,10 @@ bool SpotifyClient::RequestGuard::isLocked() const {
   return locked_;
 }
 
+void SpotifyClient::setHomeAssistantDevice(SpotifyDJDevice &device) {
+  device_ = &device;
+}
+
 void SpotifyClient::begin() {
   requestMutex_ = xSemaphoreCreateMutex();
   volumeCommandQueue_ = xQueueCreate(1, sizeof(VolumeCommand));
@@ -86,41 +65,34 @@ void SpotifyClient::begin() {
         0);
   }
 
-  loadSpotifyCredentials();
+  refreshTokenSource_ = "Home Assistant";
 }
 
 bool SpotifyClient::authorize() {
-  return refreshAccessToken();
+  JsonDocument response;
+  return proxyCommand("status", &response);
 }
 
 void SpotifyClient::reloadCredentials() {
   accessToken_ = "";
   accessTokenExpiresAt_ = 0;
-  loadSpotifyCredentials();
+  refreshTokenSource_ = "Home Assistant";
+  tokenInvalidGrant_ = false;
 }
 
 void SpotifyClient::useCredentialsForProvisioning(const String &clientId, const String &refreshToken) {
-  clientId_ = clientId;
-  refreshToken_ = refreshToken;
-  refreshTokenFromStorage_ = false;
-  refreshTokenSource_ = "Portal";
-  accessToken_ = "";
-  accessTokenExpiresAt_ = 0;
-  tokenInvalidGrant_ = false;
+  (void)clientId;
+  (void)refreshToken;
+  reloadCredentials();
+  AppLog.println("Playback credentials ignored; Home Assistant owns backend credentials");
 }
 
 void SpotifyClient::clearStoredTokens() {
-  clientId_ = "";
-  refreshToken_ = "";
-  accessToken_ = "";
-  accessTokenExpiresAt_ = 0;
-  refreshTokenFromStorage_ = false;
-  tokenInvalidGrant_ = false;
-  refreshTokenSource_ = "Cleared";
+  reloadCredentials();
 }
 
 bool SpotifyClient::isAuthorized() const {
-  return !accessToken_.isEmpty() && static_cast<int32_t>(millis() - accessTokenExpiresAt_) < 0;
+  return device_ != nullptr && device_->isPaired() && WiFi.status() == WL_CONNECTED && !tokenInvalidGrant_;
 }
 
 bool SpotifyClient::needsCredentialRefresh() const {
@@ -128,721 +100,378 @@ bool SpotifyClient::needsCredentialRefresh() const {
 }
 
 uint32_t SpotifyClient::accessTokenExpiresInSeconds() const {
-  if (!isAuthorized()) {
-    return 0;
-  }
-  return (accessTokenExpiresAt_ - millis()) / 1000UL;
+  return 0;
 }
 
 String SpotifyClient::refreshTokenSource() const {
   return refreshTokenSource_;
 }
 
-bool SpotifyClient::refreshPlayback() {
-  String path = "/me/player";
-  const String market = market_.isEmpty() ? String(SPOTIFY_MARKET) : market_;
-  if (!market.isEmpty()) {
-    path += "?market=";
-    path += urlEncode(market);
+String SpotifyClient::proxyEndpoint() const {
+  if (device_ == nullptr) {
+    return "";
   }
-
-  String payload;
-  const int code = apiRequest("GET", path, &payload);
-  if (code == 204) {
-    clearPlayback();
-    refreshDevicesOnly();
-    return true;
+  const String haUrl = device_->getHaUrl();
+  if (haUrl.isEmpty()) {
+    return "";
   }
+  return haUrl + "/api/spotify_dj/command";
+}
 
-  if (code != 200) {
+bool SpotifyClient::proxyCommand(const String &command, JsonDocument *response) {
+  JsonDocument request;
+  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["command"] = command;
+  return proxyRequest(request, response);
+}
+
+bool SpotifyClient::proxyCommand(const String &command, const String &value, JsonDocument *response) {
+  JsonDocument request;
+  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["command"] = command;
+  request["value"] = value;
+  return proxyRequest(request, response);
+}
+
+bool SpotifyClient::proxyCommand(const String &command, int value, JsonDocument *response) {
+  JsonDocument request;
+  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["command"] = command;
+  request["value"] = value;
+  return proxyRequest(request, response);
+}
+
+bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
+  if (device_ == nullptr || !device_->isPaired()) {
+    setProxyError("Home Assistant not paired");
+    return false;
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    setProxyError("WiFi disconnected");
+    return false;
+  }
+  const String token = device_->getDeviceToken();
+  const String url = proxyEndpoint();
+  if (token.isEmpty() || url.isEmpty()) {
+    setProxyError("Home Assistant command unavailable");
     return false;
   }
 
-  // ArduinoJson filters keep memory use low on the ESP32-S3 by parsing only fields shown in the UI.
-  JsonDocument filter;
-  filter["device"]["id"] = true;
-  filter["device"]["name"] = true;
-  filter["device"]["type"] = true;
-  filter["device"]["supports_volume"] = true;
-  filter["device"]["volume_percent"] = true;
-  filter["is_playing"] = true;
-  filter["shuffle_state"] = true;
-  filter["repeat_state"] = true;
-  filter["progress_ms"] = true;
-  filter["currently_playing_type"] = true;
-  filter["context"]["uri"] = true;
-  filter["item"]["uri"] = true;
-  filter["item"]["name"] = true;
-  filter["item"]["duration_ms"] = true;
-  filter["item"]["type"] = true;
-  filter["item"]["album"]["images"][0]["url"] = true;
-  filter["item"]["album"]["images"][0]["width"] = true;
-  filter["item"]["artists"][0]["name"] = true;
-  filter["item"]["show"]["name"] = true;
+  String body;
+  serializeJson(doc, body);
 
-  JsonDocument doc;
-  if (deserializeJson(doc, payload, DeserializationOption::Filter(filter))) {
-    state_.error = "Playback JSON failed";
+  RequestGuard guard(requestMutex_, Config::HttpLongIoTimeoutMs);
+  if (!guard.isLocked()) {
+    setProxyError("Playback proxy busy");
     return false;
   }
 
-  applyDevice(doc["device"]);
-  state_.hasPlayback = true;
-  state_.isPlaying = doc["is_playing"] | false;
-  state_.shuffle = doc["shuffle_state"] | false;
-  state_.repeatState = doc["repeat_state"] | "off";
-  state_.progressMs = doc["progress_ms"] | 0;
-  state_.progressSyncedAt = millis();
-  state_.currentType = doc["currently_playing_type"] | "";
-  state_.contextUri = doc["context"]["uri"] | "";
+  HTTPClient http;
+  NetworkActivity activity("ha_playback_command", Config::HttpLongIoTimeoutMs);
+  NetworkActivity::configureLongHttp(http);
+  if (!http.begin(url)) {
+    activity.finishError("begin failed");
+    setProxyError("HA playback begin failed");
+    return false;
+  }
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + token);
+  http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
 
-  JsonVariantConst item = doc["item"];
-  if (item.isNull()) {
-    state_.trackName = state_.isPlaying ? "Playing" : "Paused";
-    state_.artistName = "";
-    state_.currentUri = "";
-    state_.durationMs = 0;
-    state_.albumImageUrl = "";
-  } else {
-    state_.trackName = item["name"] | "";
-    state_.currentUri = item["uri"] | "";
-    state_.durationMs = item["duration_ms"] | 0;
-    state_.albumImageUrl = "";
+  const String command = doc["command"] | "";
+  AppLog.print("HA playback command: ");
+  AppLog.println(command);
+  const int code = http.POST(body);
+  const String payload = http.getString();
+  http.end();
+  activity.finish(code);
+  AppLog.print("HA playback command response: ");
+  AppLog.println(code);
 
-    const char *itemType = item["type"] | "";
-    if (strcmp(itemType, "episode") == 0) {
-      state_.artistName = item["show"]["name"] | "";
-    } else {
-      state_.artistName = artistList(item["artists"].as<JsonArrayConst>());
+  if (code == 401 || code == 403 || code == 404) {
+    tokenInvalidGrant_ = true;
+  }
+  if (code < 200 || code >= 300) {
+    setProxyError("HA playback HTTP " + String(code));
+    return false;
+  }
 
-      JsonArrayConst images = item["album"]["images"].as<JsonArrayConst>();
-      int bestWidth = 0;
-      for (JsonVariantConst image : images) {
-        const char *url = image["url"] | "";
-        const int width = image["width"] | 0;
-        if (strlen(url) == 0) {
-          continue;
-        }
-        if ((width >= 160 && (bestWidth == 0 || width < bestWidth)) || bestWidth < 160) {
-          state_.albumImageUrl = url;
-          bestWidth = width;
-        }
-      }
+  tokenInvalidGrant_ = false;
+  if (response != nullptr && !payload.isEmpty()) {
+    const DeserializationError error = deserializeJson(*response, payload);
+    if (error) {
+      setProxyError("HA playback JSON failed");
+      return false;
+    }
+    const bool success = (*response)["success"] | true;
+    if (!success) {
+      setProxyError((*response)["message"] | (*response)["error"] | "HA playback failed");
+      return false;
     }
   }
-
   state_.error = "";
   return true;
 }
 
-bool SpotifyClient::refreshDevicesOnly() {
-  String payload;
-  const int code = apiRequest("GET", "/me/player/devices", &payload);
-  if (code != 200) {
-    return false;
+void SpotifyClient::setProxyError(const String &message) {
+  state_.error = message;
+  AppLog.println(message);
+}
+
+void SpotifyClient::applyPlayback(JsonVariantConst playback) {
+  JsonVariantConst source = playback["playback"].isNull() ? playback : playback["playback"];
+  if (source.isNull()) {
+    return;
   }
 
-  JsonDocument filter;
-  filter["devices"][0]["id"] = true;
-  filter["devices"][0]["name"] = true;
-  filter["devices"][0]["type"] = true;
-  filter["devices"][0]["is_active"] = true;
-  filter["devices"][0]["supports_volume"] = true;
-  filter["devices"][0]["volume_percent"] = true;
-
-  JsonDocument doc;
-  if (deserializeJson(doc, payload, DeserializationOption::Filter(filter))) {
-    state_.error = "Devices JSON failed";
-    return false;
-  }
-
-  JsonArrayConst devices = doc["devices"].as<JsonArrayConst>();
-  // Prefer the active device; fall back to the first known device so the screen still names an output.
-  for (JsonVariantConst device : devices) {
-    if (device["is_active"] | false) {
-      applyDevice(device);
-      state_.error = "";
-      return true;
+  JsonVariantConst device = source["device"];
+  if (!device.isNull()) {
+    state_.deviceId = device["id"] | state_.deviceId;
+    state_.deviceName = device["name"] | state_.deviceName;
+    state_.deviceType = device["type"] | "";
+    state_.supportsVolume = device["supports_volume"] | state_.supportsVolume;
+    if (!device["volume_percent"].isNull()) {
+      state_.volume = constrain(device["volume_percent"] | state_.volume, 0, Config::MaxSpotifyVolumePercent);
+    }
+  } else {
+    state_.deviceId = source["device_id"] | state_.deviceId;
+    state_.deviceName = source["device_name"] | state_.deviceName;
+    state_.deviceType = source["device_type"] | "";
+    state_.supportsVolume = source["supports_volume"] | state_.supportsVolume;
+    if (!source["volume"].isNull()) {
+      state_.volume = constrain(source["volume"] | state_.volume, 0, Config::MaxSpotifyVolumePercent);
+    }
+    if (!source["volume_percent"].isNull()) {
+      state_.volume = constrain(source["volume_percent"] | state_.volume, 0, Config::MaxSpotifyVolumePercent);
     }
   }
 
-  for (JsonVariantConst device : devices) {
-    applyDevice(device);
-    state_.error = "";
-    return true;
-  }
+  state_.hasPlayback = source["has_playback"] | source["hasPlayback"] | source["is_playing"].is<bool>();
+  state_.isPlaying = source["is_playing"] | source["isPlaying"] | false;
+  state_.shuffle = source["shuffle"] | source["shuffle_state"] | false;
+  state_.repeatState = source["repeat_state"] | source["repeatState"] | "off";
+  state_.progressMs = source["progress_ms"] | source["progressMs"] | 0;
+  state_.durationMs = source["duration_ms"] | source["durationMs"] | 0;
+  state_.progressSyncedAt = millis();
+  state_.currentType = source["current_type"] | source["currently_playing_type"] | source["type"] | "";
+  state_.currentUri = source["uri"] | source["current_uri"] | source["currentUri"] | "";
+  state_.contextUri = source["context_uri"] | source["contextUri"] | "";
+  state_.trackName = source["track_name"] | source["trackName"] | source["title"] | source["name"] | "";
+  state_.artistName = source["artist_name"] | source["artistName"] | source["artist"] | "";
+  state_.albumImageUrl = source["album_image_url"] | source["albumImageUrl"] | source["image_url"] | "";
 
-  state_.deviceId = "";
-  state_.deviceName = "";
-  state_.deviceType = "";
-  state_.supportsVolume = false;
-  state_.volume = -1;
-  state_.error = "No Spotify devices";
-  return false;
+  if (!state_.hasPlayback) {
+    clearPlayback();
+  }
 }
 
-bool SpotifyClient::refreshDevices(DeviceListState &devices) {
+void SpotifyClient::applyDeviceList(JsonVariantConst source, DeviceListState &devices) {
   devices.available = false;
   devices.error = "";
   devices.count = 0;
-
-  String payload;
-  const int code = apiRequest("GET", "/me/player/devices", &payload);
-  if (code != 200) {
-    devices.error = state_.error.isEmpty() ? "Devices failed " + String(code) : state_.error;
-    return false;
-  }
-
-  JsonDocument filter;
-  filter["devices"][0]["id"] = true;
-  filter["devices"][0]["name"] = true;
-  filter["devices"][0]["type"] = true;
-  filter["devices"][0]["is_active"] = true;
-  filter["devices"][0]["supports_volume"] = true;
-
-  JsonDocument doc;
-  if (deserializeJson(doc, payload, DeserializationOption::Filter(filter))) {
-    devices.error = "Devices JSON failed";
-    return false;
-  }
-
-  JsonArrayConst items = doc["devices"].as<JsonArrayConst>();
+  JsonArrayConst items = source["devices"].is<JsonArrayConst>()
+                             ? source["devices"].as<JsonArrayConst>()
+                             : source["outputs"].as<JsonArrayConst>();
   for (JsonVariantConst item : items) {
     if (devices.count >= 8) {
       break;
     }
     SpotifyDeviceState &target = devices.devices[devices.count];
-    target.id = item["id"] | "";
+    target.id = item["id"] | item["device_id"] | "";
     target.name = item["name"] | "";
     target.type = item["type"] | "";
-    target.active = item["is_active"] | false;
-    target.supportsVolume = item["supports_volume"] | false;
-    if (target.id.isEmpty() || target.name.isEmpty()) {
+    target.active = item["active"] | item["is_active"] | false;
+    target.supportsVolume = item["supports_volume"] | true;
+    if (target.id.isEmpty() && target.name.isEmpty()) {
       continue;
     }
     devices.count++;
   }
-
   devices.available = true;
-  return true;
 }
 
-bool SpotifyClient::refreshQueue(QueueState &queue) {
+void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {
   queue.available = false;
   queue.error = "";
   queue.count = 0;
-
-  // Keep the playback context fresh before falling back to playlist track order.
-  // Starting a playlist does not immediately update state_.contextUri/currentUri.
-  refreshPlayback();
-
-  String payload;
-  const int code = apiRequest("GET", "/me/player/queue", &payload);
-  if (code == 204 || (code == 200 && payload.isEmpty())) {
-    // Spotify can return no useful queue body when there is no active queue context.
-    // Treat that as an empty queue so the UI does not show a scary JSON parser error.
-    queue.available = true;
-    AppLog.println("Queue response empty");
-    return true;
-  }
-  if (code != 200) {
-    queue.error = state_.error.isEmpty() ? "Queue failed " + String(code) : state_.error;
-    return false;
-  }
-
-  JsonDocument filter;
-  filter["queue"][0]["name"] = true;
-  filter["queue"][0]["type"] = true;
-  filter["queue"][0]["artists"][0]["name"] = true;
-  filter["queue"][0]["show"]["name"] = true;
-
-  JsonDocument doc;
-  const DeserializationError error = deserializeJson(
-      doc,
-      payload,
-      DeserializationOption::Filter(filter),
-      DeserializationOption::NestingLimit(32));
-  if (error) {
-    queue.error = String("Queue JSON ") + error.c_str();
-    AppLog.print("Queue JSON parse failed: ");
-    AppLog.print(error.c_str());
-    AppLog.print(" bytes=");
-    AppLog.println(payload.length());
-    return false;
-  }
-
-  JsonArrayConst items = doc["queue"].as<JsonArrayConst>();
+  JsonArrayConst items = source["queue"].is<JsonArrayConst>()
+                             ? source["queue"].as<JsonArrayConst>()
+                             : source["items"].as<JsonArrayConst>();
   for (JsonVariantConst item : items) {
     if (queue.count >= 5) {
       break;
     }
-
     QueueItemState &target = queue.items[queue.count];
-    target.title = item["name"] | "";
-    const char *type = item["type"] | "";
-    if (strcmp(type, "episode") == 0) {
-      target.subtitle = item["show"]["name"] | "";
-    } else {
-      target.subtitle = artistList(item["artists"].as<JsonArrayConst>());
-    }
+    target.title = item["title"] | item["name"] | "";
+    target.subtitle = item["subtitle"] | item["artist"] | item["artists"] | "";
     if (target.title.isEmpty()) {
       continue;
     }
     queue.count++;
   }
-
   queue.available = true;
-  if (queue.count == 0 && fillQueueFromPlaylistContext(queue)) {
-    return true;
-  }
-  return true;
 }
 
-bool SpotifyClient::refreshPlaylistContextQueue(QueueState &queue) {
-  queue.available = false;
-  queue.error = "";
-  queue.count = 0;
-  return fillQueueFromPlaylistContext(queue);
-}
-
-bool SpotifyClient::fillQueueFromPlaylistContext(QueueState &queue) {
-  if (!Logic::isSpotifyPlaylistContextUri(state_.contextUri.c_str())) {
-    return false;
-  }
-
-  const String playlistId = state_.contextUri.substring(strlen("spotify:playlist:"));
-  if (playlistId.isEmpty()) {
-    return false;
-  }
-
-  bool afterCurrent = state_.currentUri.isEmpty();
-  bool sawAnyTracks = false;
-  bool foundCurrent = afterCurrent;
-
-  JsonDocument filter;
-  filter["items"][0]["track"]["uri"] = true;
-  filter["items"][0]["track"]["name"] = true;
-  filter["items"][0]["track"]["artists"][0]["name"] = true;
-  filter["next"] = true;
-
-  // Spotify's queue endpoint is often empty for playlist contexts. Walk playlist
-  // pages until the current track is found, then use the following tracks.
-  for (uint16_t offset = 0; offset <= 950 && queue.count < 5; offset += 50) {
-    String payload;
-    const String path = "/playlists/" + playlistId + "/tracks?limit=50&offset=" +
-                        String(offset) +
-                        "&fields=next,items(track(uri,name,artists(name)))";
-    const int code = apiRequest("GET", path, &payload, false);
-    if (code != 200 || payload.isEmpty()) {
-      AppLog.print("Spotify: playlist queue fallback failed HTTP ");
-      AppLog.println(code);
-      return false;
-    }
-
-    JsonDocument doc;
-    const DeserializationError error = deserializeJson(
-        doc,
-        payload,
-        DeserializationOption::Filter(filter),
-        DeserializationOption::NestingLimit(32));
-    if (error) {
-      AppLog.print("Spotify: playlist queue fallback JSON failed ");
-      AppLog.println(error.c_str());
-      return false;
-    }
-
-    JsonArrayConst items = doc["items"].as<JsonArrayConst>();
-    for (JsonVariantConst item : items) {
-      JsonVariantConst track = item["track"];
-      const String uri = track["uri"] | "";
-      if (!uri.isEmpty()) {
-        sawAnyTracks = true;
-      }
-      if (!afterCurrent && uri == state_.currentUri) {
-        afterCurrent = true;
-        foundCurrent = true;
-        continue;
-      }
-      if (!afterCurrent || queue.count >= 5) {
-        continue;
-      }
-
-      QueueItemState &target = queue.items[queue.count];
-      target.title = track["name"] | "";
-      target.subtitle = artistList(track["artists"].as<JsonArrayConst>());
-      if (target.title.isEmpty()) {
-        continue;
-      }
-      queue.count++;
-    }
-
-    const String nextUrl = doc["next"] | "";
-    if (nextUrl.isEmpty()) {
-      break;
-    }
-  }
-
-  queue.available = true;
-  if (queue.count > 0) {
-    queue.error = "";
-    AppLog.print("Spotify: playlist queue fallback count=");
-    AppLog.println(queue.count);
-    return true;
-  }
-  if (!foundCurrent && sawAnyTracks) {
-    AppLog.println("Spotify: playlist queue fallback current track not found");
-  }
-  return false;
-}
-
-bool SpotifyClient::refreshPlaylists(PlaylistListState &playlists) {
+void SpotifyClient::applyPlaylists(JsonVariantConst source, PlaylistListState &playlists) {
   playlists.available = false;
   playlists.error = "";
   playlists.count = 0;
-
-  AppLog.println("Spotify: loading playlists");
-  String payload;
-  const int code = apiRequest("GET", "/me/playlists?limit=8", &payload);
-  if (code != 200) {
-    playlists.error = state_.error.isEmpty() ? "Playlists failed " + String(code) : state_.error;
-    AppLog.print("Spotify: playlists failed HTTP ");
-    AppLog.println(code);
-    return false;
-  }
-  if (payload.isEmpty()) {
-    playlists.available = true;
-    AppLog.println("Spotify: playlists empty response");
-    return true;
-  }
-
-  JsonDocument filter;
-  filter["items"][0]["name"] = true;
-  filter["items"][0]["uri"] = true;
-  filter["items"][0]["owner"]["display_name"] = true;
-
-  JsonDocument doc;
-  const DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
-  if (error) {
-    playlists.error = String("Playlists JSON ") + error.c_str();
-    AppLog.print("Playlists JSON parse failed: ");
-    AppLog.print(error.c_str());
-    AppLog.print(" bytes=");
-    AppLog.println(payload.length());
-    return false;
-  }
-
-  JsonArrayConst items = doc["items"].as<JsonArrayConst>();
+  JsonArrayConst items = source["playlists"].is<JsonArrayConst>()
+                             ? source["playlists"].as<JsonArrayConst>()
+                             : source["items"].as<JsonArrayConst>();
   for (JsonVariantConst item : items) {
     if (playlists.count >= 8) {
       break;
     }
     PlaylistItemState &target = playlists.items[playlists.count];
     target.name = item["name"] | "";
-    target.owner = item["owner"]["display_name"] | "";
-    target.uri = item["uri"] | "";
+    target.owner = item["owner"] | "";
+    target.uri = item["uri"] | item["id"] | "";
     if (target.name.isEmpty() || target.uri.isEmpty()) {
       continue;
     }
     playlists.count++;
   }
-
   playlists.available = true;
-  AppLog.print("Spotify: playlists loaded count=");
-  AppLog.println(playlists.count);
+}
+
+bool SpotifyClient::refreshPlayback() {
+  JsonDocument response;
+  if (!proxyCommand("status", &response)) {
+    return false;
+  }
+  applyPlayback(response.as<JsonVariantConst>());
+  return true;
+}
+
+bool SpotifyClient::refreshDevicesOnly() {
+  DeviceListState proxiedDevices;
+  if (!refreshDevices(proxiedDevices)) {
+    return false;
+  }
+  for (size_t i = 0; i < proxiedDevices.count; ++i) {
+    if (proxiedDevices.devices[i].active) {
+      state_.deviceId = proxiedDevices.devices[i].id;
+      state_.deviceName = proxiedDevices.devices[i].name;
+      state_.deviceType = proxiedDevices.devices[i].type;
+      state_.supportsVolume = proxiedDevices.devices[i].supportsVolume;
+      state_.error = "";
+      return true;
+    }
+  }
+  if (proxiedDevices.count > 0) {
+    state_.deviceId = proxiedDevices.devices[0].id;
+    state_.deviceName = proxiedDevices.devices[0].name;
+    state_.deviceType = proxiedDevices.devices[0].type;
+    state_.supportsVolume = proxiedDevices.devices[0].supportsVolume;
+    state_.error = "";
+    return true;
+  }
+  state_.deviceId = "";
+  state_.deviceName = "";
+  state_.deviceType = "";
+  state_.supportsVolume = false;
+  state_.volume = -1;
+  state_.error = "No playback outputs";
+  return false;
+}
+
+bool SpotifyClient::refreshDevices(DeviceListState &devices) {
+  JsonDocument response;
+  if (!proxyCommand("devices", &response)) {
+    devices.available = false;
+    devices.error = state_.error;
+    devices.count = 0;
+    return false;
+  }
+  applyDeviceList(response.as<JsonVariantConst>(), devices);
+  return true;
+}
+
+bool SpotifyClient::refreshQueue(QueueState &queue) {
+  JsonDocument response;
+  if (!proxyCommand("queue", &response)) {
+    queue.available = false;
+    queue.error = state_.error;
+    queue.count = 0;
+    return false;
+  }
+  applyQueue(response.as<JsonVariantConst>(), queue);
+  return true;
+}
+
+bool SpotifyClient::refreshPlaylistContextQueue(QueueState &queue) {
+  return refreshQueue(queue);
+}
+
+bool SpotifyClient::fillQueueFromPlaylistContext(QueueState &queue) {
+  (void)queue;
+  return false;
+}
+
+bool SpotifyClient::refreshPlaylists(PlaylistListState &playlists) {
+  JsonDocument response;
+  if (!proxyCommand("playlists", &response)) {
+    playlists.available = false;
+    playlists.error = state_.error;
+    playlists.count = 0;
+    return false;
+  }
+  applyPlaylists(response.as<JsonVariantConst>(), playlists);
   return true;
 }
 
 bool SpotifyClient::pausePlayback() {
-  return sendPlayerCommand("PUT", "/me/player/pause" + activeDeviceQuery());
+  return proxyCommand("pause");
 }
 
 bool SpotifyClient::resumePlayback() {
-  return sendPlayerCommand("PUT", "/me/player/play" + activeDeviceQuery());
+  return proxyCommand("play");
 }
 
 bool SpotifyClient::nextTrack() {
-  return sendPlayerCommand("POST", "/me/player/next" + activeDeviceQuery());
+  return proxyCommand("next");
 }
 
 bool SpotifyClient::previousTrack() {
-  return sendPlayerCommand("POST", "/me/player/previous" + activeDeviceQuery());
+  return proxyCommand("previous");
 }
 
 bool SpotifyClient::startLikedProxyPlaylist() {
-  if (state_.deviceId.isEmpty()) {
-    refreshDevicesOnly();
-  }
-  if (state_.deviceId.isEmpty()) {
-    state_.error = I18n::text("spotify_select_output_first");
-    AppLog.println("Spotify: cannot start Liked Proxy, no output selected");
-    return false;
-  }
-
-  String playlistUri;
-  if (!findPlaylistUriByName(Config::SpotifyLikedProxyPlaylistName, playlistUri)) {
-    AppLog.println("Spotify: Liked Proxy playlist not found");
-    return false;
-  }
-  return playContextUri(playlistUri);
+  return proxyCommand("start_liked_proxy");
 }
 
 bool SpotifyClient::startPlaylist(const String &playlistUri) {
-  if (state_.deviceId.isEmpty()) {
-    refreshDevicesOnly();
-  }
-  if (state_.deviceId.isEmpty()) {
-    state_.error = I18n::text("spotify_select_output_first");
-    AppLog.println("Spotify: cannot start playlist, no output selected");
-    return false;
-  }
-  return playContextUri(playlistUri);
+  return proxyCommand("start_playlist", playlistUri);
 }
 
 bool SpotifyClient::setPlayMode(const String &mode) {
-  bool targetShuffle = false;
-  String targetRepeat = "off";
-  if (mode == "shuffle") {
-    targetShuffle = true;
-  } else if (mode == "repeat_once") {
-    targetRepeat = "track";
-  } else if (mode == "repeat_infinite") {
-    targetRepeat = "context";
-  } else if (mode != "normal") {
-    state_.error = "Unknown play mode";
+  if (!proxyCommand("set_play_mode", mode)) {
     return false;
   }
-
-  String deviceQuery = activeDeviceQuery();
-  if (!deviceQuery.isEmpty()) {
-    deviceQuery.replace("?", "&");
-  }
-
-  if (!sendPlayerCommand("PUT", String("/me/player/repeat?state=") + targetRepeat + deviceQuery)) {
-    return false;
-  }
-  if (!sendPlayerCommand("PUT", String("/me/player/shuffle?state=") + (targetShuffle ? "true" : "false") + deviceQuery)) {
-    return false;
-  }
-
-  state_.shuffle = targetShuffle;
-  state_.repeatState = targetRepeat;
-  state_.error = "";
+  state_.shuffle = mode == "shuffle";
+  state_.repeatState = mode == "repeat_once" ? "track" : (mode == "repeat_infinite" ? "context" : "off");
   return true;
 }
 
 bool SpotifyClient::transferPlayback(const String &deviceId, bool play) {
-  if (deviceId.isEmpty()) {
-    state_.error = "Device missing";
-    return false;
-  }
-
-  JsonDocument doc;
-  JsonArray ids = doc["device_ids"].to<JsonArray>();
-  ids.add(deviceId);
-  doc["play"] = play;
-
-  String body;
-  serializeJson(doc, body);
-
-  String payload;
-  RequestGuard guard(requestMutex_, 5000);
-  if (!guard.isLocked()) {
-    state_.error = "Spotify busy";
-    return false;
-  }
-  if (!ensureAccessToken()) {
-    return false;
-  }
-
-  WiFiClientSecure client;
-  configureTls(client);
-
-  HTTPClient http;
-  NetworkActivity activity("spotify_transfer", Config::HttpLongIoTimeoutMs);
-  NetworkActivity::configureDefaultHttp(http);
-  if (!http.begin(client, String(Config::SpotifyApiBaseUrl) + "/me/player")) {
-    state_.error = "Transfer HTTP begin failed";
-    activity.finishError("begin failed");
-    return false;
-  }
-
-  http.addHeader("Authorization", String("Bearer ") + accessToken_);
-  http.addHeader("Content-Type", "application/json");
-  const int code = http.PUT(body);
-  payload = http.getString();
-  http.end();
-  activity.finish(code);
-
-  if (code == 204 || code == 200) {
-    state_.deviceId = deviceId;
-    state_.error = "";
-    return true;
-  }
-
-  state_.error = spotifyErrorFromPayload(code, payload);
-  return false;
+  JsonDocument request;
+  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["command"] = "set_output";
+  request["value"] = deviceId;
+  request["play"] = play;
+  return proxyRequest(request);
 }
 
 bool SpotifyClient::findPlaylistUriByName(const String &playlistName, String &playlistUri) {
   playlistUri = "";
-  if (playlistName.isEmpty()) {
-    state_.error = "Playlist name missing";
-    return false;
-  }
-
-  String payload;
-  bool userPlaylistLookupOk = false;
-  bool parsedUserPlaylists = false;
-  for (int offset = 0; offset <= 450; offset += 50) {
-    const String path = String("/me/playlists?limit=50&offset=") + String(offset);
-    const int code = apiRequest("GET", path, &payload);
-    if (code != 200) {
-      AppLog.print("Spotify: user playlist lookup failed code=");
-      AppLog.println(code);
-      state_.error = state_.error.isEmpty() ? "Playlist lookup failed " + String(code) : state_.error;
-      break;
-    }
-    userPlaylistLookupOk = true;
-    if (payload.isEmpty()) {
-      AppLog.println("Spotify: user playlist lookup returned empty payload");
-      break;
-    }
-
-    JsonDocument filter;
-    filter["total"] = true;
-    filter["items"][0]["name"] = true;
-    filter["items"][0]["uri"] = true;
-
-    JsonDocument doc;
-    const DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
-    if (error) {
-      state_.error = "Playlist JSON failed";
-      AppLog.print("Spotify: user playlist JSON parse failed ");
-      AppLog.println(error.c_str());
-      break;
-    }
-
-    parsedUserPlaylists = true;
-    JsonArrayConst items = doc["items"].as<JsonArrayConst>();
-    const size_t itemCount = items.size();
-    for (JsonVariantConst item : items) {
-      const String name = item["name"] | "";
-      const char *uri = item["uri"] | "";
-      if (name.equalsIgnoreCase(playlistName) && strlen(uri) > 0) {
-        playlistUri = uri;
-        state_.error = "";
-        AppLog.print("Spotify: Liked Proxy found in user playlists offset=");
-        AppLog.println(offset);
-        return true;
-      }
-    }
-
-    const int total = doc["total"] | 0;
-    if (!Logic::shouldFetchNextSpotifyPlaylistPage(itemCount, total, offset, 50)) {
-      break;
-    }
-  }
-
-  if (userPlaylistLookupOk && parsedUserPlaylists) {
-    AppLog.println("Spotify: Liked Proxy not found in user playlists, trying public search");
-  }
-
-  const String path = String("/search?type=playlist&limit=1&q=") + urlEncode(playlistName);
-  const int code = apiRequest("GET", path, &payload);
-  if (code != 200) {
-    state_.error = state_.error.isEmpty() ? "Playlist search failed " + String(code) : state_.error;
-    return false;
-  }
-  if (payload.isEmpty()) {
-    state_.error = "Playlist search empty";
-    return false;
-  }
-
-  JsonDocument filter;
-  filter["playlists"]["items"][0]["name"] = true;
-  filter["playlists"]["items"][0]["uri"] = true;
-
-  JsonDocument doc;
-  const DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
-  if (error) {
-    state_.error = "Playlist JSON failed";
-    return false;
-  }
-
-  JsonArrayConst items = doc["playlists"]["items"].as<JsonArrayConst>();
-  for (JsonVariantConst item : items) {
-    const char *uri = item["uri"] | "";
-    if (strlen(uri) == 0) {
-      continue;
-    }
-    playlistUri = uri;
-    state_.error = "";
-    return true;
-  }
-
-  state_.error = I18n::text("liked_proxy_not_found");
+  (void)playlistName;
+  state_.error = "Playlist lookup handled by Home Assistant";
   return false;
 }
 
 bool SpotifyClient::playContextUri(const String &contextUri) {
-  if (contextUri.isEmpty()) {
-    state_.error = "Playlist URI missing";
-    return false;
-  }
-
-  JsonDocument doc;
-  doc["context_uri"] = contextUri;
-
-  String body;
-  serializeJson(doc, body);
-
-  String payload;
-  RequestGuard guard(requestMutex_, 5000);
-  if (!guard.isLocked()) {
-    state_.error = "Spotify busy";
-    return false;
-  }
-  if (!ensureAccessToken()) {
-    return false;
-  }
-
-  WiFiClientSecure client;
-  configureTls(client);
-
-  HTTPClient http;
-  NetworkActivity activity("spotify_play_context", Config::HttpLongIoTimeoutMs);
-  NetworkActivity::configureDefaultHttp(http);
-  const String path = String("/me/player/play") + activeDeviceQuery();
-  if (!http.begin(client, String(Config::SpotifyApiBaseUrl) + path)) {
-    state_.error = "Playlist HTTP begin failed";
-    activity.finishError("begin failed");
-    return false;
-  }
-
-  http.addHeader("Authorization", String("Bearer ") + accessToken_);
-  http.addHeader("Content-Type", "application/json");
-  AppLog.print("Spotify request: PUT ");
-  AppLog.println(path);
-  const int code = http.PUT(body);
-  payload = http.getString();
-  http.end();
-  activity.finish(code);
-
-  AppLog.print("Spotify response: ");
-  AppLog.print(code);
-  AppLog.print(" bytes=");
-  AppLog.println(payload.length());
-
-  if (code == 204 || code == 200) {
-    state_.hasPlayback = true;
-    state_.isPlaying = true;
-    state_.progressSyncedAt = millis();
-    state_.error = "";
-    return true;
-  }
-
-  state_.error = spotifyErrorFromPayload(code, payload);
-  return false;
+  return proxyCommand("start_playlist", contextUri);
 }
 
 bool SpotifyClient::queueVolume(int volume) {
@@ -855,13 +484,9 @@ bool SpotifyClient::queueVolume(int volume) {
     state_.error = "Volume worker missing";
     return false;
   }
-
-  VolumeCommand command;
-  command.volume = volume;
-  copyToBuffer(command.deviceId, sizeof(command.deviceId), state_.deviceId);
-  // The queue has depth 1 so fast knob turns collapse into the latest desired volume.
-  xQueueOverwrite(volumeCommandQueue_, &command);
-
+  VolumeCommand queuedVolume;
+  queuedVolume.volume = volume;
+  xQueueOverwrite(volumeCommandQueue_, &queuedVolume);
   AppLog.print("Queued volume ");
   AppLog.println(volume);
   return true;
@@ -875,180 +500,26 @@ bool SpotifyClient::pollVolumeResult(VolumeResult &result) {
 }
 
 void SpotifyClient::configureTls(WiFiClientSecure &client) {
-#if SPOTIFY_ALLOW_INSECURE_TLS
-  client.setInsecure();
-#else
-  client.setCACert(SpotifyRootCa);
-#endif
+  // Direct backend HTTP is disabled; this legacy helper intentionally does not
+  // install a backend CA or weaken TLS. Playback traffic goes through HA proxy.
   client.setHandshakeTimeout(Config::TlsHandshakeTimeoutMs);
   client.setTimeout(Config::HttpIoTimeoutMs);
 }
 
 void SpotifyClient::loadSpotifyCredentials() {
-  Preferences provision;
-  provision.begin("provision", true);
-  Preferences spotifydj;
-  spotifydj.begin("spotifydj", true);
-  clientId_ = spotifydj.getString("sp_client", "");
-  market_ = spotifydj.getString("sp_market", "");
-  refreshToken_ = spotifydj.getString("sp_refresh", "");
-  spotifydj.end();
-  refreshTokenFromStorage_ = !refreshToken_.isEmpty();
-  refreshTokenSource_ = refreshTokenFromStorage_ ? "SpotifyDJ NVS" : "";
-
-  if (clientId_.isEmpty()) {
-    clientId_ = provision.getString("sp_client", "");
-  }
-  if (market_.isEmpty()) {
-    market_ = provision.getString("spotify_market", "");
-  }
-
-  if (!refreshTokenFromStorage_) {
-    refreshToken_ = provision.getString("sp_refresh", "");
-    refreshTokenFromStorage_ = !refreshToken_.isEmpty();
-    refreshTokenSource_ = refreshTokenFromStorage_ ? "Portal" : "";
-  }
-  provision.end();
-
-  if (!refreshTokenFromStorage_) {
-    refreshTokenSource_ = "Missing";
-  }
-
-  AppLog.print("Refresh token source: ");
-  AppLog.println(refreshTokenSource_);
-  AppLog.print("Refresh token stored: ");
-  AppLog.print(refreshToken_.isEmpty() ? "missing" : "present");
-  AppLog.print(" len=");
-  AppLog.println(refreshToken_.length());
-  AppLog.print("Spotify client id source: ");
-  AppLog.println(clientId_.isEmpty() ? "missing" : "NVS");
+  reloadCredentials();
 }
 
 void SpotifyClient::saveRefreshToken(const String &newRefreshToken) {
-  if (newRefreshToken.isEmpty() || newRefreshToken == refreshToken_) {
-    return;
-  }
-
-  Preferences spotifydj;
-  spotifydj.begin("spotifydj", false);
-  const bool spotifydjSaved = spotifydj.putString("sp_refresh", newRefreshToken) > 0;
-  spotifydj.end();
-  Preferences provision;
-  provision.begin("provision", false);
-  provision.putString("sp_refresh", newRefreshToken);
-  provision.end();
-  if (!spotifydjSaved) {
-    AppLog.println("Failed to save rotated refresh token to SpotifyDJ NVS");
-    return;
-  }
-
-  refreshToken_ = newRefreshToken;
-  refreshTokenFromStorage_ = true;
-  refreshTokenSource_ = "SpotifyDJ NVS";
-  AppLog.println("Saved rotated refresh token to NVS");
+  (void)newRefreshToken;
 }
 
 bool SpotifyClient::refreshAccessToken() {
-  if (WiFi.status() != WL_CONNECTED) {
-    state_.error = "WiFi disconnected";
-    return false;
-  }
-  if (refreshToken_.isEmpty()) {
-    state_.error = "Refresh token missing";
-    return false;
-  }
-  if (clientId_.isEmpty()) {
-    state_.error = "Spotify client id missing";
-    return false;
-  }
-
-  for (int attempt = 0; attempt < 2; attempt++) {
-    WiFiClientSecure client;
-    configureTls(client);
-
-    HTTPClient http;
-    NetworkActivity activity("spotify_token", Config::HttpLongIoTimeoutMs);
-    NetworkActivity::configureDefaultHttp(http);
-    if (!http.begin(client, Config::SpotifyAccountsUrl)) {
-      state_.error = "Token HTTP begin failed";
-      activity.finishError("begin failed");
-      return false;
-    }
-
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    const String body = String("grant_type=refresh_token") +
-                        "&refresh_token=" + urlEncode(refreshToken_) +
-                        "&client_id=" + urlEncode(clientId_);
-
-    const int code = http.POST(body);
-    const String payload = http.getString();
-    http.end();
-    activity.finish(code);
-
-    AppLog.print("Token response: ");
-    AppLog.print(code);
-    AppLog.print(" bytes=");
-    AppLog.println(payload.length());
-
-    if (code != 200) {
-      const String tokenError = tokenErrorNameFromPayload(payload);
-      if (tokenError == "invalid_grant" && attempt == 0) {
-        AppLog.println("Spotify token invalid_grant; reloading credentials from NVS and retrying once");
-        const String previousRefreshToken = refreshToken_;
-        loadSpotifyCredentials();
-        if (refreshToken_.isEmpty() || refreshToken_ == previousRefreshToken) {
-          AppLog.println("Spotify token retry skipped: no newer refresh token in NVS");
-          tokenInvalidGrant_ = true;
-          state_.error = tokenErrorFromPayload(code, payload);
-          return false;
-        }
-        continue;
-      }
-      if (tokenError == "invalid_grant") {
-        tokenInvalidGrant_ = true;
-      }
-      state_.error = tokenErrorFromPayload(code, payload);
-      return false;
-    }
-
-    JsonDocument doc;
-    const DeserializationError error = deserializeJson(doc, payload);
-    if (error) {
-      state_.error = "Token JSON failed";
-      return false;
-    }
-
-    const char *token = doc["access_token"] | "";
-    const int expiresIn = doc["expires_in"] | 3600;
-    if (strlen(token) == 0) {
-      state_.error = "Token missing";
-      return false;
-    }
-
-    // Spotify may or may not return a new refresh token. Save it immediately when it appears.
-    const char *rotatedRefreshToken = doc["refresh_token"] | "";
-    if (strlen(rotatedRefreshToken) > 0) {
-      saveRefreshToken(rotatedRefreshToken);
-    } else if (!refreshTokenFromStorage_) {
-      saveRefreshToken(refreshToken_);
-    }
-
-    accessToken_ = token;
-    const int refreshInSeconds = max(30, expiresIn - 60);
-    accessTokenExpiresAt_ = millis() + (static_cast<uint32_t>(refreshInSeconds) * 1000UL);
-    tokenInvalidGrant_ = false;
-    state_.error = "";
-    return true;
-  }
-
-  return false;
+  return authorize();
 }
 
 bool SpotifyClient::ensureAccessToken() {
-  if (!accessToken_.isEmpty() && static_cast<int32_t>(millis() - accessTokenExpiresAt_) < 0) {
-    return true;
-  }
-  return refreshAccessToken();
+  return isAuthorized();
 }
 
 int SpotifyClient::apiRequest(
@@ -1056,73 +527,12 @@ int SpotifyClient::apiRequest(
     const String &path,
     String *responsePayload,
     bool updatePlaybackError) {
-  // Foreground playback polls fail fast when the volume worker is busy; the worker can wait longer.
-  RequestGuard guard(requestMutex_, updatePlaybackError ? 50 : 5000);
-  if (!guard.isLocked()) {
-    if (updatePlaybackError) {
-      state_.error = "Spotify busy";
-    }
-    return -2;
+  (void)method;
+  (void)path;
+  (void)responsePayload;
+  if (updatePlaybackError) {
+    state_.error = "Direct playback API disabled";
   }
-
-  for (int attempt = 0; attempt < 2; attempt++) {
-    if (!ensureAccessToken()) {
-      return -1;
-    }
-
-    WiFiClientSecure client;
-    configureTls(client);
-
-    HTTPClient http;
-    NetworkActivity activity("spotify_api", Config::HttpLongIoTimeoutMs);
-    NetworkActivity::configureDefaultHttp(http);
-    const String url = String(Config::SpotifyApiBaseUrl) + path;
-    if (!http.begin(client, url)) {
-      state_.error = "Spotify HTTP begin failed";
-      activity.finishError("begin failed");
-      return -1;
-    }
-
-    http.addHeader("Authorization", String("Bearer ") + accessToken_);
-    AppLog.print("Spotify request: ");
-    AppLog.print(method);
-    AppLog.print(" ");
-    AppLog.println(path);
-
-    int code = -1;
-    if (strcmp(method, "GET") == 0) {
-      code = http.GET();
-    } else {
-      http.addHeader("Content-Type", "application/json");
-      http.addHeader("Content-Length", "0");
-      code = http.sendRequest(method, static_cast<uint8_t *>(nullptr), 0);
-    }
-
-    const String payload = http.getString();
-    http.end();
-    activity.finish(code);
-
-    AppLog.print("Spotify response: ");
-    AppLog.print(code);
-    AppLog.print(" bytes=");
-    AppLog.println(payload.length());
-
-    if (code == 401 && attempt == 0) {
-      // Access tokens expire; clear and retry once through refreshAccessToken().
-      accessToken_ = "";
-      continue;
-    }
-
-    if (responsePayload != nullptr) {
-      *responsePayload = payload;
-    }
-
-    if (code >= 400 && updatePlaybackError) {
-      state_.error = spotifyErrorFromPayload(code, payload);
-    }
-    return code;
-  }
-
   return -1;
 }
 
@@ -1144,32 +554,17 @@ VolumeResult SpotifyClient::sendVolumeToSpotify(const VolumeCommand &command) {
   VolumeResult result;
   result.volume = command.volume;
 
-  String path = "/me/player/volume?volume_percent=" + String(command.volume);
-  if (strlen(command.deviceId) > 0) {
-    path += "&device_id=" + urlEncode(command.deviceId);
-  }
-
   AppLog.print("Volume worker: sending ");
   AppLog.println(command.volume);
 
-  String payload;
-  const int code = apiRequest("PUT", path, &payload, false);
-  if (code == 204 || code == 200) {
+  if (proxyCommand("set_volume", command.volume)) {
     result.ok = true;
     copyToBuffer(result.message, sizeof(result.message), "Volume " + String(command.volume) + "%");
     AppLog.println("Volume worker: OK");
     return result;
   }
 
-  String message;
-  if (!payload.isEmpty()) {
-    message = spotifyErrorFromPayload(code, payload);
-  } else if (!state_.error.isEmpty()) {
-    message = state_.error;
-  } else {
-    message = "Volume failed " + String(code);
-  }
-
+  const String message = state_.error.isEmpty() ? "Volume failed" : state_.error;
   result.ok = false;
   copyToBuffer(result.message, sizeof(result.message), message);
   AppLog.print("Volume worker: failed ");

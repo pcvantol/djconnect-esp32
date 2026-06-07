@@ -45,7 +45,6 @@ private:
   void handleInfo();
   void handlePairingInfo();
   void handlePair();
-  void handleProvisionSpotify();
   void handleOta();
   void handleDjResponse();
   void handleCommand();

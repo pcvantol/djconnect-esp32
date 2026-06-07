@@ -111,6 +111,7 @@ void SpotifyDJApp::begin() {
   homeAssistantPaired_ = haDevice_.isPaired();
   loadProvisioning();
   sound_.playStartup();
+  spotify_.setHomeAssistantDevice(haDevice_);
   spotify_.begin();
 
   if (shouldStartProvisioningPortal()) {
@@ -141,9 +142,9 @@ void SpotifyDJApp::begin() {
       loopMetricsWindowStartedAt_ = millis();
       return;
     }
-    display_.showBootMessage(I18n::text("boot_authorizing_spotify"), battery_);
+    display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
     if (spotify_.authorize()) {
-      showNotice(I18n::text("spotify_connected"));
+      showNotice(I18n::text("playback_connected"));
       lastPlaybackPollAt_ = millis();
       spotify_.refreshPlayback();
     }
@@ -242,6 +243,8 @@ void SpotifyDJApp::loop() {
     }
   } else if (activeScreen_ == UiScreen::Logs && millis() - lastLogsRenderAt_ >= 500) {
     renderNow();
+  } else if (activeScreen_ == UiScreen::Pong) {
+    updatePong();
   }
 
   updateVisualPower();
@@ -518,7 +521,6 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
       applyWebSettingsCallback,
       applyWebWifiSettingsCallback,
       sendWebVoiceTextCallback,
-      repairSpotifyCredentialsFromWebCallback,
       refreshFromWebCallback,
       resetPairingFromWebCallback,
       hardResetFromWebCallback);
@@ -569,8 +571,7 @@ void SpotifyDJApp::runCaptivePortal() {
     const String connectLine = I18n::language() == Language::Dutch
                                    ? String("Verbind met \"") + Config::ProvisioningApSsid + "\""
                                    : String("Connect to \"") + Config::ProvisioningApSsid + "\"";
-    return String(I18n::text("boot_setup_device")) +
-           "\n" + connectLine +
+    return connectLine +
            "\n" + I18n::text("setup_portal_active_10m") +
            "\n" + I18n::text("setup_turn_off_hint");
   };
@@ -589,12 +590,9 @@ void SpotifyDJApp::runCaptivePortal() {
   String portalMessage = "Please fill in your WiFi credentials.";
   bool portalError = false;
   String formSsid;
-  String formClientId;
-  String formRefreshToken;
-  String formSpotifyMarket = "NL";
 
   server.on("/", HTTP_GET, [&]() {
-    server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid, formClientId, formRefreshToken, formSpotifyMarket));
+    server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid));
   });
 
   server.on("/favicon.ico", HTTP_GET, [&]() {
@@ -614,33 +612,18 @@ void SpotifyDJApp::runCaptivePortal() {
   server.on("/submit", HTTP_POST, [&]() {
     String ssid = server.arg("ssid");
     const String password = server.arg("password");
-    String clientId = server.arg("clientId");
-    String refreshToken = server.arg("refreshToken");
-    String spotifyMarket = server.arg("spotifyMarket");
     ssid.trim();
-    clientId.trim();
-    refreshToken.trim();
-    spotifyMarket.trim();
     formSsid = ssid;
-    formClientId = clientId;
-    formRefreshToken = refreshToken;
-    formSpotifyMarket = spotifyMarket.isEmpty() ? "NL" : spotifyMarket;
     if (ssid.isEmpty()) {
       portalMessage = "SSID is required.";
       portalError = true;
-      server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid, formClientId, formRefreshToken, formSpotifyMarket));
-      return;
-    }
-    if ((!clientId.isEmpty() && refreshToken.isEmpty()) || (clientId.isEmpty() && !refreshToken.isEmpty())) {
-      portalMessage = "Spotify client ID and refresh token must both be filled, or both left empty.";
-      portalError = true;
-      server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid, formClientId, formRefreshToken, formSpotifyMarket));
+      server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid));
       return;
     }
 
     String message;
-    if (testAndSaveProvisioning(ssid, password, clientId, refreshToken, spotifyMarket, message)) {
-      server.send(200, "text/html", captivePortalPage(message, false, formSsid, formClientId, formRefreshToken, formSpotifyMarket));
+    if (testAndSaveProvisioning(ssid, password, message)) {
+      server.send(200, "text/html", captivePortalPage(message, false, formSsid));
       responsiveDelay(1500);
       ESP.restart();
       return;
@@ -648,7 +631,7 @@ void SpotifyDJApp::runCaptivePortal() {
 
     portalMessage = message;
     portalError = true;
-    server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid, formClientId, formRefreshToken, formSpotifyMarket));
+    server.send(200, "text/html", captivePortalPage(portalMessage, portalError, formSsid));
   });
 
   server.onNotFound([&]() {
@@ -739,16 +722,13 @@ bool SpotifyDJApp::handleBleProvisioningPayload(const String &payload, String &m
 
   AppLog.print("BLE provisioning WiFi SSID provided, chars=");
   AppLog.println(ssid.length());
-  return testAndSaveProvisioning(ssid, password, "", "", "NL", message);
+  return testAndSaveProvisioning(ssid, password, message);
 }
 
 String SpotifyDJApp::captivePortalPage(
     const String &message,
     bool error,
-    const String &ssid,
-    const String &clientId,
-    const String &refreshToken,
-    const String &spotifyMarket) const {
+    const String &ssid) const {
   auto escaped = [](String value) {
     value.replace("&", "&amp;");
     value.replace("\"", "&quot;");
@@ -801,14 +781,6 @@ String SpotifyDJApp::captivePortalPage(
   page += language_ == Language::Dutch
               ? F("<label>WiFi wachtwoord<input name='password' type='password' autocomplete='current-password' autocapitalize='none' autocorrect='off' spellcheck='false'></label>")
               : F("<label>WiFi password<input name='password' type='password' autocomplete='current-password' autocapitalize='none' autocorrect='off' spellcheck='false'></label>");
-  page += F("<label>Spotify client ID<input name='clientId' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
-  page += escaped(clientId);
-  page += F("\"></label>");
-  (void)refreshToken;
-  page += F("<label>Spotify refresh token<input name='refreshToken' type='password' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false'></label>");
-  page += F("<label>Spotify market<input name='spotifyMarket' autocomplete='off' autocapitalize='none' autocorrect='off' spellcheck='false' value=\"");
-  page += escaped(spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
-  page += F("\"></label>");
   page += language_ == Language::Dutch
               ? F("<button type='submit'>Opslaan &amp; verbinden</button></form>")
               : F("<button type='submit'>Save &amp; Connect</button></form>");
@@ -819,9 +791,6 @@ String SpotifyDJApp::captivePortalPage(
 bool SpotifyDJApp::testAndSaveProvisioning(
     const String &ssid,
     const String &password,
-    const String &clientId,
-    const String &refreshToken,
-    const String &spotifyMarket,
     String &message) {
   display_.showBootMessage(I18n::text("boot_testing_wifi"), battery_);
   ledRing_.showSolid(CRGB::Yellow, 100);
@@ -851,18 +820,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
     return false;
   }
 
-  const bool hasSpotifyCredentials = !clientId.isEmpty() && !refreshToken.isEmpty();
-  if (hasSpotifyCredentials) {
-    display_.showBootMessage(I18n::text("boot_testing_spotify"), battery_);
-    spotify_.useCredentialsForProvisioning(clientId, refreshToken);
-    if (!spotify_.authorize()) {
-      message = playback_.error.isEmpty() ? I18n::text("spotify_authorization_failed_sentence") : playback_.error;
-      WiFi.disconnect(false);
-      return false;
-    }
-  }
-
-  provisioning_.saveSetupProvisioning(ssid, password, clientId, refreshToken, spotifyMarket);
+  provisioning_.saveSetupProvisioning(ssid, password, "", "", "");
 
   wifiSsid_ = ssid;
   wifiPassword_ = password;
@@ -975,6 +933,12 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
 }
 
 void SpotifyDJApp::handleMenuInputEvents(const InputEvents &events) {
+  if (activeScreen_ == UiScreen::Pong && events.encoderSteps != 0) {
+    pongPaddleY_ = constrain(pongPaddleY_ + (events.encoderSteps * 5), 42, 126);
+    renderNow();
+    return;
+  }
+
   if (events.encoderSteps != 0) {
     moveMenuSelection(events.encoderSteps);
   }
@@ -1110,6 +1074,9 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         openScreen(UiScreen::About);
       } else if (rootMenuSelection_ == 7) {
         openScreen(UiScreen::Logs);
+      } else if (rootMenuSelection_ == 8) {
+        resetPong();
+        openScreen(UiScreen::Pong);
       }
       break;
 
@@ -1449,6 +1416,7 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
     case UiScreen::AlbumArt:
     case UiScreen::Queue:
     case UiScreen::Logs:
+    case UiScreen::Pong:
     case UiScreen::NowPlaying:
       return rootMenuSelection_;
   }
@@ -1609,6 +1577,53 @@ void SpotifyDJApp::runStressTestStep() {
     AppLog.print(ESP.getFreeHeap());
     AppLog.print(" largest_block=");
     AppLog.println(ESP.getMaxAllocHeap());
+  }
+  renderNow();
+}
+
+void SpotifyDJApp::resetPong() {
+  pongPaddleY_ = 86;
+  pongBallX_ = 160;
+  pongBallY_ = 86;
+  pongVelocityX_ = 3;
+  pongVelocityY_ = 2;
+  pongScore_ = 0;
+  lastPongFrameAt_ = 0;
+}
+
+void SpotifyDJApp::updatePong() {
+  const uint32_t now = millis();
+  if (now - lastPongFrameAt_ < 33) {
+    return;
+  }
+  lastPongFrameAt_ = now;
+
+  pongBallX_ += pongVelocityX_;
+  pongBallY_ += pongVelocityY_;
+  if (pongBallY_ <= 42 || pongBallY_ >= 156) {
+    pongVelocityY_ = -pongVelocityY_;
+    pongBallY_ = constrain(pongBallY_, 42, 156);
+  }
+  if (pongBallX_ >= 306) {
+    pongVelocityX_ = -abs(pongVelocityX_);
+  }
+  if (pongBallX_ <= 30) {
+    if (pongBallY_ >= pongPaddleY_ - 4 && pongBallY_ <= pongPaddleY_ + 38) {
+      pongVelocityX_ = abs(pongVelocityX_);
+      pongScore_++;
+      if (volumeFeedbackEnabled_) {
+        sound_.playConfirm();
+      }
+    } else {
+      pongBallX_ = 160;
+      pongBallY_ = 86;
+      pongVelocityX_ = 3;
+      pongVelocityY_ = (esp_random() & 1) ? 2 : -2;
+      pongScore_ = 0;
+      if (volumeFeedbackEnabled_) {
+        sound_.playBack();
+      }
+    }
   }
   renderNow();
 }
@@ -2650,51 +2665,6 @@ void SpotifyDJApp::applyWebSettings(
   ESP.restart();
 }
 
-bool SpotifyDJApp::repairSpotifyCredentialsFromWeb(
-    const String &clientId,
-    const String &refreshToken,
-    const String &market,
-    String &message) {
-  String submittedClientId = clientId;
-  String submittedRefreshToken = refreshToken;
-  String submittedMarket = market;
-  submittedClientId.trim();
-  submittedRefreshToken.trim();
-  submittedMarket.trim();
-
-  const String storedClientId = haDevice_.getSpotifyClientId();
-  if (!Logic::spotifyRepairCredentialsValid(storedClientId.c_str(), submittedClientId.c_str(), submittedRefreshToken.c_str())) {
-    message = storedClientId.isEmpty()
-                  ? I18n::text("spotify_client_and_refresh_required")
-                  : I18n::text("refresh_token_missing");
-    return false;
-  }
-
-  const String effectiveClientId = submittedClientId.isEmpty() ? storedClientId : submittedClientId;
-  const String effectiveMarket = Logic::spotifyMarketOrDefault(submittedMarket.c_str());
-  AppLog.print("Web Spotify repair: client_id=");
-  AppLog.print(effectiveClientId.isEmpty() ? "missing" : "present");
-  AppLog.print(" market=");
-  AppLog.println(effectiveMarket);
-
-  if (!haDevice_.saveSpotifyCredentials(effectiveClientId, submittedRefreshToken, effectiveMarket)) {
-    message = "Spotify credentials could not be saved to NVS";
-    return false;
-  }
-  provisioning_.saveSpotifyCredentials(effectiveClientId, submittedRefreshToken, effectiveMarket);
-  spotify_.reloadCredentials();
-  if (!spotify_.authorize()) {
-    message = playback_.error.isEmpty() ? I18n::text("spotify_authorization_failed") : playback_.error;
-    return false;
-  }
-
-  spotify_.refreshPlayback();
-  showNotice(I18n::text("spotify_connected"), 2500);
-  renderNow();
-  message = I18n::text("spotify_refresh_saved_ok");
-  return true;
-}
-
 void SpotifyDJApp::applyProvisionedLanguage(const String &languageCode) {
   const String normalized = SpotifyDJDevice::normalizedLanguageCode(languageCode);
   if (normalized.isEmpty()) {
@@ -2711,7 +2681,7 @@ void SpotifyDJApp::applyProvisionedLanguage(const String &languageCode) {
 
 void SpotifyDJApp::applyProvisionedSpotifyCredentials() {
   spotify_.reloadCredentials();
-  AppLog.println("[SpotifyDJ] Spotify credentials reloaded after HA provisioning");
+  AppLog.println("Playback proxy refreshed after HA provisioning");
   if (!spotify_.isAuthorized() && WiFi.status() == WL_CONNECTED) {
     spotify_.authorize();
   }
@@ -2943,12 +2913,12 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
     return;
   }
   lastHaStatusAt_ = now;
-  const bool spotifyCredentialsUsable =
+  const bool playbackProxyUsable =
       Logic::spotifyConfiguredForHomeAssistantStatus(haDevice_.isSpotifyConfigured(), spotify_.needsCredentialRefresh());
-  if (haDevice_.isSpotifyConfigured() && !spotifyCredentialsUsable) {
-    AppLog.println("Spotify credentials marked stale; requesting HA reprovisioning");
+  if (haDevice_.isSpotifyConfigured() && !playbackProxyUsable) {
+    AppLog.println("Playback proxy marked stale; requesting HA status refresh");
   }
-  const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, spotifyCredentialsUsable);
+  const SpotifyDJPairing::StatusResult result = haPairing_.sendStatusToHA(battery_, playbackProxyUsable);
   if (result == SpotifyDJPairing::StatusResult::Ok) {
     homeAssistantPaired_ = true;
   } else if (result == SpotifyDJPairing::StatusResult::PairingInvalid) {
@@ -3075,19 +3045,6 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
   return ok;
 }
 
-bool SpotifyDJApp::repairSpotifyCredentialsFromWebCallback(
-    void *context,
-    const String &clientId,
-    const String &refreshToken,
-    const String &market,
-    String &message) {
-  if (context == nullptr) {
-    message = "App unavailable";
-    return false;
-  }
-  return static_cast<SpotifyDJApp *>(context)->repairSpotifyCredentialsFromWeb(clientId, refreshToken, market, message);
-}
-
 void SpotifyDJApp::wakeWordDetectedCallback(void *context) {
   if (context == nullptr) {
     return;
@@ -3185,6 +3142,7 @@ void SpotifyDJApp::renderMenuNow() {
           {I18n::text("settings")},
           {I18n::text("about")},
           {I18n::text("logs")},
+          {I18n::text("pong")},
       };
       display_.renderMenuList(I18n::text("menu"), items, RootMenuItemCount, rootMenuSelection_, notice_);
       break;
@@ -3255,6 +3213,10 @@ void SpotifyDJApp::renderMenuNow() {
       display_.renderLogsScreen(lines, lineCount, notice_);
       break;
     }
+
+    case UiScreen::Pong:
+      display_.renderPongScreen(pongPaddleY_, pongBallX_, pongBallY_, pongScore_, notice_);
+      break;
 
     case UiScreen::Settings: {
       MenuItemView items[] = {

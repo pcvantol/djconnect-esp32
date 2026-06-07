@@ -10,7 +10,6 @@
 #include "LogicHelpers.h"
 #include "NetworkActivityLogic.h"
 #include "SpotifyDJMenuModel.h"
-#include "SpotifyProvisioning.h"
 
 struct FakeHttpClient {
   uint32_t connectTimeout = 0;
@@ -465,67 +464,6 @@ static void testDeviceCommandParserDjResponseAndUnknown() {
   assert(command.type == DeviceCommandType::None);
 }
 
-static void testSpotifyProvisioningTopLevel() {
-  JsonDocument doc;
-  doc["spotify_client_id"] = "client-a";
-  doc["spotify_refresh_token"] = "refresh-a";
-  doc["spotify_market"] = "NL";
-  const auto credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
-  assert(credentials.complete());
-  assert(std::strcmp(credentials.clientId, "client-a") == 0);
-  assert(std::strcmp(credentials.refreshToken, "refresh-a") == 0);
-  assert(std::strcmp(credentials.market, "NL") == 0);
-}
-
-static void testSpotifyProvisioningCompatTopLevel() {
-  JsonDocument doc;
-  doc["client_id"] = "client-b";
-  doc["refresh_token"] = "refresh-b";
-  doc["market"] = "BE";
-  const auto credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
-  assert(credentials.complete());
-  assert(std::strcmp(credentials.clientId, "client-b") == 0);
-  assert(std::strcmp(credentials.refreshToken, "refresh-b") == 0);
-  assert(std::strcmp(credentials.market, "BE") == 0);
-}
-
-static void testSpotifyProvisioningNestedPriority() {
-  JsonDocument doc;
-  doc["spotify_client_id"] = "top-client";
-  doc["spotify_refresh_token"] = "top-refresh";
-  JsonObject spotify = doc["spotify"].to<JsonObject>();
-  spotify["client_id"] = "nested-compat-client";
-  spotify["refresh_token"] = "nested-compat-refresh";
-  spotify["spotify_client_id"] = "nested-client";
-  spotify["spotify_refresh_token"] = "nested-refresh";
-  spotify["market"] = "DE";
-  const auto credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
-  assert(credentials.complete());
-  assert(std::strcmp(credentials.clientId, "nested-client") == 0);
-  assert(std::strcmp(credentials.refreshToken, "nested-refresh") == 0);
-  assert(std::strcmp(credentials.market, "DE") == 0);
-}
-
-static void testSpotifyProvisioningMissingRefreshToken() {
-  JsonDocument doc;
-  doc["spotify_client_id"] = "client-only";
-  const auto credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
-  assert(!credentials.complete());
-  assert(std::strcmp(credentials.clientId, "client-only") == 0);
-  assert(credentials.refreshToken == nullptr);
-}
-
-static void testSpotifyCredentialRepairValidation() {
-  assert(Logic::spotifyRepairCredentialsValid("stored-client", "", "new-refresh"));
-  assert(Logic::spotifyRepairCredentialsValid("", "submitted-client", "new-refresh"));
-  assert(!Logic::spotifyRepairCredentialsValid("", "", "new-refresh"));
-  assert(!Logic::spotifyRepairCredentialsValid("stored-client", "", ""));
-  assert(!Logic::spotifyRepairCredentialsValid(nullptr, nullptr, "new-refresh"));
-  assert(std::strcmp(Logic::spotifyMarketOrDefault("BE"), "BE") == 0);
-  assert(std::strcmp(Logic::spotifyMarketOrDefault(""), "NL") == 0);
-  assert(std::strcmp(Logic::spotifyMarketOrDefault(nullptr), "NL") == 0);
-}
-
 static void testSpotifyPlaylistPagingDecision() {
   assert(Logic::shouldFetchNextSpotifyPlaylistPage(50, 120, 0, 50));
   assert(Logic::shouldFetchNextSpotifyPlaylistPage(50, 0, 50, 50));
@@ -542,7 +480,7 @@ static void testSpotifyDJMenuItemCounts() {
   assert(SpotifyDJMenuModel::isMenuScreen(UiScreen::Settings));
   assert(SpotifyDJMenuModel::itemCount(UiScreen::NowPlaying, input) == 0);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::RootMenu, input) == SpotifyDJMenuModel::RootMenuItemCount);
-  assert(SpotifyDJMenuModel::RootMenuItemCount == 8);
+  assert(SpotifyDJMenuModel::RootMenuItemCount == 9);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::Settings, input) == SpotifyDJMenuModel::SettingsItemCount);
   assert(SpotifyDJMenuModel::SettingsItemCount == 13);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::About, input) == SpotifyDJMenuModel::AboutItemCount);
@@ -629,11 +567,6 @@ int main() {
   testDeviceCommandParserSpotifyControls();
   testDeviceCommandParserSettings();
   testDeviceCommandParserDjResponseAndUnknown();
-  testSpotifyProvisioningTopLevel();
-  testSpotifyProvisioningCompatTopLevel();
-  testSpotifyProvisioningNestedPriority();
-  testSpotifyProvisioningMissingRefreshToken();
-  testSpotifyCredentialRepairValidation();
   testSpotifyPlaylistPagingDecision();
   testSpotifyDJMenuItemCounts();
   testSpotifyDJMenuOptionValues();

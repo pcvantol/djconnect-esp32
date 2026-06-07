@@ -70,18 +70,21 @@ void ProvisioningController::saveWifiCredentials(const String &ssid, const Strin
 }
 
 void ProvisioningController::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &spotifyMarket) const {
+  (void)clientId;
+  (void)refreshToken;
+  (void)spotifyMarket;
   Preferences provision;
   provision.begin("provision", false);
-  provision.putString("sp_client", clientId);
-  provision.putString("sp_refresh", refreshToken);
-  provision.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  provision.remove("sp_client");
+  provision.remove("sp_refresh");
+  provision.remove("spotify_market");
   provision.end();
 
   Preferences spotifydj;
   spotifydj.begin("spotifydj", false);
-  spotifydj.putString("sp_client", clientId);
-  spotifydj.putString("sp_refresh", refreshToken);
-  spotifydj.putString("sp_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  spotifydj.remove("sp_client");
+  spotifydj.remove("sp_refresh");
+  spotifydj.remove("sp_market");
   spotifydj.end();
 }
 
@@ -91,33 +94,25 @@ void ProvisioningController::saveSetupProvisioning(
     const String &clientId,
     const String &refreshToken,
     const String &spotifyMarket) const {
-  const bool hasSpotifyCredentials = !clientId.isEmpty() && !refreshToken.isEmpty();
+  (void)clientId;
+  (void)refreshToken;
+  (void)spotifyMarket;
 
   Preferences provision;
   provision.begin("provision", false);
   provision.putString("ssid", ssid);
   provision.putString("pass", password);
-  if (hasSpotifyCredentials) {
-    provision.putString("sp_client", clientId);
-    provision.putString("sp_refresh", refreshToken);
-  } else {
-    provision.remove("sp_client");
-    provision.remove("sp_refresh");
-  }
-  provision.putString("spotify_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  provision.remove("sp_client");
+  provision.remove("sp_refresh");
+  provision.remove("spotify_market");
   provision.putBool("setup", false);
   provision.end();
 
   Preferences spotifydj;
   spotifydj.begin("spotifydj", false);
-  if (hasSpotifyCredentials) {
-    spotifydj.putString("sp_client", clientId);
-    spotifydj.putString("sp_refresh", refreshToken);
-  } else {
-    spotifydj.remove("sp_client");
-    spotifydj.remove("sp_refresh");
-  }
-  spotifydj.putString("sp_market", spotifyMarket.isEmpty() ? "NL" : spotifyMarket);
+  spotifydj.remove("sp_client");
+  spotifydj.remove("sp_refresh");
+  spotifydj.remove("sp_market");
   spotifydj.end();
 }
 

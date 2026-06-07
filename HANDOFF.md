@@ -2,15 +2,16 @@
 
 ## Current State
 
-SpotifyDJ is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is a Spotify Connect remote with local display UI, rotary/top-button controls, LED-ring feedback, speaker cues, push-to-talk voice upload, web portal and Home Assistant pairing/OTA support.
+SpotifyDJ is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is a Home Assistant paired playback remote with local display UI, rotary/top-button controls, LED-ring feedback, speaker cues, push-to-talk voice upload, web portal and Home Assistant pairing/OTA support.
 
 Current repo state includes:
 
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
-- Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, Spotify provisioning, DJ response and status updates.
-- Spotify OAuth credentials are provisioned through Home Assistant, setup portal or web repair form and stored in NVS with short Preferences keys.
+- Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
+- Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
 - Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL.
-- Web portal includes Now Playing, DJ-response simulation, outputs, playlists, logs, diagnostics, OTA upload, WiFi update, Spotify repair, settings and status indicators.
+- Web portal includes Now Playing, DJ-response simulation, outputs, playlists, logs, diagnostics, OTA upload, WiFi update, settings and status indicators.
+- Device main menu includes a small Pong mini game.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
 - WiFi boot connection timeout is 30 seconds. During WiFi connect, the LED ring shows a blue animation.
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
@@ -33,7 +34,7 @@ Main module boundaries:
 
 - `SpotifyDJApp`: top-level orchestration, setup flow, loop routing, input/screen transitions.
 - `DisplayManager`: display drawing only.
-- `SpotifyClient`: Spotify Web API auth, playback state and control.
+- `SpotifyClient`: Home Assistant playback proxy for backend-agnostic playback state and control.
 - `WebPortal`: embedded mobile web UI and local web actions.
 - `ProvisioningController`: NVS provisioning/settings storage for WiFi, language/theme/log level, display/power settings and cue volume.
 - `PowerController`: charger/wake/deep-sleep/watchdog policy.
@@ -47,15 +48,15 @@ Core data/security boundaries:
 
 - Device API uses `Authorization: Bearer <device_token>` for protected endpoints.
 - Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase stored pairing automatically.
-- Spotify refresh tokens are never logged or shown back to users.
+- Playback-backend refresh tokens are never stored on the ESP and therefore are never logged or shown back to users.
 - Internal ESP32 Preferences keys must be 15 chars or less.
 
 ## Decisions Made
 
-- Home Assistant is the trusted backend for pairing, Spotify command interpretation, Assist/STT/TTS orchestration, OTA offer handling and native command entities.
+- Home Assistant is the trusted backend for pairing, playback command interpretation, backend credentials, Assist/STT/TTS orchestration, OTA offer handling and native command entities.
 - The ESP stays focused on local edge behavior: display, controls, LED ring, battery/power policy, mic capture and playback of HA-provided DJ response audio.
 - Physical PTT must stay on the WAV-upload route to `/api/spotify_dj/voice`; do not reintroduce direct ESP Home Assistant Assist WebSocket authentication.
-- Web PTT is a compact DJ-response simulation path. It requires HA pairing but not Spotify credentials, active playback or browser microphone permission.
+- Web PTT is a compact DJ-response simulation path. It requires HA pairing but not playback-backend credentials on the ESP, active playback or browser microphone permission.
 - Smart Shuffle was removed because Spotify does not expose a useful public Web API control for it.
 - Current Song is a menu screen and uses top-button back; it does not start PTT.
 - Release binaries/manifests are published separately from the closed-source firmware source repo.
@@ -67,7 +68,7 @@ Core data/security boundaries:
 
 - NVS credentials are currently stored in ESP32 NVS but not encrypted by this Arduino/PlatformIO build.
 - OTA status clearing in Home Assistant depends on the integration processing the post-boot status payload correctly.
-- Spotify queue endpoint may return empty for playlist playback; firmware falls back to playlist tracks, but behavior still depends on Spotify API context availability and scopes.
+- Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
 - MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
 - Home Assistant STT/TTS failures are backend/integration dependent. Firmware surfaces error bodies but cannot fix missing HA STT provider configuration.
 - Web portal performance depends heavily on local WiFi quality. Polling has been reduced/visibility-aware, but poor WiFi can still make the UI feel slow.

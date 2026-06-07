@@ -4,7 +4,7 @@ Guidance for coding agents working on the SpotifyDJ LilyGO firmware.
 
 ## Project Overview
 
-SpotifyDJ is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3. It is a Spotify Connect remote with:
+SpotifyDJ is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3. It is a Home Assistant paired playback remote with:
 
 - TFT now-playing UI, menus, logs, album art, queue and sound output screens.
 - Rotary encoder and top-button controls.
@@ -52,7 +52,7 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `include/NetworkActivityLogic.h`: testable network-timeout helper used by `NetworkActivity`.
 - `test/native/test_logic.cpp`: host-side unit tests.
 - `test/native/test_release.sh`: release-script dry-run and invalid-version checks.
-- `include/Secrets.h`: optional non-secret build flags only. Do not put WiFi or Spotify credentials here.
+- `include/Secrets.h`: optional non-secret build flags only. Do not put WiFi, Home Assistant or playback-backend credentials here.
 - `include/Secrets.example.h`: template for optional build flags.
 - `src/SpotifyDJDevice.*`, `src/SpotifyDJDiscovery.*`, `src/SpotifyDJPairing.*`, `src/SpotifyDJApiServer.*`, `src/SpotifyDJOTA.*`: Home Assistant device-layer modules.
 - `include/VoiceRecorder.h`, `src/VoiceRecorder.cpp`, `include/VoiceHttpClient.h`, `src/VoiceHttpClient.cpp`: push-to-talk WAV recording and upload to the Home Assistant integration.
@@ -123,7 +123,7 @@ This warning comes from the Arduino ESP32 framework package and is not normally 
 Keep concerns separated:
 
 - `SpotifyDJApp` orchestrates modules and owns the main loop flow.
-- `SpotifyClient` owns Spotify Web API auth/playback/control calls.
+- `SpotifyClient` owns backend-agnostic playback proxy calls to Home Assistant.
 - `DisplayManager` owns drawing only. Do not put network or NVS logic in it.
 - `WebPortal` owns the existing mobile dashboard and shared port-80 `WebServer`.
 - Home Assistant device-layer code belongs in the `SpotifyDJ*` modules under `src/`.
@@ -149,7 +149,6 @@ The HA custom integration uses:
 - HA status endpoint: `POST /api/spotify_dj/status`
 - HA voice endpoint: `POST /api/spotify_dj/voice`
 - ESP OTA endpoint: `POST /api/device/ota`
-- ESP Spotify provisioning endpoint: `POST /api/device/provision_spotify`
 - ESP DJ response endpoint: `POST /api/device/dj_response`
 
 Local ESP endpoints currently include:
@@ -157,7 +156,6 @@ Local ESP endpoints currently include:
 - `GET /api/device/info`
 - `GET /api/device/pairing-info`
 - `POST /api/device/pair`
-- `POST /api/device/provision_spotify`
 - `POST /api/device/dj_response`
 
 DJ response playback rules:
@@ -177,11 +175,7 @@ Protected local endpoints must require `Authorization: Bearer <device_token>`. O
 
 HA may provision UI language through `device_language` with `language` as fallback. Accept only `en` and `nl`, save valid values to `provision.language`, and apply them at runtime when possible. Ignore unknown language values without changing local menu-selected language.
 
-HA may provision Spotify OAuth credentials during pairing, status responses, or `POST /api/device/provision_spotify`. Use `SpotifyProvisioning::parseCredentials()` for every path. Support top-level `spotify_client_id`/`spotify_refresh_token`/`spotify_market`, compat top-level `client_id`/`refresh_token`/`market`, and nested `spotify` equivalents. Prefer nested `spotify.spotify_refresh_token`, then `spotify.refresh_token`, then top-level `spotify_refresh_token`, then top-level `refresh_token`; client id follows the same priority. If either client id or refresh token is missing, leave existing stored credentials untouched. Never log refresh tokens.
-
-If Spotify returns `invalid_grant`, the firmware marks local Spotify credentials stale and reports `spotify_configured=false` in the next HA status payload even when NVS still contains `sp_client`/`sp_refresh`. The HA integration is expected to return the latest rotated refresh token in its status response. Keep this behavior intact; it prevents HA/ESP token-rotation races from becoming permanent invalid-token loops.
-
-The web portal may repair Spotify OAuth credentials manually. Keep the refresh token write-only in the UI: do not render existing tokens, clear submitted fields after the request, store credentials in the `spotifydj` NVS namespace only, and immediately run an authorization test. Do not reintroduce the old `spotify/refresh` NVS namespace.
+Do not store Spotify OAuth credentials, Sonos credentials or any playback-backend secrets on the ESP. Home Assistant owns backend credentials and translates generic ESP playback commands into backend-specific actions. Legacy NVS keys `sp_client`, `sp_refresh` and `sp_market` must be cleared, not reused. The web portal and captive portal must not expose refresh-token/client-id forms.
 
 mDNS:
 
@@ -198,9 +192,9 @@ Forbidden in firmware source:
 
 - WiFi SSID
 - WiFi password
-- Spotify client id
-- Spotify refresh token
-- Spotify client secret
+- Playback-backend client id
+- Playback-backend refresh token
+- Playback-backend client secret
 - Home Assistant device token
 
 Credentials are provisioned and stored in NVS.
@@ -226,37 +220,37 @@ NVS namespaces:
 - `ha_url`
 - `device_token`
 - `device_name`
-- `sp_client`
-- `sp_refresh`
-- `sp_market`
+- `sp_client` legacy key, cleared by firmware
+- `sp_refresh` legacy key, cleared by firmware
+- `sp_market` legacy key, cleared by firmware
 - `fw_channel`
 - `assist_pipe`
 
 Keep ESP32 Preferences keys at 15 characters or less. External Home Assistant JSON payload field names may remain long, for example `spotify_refresh_token`; only the internal NVS key must be shortened.
 
-The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postman_collection.json`. Keep all credentials as variables/placeholders; never commit real device tokens, Spotify refresh tokens or Home Assistant URLs that identify a private instance.
+The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postman_collection.json`. Keep all credentials as variables/placeholders; never commit real device tokens, playback-backend refresh tokens or Home Assistant URLs that identify a private instance.
 
 ## Architecture Decisions
 
-- Treat Home Assistant as the trusted backend for pairing, Spotify command interpretation, Assist STT/TTS, OTA offer handling, Spotify refresh-token reprovisioning and native entity commands.
+- Treat Home Assistant as the trusted backend for pairing, generic playback command interpretation, backend credentials, Assist STT/TTS, OTA offer handling and native entity commands.
 - Keep the ESP focused on local edge behavior: display, buttons/encoder, LED ring, battery/power policy, speaker cues, microphone capture and playback of HA-provided DJ response audio.
 - Keep PTT on the integration-backed WAV-upload route: ESP records WAV, uploads it to `/api/spotify_dj/voice`, then displays/plays the returned DJ response. Do not add direct ESP Assist websocket auth, direct OpenAI calls or browser microphone uploads.
 - Pairing validity is runtime state. On HA 401/403/404, mark Home Assistant as stale/red and disable PTT, but do not erase NVS pairing automatically.
 - Keep external JSON payload names compatible with HA, but keep internal ESP32 Preferences keys at 15 characters or less.
 - Route slow network operations through explicit timeout/backoff policy and avoid making input/display responsiveness depend on an unbounded HTTP call.
 - Keep release binaries/manifests separate from the closed-source firmware source repo workflow.
-- Device stress/monkey testing must stay local and non-destructive: render/navigation only, no OTA, factory reset, WiFi changes, Spotify playback mutations or credential changes.
+- Device stress/monkey testing must stay local and non-destructive: render/navigation only, no OTA, factory reset, WiFi changes, playback mutations or credential changes.
 
 Never log:
 
-- Spotify refresh token
+- Playback-backend refresh token
 - HA device token
 - WiFi password
-- Spotify client secret
+- Playback-backend client secret
 
 It is OK to log the six-digit Home Assistant pairing code. It is intentionally short-lived and user-visible on the device.
 
-Do not introduce a Spotify client secret. The firmware should use PKCE/public-client style credentials only.
+Do not introduce playback-backend secrets on the ESP. OAuth/PKCE, Sonos or future backend credentials belong in Home Assistant.
 
 ## Voice / Assist Rules
 
@@ -268,7 +262,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - `/api/spotify_dj/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
 - Do not route physical PTT through `SpotifyDJAssistClient`; direct ESP Assist websocket auth causes `auth_invalid` because the SpotifyDJ device token is for the integration API, not Home Assistant core.
 - Do not start physical PTT from Current Song/AlbumArt. Current Song is a read-only detail screen and uses the same top-button back behavior as menu screens.
-- The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on Spotify credentials or active playback. Do not upload browser WAV audio to the ESP.
+- The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/spotify_dj/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
 - Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
 - Optional wake-word support must remain inert without a linked model hook. A trained model may expose `extern "C" bool spotifydj_micro_wake_word_detect(const int16_t *samples, size_t sampleCount);`; the detector must be fast, local-only, and must not perform network I/O from the audio poll path.
@@ -488,7 +482,7 @@ README should document:
 
 - First-run AP setup and HA pairing.
 - No hardcoded WiFi/Spotify secrets.
-- Spotify refresh token generation via PKCE.
+- Home Assistant owned playback backend provisioning.
 - Web portal capabilities.
 - Home Assistant command/status behavior.
 - OTA release flow through the GitHub repo `pcvantol/spotify-dj-firmware` using a git tag.

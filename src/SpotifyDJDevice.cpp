@@ -31,6 +31,7 @@ void SpotifyDJDevice::begin(const BatteryState *battery, DisplayManager *display
   if (readString("device_name").isEmpty()) {
     writeString("device_name", DefaultDeviceName);
   }
+  clearSpotifyCredentials();
 
   AppLog.print("[SpotifyDJ] device_id: ");
   AppLog.println(deviceId_);
@@ -43,7 +44,7 @@ bool SpotifyDJDevice::isPaired() const {
 }
 
 bool SpotifyDJDevice::isSpotifyConfigured() const {
-  return !readString(SpotifyClientIdKey).isEmpty() && !readString(SpotifyRefreshKey).isEmpty();
+  return isPaired();
 }
 
 String SpotifyDJDevice::getDeviceId() const {
@@ -79,11 +80,11 @@ String SpotifyDJDevice::getLocalUrl() const {
 }
 
 String SpotifyDJDevice::getSpotifyClientId() const {
-  return readString(SpotifyClientIdKey);
+  return "";
 }
 
 String SpotifyDJDevice::getSpotifyMarket() const {
-  return readString(SpotifyMarketKey, "NL");
+  return "";
 }
 
 String SpotifyDJDevice::getAssistPipelineId() const {
@@ -153,30 +154,19 @@ void SpotifyDJDevice::savePairing(const String &haUrl, const String &deviceToken
 }
 
 bool SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market) {
-  const String normalizedMarket = market.isEmpty() ? "NL" : market;
-  const bool unchanged = readString(SpotifyClientIdKey) == clientId &&
-                         readString(SpotifyRefreshKey) == refreshToken &&
-                         readString(SpotifyMarketKey, "NL") == normalizedMarket;
-  if (unchanged) {
-    return true;
-  }
-
-  const bool clientSaved = writeString(SpotifyClientIdKey, clientId);
-  const bool refreshSaved = writeString(SpotifyRefreshKey, refreshToken);
-  const bool marketSaved = writeString(SpotifyMarketKey, normalizedMarket);
-
-  AppLog.print("[SpotifyDJ] Spotify credentials provisioned: client_id=");
-  AppLog.print(clientId.isEmpty() ? "missing" : "present");
-  AppLog.print(", refresh_token=present saved=");
-  AppLog.println(clientSaved && refreshSaved && marketSaved ? "true" : "false");
-  return clientSaved && refreshSaved && marketSaved;
+  (void)clientId;
+  (void)refreshToken;
+  (void)market;
+  clearSpotifyCredentials();
+  AppLog.println("[SpotifyDJ] legacy playback credential save ignored");
+  return false;
 }
 
 bool SpotifyDJDevice::saveSpotifyRefreshToken(const String &refreshToken) {
-  const bool saved = writeString(SpotifyRefreshKey, refreshToken);
-  AppLog.print("[SpotifyDJ] Spotify refresh token provisioned manually saved=");
-  AppLog.println(saved ? "true" : "false");
-  return saved;
+  (void)refreshToken;
+  clearSpotifyCredentials();
+  AppLog.println("[SpotifyDJ] legacy refresh token save ignored");
+  return false;
 }
 
 void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
@@ -210,7 +200,7 @@ void SpotifyDJDevice::clearSpotifyCredentials() {
   provision.remove("sp_refresh");
   provision.remove("spotify_market");
   provision.end();
-  AppLog.println("[SpotifyDJ] Spotify credentials cleared");
+  AppLog.println("[SpotifyDJ] legacy playback credentials cleared");
 }
 
 const BatteryState *SpotifyDJDevice::battery() const {

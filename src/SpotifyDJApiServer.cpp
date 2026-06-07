@@ -7,8 +7,6 @@
 
 #include "AppLog.h"
 #include "DeviceCommandParser.h"
-#include "SpotifyProvisioning.h"
-
 void SpotifyDJApiServer::begin(
     WebServer &server,
     SpotifyDJDevice &device,
@@ -50,7 +48,6 @@ void SpotifyDJApiServer::begin(
   server_->on("/api/device/info", HTTP_GET, [this]() { handleInfo(); });
   server_->on("/api/device/pairing-info", HTTP_GET, [this]() { handlePairingInfo(); });
   server_->on("/api/device/pair", HTTP_POST, [this]() { handlePair(); });
-  server_->on("/api/device/provision_spotify", HTTP_POST, [this]() { handleProvisionSpotify(); });
   server_->on("/api/device/ota", HTTP_POST, [this]() { handleOta(); });
   server_->on("/api/device/dj_response", HTTP_POST, [this]() { handleDjResponse(); });
   server_->on("/api/device/command", HTTP_POST, [this]() { handleCommand(); });
@@ -138,47 +135,6 @@ void SpotifyDJApiServer::handlePair() {
   } else {
     sendJson(502, "{\"success\":false,\"error\":\"pairing failed\"}");
   }
-}
-
-void SpotifyDJApiServer::handleProvisionSpotify() {
-  if (!validateBearerToken()) {
-    return;
-  }
-  JsonDocument doc;
-  if (deserializeJson(doc, server_->arg("plain"))) {
-    sendJson(400, "{\"error\":\"invalid json\"}");
-    return;
-  }
-  const SpotifyProvisioningCredentials credentials = SpotifyProvisioning::parseCredentials(doc.as<JsonVariantConst>());
-  const String assistPipelineId = doc["assist_pipeline_id"] | "";
-  if (!credentials.complete()) {
-    sendJson(400, "{\"error\":\"spotify credentials missing\"}");
-    return;
-  }
-
-  if (!device_->saveSpotifyCredentials(
-          credentials.clientId,
-          credentials.refreshToken,
-          credentials.market == nullptr ? "NL" : credentials.market)) {
-    sendJson(500, "{\"error\":\"spotify credentials save failed\"}");
-    return;
-  }
-  if (doc["assist_pipeline_id"].is<const char *>()) {
-    device_->saveAssistPipelineId(assistPipelineId);
-  }
-  String language = doc["device_language"] | "";
-  if (language.isEmpty()) {
-    language = doc["language"] | "";
-  }
-  const String normalizedLanguage = SpotifyDJDevice::normalizedLanguageCode(language);
-  if (!normalizedLanguage.isEmpty() &&
-      SpotifyDJDevice::saveProvisionedLanguage(normalizedLanguage) &&
-      languageProvisionedCallback_ != nullptr) {
-    languageProvisionedCallback_(callbackContext_, normalizedLanguage);
-  }
-  spotify_->reloadCredentials();
-  AppLog.println("[SpotifyDJ] Spotify provisioning success");
-  sendJson(200, "{\"success\":true,\"spotify_configured\":true}");
 }
 
 void SpotifyDJApiServer::handleOta() {

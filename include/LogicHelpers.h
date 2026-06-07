@@ -79,7 +79,7 @@ inline int compareSemver(const char *candidate, const char *current) {
   return 0;
 }
 
-// Home Assistant should reprovision Spotify credentials when local OAuth storage is stale.
+// Home Assistant pairing/backends are usable while the runtime proxy is not marked stale.
 inline bool spotifyConfiguredForHomeAssistantStatus(bool credentialsStored, bool tokenInvalidGrant) {
   return credentialsStored && !tokenInvalidGrant;
 }
@@ -426,18 +426,6 @@ inline const char *languageCodeOrDefault(const char *code) {
     return "en";
   }
   return (strcmp(code, "nl") == 0 || strcmp(code, "NL") == 0) ? "nl" : "en";
-}
-
-// Validates manual Spotify credential repair input before it touches NVS.
-inline bool spotifyRepairCredentialsValid(const char *storedClientId, const char *submittedClientId, const char *submittedRefreshToken) {
-  const bool hasStoredClientId = storedClientId != nullptr && storedClientId[0] != '\0';
-  const bool hasSubmittedClientId = submittedClientId != nullptr && submittedClientId[0] != '\0';
-  const bool hasRefreshToken = submittedRefreshToken != nullptr && submittedRefreshToken[0] != '\0';
-  return hasRefreshToken && (hasStoredClientId || hasSubmittedClientId);
-}
-
-inline const char *spotifyMarketOrDefault(const char *market) {
-  return market != nullptr && market[0] != '\0' ? market : "NL";
 }
 
 struct Bq27220Reading {

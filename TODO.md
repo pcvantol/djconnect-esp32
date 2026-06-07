@@ -41,22 +41,22 @@ Concrete backlog for follow-up implementation and validation.
 
 - [ ] Validate OTA status clearing after successful update and reboot.
 - [ ] Validate runtime stale-pairing behavior for HA 401, 403 and 404.
-- [ ] Confirm HA integration reprovisions latest rotated Spotify refresh token after ESP reports `spotify_configured=false`.
+- [ ] Confirm HA integration owns backend OAuth/credential refresh without sending backend tokens to the ESP.
 - [ ] Confirm HA integration can return DJ response text plus WAV URL.
 - [ ] Confirm HA integration can return DJ response text plus MP3 URL.
 - [ ] Confirm Home Assistant status payload includes firmware version after OTA boot.
 - [ ] Add integration-side test prompt/checklist for `/api/spotify_dj/voice` STT/TTS provider configuration.
 
-## Spotify
+## Playback Backend
 
-- [ ] Re-test playlist fallback for Up Next when Spotify queue endpoint returns empty.
-- [ ] Confirm `playlist-read-private` scope is present in current PKCE helper and HA OAuth flow.
+- [ ] Re-test playlist fallback for Up Next when the backend queue endpoint returns empty.
+- [ ] Confirm required backend playlist scopes/configuration are handled in the HA integration.
 - [ ] Validate `SpotifyDJ Liked Proxy` lookup against:
   - private playlist;
   - public playlist;
   - larger library with multiple playlist pages.
 - [ ] Add host tests for Liked Proxy search fallback logic if it can be isolated.
-- [ ] Confirm no Spotify controls are active when there is no playback.
+- [ ] Confirm no playback controls are active when there is no playback.
 
 ## Voice / DJ Response
 
@@ -73,7 +73,7 @@ Concrete backlog for follow-up implementation and validation.
   - ID3 magic bytes;
   - MP3 frame sync.
 - [ ] Confirm PTT works only from Now Playing and not from Current Song.
-- [ ] Confirm web DJ-response simulation requires HA pairing but not Spotify credentials.
+- [ ] Confirm web DJ-response simulation requires HA pairing but not backend credentials on the ESP.
 
 ## Web Portal
 

@@ -1,12 +1,12 @@
 # SpotifyDJ Firmware for LilyGO T-Embed-CC1101
 
-SpotifyDJ is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. The device is a Spotify Connect remote with a display, rotary encoder, top button, LED ring, web portal and Home Assistant device integration.
+SpotifyDJ is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. The device is a Home Assistant paired playback remote with a display, rotary encoder, top button, LED ring, web portal and Home Assistant device integration.
 
-SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spotify Connect playback target through the Spotify Web API, such as a phone, computer, receiver, speaker or other Spotify Connect output.
+SpotifyDJ is not a Spotify Connect speaker/player. The ESP does not store Spotify OAuth credentials or call the Spotify Web API directly. Playback commands are sent to the Home Assistant integration as generic backend-agnostic commands, so Home Assistant can proxy them to Spotify today or another playback backend such as Sonos or `media_player` later.
 
 ## Features
 
-- Shows the active Spotify Connect output.
+- Shows the active playback output reported by Home Assistant.
 - Shows current track/podcast, artist/show, duration and progress.
 - Scrolls long title and artist/show text once when the track changes.
 - Volume control through the encoder, web portal and Home Assistant command API, limited to `0-60`.
@@ -23,7 +23,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 - Top button long press: open the menu.
 - Top button held for 10 seconds: restart/soft reset.
 - Encoder button + top button held for 10 seconds: factory reset when battery state allows it.
-- Menus for Current Song, Up Next, Playlists, Sound Outputs, Settings, About and Logs.
+- Menus for Current Song, Up Next, Playlists, Sound Outputs, Settings, About, Logs and Pong.
 - Mobile web portal with Now Playing, DJ-response simulation, album art, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update and OTA upload.
 - Home Assistant pairing with mDNS discovery and device-token authentication.
 - BLE WiFi provisioning in setup mode for apps/flows that actively write credentials to the device.
@@ -47,9 +47,8 @@ SpotifyDJ is not a Spotify Connect speaker/player. It controls an existing Spoti
 
 ## Important Limitations
 
-- Spotify Premium is required for Spotify Web API playback control endpoints.
-- A Spotify Connect playback context or available Spotify Connect output is required.
-- Some Spotify Connect outputs do not support volume control through the Web API.
+- Playback backend requirements are handled by the Home Assistant integration. For Spotify this may still require Spotify Premium and an available Spotify Connect output.
+- Some playback outputs may not support volume or queue metadata; the ESP disables unsupported actions when Home Assistant reports they are unavailable.
 - OTA through `/api/device/ota` requires HTTPS and verifies the streamed firmware against the manifest SHA256 before rebooting.
 - Web portal DJ-response test runs through the ESP and Home Assistant pairing; it does not require browser microphone access.
 
@@ -61,15 +60,15 @@ The license is intended for commercial devices that ship with SpotifyDJ firmware
 
 ## Secrets and Provisioning
 
-WiFi, Spotify and Home Assistant secrets are not compiled into firmware.
+WiFi and Home Assistant secrets are not compiled into firmware. Spotify or other playback-backend credentials live in Home Assistant, not on the ESP.
 
 Do not place these in firmware headers:
 
 - WiFi SSID
 - WiFi password
-- Spotify client ID
-- Spotify refresh token
-- Spotify client secret
+- Playback-backend client IDs
+- Playback-backend refresh tokens
+- Playback-backend client secrets
 - Home Assistant device token
 
 Credentials are provisioned through setup flows and stored in NVS.
@@ -79,8 +78,7 @@ Credentials are provisioned through setup flows and stored in NVS.
 ```cpp
 #pragma once
 
-// No WiFi or Spotify credentials live in firmware. Provision them via the setup portal.
-#define SPOTIFY_MARKET "NL"
+// No WiFi, Home Assistant token, or playback-backend credentials live in firmware.
 #define SPOTIFY_ALLOW_INSECURE_TLS 0
 ```
 
@@ -92,8 +90,8 @@ Keep `SPOTIFY_ALLOW_INSECURE_TLS` at `0` for normal builds. Set it to `1` only a
 2. If no WiFi credentials are stored in NVS, the device starts setup/AP mode.
 3. Connect to the WiFi network `SpotifyDJ Setup`.
 4. Open the captive portal or browse to the AP IP address.
-5. Enter WiFi credentials and, optionally, Spotify settings.
-6. The device tests WiFi and optional Spotify credentials, stores them in NVS and restarts.
+5. Enter WiFi credentials.
+6. The device tests WiFi, stores the credentials in NVS and restarts. Playback-backend credentials are configured in Home Assistant.
 
 Setup/AP mode keeps the screen at 100% brightness, shows the rainbow LED-ring animation, keeps battery/charging state visible, shows that the portal is active for 10 minutes, and turns off after 10 minutes without successful setup. The device screen also offers a center-button turn-off action while setup/AP mode is active.
 
@@ -117,25 +115,11 @@ Write WiFi credentials as JSON:
 }
 ```
 
-Spotify is not provisioned through BLE; use Home Assistant provisioning, the captive portal or web settings for that.
+Playback-backend credentials are not provisioned through BLE or stored on the ESP. Configure Spotify, Sonos or other backend credentials in the Home Assistant integration.
 
-## Spotify App and Refresh Token
+## Playback Backend
 
-Create a Spotify app at `https://developer.spotify.com/dashboard` and add this redirect URI:
-
-```text
-http://127.0.0.1:8888/callback
-```
-
-Generate a refresh token with PKCE. Only the client ID is needed; do not use a client secret on the ESP32.
-
-```bash
-python3 scripts/spotify_pkce_refresh_token.py --client-id YOUR_SPOTIFY_CLIENT_ID
-```
-
-The script prints the client ID and refresh token for provisioning through the setup portal or Home Assistant pairing flow. Do not commit those values and do not compile them into firmware headers.
-
-The generated token includes `playlist-read-private` so the firmware can find a private `SpotifyDJ Liked Proxy` playlist from your own playlists. If an older token was generated without that scope, regenerate the refresh token and submit it through Home Assistant provisioning or the web portal Spotify repair form.
+The ESP sends generic playback commands to Home Assistant and receives generic playback state back. The firmware intentionally avoids Spotify OAuth storage and direct Spotify Web API calls. Home Assistant owns backend-specific details such as Spotify refresh tokens, Sonos entity selection, media-player services, playlist lookup and queue behavior.
 
 ## Home Assistant Integration
 
@@ -171,7 +155,6 @@ Open endpoints:
 Protected endpoints require `Authorization: Bearer <device_token>`:
 
 - `POST /api/device/pair`
-- `POST /api/device/provision_spotify`
 - `POST /api/device/ota`
 - `POST /api/device/reboot`
 - `POST /api/device/forget`
@@ -181,43 +164,9 @@ The device token is stored in NVS and is never logged.
 
 A Postman collection for these local ESP endpoints is available at `postman/SpotifyDJ ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
 
-## Spotify Provisioning Payloads
+## Playback Provisioning
 
-Home Assistant can provision Spotify credentials through pairing/status/provisioning responses. Supported shapes:
-
-```json
-{
-  "spotify_client_id": "...",
-  "spotify_refresh_token": "...",
-  "spotify_market": "NL"
-}
-```
-
-```json
-{
-  "client_id": "...",
-  "refresh_token": "...",
-  "market": "NL"
-}
-```
-
-```json
-{
-  "spotify": {
-    "spotify_client_id": "...",
-    "spotify_refresh_token": "...",
-    "client_id": "...",
-    "refresh_token": "...",
-    "market": "NL"
-  }
-}
-```
-
-Nested Spotify fields have priority. If client ID or refresh token is missing, existing stored credentials are kept. Refresh tokens are never logged.
-
-The external JSON field names above are intentionally compatible with the Home Assistant integration. Internally, the firmware stores them in the `spotifydj` NVS namespace with short ESP32 Preferences keys: `sp_client`, `sp_refresh` and `sp_market`.
-
-If OAuth credentials become invalid, the web portal Spotify panel includes a manual repair form. Submit a new refresh token and, only when the device has no stored client ID, a client ID. The device stores the values in the `spotifydj` NVS namespace, immediately tests Spotify authorization, and clears the submitted fields from the page after the request.
+The ESP no longer accepts or stores Spotify OAuth credentials and no local Spotify provisioning endpoint is registered. Backend credentials must be configured in Home Assistant. Pairing/status responses may still provide non-secret settings such as language or Assist pipeline id.
 
 ## Push-To-Talk Voice Flow
 
@@ -234,7 +183,7 @@ Physical PTT, from the Now Playing screen:
 
 The Current Song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
-Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require Spotify credentials, an active Spotify playback session or browser microphone permission.
+Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
 
 If the Home Assistant integration has been removed while the ESP still has an old pairing token, the web PTT simulation can return a Home Assistant voice endpoint 404. Reset Home Assistant pairing on the device or web portal, add the SpotifyDJ integration again, and pair the device with the new code.
 
@@ -281,21 +230,19 @@ Supported command payloads:
 {"command":"dj_response","text":"Daar gaan we."}
 ```
 
-Status is still posted periodically to the Home Assistant integration through `/api/spotify_dj/status`, and the ESP local API remains available for OTA, Spotify provisioning, reboot, pairing reset and DJ response display/playback.
+Status is still posted periodically to the Home Assistant integration through `/api/spotify_dj/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback.
 
 ## Web Portal
 
-The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, Home Assistant status, Spotify refresh-token repair, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live Spotify Connect devices. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, S, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The IP address is shown in the WiFi details block.
+The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, S, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The IP address is shown in the WiFi details block.
 
-Spotify refresh-token repair accepts a new refresh token and, when no client ID is already stored on the device, a client ID. Submitted refresh tokens are stored in NVS but are never shown back in the portal or logged.
-
-Spotify controls are disabled when Spotify is not connected or when there is no active playback where that action would not make sense.
+Playback controls are disabled when Home Assistant reports playback is not connected or when there is no active playback where that action would not make sense.
 
 The web portal includes Safari/iOS home-screen metadata and an Apple touch icon. On iPhone, open the device web portal in Safari, tap Share and choose `Add to Home Screen`. The shortcut opens the local portal as a standalone web app while the phone can reach the device on the network.
 
 To reduce unnecessary ESP HTTP work, the portal only polls heavier panels when they are visible: logs poll only while the logs panel is visible and not paused, and queue, playlist and sound-output list refreshes run only when their related UI is on screen. Dynamic API and root page responses use `no-store` cache headers, while embedded static assets such as icons and the web manifest use browser cache headers.
 
-Spotify's queue endpoint can omit upcoming tracks for playlist context playback. When the queue response is empty and the current context is a Spotify playlist, the firmware falls back to reading the current playlist tracks and shows the next items after the currently playing track. The `SpotifyDJ Liked Proxy` lookup scans multiple pages of the user's own playlists before falling back to public search, which helps private playlists and larger libraries.
+Queue, playlist and output data are supplied by the Home Assistant integration. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
 
 ## Firmware Architecture
 
@@ -304,22 +251,21 @@ Spotify's queue endpoint can omit upcoming tracks for playlist context playback.
 - `ProvisioningController` owns NVS provisioning keys for WiFi, setup mode, display settings, language, theme, log level and speaker cue volume.
 - `PowerController` owns charger detection policy, timer-wake sleep decisions, button wake masks and watchdog setup/feed.
 - `SpotifyDJMenuModel` contains host-testable menu counts and option values; `SpotifyDJMenu` adapts that model to Arduino strings and display labels.
-- `NetworkActivity` applies bounded HTTP timeout policy and logs duration/result for long network flows such as Spotify, Home Assistant status, OTA, album art and DJ response audio.
+- `NetworkActivity` applies bounded HTTP timeout policy and logs duration/result for long network flows such as Home Assistant playback proxy calls, status, OTA, album art and DJ response audio.
 
 Keep new provisioning writes in `ProvisioningController`, power/sleep/watchdog decisions in `PowerController`, pure menu counts/options in `SpotifyDJMenuModel`, and long HTTP timeout policy through `NetworkActivity`. This keeps `SpotifyDJApp` focused on orchestration instead of becoming the owner of every subsystem.
 
 ## Architecture Decisions
 
-- Home Assistant is the trusted backend for pairing, Spotify command interpretation, Assist STT/TTS orchestration and OTA offer handling. The ESP stores only the device token and the credentials required for local operation.
+- Home Assistant is the trusted backend for pairing, playback command interpretation, backend credentials, Assist STT/TTS orchestration and OTA offer handling. The ESP stores only WiFi settings and its Home Assistant device token.
 - The ESP remains the local edge device for display, controls, LED ring, battery policy, speaker cues, microphone capture and playback of HA-provided DJ response audio. It must keep working when optional HA/web features are unused.
 - Push-to-talk uses the SpotifyDJ integration as the backend boundary: the ESP records WAV audio and uploads it to `/api/spotify_dj/voice`; the HA integration owns Assist/STT/TTS and returns DJ text plus optional audio URL. The ESP does not authenticate directly to Home Assistant core `/api/websocket`, call OpenAI directly or upload browser microphone audio.
 - Home Assistant pairing validity is a runtime state. Stored NVS pairing is not deleted automatically on HA 401/403/404, but the `H` indicator turns red, PTT/web PTT are disabled and the UI instructs the user to reset pairing.
-- Spotify OAuth credentials are accepted through HA provisioning, setup portal or the web repair form. Refresh tokens are never logged or shown back to the user. If Spotify returns `invalid_grant`, the firmware marks the stored credentials stale and reports `spotify_configured=false` in the next HA status update so the HA integration can push the latest rotated refresh token back to the ESP.
-- External API payload field names stay integration-friendly, for example `spotify_refresh_token`. Internal ESP32 Preferences keys must stay at 15 characters or less, so Spotify credentials are stored as `sp_client`, `sp_refresh` and `sp_market`.
+- Spotify OAuth and other playback-backend credentials are never stored on the ESP. Legacy `sp_client`, `sp_refresh` and `sp_market` NVS keys are cleared at boot.
 - Long network operations are bounded by explicit timeout policy and tracked through `NetworkActivity`; UI/input responsiveness should not depend on a blocking Spotify, HA, OTA or audio download call finishing quickly.
 - Pre-pairing bootstrap OTA is a safety net for freshly provisioned devices: after WiFi connects but before Home Assistant pairing, release firmware checks the public GitHub firmware release manifest and updates itself if a newer release exists. Local `dev` / `vdev` firmware is intentionally excluded from this automatic path.
 - Web portal polling is visibility-aware for logs, queue, playlist and sound-output data. Keep root/status/log API responses uncached, but cache embedded static assets with explicit cache headers.
-- The public ESP API is documented as a Postman collection with variables only. Do not commit real device tokens, refresh tokens or private HA URLs.
+- The public ESP API is documented as a Postman collection with variables only. Do not commit real device tokens or private HA URLs.
 - Product firmware is proprietary/closed-source, while release binaries and manifests are published separately for Home Assistant OTA distribution.
 
 ## Battery, Charging and Turn Off
@@ -375,7 +321,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.12 --dry-run` validates the release plan without touching files. Both `2.9.12` and `v2.9.12` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.13 --dry-run` validates the release plan without touching files. Both `2.9.13` and `v2.9.13` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
@@ -407,7 +353,7 @@ Run release-script checks:
 bash test/native/test_release.sh
 ```
 
-The native test binary covers pure logic such as battery estimation, menu option counts/values including log-level options, Spotify provisioning parsing, Spotify credential repair validation, HA Spotify reprovisioning status decisions and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
+The native test binary covers pure logic such as battery estimation, menu option counts/values including log-level options, device command parsing, Home Assistant pairing/provisioning helpers and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
 
 ## Security Checklist
 
@@ -417,29 +363,27 @@ Before a release, scan for accidental secrets:
 rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_REFRESH_TOKEN|WIFI_SSID|WIFI_PASSWORD|client_secret|wifi144iot|AQB|5ea462" include src test scripts README.md AGENTS.md CHANGELOG.md -S
 ```
 
-Expected findings should be documentation placeholders, parser field names, NVS key names or test dummy values only. Real refresh tokens, WiFi passwords, Home Assistant tokens and Spotify client secrets must not be committed.
+Expected findings should be documentation placeholders, parser field names, NVS key names or test dummy values only. Real refresh tokens, WiFi passwords, Home Assistant tokens and playback-backend client secrets must not be committed.
 
 Security defaults:
 
 - `SPOTIFY_ALLOW_INSECURE_TLS` must be `0` for normal builds.
-- No Spotify client secret is used on the ESP32.
+- No playback-backend client secret is used on the ESP32.
 - Protected device API endpoints require `Authorization: Bearer <device_token>`.
 - Refresh tokens and device tokens are never logged.
 - Factory reset clears local credentials, tokens, settings and local caches.
 
 NVS encryption status:
 
-- The firmware currently stores WiFi, Spotify and Home Assistant credentials in ESP32 NVS, but the Arduino/PlatformIO build does not enable encrypted NVS yet.
+- The firmware currently stores WiFi and Home Assistant credentials in ESP32 NVS, but the Arduino/PlatformIO build does not enable encrypted NVS yet.
 - True NVS Encryption requires an ESP-IDF or Arduino-as-component build with `CONFIG_NVS_ENCRYPTION=y` and a partition table that includes an `nvs_keys` partition.
 - Changing the partition table is a factory/serial-flash migration, not an OTA-only change. Existing devices must be re-provisioned or migrated carefully so old plaintext NVS data is not left behind.
 - Do not claim encrypted credential storage in releases until the build config and partition table prove that encrypted NVS is active.
 
 ## Troubleshooting
 
-- `Refresh token missing` or `Spotify client id missing`: provision Spotify credentials through Home Assistant or the setup portal.
-- Spotify controls do nothing: check Spotify authorization, Spotify Premium and the active Spotify Connect output.
+- Playback controls do nothing: check Home Assistant pairing, the HA integration command endpoint, backend authorization and the active output.
 - No Home Assistant pairing code: check the web portal pairing banner, mDNS discovery and `/api/device/pairing-info`.
 - PTT fails: check Home Assistant pairing, `ha_url`, `device_token`, the HA integration `/api/spotify_dj/voice` handler and HA Assist/TTS logs. The ESP should not report `Assist auth_invalid`; Assist WebSocket authentication belongs on the HA integration side.
-- Spotify token becomes invalid after reboot: ensure the HA integration stores rotated Spotify refresh tokens and returns the latest token when the ESP reports `spotify_configured=false` after `invalid_grant`.
 - OTA fails: check battery/charging state, firmware URL, device type and network reachability.
 - Device becomes sluggish: check logs for `Responsiveness: slow loop`, `free_heap`, `min_free_heap` and `largest_block`.

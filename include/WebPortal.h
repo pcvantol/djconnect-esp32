@@ -23,12 +23,6 @@ public:
       const String &logLevel);
   using WifiSettingsCallback = void (*)(void *context, const String &ssid, const String &password);
   using VoiceTextCallback = bool (*)(void *context, const String &text, String &message, String &audioUrl);
-  using SpotifyCredentialsCallback = bool (*)(
-      void *context,
-      const String &clientId,
-      const String &refreshToken,
-      const String &market,
-      String &message);
   using SimpleCallback = void (*)(void *context);
 
   // Starts the HTTP server and binds it to the live app state snapshots.
@@ -53,7 +47,6 @@ public:
       SettingsCallback settingsCallback,
       WifiSettingsCallback wifiSettingsCallback,
       VoiceTextCallback voiceTextCallback,
-      SpotifyCredentialsCallback spotifyCredentialsCallback,
       SimpleCallback refreshCallback,
       SimpleCallback resetPairingCallback,
       SimpleCallback hardResetCallback);
@@ -86,7 +79,6 @@ private:
   void handleTransferPost();
   void handlePlaybackCommandPost();
   void handleVoiceTextPost();
-  void handleSpotifyCredentialsPost();
   void handleRefreshPost();
   void handleResetPairingPost();
   void handleRebootPost();
@@ -130,7 +122,6 @@ private:
   SettingsCallback settingsCallback_ = nullptr;
   WifiSettingsCallback wifiSettingsCallback_ = nullptr;
   VoiceTextCallback voiceTextCallback_ = nullptr;
-  SpotifyCredentialsCallback spotifyCredentialsCallback_ = nullptr;
   SimpleCallback refreshCallback_ = nullptr;
   SimpleCallback resetPairingCallback_ = nullptr;
   SimpleCallback hardResetCallback_ = nullptr;
