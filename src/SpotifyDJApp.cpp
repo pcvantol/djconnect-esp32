@@ -1323,9 +1323,21 @@ void SpotifyDJApp::hardResetToProvisioning() {
 
 void SpotifyDJApp::resetHomeAssistantPairing() {
   AppLog.println("Home Assistant: clearing pairing and restarting to pairing mode");
+  voiceRecorder_.abort();
+  homeAssistantPaired_ = false;
+  playback_.error = "";
+  display_.wakeForUserActivity();
   display_.showBootMessage(I18n::text("boot_reset_pairing"), battery_);
+  sound_.playSoftReset();
+  ledRing_.showSolid(CRGB::White, 100);
+  responsiveDelay(140);
+  ledRing_.setPowerPercent(0);
+  responsiveDelay(90);
+  ledRing_.showSolid(CRGB::White, 100);
+  responsiveDelay(140);
   haDevice_.clearHomeAssistantPairing();
-  responsiveDelay(350);
+  AppLog.println("Home Assistant: pairing reset complete, restarting");
+  responsiveDelay(450);
   ESP.restart();
 }
 

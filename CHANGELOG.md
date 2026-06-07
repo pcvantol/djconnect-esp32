@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.18
+## v2.9.19
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -43,7 +43,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.18` / `v2.9.18`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.19` / `v2.9.19`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.
@@ -61,6 +61,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - `/api/device/pair` now also accepts a direct Home Assistant callback with `ha_url`, `device_token`, Assist pipeline id and device language, while keeping the handler lightweight to avoid watchdog stalls during pairing.
 - Playback proxy commands now wait for a successful authenticated Home Assistant status confirmation after boot/pairing, preventing stale or pending tokens from repeatedly sending playback 401 requests.
 - Home Assistant playback proxy HTTP failures such as `HA playback HTTP -1` now make the device connectivity LED state red without erasing pairing data.
+- Reset Home Assistant pairing from the device now shows a clear reset screen, plays the soft-reset cue and flashes the LED ring before restarting into pairing mode.
 - OTA firmware write shows `Firmware update in progress..` on the display for both Home Assistant OTA and manual web upload, runs a fast purple LED-ring animation, and plays start/progress/complete/failure speaker cues.
 - OTA download and manual firmware upload now explicitly service the ESP task watchdog while hashing and writing firmware chunks.
 - Home Assistant status payloads now publish `state/status=online` plus `ota_state/update_state=idle` after boot so integrations can clear a stale OTA `updating` state.
