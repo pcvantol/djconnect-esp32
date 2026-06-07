@@ -99,7 +99,7 @@ void SpotifyDJApp::begin() {
   haPairing_.begin(haDevice_, &haDiscovery_);
   haPairing_.setLanguageProvisionedCallback(languageProvisionedCallback, this);
   haPairing_.setSpotifyProvisionedCallback(spotifyProvisionedCallback, this);
-  softResetMonitor_.begin(battery_);
+  softResetMonitor_.begin(battery_, softResetCueCallback, this);
   albumArt_.begin();
   ledRing_.begin();
   sound_.begin();
@@ -651,6 +651,9 @@ void SpotifyDJApp::runCaptivePortal() {
   uint32_t lastBatteryRefreshAt = 0;
   for (;;) {
     const InputEvents events = input_.poll();
+    if (events.topButtonPress || events.topButtonHeld || events.topButtonLongClick) {
+      input_.clearPendingButtonActions();
+    }
     if (events.encoderClick) {
       AppLog.println("Setup portal: turn off selected");
       display_.showBootMessage(I18n::text("turning_off"), battery_);
@@ -2554,6 +2557,7 @@ void SpotifyDJApp::enterDeepSleep() {
   AppLog.println("Entering deep sleep");
   sound_.playTurnOff();
   responsiveDelay(220);
+  ledRing_.playTurnOffRainbow();
 
   if (activeScreen_ != UiScreen::NowPlaying) {
     activeScreen_ = UiScreen::NowPlaying;
@@ -2942,6 +2946,9 @@ void SpotifyDJApp::markHomeAssistantPairingInvalid(const String &message) {
 bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   if (haDevice_.isPaired()) {
     homeAssistantPaired_ = true;
+    if (bleProvisioning_.isStarted()) {
+      bleProvisioning_.end();
+    }
     if (haPairingScreenActive_) {
       haPairingScreenActive_ = false;
       haPairingStartedAt_ = 0;
@@ -2961,10 +2968,28 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
 
   haPairingScreenActive_ = true;
   homeAssistantPaired_ = false;
+  haDevice_.ensurePairingCode();
+  if (!bleProvisioning_.isStarted()) {
+    bleProvisioning_.begin(haDevice_.getDeviceId());
+    bleProvisioning_.setStatus("pairing", String("Pair code ") + haDevice_.getPairCode());
+  }
   if (haPairingStartedAt_ == 0) {
     haPairingStartedAt_ = millis();
   }
   display_.forceBacklightPercent(100);
+  ledRing_.showHomeAssistantPairingBreath();
+  const InputEvents events = input_.poll();
+  if (events.topButtonPress || events.topButtonHeld || events.topButtonLongClick) {
+    topHoldMenuHintVisible_ = false;
+    input_.clearPendingButtonActions();
+  }
+  if (events.encoderClick) {
+    AppLog.println("Home Assistant pairing: turn off selected");
+    display_.showBootMessage(I18n::text("turning_off"), battery_);
+    responsiveDelay(300);
+    enterDeepSleep();
+    return true;
+  }
   webPortal_.handle();
   processPendingWifiSettings();
   haApiServer_.loop();
@@ -3060,6 +3085,23 @@ void SpotifyDJApp::wakeWordDetectedCallback(void *context) {
   AppLog.println("Wake word: starting push-to-talk flow");
   app->display_.wakeForUserActivity();
   app->handleVoiceButton();
+}
+
+void SpotifyDJApp::softResetCueCallback(void *context) {
+  auto *app = static_cast<SpotifyDJApp *>(context);
+  if (app == nullptr) {
+    return;
+  }
+
+  app->sound_.playSoftReset();
+  app->ledRing_.showSolid(CRGB::White, 100);
+  delay(180);
+  app->ledRing_.setPowerPercent(0);
+  delay(80);
+  app->ledRing_.showSolid(CRGB::White, 100);
+  delay(180);
+  app->ledRing_.setPowerPercent(0);
+  delay(180);
 }
 
 void SpotifyDJApp::refreshFromWebCallback(void *context) {

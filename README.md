@@ -93,20 +93,20 @@ Keep `SPOTIFY_ALLOW_INSECURE_TLS` at `0` for normal builds. Set it to `1` only a
 5. Enter WiFi credentials.
 6. The device tests WiFi, stores the credentials in NVS and restarts. Playback-backend credentials are configured in Home Assistant.
 
-Setup/AP mode keeps the screen at 100% brightness, shows the rainbow LED-ring animation, keeps battery/charging state visible, shows that the portal is active for 10 minutes, and turns off after 10 minutes without successful setup. The device screen also offers a center-button turn-off action while setup/AP mode is active.
+Setup/AP mode keeps the screen at 100% brightness, shows a deeply fading rainbow LED-ring breath animation, keeps battery/charging state visible, shows that the portal is active for 10 minutes, and turns off after 10 minutes without successful setup. The device screen also offers a center-button turn-off action while setup/AP mode is active.
 
 ## BLE WiFi Provisioning
 
 iOS does not automatically share the current iPhone WiFi password with an ESP32 over BLE. SpotifyDJ supports BLE provisioning where an app, Home Assistant flow or BLE tool actively writes credentials to the device.
 
-During setup/AP mode:
+During setup/AP mode and Home Assistant pairing mode:
 
 - BLE name: `SpotifyDJ xxxx`, where `xxxx` is the device ID suffix.
 - Service UUID: `7f705000-9f8f-4f1a-9b5f-570071fd0001`
 - Write characteristic UUID: `7f705001-9f8f-4f1a-9b5f-570071fd0001`
 - Status read/notify characteristic UUID: `7f705002-9f8f-4f1a-9b5f-570071fd0001`
 
-Write WiFi credentials as JSON:
+In setup/AP mode, write WiFi credentials as JSON:
 
 ```json
 {
@@ -117,6 +117,8 @@ Write WiFi credentials as JSON:
 
 Playback-backend credentials are not provisioned through BLE or stored on the ESP. Configure Spotify, Sonos or other backend credentials in the Home Assistant integration.
 
+In Home Assistant pairing mode, BLE advertising remains active so a Home Assistant Bluetooth Proxy config flow can discover the ESP while the pairing code is visible. The BLE status characteristic reports the current pairing state and visible pair code. Home Assistant should not mark the device as paired merely because HA has generated a local token; the ESP must confirm pairing by storing the device token or the integration should show the pairing as pending.
+
 ## Playback Backend
 
 The ESP sends generic playback commands to Home Assistant and receives generic playback state back. The firmware intentionally avoids Spotify OAuth storage and direct Spotify Web API calls. Home Assistant owns backend-specific details such as Spotify refresh tokens, Sonos entity selection, media-player services, playlist lookup and queue behavior.
@@ -125,7 +127,7 @@ The ESP sends generic playback commands to Home Assistant and receives generic p
 
 The custom integration domain is `spotify_dj`.
 
-When WiFi is configured but Home Assistant is not paired, the device enters pairing mode. The display shows the SpotifyDJ logo/name, battery state and a large pairing code. The screen stays at 100% brightness for 10 minutes. Normal playback/menu input is blocked, while reset controls, the web portal and the device API remain available.
+When WiFi is configured but Home Assistant is not paired, the device enters pairing mode. The display shows the SpotifyDJ logo/name, battery state, a large pairing code and a center-button turn-off hint. The screen stays at 100% brightness for 10 minutes and the LED ring breathes blue. Normal playback/menu input is blocked, while reset controls, BLE advertising, the web portal and the device API remain available.
 
 ### mDNS Discovery
 
@@ -160,7 +162,7 @@ Protected endpoints require `Authorization: Bearer <device_token>`:
 - `POST /api/device/forget`
 - `POST /api/device/dj_response`
 
-The device token is stored in NVS and is never logged.
+The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` supports both the original ESP-initiated HA pair request and a direct Home Assistant callback that supplies `ha_url` plus `device_token`. The ESP leaves pairing mode only after the token is stored locally.
 
 A Postman collection for these local ESP endpoints is available at `postman/SpotifyDJ ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
 
@@ -284,7 +286,7 @@ Local development builds still show `vdev` on the device, but the Home Assistant
 
 Freshly provisioned, unpaired release firmware also performs a pre-pairing bootstrap update check after WiFi connects. It uses the GitHub Releases API for `pcvantol/spotify-dj-firmware`, follows the normal OTA screen/LED/sound/write flow when a newer release is available, and continues silently into pairing if the check fails. Dev builds are skipped so local development firmware is not replaced automatically.
 
-During normal boot, the LED ring plays one fast rainbow startup lap before WiFi, setup/AP, charging or playback states take over. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot.
+During normal boot, the LED ring plays one calm rainbow startup lap before WiFi, setup/AP, charging or playback states take over. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot.
 
 ## GitHub Firmware Release
 
@@ -321,7 +323,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.16 --dry-run` validates the release plan without touching files. Both `2.9.16` and `v2.9.16` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.17 --dry-run` validates the release plan without touching files. Both `2.9.17` and `v2.9.17` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

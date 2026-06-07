@@ -100,7 +100,7 @@ void LedRing::playStartupRainbow() {
   lastVolume_ = -999;
   FastLED.setBrightness(Config::LedRingBrightness);
 
-  // One fast rainbow lap gives a clear startup cue before WiFi/setup/status animations take over.
+  // One calm rainbow lap gives a clear startup cue before WiFi/setup/status animations take over.
   for (uint8_t index = 0; index < Config::Ws2812LedCount; index++) {
     fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
     const uint8_t hue = index * (255 / Config::Ws2812LedCount);
@@ -108,15 +108,38 @@ void LedRing::playStartupRainbow() {
     leds_[(index + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = CHSV(hue - 28, 220, 105);
     leds_[(index + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = CHSV(hue - 56, 180, 45);
     FastLED.show();
-    delay(32);
+    delay(85);
   }
 
   // Fade/debounce the ring back to fully off so the later connection/setup state owns the LEDs.
-  for (int brightness = 160; brightness >= 0; brightness -= 16) {
+  for (int brightness = 160; brightness >= 0; brightness -= 10) {
     FastLED.setBrightness(brightness < 0 ? 0 : brightness);
     FastLED.show();
-    delay(18);
+    delay(28);
   }
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+  FastLED.setBrightness(0);
+  FastLED.show();
+  powerPercent_ = 0;
+}
+
+void LedRing::playTurnOffRainbow() {
+  if (!ready_) {
+    return;
+  }
+
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+  FastLED.setBrightness(Config::LedRingBrightness);
+
+  for (uint8_t frame = 0; frame < 18; frame++) {
+    fill_rainbow(leds_, Config::Ws2812LedCount, frame * 12, 24);
+    const uint8_t brightness = map(17 - frame, 0, 17, 0, Config::LedRingBrightness);
+    FastLED.setBrightness(brightness);
+    FastLED.show();
+    delay(38);
+  }
+
   fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
   FastLED.setBrightness(0);
   FastLED.show();
@@ -139,9 +162,9 @@ void LedRing::showWifiConnectingAnimation() {
 
   fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
   const uint8_t head = wifiFrame_++ % Config::Ws2812LedCount;
-  leds_[head] = CRGB(0, 90, 255);
-  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = CRGB(0, 35, 120);
-  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = CRGB(0, 12, 45);
+  leds_[head] = scaledSpotifyGreen(255);
+  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = scaledSpotifyGreen(110);
+  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = scaledSpotifyGreen(40);
   FastLED.show();
 }
 
@@ -186,9 +209,28 @@ void LedRing::showSetupRainbowBreath() {
   powerPercent_ = 100;
   lastVolume_ = -999;
 
-  const uint8_t breath = beatsin8(18, 18, Config::LedRingBrightness);
+  const uint8_t breath = beatsin8(18, 3, Config::LedRingBrightness);
   FastLED.setBrightness(breath);
   fill_rainbow(leds_, Config::Ws2812LedCount, setupFrame_++, 18);
+  FastLED.show();
+}
+
+void LedRing::showHomeAssistantPairingBreath() {
+  if (!ready_) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - lastHomeAssistantPairingFrameAt_ < 35) {
+    return;
+  }
+  lastHomeAssistantPairingFrameAt_ = now;
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+
+  const uint8_t breath = beatsin8(16, 3, Config::LedRingBrightness);
+  FastLED.setBrightness(breath);
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB(0, 70, 255));
   FastLED.show();
 }
 

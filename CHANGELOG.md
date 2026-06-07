@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.16
+## v2.9.17
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -43,7 +43,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.16` / `v2.9.16`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.17` / `v2.9.17`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.
@@ -57,12 +57,14 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Now Playing shows `H` and `S` status indicators for Home Assistant and playback.
 - Pairing mode shows the SpotifyDJ logo/name, battery state, instruction text and a large pairing code.
 - Pairing code is also visible in serial logs and the web interface.
-- Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off.
+- Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off. Pairing mode also keeps BLE advertising active, shows a center-button turn-off hint and uses a deeply fading blue LED-ring breath.
+- `/api/device/pair` now also accepts a direct Home Assistant callback with `ha_url` and `device_token`, so the ESP leaves the pairing screen only after the local token has actually been stored.
 - OTA firmware write shows `Firmware update in progress..` on the display for both Home Assistant OTA and manual web upload, runs a fast purple LED-ring animation, and plays start/progress/complete/failure speaker cues.
 - OTA download and manual firmware upload now explicitly service the ESP task watchdog while hashing and writing firmware chunks.
 - Home Assistant status payloads now publish `state/status=online` plus `ota_state/update_state=idle` after boot so integrations can clear a stale OTA `updating` state.
 - MP3 DJ-response playback now temporarily pauses the loop-task watchdog around the blocking decoder loop and restores it afterward.
-- Normal boot LED-ring feedback is now a fast rainbow startup lap that fades back to off before setup/AP, WiFi or playback states take over.
+- Normal boot LED-ring feedback is now a calm rainbow startup lap that fades back to off before setup/AP, WiFi or playback states take over.
+- Turn-off/deep-sleep always plays a rainbow LED-ring fade-out; top-button soft reset plays a dedicated speaker cue and bright white LED-ring flashes before reboot.
 - Display idle behavior keeps the configured brightness until the selected timeout, then turns the screen fully off.
 - The first button/encoder action while the screen is off only wakes the screen and does not execute the underlying action.
 - Web interface shows H/S status indicators, WiFi signal bars and a CSS battery icon with percentage/charging flash.
@@ -101,7 +103,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - When no music is playing, the device and web portal offer an action to start the `SpotifyDJ Liked Proxy` playlist.
 - Volume control is disabled when there is no active playback.
 - WiFi boot label is `Connecting to WiFi...`.
-- WiFi boot connection timeout is 30 seconds and the LED ring shows a blue connecting animation while the device attempts to join WiFi.
+- WiFi boot connection timeout is 30 seconds and the LED ring shows a green connecting animation while the device attempts to join WiFi.
 - WiFi-failure recovery now keeps factory reset at the bottom of the menu and requires an explicit confirmation screen before wiping setup.
 - Setup/AP mode display now shows that the portal is active for 10 minutes and exposes a center-button turn-off action.
 - The language setting is stored in NVS, can be provisioned by Home Assistant through `device_language`/`language`, and resets to English on factory reset; logs remain English.

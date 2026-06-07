@@ -88,6 +88,10 @@ bool BleWifiProvisioning::pollPayload(String &payload) {
   return true;
 }
 
+bool BleWifiProvisioning::isStarted() const {
+  return started_;
+}
+
 void BleWifiProvisioning::receivePayload(const String &payload) {
   pendingPayload_ = payload;
   payloadPending_ = true;

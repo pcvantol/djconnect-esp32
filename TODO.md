@@ -32,15 +32,19 @@ Concrete backlog for follow-up implementation and validation.
 - [ ] Add host tests for setup/AP timeout text and center-button turn-off state.
 - [ ] Consider moving captive portal, BLE provisioning and setup/AP loop out of `SpotifyDJApp` into a dedicated `SetupController`.
 - [ ] Verify on-device that WiFi connect timeout is actually 30 seconds.
-- [ ] Verify blue LED-ring animation during WiFi connect.
+- [ ] Verify green LED-ring animation during WiFi connect.
 - [ ] Verify setup/AP screen shows portal active for 10 minutes.
 - [ ] Verify center-button turn off in setup/AP mode.
 - [ ] Verify factory reset in WiFi-failure menu requires confirmation.
+- [ ] Verify BLE advertising stays active in Home Assistant pairing mode.
+- [ ] Verify pairing mode shows the center-button turn-off hint and blue breathing LED ring.
+- [ ] Verify holding the top button for soft reset in pairing/setup never flashes the normal menu first.
 
 ## Home Assistant Integration
 
 - [ ] Validate OTA status clearing after successful update and reboot.
 - [ ] Validate runtime stale-pairing behavior for HA 401, 403 and 404.
+- [ ] Confirm HA reports pairing as pending until ESP confirms token storage through `/api/device/pair`.
 - [ ] Confirm HA integration owns backend OAuth/credential refresh without sending backend tokens to the ESP.
 - [ ] Confirm HA integration can return DJ response text plus WAV URL.
 - [ ] Confirm HA integration can return DJ response text plus MP3 URL.

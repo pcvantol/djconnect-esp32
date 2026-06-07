@@ -223,6 +223,10 @@ void SoundManager::playTurnOff() {
   enqueue(Event::TurnOff);
 }
 
+void SoundManager::playSoftReset() {
+  enqueue(Event::SoftReset);
+}
+
 void SoundManager::playPttStart() {
   enqueue(Event::PttStart);
 }
@@ -591,6 +595,11 @@ void SoundManager::runTask() {
         playTone(784, 70, 12);
         playSilence(30);
         playTone(392, 110, 12);
+        break;
+      case Event::SoftReset:
+        playTone(1175, 45, 16);
+        playSilence(25);
+        playTone(1568, 75, 16);
         break;
       case Event::PttStart:
         playTone(1319, 42, 12);

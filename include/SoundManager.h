@@ -37,6 +37,9 @@ public:
   // Soft descending cue immediately before the device enters turn-off sleep.
   void playTurnOff();
 
+  // Short bright cue immediately before a top-button soft reset.
+  void playSoftReset();
+
   // Distinct cue when push-to-talk starts listening.
   void playPttStart();
 
@@ -92,6 +95,7 @@ private:
     MenuOpen,
     Back,
     TurnOff,
+    SoftReset,
     PttStart,
     PttStop,
     HardReset,

@@ -23,6 +23,9 @@ public:
   // Plays one short rainbow lap and fades back to off before normal boot/setup states take over.
   void playStartupRainbow();
 
+  // Plays a short rainbow fade-out before entering deep sleep.
+  void playTurnOffRainbow();
+
   // Advances a blue chase while the device is trying to join WiFi.
   void showWifiConnectingAnimation();
 
@@ -31,6 +34,9 @@ public:
 
   // Advances the AP/setup portal rainbow breathing animation.
   void showSetupRainbowBreath();
+
+  // Advances the blue breathing animation used while waiting for Home Assistant pairing.
+  void showHomeAssistantPairingBreath();
 
   // Advances a fast purple chase used while OTA firmware is being written.
   void showFirmwareUpdateAnimation();
@@ -54,6 +60,7 @@ private:
   uint8_t chargingFrame_ = 0;
   uint32_t lastSetupFrameAt_ = 0;
   uint8_t setupFrame_ = 0;
+  uint32_t lastHomeAssistantPairingFrameAt_ = 0;
   uint32_t lastWifiFrameAt_ = 0;
   uint8_t wifiFrame_ = 0;
   uint32_t lastFirmwareFrameAt_ = 0;

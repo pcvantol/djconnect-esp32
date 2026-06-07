@@ -621,7 +621,9 @@ void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, c
 
   canvas.setTextDatum(MC_DATUM);
   canvas.setTextColor(TFT_GREEN, TFT_BLACK);
-  canvas.drawString(pairCode, 160, 136, 4);
+  canvas.drawString(pairCode, 160, 132, 4);
+  canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  canvas.drawString(I18n::text("setup_turn_off_hint"), 160, 160, 1);
   canvas.setTextDatum(TL_DATUM);
 }
 

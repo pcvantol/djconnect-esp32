@@ -185,6 +185,7 @@ private:
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
   static void wakeWordDetectedCallback(void *context);
+  static void softResetCueCallback(void *context);
   static void refreshFromWebCallback(void *context);
   static void resetPairingFromWebCallback(void *context);
   static void hardResetFromWebCallback(void *context);

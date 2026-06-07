@@ -124,10 +124,34 @@ void SpotifyDJApiServer::handlePair() {
     return;
   }
   const String haUrl = doc["ha_url"] | "";
+  const String deviceToken = doc["device_token"] | "";
+  const String assistPipelineId = doc["assist_pipeline_id"] | "";
+  const String deviceLanguage = doc["device_language"] | "";
+  const String language = doc["language"] | "";
   if (haUrl.isEmpty()) {
     sendJson(400, "{\"error\":\"ha_url missing\"}");
     return;
   }
+
+  // Newer HA config flows can complete pairing server-side and callback the ESP with
+  // the issued device token. Accept that direct flow so the device leaves pairing mode
+  // immediately after HA reports the entity as paired.
+  if (!deviceToken.isEmpty()) {
+    device_->savePairing(haUrl, deviceToken);
+    if (!assistPipelineId.isEmpty()) {
+      device_->saveAssistPipelineId(assistPipelineId);
+    }
+    const String provisionedLanguage = !deviceLanguage.isEmpty() ? deviceLanguage : language;
+    if (languageProvisionedCallback_ != nullptr && !provisionedLanguage.isEmpty()) {
+      languageProvisionedCallback_(callbackContext_, provisionedLanguage);
+    }
+    discovery_->updateTxtRecords();
+    device_->displayPaired();
+    AppLog.println("Home Assistant direct pairing stored: device_token=present");
+    sendJson(200, "{\"success\":true,\"paired\":true}");
+    return;
+  }
+
   const bool ok = pairing_->pairWithHomeAssistant(haUrl);
   if (ok) {
     discovery_->updateTxtRecords();

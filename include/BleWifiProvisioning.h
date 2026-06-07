@@ -16,6 +16,9 @@ public:
   // Returns one pending JSON payload written over BLE, if available.
   bool pollPayload(String &payload);
 
+  // Exposes whether BLE advertising is active, so pairing mode can reuse the setup BLE service.
+  bool isStarted() const;
+
   // Called by the BLE characteristic callback when a phone writes provisioning JSON.
   void receivePayload(const String &payload);
 

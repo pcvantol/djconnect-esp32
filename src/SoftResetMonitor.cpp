@@ -9,9 +9,13 @@
 #include "Config.h"
 
 const BatteryState *SoftResetMonitor::battery_ = nullptr;
+SoftResetMonitor::ResetCueCallback SoftResetMonitor::softResetCueCallback_ = nullptr;
+void *SoftResetMonitor::callbackContext_ = nullptr;
 
-void SoftResetMonitor::begin(const BatteryState &battery) {
+void SoftResetMonitor::begin(const BatteryState &battery, ResetCueCallback softResetCueCallback, void *context) {
   battery_ = &battery;
+  softResetCueCallback_ = softResetCueCallback;
+  callbackContext_ = context;
   xTaskCreatePinnedToCore(
       resetMonitorTask,
       "reset-monitor",
@@ -57,6 +61,9 @@ void SoftResetMonitor::resetMonitorTask(void *parameter) {
       } else if (now - topButtonPressedAt >= Config::SoftResetHoldMs) {
         if (batteryAllowsSoftReset()) {
           AppLog.println("Top button held, soft reset");
+          if (softResetCueCallback_ != nullptr) {
+            softResetCueCallback_(callbackContext_);
+          }
           delay(50);
           ESP.restart();
         } else {

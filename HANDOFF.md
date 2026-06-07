@@ -14,9 +14,12 @@ Current repo state includes:
 - Device main menu includes a small Pong mini game.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
 - Home Assistant should expose the proxied playback as a native `media_player` entity if user-facing HA media controls are desired. That entity represents the backend playback session, not the ESP speaker.
-- WiFi boot connection timeout is 30 seconds. During WiFi connect, the LED ring shows a blue animation.
+- WiFi boot connection timeout is 30 seconds. During WiFi connect, the LED ring shows a green chase animation.
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
-- Setup/AP mode keeps brightness at 100%, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed.
+- Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed.
+- Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
+- HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `ha_url` and `device_token`, stores it, updates mDNS and leaves the pairing screen.
+- Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Freshly provisioned unpaired release firmware performs a graceful pre-pairing bootstrap update check after WiFi connects. It skips local `dev`/`vdev` builds and continues to pairing silently if the check fails.
 
 Latest validated commands:

@@ -275,18 +275,22 @@ When WiFi is configured but Home Assistant is not paired:
 
 - Show pairing code on the display with SpotifyDJ logo/name, battery indicator, instruction text, and a large readable code.
 - Keep display brightness at 100%.
+- Keep the blue Home Assistant pairing LED-ring breath active so the device visibly waits for pairing.
 - Keep pairing mode active for 10 minutes.
 - After 10 minutes, turn off through ESP32 deep sleep.
 - Keep local web/API handling alive.
 - Do not process normal playback/menu button actions.
+- Show the center-button turn-off hint and allow center-button turn off.
+- Consume top-button press/hold/long-click UI events in pairing mode so holding the top button for the 10-second soft reset never flashes the normal menu first.
 - Soft reset and hard reset must remain available through the reset monitor.
 - The pairing code should also be available in Serial logging and the web pairing panel.
+- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token. `/api/device/pair` may receive a direct HA callback with `ha_url` and `device_token`; on success the ESP stores the token, updates mDNS and leaves the pairing screen.
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
 
 If configured WiFi cannot connect during boot, keep the screen at 100% and show the WiFi-failure menu. Rotary selects between retry connect, restart device, turn off, and factory reset. Factory reset must stay at the bottom and require an explicit confirmation screen before wiping setup. Center press executes the selected action. Do not start normal playback/menu handling while this recovery menu is active.
 
-BLE setup mode is active only while the captive portal is active. iOS cannot automatically expose the currently connected WiFi password to the ESP32; BLE provisioning requires an app/flow to write JSON WiFi credentials to the SpotifyDJ BLE characteristic. Home Assistant Bluetooth Proxy flows should write to `7f705001-9f8f-4f1a-9b5f-570071fd0001` and read/subscribe to status characteristic `7f705002-9f8f-4f1a-9b5f-570071fd0001`. Keep BLE provisioning WiFi-only; Spotify stays in Home Assistant provisioning, captive portal, or web settings. Do not claim automatic iPhone credential extraction is possible.
+BLE advertising is active while setup/AP mode is active and while Home Assistant pairing mode is active. iOS cannot automatically expose the currently connected WiFi password to the ESP32; BLE provisioning requires an app/flow to write JSON WiFi credentials to the SpotifyDJ BLE characteristic. Home Assistant Bluetooth Proxy flows should write WiFi JSON to `7f705001-9f8f-4f1a-9b5f-570071fd0001` during setup/AP mode and read/subscribe to status characteristic `7f705002-9f8f-4f1a-9b5f-570071fd0001` for setup or pairing status. Keep BLE provisioning WiFi-only; playback credentials stay in Home Assistant. Do not claim automatic iPhone credential extraction is possible.
 
 ## Display And UI Rules
 
@@ -379,7 +383,8 @@ HA/Spotify status indicators:
 
 - Device statusbar: `H`, `S`.
 - Web header mirrors the same indicators.
-- LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup animations.
+- LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup/pairing animations.
+- Boot uses a calm startup rainbow lap. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
 
 ## Volume Rules
 
@@ -420,7 +425,7 @@ Respect existing low-battery behavior:
 
 Battery percentage is always voltage-estimated using `LogicHelpers::batteryPercentFromVoltage`. Do not reintroduce BQ27220 state-of-charge as the primary displayed percentage unless the user explicitly asks.
 
-Hard reset is allowed only above the configured battery threshold. Soft reset has its own lower threshold. Check `SoftResetMonitor` before changing reset behavior.
+Hard reset is allowed only above the configured battery threshold. Soft reset has its own lower threshold. Check `SoftResetMonitor` before changing reset behavior. The top-button 10-second soft reset runs from the reset monitor task and should play the soft-reset cue plus white LED flashes before `ESP.restart()`.
 
 ## Web Portal Rules
 
