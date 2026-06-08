@@ -147,6 +147,8 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
 
   JsonDocument request;
   request["device_id"] = device_->getDeviceId();
+  request["ha_pairing_status"] = "paired";
+  request["local_url"] = device_->getLocalUrl();
   request["state"] = "online";
   request["status"] = "online";
   request["ota_state"] = "idle";
@@ -160,12 +162,15 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
   request["device_language"] = I18n::languageCode();
   request["theme"] = settings.theme;
   request["log_level"] = settings.logLevel;
+  request["brightness"] = settings.screenBrightnessPercent;
   request["screen_brightness"] = settings.screenBrightnessPercent;
   request["screen_brightness_percent"] = settings.screenBrightnessPercent;
   request["screen_dim_timeout"] = settings.screenOffTimeoutMs;
+  request["screen_dim_timeout_ms"] = settings.screenOffTimeoutMs;
   request["screen_off_timeout_ms"] = settings.screenOffTimeoutMs;
   request["turn_off_after"] = settings.turnOffAfterMs;
   request["turn_off_after_ms"] = settings.turnOffAfterMs;
+  request["cue_volume"] = settings.speakerVolumePercent;
   request["speaker_volume"] = settings.speakerVolumePercent;
   request["speaker_volume_percent"] = settings.speakerVolumePercent;
   request["screen_state"] = visualState.screenOn ? "on" : "off";
@@ -173,8 +178,11 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
   request["led_state"] = visualState.ledOn ? "on" : "off";
   JsonObject settingsObject = request["settings"].to<JsonObject>();
   settingsObject["screen_brightness_percent"] = settings.screenBrightnessPercent;
+  settingsObject["brightness"] = settings.screenBrightnessPercent;
+  settingsObject["screen_dim_timeout_ms"] = settings.screenOffTimeoutMs;
   settingsObject["screen_off_timeout_ms"] = settings.screenOffTimeoutMs;
   settingsObject["turn_off_after_ms"] = settings.turnOffAfterMs;
+  settingsObject["cue_volume"] = settings.speakerVolumePercent;
   settingsObject["speaker_volume_percent"] = settings.speakerVolumePercent;
   settingsObject["language"] = settings.language;
   settingsObject["theme"] = settings.theme;
@@ -186,6 +194,7 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
   ledObject["state"] = visualState.ledOn ? "on" : "off";
   request["spotify_configured"] = spotifyConfigured;
   request["free_heap"] = ESP.getFreeHeap();
+  request["uptime"] = millis();
   request["uptime_ms"] = millis();
 
   String body;

@@ -50,6 +50,9 @@ void SpotifyDJApiServer::begin(
   server_->on("/api/device/info", HTTP_GET, [this]() { handleInfo(); });
   server_->on("/api/device/pairing-info", HTTP_GET, [this]() { handlePairingInfo(); });
   server_->on("/api/device/pair", HTTP_POST, [this]() { handlePair(); });
+  server_->on("/api/device/provision_spotify", HTTP_POST, [this]() {
+    sendJson(410, "{\"success\":false,\"error\":\"gone\",\"message\":\"Playback credentials are provisioned in Home Assistant\"}");
+  });
   server_->on("/api/device/ota", HTTP_POST, [this]() { handleOta(); });
   server_->on("/api/device/dj_response", HTTP_POST, [this]() { handleDjResponse(); });
   server_->on("/api/device/command", HTTP_POST, [this]() { handleCommand(); });

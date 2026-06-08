@@ -162,6 +162,8 @@ Protected endpoints require `Authorization: Bearer <device_token>`:
 - `POST /api/device/forget`
 - `POST /api/device/dj_response`
 
+The legacy `POST /api/device/provision_spotify` compatibility route returns `410 Gone`. Playback credentials live in Home Assistant and are never accepted or stored by the ESP.
+
 The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` supports both the original ESP-initiated HA pair request and a direct Home Assistant callback that supplies `ha_url` plus `device_token`. The direct callback only stores the token and lightweight settings such as Assist pipeline id and `device_language`/`language`; the main loop then confirms the pairing through `/api/spotify_dj/status`. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
 
 A Postman collection for these local ESP endpoints is available at `postman/SpotifyDJ ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
@@ -234,7 +236,7 @@ Supported command payloads:
 {"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/spotify_dj/tts/example.mp3"}
 ```
 
-Status is still posted periodically to the Home Assistant integration through `/api/spotify_dj/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. The status payload mirrors user device settings both top-level and under `settings`, including `screen_brightness_percent`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume_percent`, `language`, `theme` and `log_level`. It also includes `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to minimum values.
+Status is still posted periodically to the Home Assistant integration through `/api/spotify_dj/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. The status payload mirrors user device settings both top-level and under `settings`, including `ha_pairing_status`, `local_url`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `ota_state` and `update_state`. It also includes `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to minimum values.
 
 Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing.
 
@@ -331,7 +333,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.26 --dry-run` validates the release plan without touching files. Both `2.9.26` and `v2.9.26` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.27 --dry-run` validates the release plan without touching files. Both `2.9.27` and `v2.9.27` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

@@ -3,7 +3,7 @@
 Werk in de bestaande Home Assistant custom integration repo voor `spotify_dj`.
 
 Doel:
-Synchroniseer de Home Assistant integration met de actuele SpotifyDJ ESP firmware release `v2.9.25`.
+Synchroniseer de Home Assistant integration met de actuele SpotifyDJ ESP firmware release `v2.9.27`.
 
 Belangrijke architectuur:
 
@@ -60,7 +60,7 @@ Payload bevat onder andere:
   "battery_mv": 4120,
   "charging": false,
   "wifi_rssi": -55,
-  "firmware": "2.9.25",
+  "firmware": "2.9.27",
   "language": "nl",
   "device_language": "nl",
   "theme": "dark",
@@ -195,7 +195,7 @@ Taken:
 - Never return HTTP 503 for normal playback backend unavailable during command/status, because ESP interprets HTTP 5xx as playback connection error/cooldown.
 - Keep backend unavailable as JSON failure on 200.
 - Keep 401/403/404 only for actual auth/pairing invalid cases.
-- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v2.9.25 forceert direct een playback status poll na HA setup.
+- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v2.9.27 forceert direct een playback status poll na HA setup.
 - Queue/devices/playlists should return `success:true` with empty arrays if backend is reachable but no data is available.
 - Avoid spamming `/api/device/pair` callbacks while normal playback commands are running; use a debounced settings sync path if needed.
 
@@ -282,7 +282,7 @@ Add or update tests for:
 
 ## 8. Acceptance Criteria
 
-- ESP v2.9.25 can pair with HA integration without repeated stale-pairing loops.
+- ESP v2.9.27 can pair with HA integration without repeated stale-pairing loops.
 - After ESP reboot, HA status and playback command flow make the ESP `S` indicator green/grey/red correctly before any physical control action.
 - HA brightness/speaker volume/timeouts/language/theme/log-level entities reflect ESP state after reboot/status post.
 - Playback backend unavailable shows playback/S error but keeps HA pairing intact.

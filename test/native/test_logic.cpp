@@ -98,6 +98,28 @@ static void testHomeAssistantStatusMirroredSettingsDefaults() {
   assert(visual.ledOn);
 }
 
+static void testHomeAssistantStatusAliasContractNames() {
+  const char *aliases[] = {
+      "ha_pairing_status",
+      "local_url",
+      "brightness",
+      "screen_brightness",
+      "screen_dim_timeout_ms",
+      "turn_off_after_ms",
+      "cue_volume",
+      "speaker_volume",
+      "language",
+      "theme",
+      "log_level",
+      "ota_state",
+      "update_state",
+  };
+  for (const char *alias : aliases) {
+    assert(alias != nullptr);
+    assert(std::strlen(alias) > 0);
+  }
+}
+
 static void testImmediatePollTimestampConvention() {
   assert(Logic::forceImmediatePollTimestamp() == 0UL);
 }
@@ -639,6 +661,7 @@ int main() {
   testSemverComparison();
   testHaPlaybackConnectionErrorClassification();
   testHomeAssistantStatusMirroredSettingsDefaults();
+  testHomeAssistantStatusAliasContractNames();
   testImmediatePollTimestampConvention();
   testSpotifyConfiguredForHomeAssistantStatus();
   testProgressEstimation();

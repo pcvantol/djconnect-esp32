@@ -6,7 +6,7 @@ SpotifyDJ is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release prepared from this repo: `v2.9.25`.
+- Latest firmware release prepared from this repo: `v2.9.27`.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
@@ -23,7 +23,8 @@ Current repo state includes:
 - HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `ha_url` and `device_token`, stores it with minimal in-route work, and lets the main loop confirm the pairing through `/api/spotify_dj/status`.
 - After WiFi/Home Assistant setup, the ESP forces an immediate `/api/spotify_dj/command` status poll so the device `S` indicator does not remain grey until the first physical control action.
 - `/api/spotify_dj/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow.
-- Periodic `/api/spotify_dj/status` now mirrors device settings/entities: screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, screen state and LED state.
+- Periodic `/api/spotify_dj/status` now mirrors device settings/entities: `ha_pairing_status`, `local_url`, screen brightness aliases, screen timeout aliases, turn-off timeout, speaker/cue volume aliases, language, theme, log level, OTA/update state, screen state and LED state.
+- Legacy `POST /api/device/provision_spotify` is only a compatibility stub and returns `410 Gone`; backend credentials are never accepted by ESP firmware.
 - Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Freshly provisioned unpaired release firmware performs a graceful pre-pairing bootstrap update check after WiFi connects. It skips local `dev`/`vdev` builds and continues to pairing silently if the check fails.
 
