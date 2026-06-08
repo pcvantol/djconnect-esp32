@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.28
+## v2.9.29
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -50,7 +50,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.28` / `v2.9.28`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.29` / `v2.9.29`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.
@@ -58,7 +58,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Playback control has moved to a backend-agnostic Home Assistant proxy. The ESP sends generic playback commands to HA and no longer stores Spotify OAuth credentials.
 - Captive portal and web portal no longer include Spotify client-id or refresh-token fields.
 - Legacy `sp_client`, `sp_refresh` and `sp_market` NVS keys are cleared at boot.
-- Legacy `POST /api/device/provision_spotify` has been removed; playback-backend credentials are managed only in Home Assistant.
+- Legacy `POST /api/device/provision_spotify` is kept only as a compatibility stub and returns `410 Gone`; playback-backend credentials are managed only in Home Assistant.
 - Battery percentage is always voltage-estimated and displayed without a tilde.
 - Playback volume is limited to `0-60`; the LED ring treats `60` as full scale and uses orange segments.
 - Now Playing shows `H` and `S` status indicators for Home Assistant and playback.
@@ -67,6 +67,8 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off. Pairing mode also keeps BLE advertising active, shows a center-button turn-off hint and uses a deeply fading blue LED-ring breath.
 - `/api/device/pair` now also accepts a direct Home Assistant callback with `ha_url`, `device_token`, Assist pipeline id and device language, while keeping the handler lightweight to avoid watchdog stalls during pairing.
 - Playback proxy commands now wait for a successful authenticated Home Assistant status confirmation after boot/pairing, preventing stale or pending tokens from repeatedly sending playback 401 requests.
+- Direct Home Assistant pairing now schedules immediate status and playback polls on the next loop so the `H`/`S` indicators update right after pairing or reboot instead of waiting for a normal polling interval.
+- Repeated direct Home Assistant pair callbacks with the same `ha_url` and `device_token` are now idempotent, preventing normal status/playback synchronization from resetting pairing validation and playback polling.
 - Home Assistant playback proxy HTTP failures such as `HA playback HTTP -1` now make the device connectivity LED state red without erasing pairing data.
 - Home Assistant playback proxy calls use shorter request waits and a transient-failure cooldown so repeated HA 5xx/-1 responses do not stack blocking commands or trip the watchdog.
 - The `S` playback status indicator is now tri-state: green for active usable playback, grey for a reachable backend with no active playback, and red for playback proxy errors such as HA 5xx/-1 responses.

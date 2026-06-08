@@ -164,7 +164,9 @@ Protected endpoints require `Authorization: Bearer <device_token>`:
 
 The legacy `POST /api/device/provision_spotify` compatibility route returns `410 Gone`. Playback credentials live in Home Assistant and are never accepted or stored by the ESP.
 
-The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` supports both the original ESP-initiated HA pair request and a direct Home Assistant callback that supplies `ha_url` plus `device_token`. The direct callback only stores the token and lightweight settings such as Assist pipeline id and `device_language`/`language`; the main loop then confirms the pairing through `/api/spotify_dj/status`. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
+The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` supports both the original ESP-initiated HA pair request and a direct Home Assistant callback that supplies `ha_url` plus `device_token`. The direct callback only stores the token and lightweight settings such as Assist pipeline id and `device_language`/`language`; the main loop then immediately confirms the pairing through `/api/spotify_dj/status` and schedules an immediate playback status poll. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
+
+Repeated direct callbacks with the same `ha_url` and `device_token` are treated as idempotent and do not reset pairing validation. Home Assistant should still avoid using `/api/device/pair` as a generic settings-sync endpoint after pairing; use `/api/device/command` for settings and the status response contract for state acknowledgements.
 
 A Postman collection for these local ESP endpoints is available at `postman/SpotifyDJ ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
 
@@ -333,7 +335,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.28 --dry-run` validates the release plan without touching files. Both `2.9.28` and `v2.9.28` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.29 --dry-run` validates the release plan without touching files. Both `2.9.29` and `v2.9.29` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

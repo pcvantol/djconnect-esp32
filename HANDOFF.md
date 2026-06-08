@@ -6,7 +6,7 @@ SpotifyDJ is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release prepared from this repo: `v2.9.27`.
+- Latest firmware release prepared from this repo: `v2.9.28`.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
@@ -20,7 +20,7 @@ Current repo state includes:
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed.
 - Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
-- HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `ha_url` and `device_token`, stores it with minimal in-route work, and lets the main loop confirm the pairing through `/api/spotify_dj/status`.
+- HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `ha_url` and `device_token`, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/spotify_dj/status` plus an immediate playback status poll.
 - After WiFi/Home Assistant setup, the ESP forces an immediate `/api/spotify_dj/command` status poll so the device `S` indicator does not remain grey until the first physical control action.
 - `/api/spotify_dj/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow.
 - Periodic `/api/spotify_dj/status` now mirrors device settings/entities: `ha_pairing_status`, `local_url`, screen brightness aliases, screen timeout aliases, turn-off timeout, speaker/cue volume aliases, language, theme, log level, OTA/update state, screen state and LED state.
@@ -83,7 +83,7 @@ Core data/security boundaries:
 - NVS credentials are currently stored in ESP32 NVS but not encrypted by this Arduino/PlatformIO build.
 - OTA status clearing in Home Assistant depends on the integration processing the post-boot status payload correctly.
 - HA native entities for brightness, speaker volume, timeouts, language, theme and log level should read the mirrored `/api/spotify_dj/status` settings fields; otherwise they may show minimum/default values until changed from HA.
-- If HA reposts direct pairing/settings callbacks too often during normal playback commands, debounce or route those updates so they do not spam `/api/device/pair`.
+- If HA reposts direct pairing/settings callbacks too often during normal playback commands, debounce or route those updates so they do not spam `/api/device/pair`. The ESP now treats identical direct-pair callbacks as idempotent, but the integration should still reserve `/api/device/pair` for initial pairing, explicit re-pair/token rotation or recovery.
 - Keep the Home Assistant integration and firmware contract synchronized around native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payload compatibility.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
 - MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.

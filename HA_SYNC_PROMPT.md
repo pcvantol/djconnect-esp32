@@ -3,7 +3,7 @@
 Werk in de bestaande Home Assistant custom integration repo voor `spotify_dj`.
 
 Doel:
-Synchroniseer de Home Assistant integration met de actuele SpotifyDJ ESP firmware release `v2.9.27`.
+Synchroniseer de Home Assistant integration met de actuele SpotifyDJ ESP firmware release `v2.9.28`.
 
 Belangrijke architectuur:
 
@@ -60,23 +60,31 @@ Payload bevat onder andere:
   "battery_mv": 4120,
   "charging": false,
   "wifi_rssi": -55,
-  "firmware": "2.9.27",
+  "firmware": "2.9.28",
   "language": "nl",
   "device_language": "nl",
   "theme": "dark",
   "log_level": "info",
+  "ha_pairing_status": "paired",
+  "local_url": "http://spotifydj-lilygo-XXXXXXXXXXXX.local",
+  "brightness": 100,
   "screen_brightness": 100,
   "screen_brightness_percent": 100,
   "screen_dim_timeout": 60000,
+  "screen_dim_timeout_ms": 60000,
   "screen_off_timeout_ms": 60000,
   "turn_off_after": 300000,
   "turn_off_after_ms": 300000,
+  "cue_volume": 100,
   "speaker_volume": 100,
   "speaker_volume_percent": 100,
   "screen_state": "on",
   "screen_brightness_level": 100,
   "led_state": "off",
   "settings": {
+    "brightness": 100,
+    "screen_dim_timeout_ms": 60000,
+    "cue_volume": 100,
     "screen_brightness_percent": 100,
     "screen_off_timeout_ms": 60000,
     "turn_off_after_ms": 300000,
@@ -195,9 +203,10 @@ Taken:
 - Never return HTTP 503 for normal playback backend unavailable during command/status, because ESP interprets HTTP 5xx as playback connection error/cooldown.
 - Keep backend unavailable as JSON failure on 200.
 - Keep 401/403/404 only for actual auth/pairing invalid cases.
-- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v2.9.27 forceert direct een playback status poll na HA setup.
+- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v2.9.28 forceert direct een playback status poll na HA setup.
 - Queue/devices/playlists should return `success:true` with empty arrays if backend is reachable but no data is available.
 - Avoid spamming `/api/device/pair` callbacks while normal playback commands are running; use a debounced settings sync path if needed.
+- Do not call ESP `POST /api/device/pair` as a generic status/settings synchronization endpoint after the device is already paired. Use it only for initial config-flow pairing, explicit re-pair/token rotation, or recovery. Use `POST /api/device/command` for settings changes and `/api/spotify_dj/status` responses for state acknowledgement.
 
 ## 4. Local ESP Device Command API
 
@@ -282,7 +291,7 @@ Add or update tests for:
 
 ## 8. Acceptance Criteria
 
-- ESP v2.9.27 can pair with HA integration without repeated stale-pairing loops.
+- ESP v2.9.28 can pair with HA integration without repeated stale-pairing loops.
 - After ESP reboot, HA status and playback command flow make the ESP `S` indicator green/grey/red correctly before any physical control action.
 - HA brightness/speaker volume/timeouts/language/theme/log-level entities reflect ESP state after reboot/status post.
 - Playback backend unavailable shows playback/S error but keeps HA pairing intact.

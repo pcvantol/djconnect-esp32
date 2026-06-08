@@ -7,6 +7,7 @@
 
 #include "AppLog.h"
 #include "DeviceCommandParser.h"
+#include "I18n.h"
 void SpotifyDJApiServer::begin(
     WebServer &server,
     SpotifyDJDevice &device,
@@ -144,13 +145,31 @@ void SpotifyDJApiServer::handlePair() {
   // the issued device token. Accept that direct flow so the device leaves pairing mode
   // immediately after HA reports the entity as paired.
   if (!deviceToken.isEmpty()) {
-    device_->savePairing(haUrl, deviceToken);
-    if (!assistPipelineId.isEmpty()) {
-      device_->saveAssistPipelineId(assistPipelineId);
+    const bool samePairing =
+        device_->isPaired() &&
+        device_->getHaUrl() == haUrl &&
+        device_->getDeviceToken() == deviceToken;
+    if (!samePairing) {
+      device_->savePairing(haUrl, deviceToken);
     }
-    SpotifyDJDevice::saveProvisionedLanguage(provisionedLanguage);
-    AppLog.println("Home Assistant direct pairing stored: device_token=present");
-    if (directPairCallback_ != nullptr) {
+    if (!assistPipelineId.isEmpty()) {
+      if (device_->getAssistPipelineId() != assistPipelineId) {
+        device_->saveAssistPipelineId(assistPipelineId);
+      }
+    }
+    const String normalizedLanguage = SpotifyDJDevice::normalizedLanguageCode(provisionedLanguage);
+    if (!normalizedLanguage.isEmpty() && normalizedLanguage != I18n::languageCode()) {
+      SpotifyDJDevice::saveProvisionedLanguage(normalizedLanguage);
+      if (languageProvisionedCallback_ != nullptr) {
+        languageProvisionedCallback_(callbackContext_, normalizedLanguage);
+      }
+    }
+    if (samePairing) {
+      AppLog.println("Home Assistant direct pairing unchanged");
+    } else {
+      AppLog.println("Home Assistant direct pairing stored: device_token=present");
+    }
+    if (!samePairing && directPairCallback_ != nullptr) {
       directPairCallback_(callbackContext_);
     }
     sendJson(200, "{\"success\":true,\"paired\":true}");

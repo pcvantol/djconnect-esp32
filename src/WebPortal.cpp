@@ -507,7 +507,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.",
         wifiPasswordPlaceholder:"leave blank to keep current",
         ha:"Home Assistant", pairing:"Pairing", pairCode:"Pair code", firmware:"Firmware", model:"Model", resetPairing:"Reset pairing",
-        spotify:"Playback", connection:"Connection", token:"Token", error:"Error", refreshSpotify:"Refresh playback status",
+        spotify:"Playback", connection:"Connection", token:"Backend", error:"Error", refreshSpotify:"Refresh playback status",
         username:"Username", discovery:"HA discovery", lastPublished:"Last published", diagnostics:"Diagnostics", screen:"Screen",
         ledRing:"LED ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Storage", sketch:"Sketch", restart:"Restart device",
         logs:"Logs", pauseLogs:"Pause logs", selectAll:"Select all", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -515,7 +515,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         loading:"Loading", playing:"Playing", paused:"Paused", noPlayback:"No playback", connected:"Connected", disconnected:"Disconnected",
         authorized:"Authorized", notAuthorized:"Not authorized", tokenSecondsLeft:"s left", disabled:"Disabled", charging:"charging", full:"full",
         discharging:"discharging", paired:"Paired", pairingMode:"Pairing mode", pairingUnavailable:"Pairing info unavailable",
-        none:"None", noOutputs:"No outputs", outputsFailed:"Outputs failed", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
+        none:"None", noOutputs:"No sound outputs", outputsFailed:"Sound outputs failed", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
         playlistsFailed:"Playlists failed", noLogs:"No logs yet", switchingOutput:"Switching output...", skipping:"Skipping...",
         goingBack:"Going back...", startingLiked:"Starting Liked Proxy...", selectPlaylist:"Select a playlist",
         startingPlaylist:"Starting playlist...", resumeLogs:"Resume logs", logsPaused:"Logs paused", logsLive:"Logs live",
@@ -532,7 +532,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start SpotifyDJ Liked Proxy",
         webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
         webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de SpotifyDJ response flow", spotifyUnavailable:"Afspelen niet verbonden",
-        output:"Geluidsuitgang", loadingOutputs:"Outputs laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
+        output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
         language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout", playMode:"Speelmodus", noShuffle:"Geen shuffle",
@@ -542,7 +542,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"Het device test de nieuwe WiFi nadat deze pagina antwoord krijgt. Bij succes worden credentials opgeslagen en herstart het device.",
         wifiPasswordPlaceholder:"leeg laten om huidige te behouden",
         ha:"Home Assistant", pairing:"Koppeling", pairCode:"Koppelcode", firmware:"Firmware", model:"Model", resetPairing:"Home Assistant koppeling resetten",
-        spotify:"Afspelen", connection:"Verbinding", token:"Token", error:"Fout", refreshSpotify:"Afspeelstatus verversen",
+        spotify:"Afspelen", connection:"Verbinding", token:"Backend", error:"Fout", refreshSpotify:"Afspeelstatus verversen",
         username:"Gebruikersnaam", discovery:"HA discovery", lastPublished:"Laatst gepubliceerd", diagnostics:"Diagnostiek", screen:"Scherm",
         ledRing:"LED-ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Opslag", sketch:"Sketch", restart:"Device herstarten",
         logs:"Logs", pauseLogs:"Pauzeer logs", selectAll:"Selecteer alles", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -550,7 +550,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         loading:"Laden", playing:"Speelt", paused:"Gepauzeerd", noPlayback:"Geen playback", connected:"Verbonden", disconnected:"Niet verbonden",
         authorized:"Geautoriseerd", notAuthorized:"Niet geautoriseerd", tokenSecondsLeft:"s over", disabled:"Uitgeschakeld", charging:"laden", full:"vol",
         discharging:"ontladen", paired:"Gekoppeld", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformatie niet beschikbaar",
-        none:"Geen", noOutputs:"Geen outputs", outputsFailed:"Outputs mislukt", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
+        none:"Geen", noOutputs:"Geen geluidsuitgangen", outputsFailed:"Geluidsuitgangen mislukt", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
         playlistsFailed:"Afspeellijsten mislukt", noLogs:"Nog geen logs", switchingOutput:"Output wisselen...", skipping:"Overslaan...",
         goingBack:"Teruggaan...", startingLiked:"Liked Proxy starten...", selectPlaylist:"Selecteer een afspeellijst",
         startingPlaylist:"Afspeellijst starten...", resumeLogs:"Logs hervatten", logsPaused:"Logs gepauzeerd", logsLive:"Logs live",
@@ -1364,7 +1364,7 @@ void WebPortal::handlePlayModePost() {
     return;
   }
   if (spotify_ == nullptr || !spotify_->isAuthorized()) {
-    server_.send(409, "text/plain", localizedText("Spotify not connected", "Spotify niet verbonden"));
+    server_.send(409, "text/plain", localizedText("Playback not connected", "Afspelen niet verbonden"));
     return;
   }
 
@@ -1420,7 +1420,7 @@ void WebPortal::handleVolumePost() {
 
 void WebPortal::handleDevicesJson() {
   if (spotify_ == nullptr) {
-    server_.send(503, "application/json", "{\"error\":\"spotify not ready\"}");
+    server_.send(503, "application/json", "{\"error\":\"playback not ready\"}");
     return;
   }
   if (!spotify_->isAuthorized()) {
@@ -1450,7 +1450,7 @@ void WebPortal::handleDevicesJson() {
 
 void WebPortal::handleQueueJson() {
   if (spotify_ == nullptr) {
-    server_.send(503, "application/json", "{\"error\":\"spotify not ready\"}");
+    server_.send(503, "application/json", "{\"error\":\"playback not ready\"}");
     return;
   }
   if (!spotify_->isAuthorized()) {
@@ -1478,7 +1478,7 @@ void WebPortal::handleQueueJson() {
 
 void WebPortal::handlePlaylistsJson() {
   if (spotify_ == nullptr) {
-    server_.send(503, "application/json", "{\"error\":\"spotify not ready\"}");
+    server_.send(503, "application/json", "{\"error\":\"playback not ready\"}");
     return;
   }
   if (!spotify_->isAuthorized()) {
@@ -1832,13 +1832,13 @@ String WebPortal::localizedText(const char *en, const char *nl) const {
 }
 
 void WebPortal::sendSpotifyUnavailableText() {
-  server_.send(503, "text/plain", localizedText("Spotify not connected", "Spotify niet verbonden"));
+  server_.send(503, "text/plain", localizedText("Playback not connected", "Afspelen niet verbonden"));
 }
 
 void WebPortal::sendSpotifyUnavailableJson(const char *arrayKey) {
   JsonDocument doc;
   doc["available"] = false;
-  doc["error"] = localizedText("Spotify not connected", "Spotify niet verbonden");
+  doc["error"] = localizedText("Playback not connected", "Afspelen niet verbonden");
   doc[arrayKey].to<JsonArray>();
   String body;
   serializeJson(doc, body);

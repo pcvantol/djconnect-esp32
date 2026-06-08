@@ -3095,14 +3095,14 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
       haPairingPendingValidation_ = true;
       haPairingScreenActive_ = false;
       haPairingStartedAt_ = 0;
-      lastHaStatusAt_ = millis();
+      lastHaStatusAt_ = Logic::forceImmediatePollTimestamp();
       if (bleProvisioning_.isStarted()) {
         bleProvisioning_.end();
       }
       haDevice_.displayPaired();
       responsiveDelay(700);
       display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
-      lastPlaybackPollAt_ = millis();
+      lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
       renderNow();
       recordLoopMetrics(loopStartedAt);
       return false;
@@ -3303,8 +3303,8 @@ void SpotifyDJApp::noteDirectPairingReceived() {
     haPairingScreenActive_ = false;
     haPairingStartedAt_ = 0;
   }
-  lastHaStatusAt_ = millis();
-  lastPlaybackPollAt_ = millis();
+  lastHaStatusAt_ = Logic::forceImmediatePollTimestamp();
+  lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
   showNotice(I18n::text("boot_paired"), 1500);
   renderNow();
 }
