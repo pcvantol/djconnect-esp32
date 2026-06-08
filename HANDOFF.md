@@ -6,6 +6,7 @@ SpotifyDJ is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
+- Latest firmware release prepared from this repo: `v2.9.25`.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
@@ -20,6 +21,9 @@ Current repo state includes:
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed.
 - Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
 - HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `ha_url` and `device_token`, stores it with minimal in-route work, and lets the main loop confirm the pairing through `/api/spotify_dj/status`.
+- After WiFi/Home Assistant setup, the ESP forces an immediate `/api/spotify_dj/command` status poll so the device `S` indicator does not remain grey until the first physical control action.
+- `/api/spotify_dj/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow.
+- Periodic `/api/spotify_dj/status` now mirrors device settings/entities: screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, screen state and LED state.
 - Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Freshly provisioned unpaired release firmware performs a graceful pre-pairing bootstrap update check after WiFi connects. It skips local `dev`/`vdev` builds and continues to pairing silently if the check fails.
 
@@ -53,6 +57,7 @@ Core data/security boundaries:
 
 - Device API uses `Authorization: Bearer <device_token>` for protected endpoints.
 - Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase stored pairing automatically. Playback proxy commands are disabled until a successful authenticated HA status post confirms the stored token.
+- Playback proxy backend availability is separate from pairing validity. A command response with `success:false` and `backend_available:false` marks playback/S red but must not clear pairing or rotate tokens.
 - Playback-backend refresh tokens are never stored on the ESP and therefore are never logged or shown back to users.
 - The ESP is not a Spotify Connect speaker/player and should not be modeled as the actual music sink. It mirrors and controls the playback state supplied by Home Assistant.
 - Internal ESP32 Preferences keys must be 15 chars or less.
@@ -76,6 +81,8 @@ Core data/security boundaries:
 
 - NVS credentials are currently stored in ESP32 NVS but not encrypted by this Arduino/PlatformIO build.
 - OTA status clearing in Home Assistant depends on the integration processing the post-boot status payload correctly.
+- HA native entities for brightness, speaker volume, timeouts, language, theme and log level should read the mirrored `/api/spotify_dj/status` settings fields; otherwise they may show minimum/default values until changed from HA.
+- If HA reposts direct pairing/settings callbacks too often during normal playback commands, debounce or route those updates so they do not spam `/api/device/pair`.
 - Keep the Home Assistant integration and firmware contract synchronized around native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payload compatibility.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
 - MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
@@ -94,7 +101,7 @@ Recommended next work:
 2. Add automated tests for WiFi-failure menu ordering and factory-reset confirmation behavior.
 3. Add a host-testable model for setup/AP screen state and timeout labels.
 4. Add integration-side verification for OTA status clearing after successful firmware boot.
-5. Implement/verify native Home Assistant entities for every command previously handled locally, using `/api/device/command`.
+5. Implement/verify native Home Assistant entities for every command previously handled locally, using `/api/device/command`, and refresh their state from the ESP `/api/spotify_dj/status` settings payload.
 6. Add a Home Assistant `media_player` entity for proxied playback state/control:
    - state: playing, paused, idle/unavailable from integration playback state;
    - attributes: title, artist, album art, output/source, volume and supported features;
@@ -104,3 +111,7 @@ Recommended next work:
 8. Continue reducing `SpotifyDJApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
 9. Add release checklist item for confirming public GitHub Action firmware contains the expected `vX.Y.Z` marker.
 10. Add product security review for local HTTP device API, bearer-token lifetime, replay behavior and factory reset behavior.
+
+## Home Assistant Sync Prompt
+
+A copy/paste prompt for syncing the Home Assistant integration with this firmware is maintained in `HA_SYNC_PROMPT.md`.
