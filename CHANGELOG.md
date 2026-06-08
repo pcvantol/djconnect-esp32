@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.24
+## v2.9.25
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -30,6 +30,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Pong score display, restart-on-encoder-long-press, subtle wall-bounce cues, miss feedback sound/red border and dedicated bright-orange paddle LED-ring feedback that pauses when the screen turns off.
 - Direct Home Assistant pairing now treats the first token as pending; if HA rejects it with 401/403/404 during first validation, the device returns to pairing mode instead of staying half-paired.
 - Home Assistant playback backend unavailability can be reported as HTTP 200 with `backend_available:false`; the ESP shows playback status red without treating it as a pairing/auth failure.
+- After WiFi/Home Assistant setup at boot, the first playback status poll is forced immediately so the `S` indicator reflects the backend state without waiting for a button or volume action.
 - Built-in speaker cue volume setting: 25%, 50%, 75% or 100%.
 - Battery/charging guard screens, low-battery turn-off sleep and charger-aware wake behavior.
 - WiFi-failure boot menu with encoder selection for retry connect, restart device, turn off and confirmed factory reset.
@@ -49,7 +50,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.24` / `v2.9.24`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.25` / `v2.9.25`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.

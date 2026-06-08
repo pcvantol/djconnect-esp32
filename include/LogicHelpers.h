@@ -91,6 +91,11 @@ inline bool haPlaybackErrorIsConnectionError(const char *message) {
          strcmp(message, "HA playback backend unavailable") == 0;
 }
 
+// Setting a poll timestamp to zero is the firmware convention for "run this poll on the next loop".
+inline uint32_t forceImmediatePollTimestamp() {
+  return 0;
+}
+
 // Home Assistant pairing/backends are usable while the runtime proxy is not marked stale.
 inline bool spotifyConfiguredForHomeAssistantStatus(bool credentialsStored, bool tokenInvalidGrant) {
   return credentialsStored && !tokenInvalidGrant;

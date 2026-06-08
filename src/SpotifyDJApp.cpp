@@ -143,8 +143,8 @@ void SpotifyDJApp::begin() {
       return;
     }
     display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
-    lastPlaybackPollAt_ = millis();
     sendHomeAssistantStatusIfDue(true);
+    lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
   }
 
   lastBatteryPollAt_ = millis();

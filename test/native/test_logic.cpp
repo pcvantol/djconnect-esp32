@@ -98,6 +98,10 @@ static void testHomeAssistantStatusMirroredSettingsDefaults() {
   assert(visual.ledOn);
 }
 
+static void testImmediatePollTimestampConvention() {
+  assert(Logic::forceImmediatePollTimestamp() == 0UL);
+}
+
 static void testSpotifyConfiguredForHomeAssistantStatus() {
   assert(!Logic::spotifyConfiguredForHomeAssistantStatus(false, false));
   assert(!Logic::spotifyConfiguredForHomeAssistantStatus(false, true));
@@ -635,6 +639,7 @@ int main() {
   testSemverComparison();
   testHaPlaybackConnectionErrorClassification();
   testHomeAssistantStatusMirroredSettingsDefaults();
+  testImmediatePollTimestampConvention();
   testSpotifyConfiguredForHomeAssistantStatus();
   testProgressEstimation();
   testLedRingBrightness();
