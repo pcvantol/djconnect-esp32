@@ -302,6 +302,10 @@ inline bool isDjConnectVersionMismatch(int statusCode, const char *error) {
   return statusCode == 426 && error != nullptr && strcmp(error, "version_mismatch") == 0;
 }
 
+inline bool isDjConnectInvalidClientType(const char *error) {
+  return error != nullptr && strcmp(error, "invalid_client_type") == 0;
+}
+
 inline bool isDjConnectLilygoDeviceId(const char *deviceId) {
   static constexpr const char *prefix = "djconnect-lilygo-";
   if (deviceId == nullptr || strncmp(deviceId, prefix, strlen(prefix)) != 0) {

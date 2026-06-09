@@ -152,12 +152,22 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   http.addHeader("Authorization", "Bearer " + token);
   http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
   const int code = http.POST(body);
+  const String payload = http.getString();
   http.end();
   activity.finish(code);
   AppLog.print("Voice status response: ");
   AppLog.println(code);
-  if (code == 426) {
-    AppLog.println("Voice status blocked by DJConnect version mismatch");
+  if (!payload.isEmpty()) {
+    JsonDocument errorDoc;
+    const DeserializationError jsonError = deserializeJson(errorDoc, payload);
+    const char *errorKey = jsonError ? "" : (errorDoc["error"] | "");
+    if (Logic::isDjConnectInvalidClientType(errorKey)) {
+      AppLog.println("HA rejected payload: missing client_type=esp32");
+      return false;
+    }
+    if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      AppLog.println("Voice status blocked by DJConnect version mismatch");
+    }
   }
   updatePairingInvalidationForStatus(code);
   return code >= 200 && code < 300;
@@ -225,18 +235,25 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   activity.finish(code);
   if (code < 200 || code >= 300) {
     logVoiceHttpErrorBody("Voice command error body", response);
-    updatePairingInvalidationForStatus(code);
     JsonDocument errorDoc;
     const DeserializationError jsonError = deserializeJson(errorDoc, response);
     const char *errorKey = jsonError ? "" : (errorDoc["error"] | "");
-    if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+    const char *errorMessage = jsonError ? "" : (errorDoc["message"] | "");
+    if (Logic::isDjConnectInvalidClientType(errorKey)) {
+      AppLog.println("HA rejected payload: missing client_type=esp32");
+      message = "HA rejected payload: missing client_type=esp32";
+    } else if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      updatePairingInvalidationForStatus(code);
       message = errorDoc["message"] | "Update DJConnect firmware/integration";
     } else if (code == 404) {
+      updatePairingInvalidationForStatus(code);
       message = I18n::text("voice_ha_endpoint_missing");
     } else if (code == 401 || code == 403) {
+      updatePairingInvalidationForStatus(code);
       message = I18n::text("voice_ha_auth_failed");
     } else {
-      message = "Voice HTTP " + String(code);
+      updatePairingInvalidationForStatus(code);
+      message = strlen(errorMessage) > 0 ? String(errorMessage) : "Voice HTTP " + String(code);
     }
     return false;
   }
@@ -321,18 +338,25 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
 
   if (code < 200 || code >= 300) {
     logVoiceHttpErrorBody("Voice WAV error body", response);
-    updatePairingInvalidationForStatus(code);
     JsonDocument errorDoc;
     const DeserializationError jsonError = deserializeJson(errorDoc, response);
     const char *errorKey = jsonError ? "" : (errorDoc["error"] | "");
-    if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+    const char *errorMessage = jsonError ? "" : (errorDoc["message"] | "");
+    if (Logic::isDjConnectInvalidClientType(errorKey)) {
+      AppLog.println("HA rejected payload: missing client_type=esp32");
+      message = "HA rejected payload: missing client_type=esp32";
+    } else if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      updatePairingInvalidationForStatus(code);
       message = errorDoc["message"] | "Update DJConnect firmware/integration";
     } else if (code == 404) {
+      updatePairingInvalidationForStatus(code);
       message = I18n::text("voice_ha_endpoint_missing");
     } else if (code == 401 || code == 403) {
+      updatePairingInvalidationForStatus(code);
       message = I18n::text("voice_ha_auth_failed");
     } else {
-      message = "Voice HTTP " + String(code);
+      updatePairingInvalidationForStatus(code);
+      message = strlen(errorMessage) > 0 ? String(errorMessage) : "Voice HTTP " + String(code);
     }
     return false;
   }

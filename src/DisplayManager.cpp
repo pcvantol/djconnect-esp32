@@ -16,6 +16,11 @@
 
 static constexpr uint16_t BrightYellow = 0xFFE0;
 static constexpr uint16_t BrightPurple = 0xB81F;
+static constexpr uint16_t GameBlue = 0x04FF;
+static constexpr uint16_t GameLightBlue = 0x867F;
+static constexpr uint16_t GamePink = 0xF81F;
+static constexpr uint16_t GameBrown = 0xA2C6;
+static constexpr uint16_t GameDarkBrown = 0x6203;
 static constexpr uint16_t NeutralLightGrey = 0xC618;
 static constexpr uint16_t SpotifyGreen = 0x1DCB;
 static constexpr uint16_t VolumeOrange = 0xFD20;
@@ -260,37 +265,37 @@ void DisplayManager::renderLogsScreen(const String *lines, size_t lineCount, con
   renderLogs(tft_, lines, lineCount, notice);
 }
 
-void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int score, bool missFlash, const StatusNotice &notice) {
+void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderPong(screen_, paddleY, ballX, ballY, score, missFlash, notice);
+    renderPong(screen_, paddleY, ballX, ballY, score, highScore, missFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderPong(tft_, paddleY, ballX, ballY, score, missFlash, notice);
+  renderPong(tft_, paddleY, ballX, ballY, score, highScore, missFlash, notice);
 }
 
-void DisplayManager::renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderAsteroids(screen_, shipX, shipY, asteroidX, asteroidY, bulletY, bulletActive, score, hitFlash, notice);
+    renderAsteroids(screen_, shipX, shipY, asteroidX, asteroidY, bulletY, bulletActive, score, highScore, hitFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderAsteroids(tft_, shipX, shipY, asteroidX, asteroidY, bulletY, bulletActive, score, hitFlash, notice);
+  renderAsteroids(tft_, shipX, shipY, asteroidX, asteroidY, bulletY, bulletActive, score, highScore, hitFlash, notice);
 }
 
-void DisplayManager::renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderFlyer(screen_, planeY, obstacleX, obstacleY, shotX, shotActive, score, hitFlash, notice);
+    renderFlyer(screen_, planeY, obstacleX, obstacleY, shotX, shotActive, score, highScore, hitFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderFlyer(tft_, planeY, obstacleX, obstacleY, shotX, shotActive, score, hitFlash, notice);
+  renderFlyer(tft_, planeY, obstacleX, obstacleY, shotX, shotActive, score, highScore, hitFlash, notice);
 }
 
 void DisplayManager::renderAlbumArtScreen(
@@ -340,7 +345,7 @@ void DisplayManager::renderAlbumArtScreen(
   tft_.setTextColor(TFT_WHITE, TFT_BLACK);
   drawMarqueeText(tft_, titleMarquee_, titleText(playback), AlbumTextX, AlbumTitleY, AlbumTextWidth, 4, AlbumTitleHeight);
 
-  tft_.setTextColor(NeutralLightGrey, TFT_BLACK);
+  tft_.setTextColor(BrightPurple, TFT_BLACK);
   drawMarqueeText(tft_, artistMarquee_, artistText(playback), AlbumTextX, AlbumArtistY, AlbumTextWidth, 4, AlbumArtistHeight);
 
   if (notice.isVisible()) {
@@ -361,29 +366,23 @@ void DisplayManager::renderAlbumArtMarqueeText(const SpotifyState &playback, boo
   }
   if (artistChanged) {
     tft_.fillRect(168, AlbumArtistY, 152, AlbumArtistHeight + 4, TFT_BLACK);
-    tft_.setTextColor(NeutralLightGrey, TFT_BLACK);
+    tft_.setTextColor(BrightPurple, TFT_BLACK);
     drawMarqueeText(tft_, artistMarquee_, artistText(playback), AlbumTextX, AlbumArtistY, AlbumTextWidth, 4, AlbumArtistHeight);
   }
 }
 
-void DisplayManager::renderDjResponseOverlay(const String &text) {
-  if (text == lastDjResponseOverlayText_) {
+void DisplayManager::renderDjResponseOverlay(const String &title, const String &text) {
+  if (title == lastDjResponseOverlayTitle_ && text == lastDjResponseOverlayText_) {
     return;
   }
+  lastDjResponseOverlayTitle_ = title;
   lastDjResponseOverlayText_ = text;
   tft_.fillScreen(TFT_BLACK);
   tft_.setTextDatum(TL_DATUM);
 
-  const int micX = 28;
-  const int micY = 20;
-  tft_.drawRoundRect(micX + 14, micY, 34, 54, 16, SpotifyGreen);
-  tft_.drawRoundRect(micX + 18, micY + 5, 26, 44, 13, SpotifyGreen);
-  tft_.drawLine(micX + 31, micY + 54, micX + 31, micY + 76, SpotifyGreen);
-  tft_.drawLine(micX + 18, micY + 76, micX + 44, micY + 76, SpotifyGreen);
-  tft_.drawArc(micX + 31, micY + 42, 34, 30, 25, 155, SpotifyGreen, TFT_BLACK);
-
-  tft_.setTextColor(SpotifyGreen, TFT_BLACK);
-  tft_.drawString("DJ", 92, 22, 4);
+  drawDJConnectIcon(tft_, 18, 14, 54);
+  tft_.setTextColor(BrightPurple, TFT_BLACK);
+  tft_.drawString(clippedText(tft_, title.isEmpty() ? String("DJConnect") : title, 220, 4), 84, 26, 4);
 
   String remaining = text;
   remaining.trim();
@@ -411,6 +410,7 @@ void DisplayManager::renderDjResponseOverlay(const String &text) {
       line = remaining;
       remaining = "";
     }
+    tft_.setTextColor(BrightPurple, TFT_BLACK);
     tft_.drawString(line, x, y, font);
     y += actualLineHeight;
   }
@@ -418,6 +418,7 @@ void DisplayManager::renderDjResponseOverlay(const String &text) {
 
 void DisplayManager::resetDjResponseOverlayCache() {
   lastDjResponseOverlayText_ = "";
+  lastDjResponseOverlayTitle_ = "";
 }
 
 void DisplayManager::resetAlbumArtRenderCache() {
@@ -671,13 +672,19 @@ void DisplayManager::renderPlayback(
     canvas.setTextColor(color, TFT_BLACK);
     canvas.drawString(label, x, 5, 2);
   };
+  auto drawPlaybackBadge = [&](int x, uint16_t color) {
+    canvas.fillCircle(x + 4, 18, 2, color);
+    canvas.drawFastVLine(x + 6, 6, 12, color);
+    canvas.drawFastHLine(x + 6, 6, 7, color);
+    canvas.drawFastVLine(x + 13, 6, 5, color);
+  };
   const uint16_t playbackStatusColor = playbackConnectionState == PlaybackConnectionState::Ok
                                            ? SpotifyGreen
                                            : playbackConnectionState == PlaybackConnectionState::Idle
                                                  ? NeutralLightGrey
                                                  : TFT_RED;
   drawStatusBadge(156, "H", homeAssistantConnected ? SpotifyGreen : TFT_RED);
-  drawStatusBadge(176, "S", playbackStatusColor);
+  drawPlaybackBadge(178, playbackStatusColor);
   drawWifiIndicator(canvas, 214, 1);
   drawBatteryIndicator(canvas, battery, 250, 5);
   canvas.drawFastHLine(8, 25, 304, TFT_DARKGREY);
@@ -695,7 +702,7 @@ void DisplayManager::renderPlayback(
 
   const String artist = artistText(playback);
   if (!artist.isEmpty()) {
-    canvas.setTextColor(NeutralLightGrey, TFT_BLACK);
+    canvas.setTextColor(BrightPurple, TFT_BLACK);
     drawMarqueeText(canvas, artistMarquee_, artist, 8, 91, 304, 4, 30);
   }
 
@@ -873,18 +880,18 @@ void DisplayManager::renderLogs(Canvas &canvas, const String *lines, size_t line
 }
 
 template <typename Canvas>
-void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, bool missFlash, const StatusNotice &notice) {
+void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
-  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.setTextColor(TFT_ORANGE, TFT_BLACK);
   canvas.drawString("Pong", 8, 5, 2);
-  const String scoreText = String("Score ") + String(score);
+  const String scoreText = String("Score ") + String(score) + "  High " + String(highScore);
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
   canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
   canvas.drawFastVLine(160, 42, 118, TFT_DARKGREY);
-  canvas.fillRoundRect(18, paddleY, 8, 34, 3, TFT_GREEN);
-  canvas.fillCircle(ballX, ballY, 4, TFT_ORANGE);
+  canvas.fillRoundRect(18, paddleY, 8, 34, 3, TFT_ORANGE);
+  canvas.fillCircle(ballX, ballY, 4, TFT_GREEN);
   if (missFlash) {
     canvas.drawRect(0, 0, 320, 170, TFT_RED);
     canvas.drawRect(1, 1, 318, 168, TFT_RED);
@@ -893,23 +900,23 @@ void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ball
 }
 
 template <typename Canvas>
-void DisplayManager::renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
-  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.setTextColor(BrightPurple, TFT_BLACK);
   canvas.drawString(I18n::text("asteroids"), 8, 5, 2);
-  const String scoreText = String("Score ") + String(score);
+  const String scoreText = String("Score ") + String(score) + "  High " + String(highScore);
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
   canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
-  canvas.drawLine(shipX, shipY - 12, shipX - 10, shipY + 10, TFT_GREEN);
-  canvas.drawLine(shipX, shipY - 12, shipX + 10, shipY + 10, TFT_GREEN);
-  canvas.drawLine(shipX - 10, shipY + 10, shipX + 10, shipY + 10, TFT_GREEN);
-  canvas.drawCircle(asteroidX, asteroidY, 12, TFT_ORANGE);
-  canvas.drawLine(asteroidX - 8, asteroidY - 4, asteroidX - 2, asteroidY - 12, TFT_ORANGE);
-  canvas.drawLine(asteroidX + 3, asteroidY + 11, asteroidX + 10, asteroidY + 3, TFT_ORANGE);
+  canvas.drawLine(shipX, shipY - 10, shipX - 8, shipY + 8, BrightPurple);
+  canvas.drawLine(shipX, shipY - 10, shipX + 8, shipY + 8, BrightPurple);
+  canvas.drawLine(shipX - 8, shipY + 8, shipX + 8, shipY + 8, BrightPurple);
+  canvas.drawCircle(asteroidX, asteroidY, 9, GamePink);
+  canvas.drawLine(asteroidX - 6, asteroidY - 3, asteroidX - 2, asteroidY - 9, GamePink);
+  canvas.drawLine(asteroidX + 2, asteroidY + 8, asteroidX + 7, asteroidY + 2, GamePink);
   if (bulletActive) {
-    canvas.fillRoundRect(shipX - 2, bulletY, 4, 10, 2, TFT_YELLOW);
+    canvas.fillRoundRect(shipX - 2, bulletY, 4, 10, 2, GameLightBlue);
   }
   if (hitFlash) {
     canvas.drawRect(0, 0, 320, 170, TFT_RED);
@@ -919,24 +926,24 @@ void DisplayManager::renderAsteroids(Canvas &canvas, int shipX, int shipY, int a
 }
 
 template <typename Canvas>
-void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
-  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.setTextColor(GameLightBlue, TFT_BLACK);
   canvas.drawString(I18n::text("flyer"), 8, 5, 2);
-  const String scoreText = String("Score ") + String(score);
+  const String scoreText = String("Score ") + String(score) + "  High " + String(highScore);
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
   canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
   const int planeX = 42;
-  canvas.fillTriangle(planeX + 18, planeY, planeX - 12, planeY - 10, planeX - 12, planeY + 10, TFT_GREEN);
-  canvas.drawLine(planeX - 4, planeY, planeX - 22, planeY - 18, TFT_GREEN);
-  canvas.drawLine(planeX - 4, planeY, planeX - 22, planeY + 18, TFT_GREEN);
-  canvas.fillRect(obstacleX - 8, obstacleY - 16, 16, 32, TFT_ORANGE);
-  canvas.drawCircle(obstacleX, obstacleY - 22, 5, TFT_DARKGREY);
-  canvas.drawCircle(obstacleX, obstacleY + 22, 5, TFT_DARKGREY);
+  canvas.fillTriangle(planeX + 18, planeY, planeX - 12, planeY - 10, planeX - 12, planeY + 10, GameLightBlue);
+  canvas.drawLine(planeX - 4, planeY, planeX - 22, planeY - 18, GameLightBlue);
+  canvas.drawLine(planeX - 4, planeY, planeX - 22, planeY + 18, GameLightBlue);
+  canvas.fillRect(obstacleX - 8, obstacleY - 16, 16, 32, GameBrown);
+  canvas.drawCircle(obstacleX, obstacleY - 22, 5, GameDarkBrown);
+  canvas.drawCircle(obstacleX, obstacleY + 22, 5, GameDarkBrown);
   if (shotActive) {
-    canvas.fillRoundRect(shotX, planeY - 2, 14, 4, 2, TFT_YELLOW);
+    canvas.fillRoundRect(shotX, planeY - 2, 14, 4, 2, GameLightBlue);
   }
   if (hitFlash) {
     canvas.drawRect(0, 0, 320, 170, TFT_RED);

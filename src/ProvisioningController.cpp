@@ -34,6 +34,9 @@ ProvisioningSettings ProvisioningController::load() const {
   settings.logLevel = normalizedLogLevel(preferences.getString("log_level", "info"));
   settings.speakerVolumePercent = constrain(preferences.getUInt("speaker_volume", 100), 25UL, 100UL);
   settings.volumeFeedbackEnabled = preferences.getBool("volume_feedback", true);
+  settings.pongHighScore = preferences.getUInt("pong_hi", 0);
+  settings.asteroidsHighScore = preferences.getUInt("ast_hi", 0);
+  settings.flyerHighScore = preferences.getUInt("fly_hi", 0);
   settings.setupModeRequested = preferences.getBool("setup", false);
   settings.helpShown = preferences.getBool("help_shown", false);
   preferences.end();
@@ -79,10 +82,20 @@ void ProvisioningController::saveSetupProvisioning(const String &ssid, const Str
   provision.end();
 }
 
+void ProvisioningController::saveGameHighScores(uint32_t pongHighScore, uint32_t asteroidsHighScore, uint32_t flyerHighScore) const {
+  Preferences provision;
+  provision.begin("provision", false);
+  provision.putUInt("pong_hi", pongHighScore);
+  provision.putUInt("ast_hi", asteroidsHighScore);
+  provision.putUInt("fly_hi", flyerHighScore);
+  provision.end();
+}
+
 void ProvisioningController::requestSetupMode() const {
   Preferences provision;
   provision.begin("provision", false);
   provision.clear();
+  provision.putUInt("speaker_volume", 100);
   provision.putBool("setup", true);
   provision.end();
 }

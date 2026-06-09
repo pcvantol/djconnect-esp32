@@ -1,5 +1,39 @@
 # Changelog
 
+## v3.0.10
+
+Focused UI, playback, web portal and release hygiene update.
+
+### Added
+
+- Web portal Games panel with local browser-side Pong, Asteroids and Fly, including browser-local highscores.
+- Device game highscores for Pong, Asteroids and Fly stored in the `provision` NVS namespace and cleared by factory reset.
+- Web Up Next per-item play buttons and a compact refresh button.
+- Web Up Next album art thumbnails when Home Assistant supplies queue image URLs. The ESP only passes URLs through; the browser lazy-loads thumbnails when the queue panel is visible.
+- Queue context propagation for Up Next item playback so `play_context_at` can use the queue/context URI returned by Home Assistant.
+- DJ-response test timeout handling in the web portal so the button always resets after a slow/failing request.
+
+### Changed
+
+- Playback status indicator is now a music-note icon on device and web instead of `S`, while keeping the same green/grey/red status colors.
+- `Current Song` label is now `Current song`; Dutch remains `Huidig nummer`.
+- Up Next on device refreshes automatically after selecting a queue item.
+- Web game controls are game-specific: Asteroids uses left/right arrows and Pong hides the fire button.
+- Pong colors were swapped to orange title/paddle/LED-ring and green ball.
+- Asteroids visuals were refined with a smaller ship and asteroid; the device LED-ring uses blue for Asteroids and light blue for Fly.
+- Menu and no-playback LED-ring handling now hard-clears pixels so stale volume LEDs do not remain visible.
+- Web portal playback/queue/game controls use compact SVG/icon buttons and avoid page scrolling while game keyboard controls are active.
+- Voice/DJ-response error messages from Home Assistant are surfaced on the device DJ response screen.
+
+### Fixed
+
+- Fixed Up Next queue context loss that could duplicate the current track or fail with `Queue context unavailable`.
+- Fixed Home Assistant next/previous, shuffle and repeat state visibility issues by routing native entity actions through the ESP/device command path and refreshing menu state.
+- Fixed settings comboboxes in the web portal being overwritten while the user is editing them.
+- Fixed pairing-screen rendering flicker when web/HA settings updates arrive.
+- Fixed no-playback and menu LED-ring stale-state cases.
+- Fixed OTA/network long-flow responsiveness and crash-prone paths by tightening long-operation handling.
+
 ## v3.0.9
 
 Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
@@ -31,7 +65,7 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Pong score display, restart-on-encoder-long-press, subtle wall-bounce cues, miss feedback sound/red border and dedicated bright-orange paddle LED-ring feedback that pauses when the screen turns off.
 - Direct Home Assistant pairing now treats the first token as pending; if HA rejects it with 401/403/404 during first validation, the device returns to pairing mode instead of staying half-paired.
 - Home Assistant playback backend unavailability can be reported as HTTP 200 with `backend_available:false`; the ESP shows playback status red without treating it as a pairing/auth failure.
-- After WiFi/Home Assistant setup at boot, the first playback status poll is forced immediately so the `S` indicator reflects the backend state without waiting for a button or volume action.
+- After WiFi/Home Assistant setup at boot, the first playback status poll is forced immediately so the playback music-note indicator reflects the backend state without waiting for a button or volume action.
 - Built-in speaker cue volume setting: 25%, 50%, 75% or 100%.
 - Battery/charging guard screens, low-battery turn-off sleep and charger-aware wake behavior.
 - WiFi-failure boot menu with encoder selection for retry connect, restart device, turn off and confirmed factory reset.
@@ -68,7 +102,7 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off. Pairing mode also keeps BLE advertising active, shows a center-button turn-off hint and uses a deeply fading blue LED-ring breath.
 - `/api/device/pair` now accepts the direct Home Assistant callback with `device_token`, `ha_local_url` and/or `ha_remote_url`, Assist pipeline id and device language, while keeping the handler lightweight to avoid watchdog stalls during pairing.
 - Playback proxy commands now wait for a successful authenticated Home Assistant status confirmation after boot/pairing, preventing stale or pending tokens from repeatedly sending playback 401 requests.
-- Direct Home Assistant pairing now schedules immediate status and playback polls on the next loop so the `H`/`S` indicators update right after pairing or reboot instead of waiting for a normal polling interval.
+- Direct Home Assistant pairing now schedules immediate status and playback polls on the next loop so the `H`/playback music-note indicators update right after pairing or reboot instead of waiting for a normal polling interval.
 - Repeated direct Home Assistant pair callbacks with the same local/remote URLs and `device_token` are now idempotent, preventing normal status/playback synchronization from resetting pairing validation and playback polling.
 - Home Assistant routing is now local-first with cloud fallback: the ESP probes `ha_local_url` briefly and uses `ha_remote_url` when the local URL is not reachable.
 - Home Assistant playback proxy HTTP failures such as `HA playback HTTP -1` now make the device connectivity LED state red without erasing pairing data.

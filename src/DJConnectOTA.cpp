@@ -7,6 +7,7 @@
 #include <WiFiClientSecure.h>
 #include <esp_task_wdt.h>
 #include <mbedtls/sha256.h>
+#include <memory>
 
 #include "AppLog.h"
 #include "Config.h"
@@ -16,6 +17,7 @@
 
 namespace {
 const char *ExpectedModel = "lilygo-t-embed-s3";
+constexpr size_t OtaDownloadBufferBytes = 1460;
 
 String sha256Hex(const unsigned char digest[32]) {
   static const char *hex = "0123456789abcdef";
@@ -153,7 +155,15 @@ bool DJConnectOTA::performUpdate(
     return false;
   }
 
-  uint8_t buffer[4096];
+  std::unique_ptr<uint8_t[]> buffer(new (std::nothrow) uint8_t[OtaDownloadBufferBytes]);
+  if (!buffer) {
+    message = "OTA buffer allocation failed";
+    AppLog.println(message);
+    http.end();
+    activity.finishError("buffer alloc failed");
+    failWithCue();
+    return false;
+  }
   Stream *stream = http.getStreamPtr();
   size_t written = 0;
   size_t lastLogged = 0;
@@ -191,16 +201,16 @@ bool DJConnectOTA::performUpdate(
       continue;
     }
 
-    size_t toRead = min(static_cast<size_t>(available), sizeof(buffer));
+    size_t toRead = min(static_cast<size_t>(available), OtaDownloadBufferBytes);
     if (contentLength > 0) {
       toRead = min(toRead, static_cast<size_t>(contentLength) - written);
     }
-    const size_t read = stream->readBytes(buffer, toRead);
+    const size_t read = stream->readBytes(buffer.get(), toRead);
     if (read == 0) {
       continue;
     }
     serviceOtaLoop(ledRing);
-    if (mbedtls_sha256_update_ret(&shaContext, buffer, read) != 0) {
+    if (mbedtls_sha256_update_ret(&shaContext, buffer.get(), read) != 0) {
       message = "OTA SHA256 update failed";
       AppLog.println("OTA SHA256 update failed");
       Update.abort();
@@ -211,7 +221,7 @@ bool DJConnectOTA::performUpdate(
       return false;
     }
     serviceOtaLoop(ledRing);
-    const size_t chunkWritten = Update.write(buffer, read);
+    const size_t chunkWritten = Update.write(buffer.get(), read);
     if (chunkWritten != read) {
       message = "OTA write failed";
       AppLog.println("OTA write failed");

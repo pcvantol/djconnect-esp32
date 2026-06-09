@@ -128,7 +128,7 @@ Keep concerns separated:
 - `WebPortal` owns the existing mobile dashboard and shared port-80 `WebServer`.
 - Home Assistant device-layer code belongs in the `DJConnect*` modules under `src/`.
 - `LogicHelpers.h` is for pure, host-testable calculations.
-- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, setup-mode, display-setting, language/theme/log-level or cue-volume NVS reads/writes directly in `DJConnectApp`.
+- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, setup-mode, display-setting, language/theme/log-level, cue-volume or game-highscore NVS reads/writes directly in `DJConnectApp`.
 - `PowerController` owns charger/wake/watchdog policy. Keep low-battery rendering in the app/display layer, but keep wake masks, timer-wake decisions and watchdog setup/feed out of `DJConnectApp`.
 - `DJConnectMenuModel` is the host-testable source for menu counts and option values. Keep display labels in `DJConnectMenu`/i18n and pure counts/options in the model.
 - `NetworkActivityLogic` is the host-testable timeout/reuse helper for long HTTP flows.
@@ -151,9 +151,22 @@ The HA custom integration uses:
 - ESP OTA endpoint: `POST /api/device/ota`
 - ESP DJ response endpoint: `POST /api/device/dj_response`
 
-Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state and LED state. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `ha_pairing_status`, `local_url`, `ha_local_url`, `ha_remote_url`, `ha_active_url`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
+Every ESP-to-Home Assistant JSON payload for `/api/djconnect/status` and
+`/api/djconnect/command` must carry top-level `device_id` and
+`client_type:"esp32"`. This applies to status, devices, queue, playlists, play,
+pause, next, previous, set_volume, set_output, start_playlist, set_shuffle,
+set_repeat and status-refresh commands. Do not send `device_type` in ESP-to-HA
+JSON payloads. Raw WAV voice upload to `/api/djconnect/voice` uses auth headers
+and `X-DJConnect-Device-ID` instead of a JSON body.
+
+Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, firmware, battery percentage, WiFi RSSI, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state, LED state and sound output. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `ha_remote_url`, `ha_active_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_state`, `led_state`, `sound_output`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
 
 For `/api/djconnect/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404 means stale pairing. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
+
+If HA returns `error:"invalid_client_type"`, treat it as a firmware/HA contract
+problem, not as stale pairing. Log `HA rejected payload: missing
+client_type=esp32`, do not erase NVS pairing/token, and keep retrying periodic
+status normally after the firmware/integration contract is fixed.
 
 Local ESP endpoints currently include:
 
@@ -263,7 +276,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - The Home Assistant integration/backend owns any Home Assistant core auth needed for Assist, STT or TTS. If Assist requires `/api/websocket`, that websocket connection belongs in the HA integration, not on the ESP.
 - `/api/djconnect/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
 - Do not add direct ESP Assist websocket auth; the DJConnect device token is for the integration API, not Home Assistant core.
-- Do not start physical PTT from Current Song/AlbumArt. Current Song is a read-only detail screen and uses the same top-button back behavior as menu screens.
+- Do not start physical PTT from Current song/AlbumArt. Current song is a read-only detail screen and uses the same top-button back behavior as menu screens.
 - The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/djconnect/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
 - Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
@@ -384,7 +397,7 @@ Do not perform unbounded blocking Spotify HTTPS work inside the HTTP route itsel
 
 HA/Spotify status indicators:
 
-- Device statusbar: `H`, `S`.
+- Device statusbar: `H`, playback music-note icon.
 - Web header mirrors the same indicators.
 - LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup/pairing animations.
 - Boot uses a calm startup rainbow lap. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
@@ -409,7 +422,8 @@ Shuffle and repeat are separate controls:
 
 Local games are intentionally local-only:
 
-- `Games` in the root menu opens Pong, Asteroids and Flyer.
+- `Games` in the root menu opens Pong, Asteroids and Fly. Device game highscores are stored in the `provision` NVS namespace through `ProvisioningController` and are cleared by factory reset.
+- The web portal includes local browser-side Pong, Asteroids and Fly games with browser-local highscores. Keep these games local-only and do not route them through Home Assistant.
 - Game input/rendering belongs in `DJConnectApp` and `DisplayManager`; do not route game state through Home Assistant.
 
 Built-in speaker cue volume is separate from Spotify volume:
@@ -442,12 +456,13 @@ Current web expectations:
 
 - Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and active HA URL/status.
 - The Home Assistant pairing banner setup link must open in a new tab/window so the local ESP web portal remains loaded.
-- The top web status bar is right-aligned and follows the device order: H, M, S, WiFi signal bars, CSS battery icon. Keep the IP address in the WiFi block, not in the top status bar.
+- The top web status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Keep the IP address in the WiFi block, not in the top status bar.
 - The Home Assistant URL label in the web portal is `URL`, not `HA URL`.
 - Album art is shown when available.
 - Volume slider range is `0-60`.
 - Volume slider is disabled when no track/playback is active.
 - Web Now Playing includes previous, next, play and pause controls with compact CSS icons.
+- The web portal includes a local Games panel with Pong, Asteroids and Fly.
 - Sound output selection uses a combobox/list without device type suffixes. Keep `None`/`Geen` and `iPhone` as fixed first entries before live Spotify Connect devices on both device and web UI.
 - Logs support pause/resume and copy/select-all behavior. Logs should poll only while the logs panel is visible and not paused.
 - Queue, playlist and sound-output list requests should be visibility-aware so hidden panels do not keep polling.

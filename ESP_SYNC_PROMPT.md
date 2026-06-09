@@ -2,7 +2,7 @@
 Werk in de bestaande proprietary ESP firmware repo pcvantol/djconnect-esp32.
 
 Doel
-Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.0.3.
+Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.0.10.
 
 De HA integration is de trusted backend voor:
 

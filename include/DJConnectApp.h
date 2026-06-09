@@ -122,6 +122,7 @@ private:
   void resetFlyer();
   void updateFlyer();
   void fireFlyer();
+  void updateGameHighScore(int &highScore, int score);
   bool transferToOutputByNameOrId(const String &output);
   bool startPlaylistByNameOrUri(const String &playlist);
 
@@ -135,6 +136,7 @@ private:
   void refreshPlaybackAndBattery();
   void openAlbumArtScreen();
   void openQueueScreen();
+  void startSelectedQueueItem();
   void startSelectedPlaylist();
   void openSoundOutputsScreen();
   void transferToSelectedOutput();
@@ -178,6 +180,7 @@ private:
 
   // Shows HA DJ response text and optionally plays the HA-generated WAV/MP3 response URL.
   bool handleDjResponseText(const String &text, const String &audioUrl, bool &spoken);
+  void showDjResponseOverlay(const String &title, const String &text, uint32_t ttlMs);
 
   // Applies credentials and language pushed by Home Assistant without touching local fallbacks.
   void applyProvisionedLanguage(const String &languageCode);
@@ -247,6 +250,7 @@ private:
   size_t rootMenuSelection_ = 0;
   size_t settingsSelection_ = 0;
   size_t playlistSelection_ = 0;
+  size_t queueSelection_ = 0;
   size_t aboutSelection_ = 0;
   size_t gamesSelection_ = 0;
   size_t helpSelection_ = 0;
@@ -269,6 +273,7 @@ private:
   int pongVelocityX_ = 3;
   int pongVelocityY_ = 2;
   int pongScore_ = 0;
+  int pongHighScore_ = 0;
   uint32_t pongMissFlashUntil_ = 0;
   int asteroidShipX_ = 160;
   int asteroidShipY_ = 138;
@@ -278,6 +283,7 @@ private:
   int asteroidVelocityY_ = 2;
   int asteroidBulletY_ = 0;
   int asteroidScore_ = 0;
+  int asteroidHighScore_ = 0;
   bool asteroidBulletActive_ = false;
   uint32_t asteroidFlashUntil_ = 0;
   int flyerPlaneY_ = 86;
@@ -285,6 +291,7 @@ private:
   int flyerObstacleY_ = 86;
   int flyerShotX_ = 0;
   int flyerScore_ = 0;
+  int flyerHighScore_ = 0;
   bool flyerShotActive_ = false;
   uint32_t flyerFlashUntil_ = 0;
   uint32_t screenOffTimeoutMs_ = Config::DisplayOffAfterMs;
@@ -307,6 +314,7 @@ private:
   bool pendingWifiSettings_ = false;
   bool pendingWifiPasswordProvided_ = false;
   bool djResponseOverlayVisible_ = false;
+  String djResponseOverlayTitle_;
   bool wifiConnectFailed_ = false;
   bool lowBatteryGuardActive_ = false;
   bool criticalBatteryGuardActive_ = false;

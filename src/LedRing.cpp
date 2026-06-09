@@ -60,6 +60,10 @@ void LedRing::showVolume(int volume, bool force) {
 }
 
 void LedRing::showPongPaddle(int paddleY) {
+  showGamePosition(paddleY, 42, 126, CRGB(255, 138, 0));
+}
+
+void LedRing::showGamePosition(int position, int minPosition, int maxPosition, const CRGB &color) {
   if (!ready_) {
     return;
   }
@@ -69,11 +73,19 @@ void LedRing::showPongPaddle(int paddleY) {
   FastLED.setBrightness(Config::LedRingBrightness);
   fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
 
-  const int clampedY = constrain(paddleY, 42, 126);
-  const uint8_t head = map(clampedY, 42, 126, 0, Config::Ws2812LedCount - 1);
-  leds_[head] = CRGB(255, 95, 0);
-  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = CRGB(110, 35, 0);
-  leds_[(head + 1) % Config::Ws2812LedCount] = CRGB(110, 35, 0);
+  if (maxPosition <= minPosition) {
+    leds_[0] = color;
+    FastLED.show();
+    return;
+  }
+
+  const int clampedPosition = constrain(position, minPosition, maxPosition);
+  const uint8_t head = map(clampedPosition, minPosition, maxPosition, 0, Config::Ws2812LedCount - 1);
+  CRGB tail = color;
+  tail.nscale8_video(96);
+  leds_[head] = color;
+  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = tail;
+  leds_[(head + 1) % Config::Ws2812LedCount] = tail;
   FastLED.show();
 }
 
@@ -87,6 +99,18 @@ void LedRing::showSolid(const CRGB &color, uint8_t brightnessPercent) {
   fill_solid(leds_, Config::Ws2812LedCount, color);
   lastVolume_ = -999;
   FastLED.show();
+}
+
+void LedRing::clear() {
+  powerPercent_ = 0;
+  lastVolume_ = -999;
+  if (!ready_) {
+    return;
+  }
+  FastLED.setBrightness(Config::LedRingBrightness);
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+  FastLED.show();
+  FastLED.setBrightness(0);
 }
 
 void LedRing::playPulse(const CRGB &color) {

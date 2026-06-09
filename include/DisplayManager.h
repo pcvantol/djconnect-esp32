@@ -56,13 +56,13 @@ public:
   void renderLogsScreen(const String *lines, size_t lineCount, const StatusNotice &notice);
 
   // Renders the tiny Pong mini game screen.
-  void renderPongScreen(int paddleY, int ballX, int ballY, int score, bool missFlash, const StatusNotice &notice);
+  void renderPongScreen(int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice);
 
   // Renders the local Asteroids-style mini game.
-  void renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, bool hitFlash, const StatusNotice &notice);
+  void renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
 
   // Renders the local side-scrolling plane mini game.
-  void renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, bool hitFlash, const StatusNotice &notice);
+  void renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
 
   // Renders the 160x160 current-song album art view.
   void renderAlbumArtScreen(
@@ -75,7 +75,7 @@ public:
   void renderAlbumArtMarqueeText(const SpotifyState &playback, bool titleChanged, bool artistChanged);
 
   // Draws a temporary full-screen DJ response overlay above the current UI.
-  void renderDjResponseOverlay(const String &text);
+  void renderDjResponseOverlay(const String &title, const String &text);
 
   // Forces the next DJ response overlay render to repaint its full-screen frame.
   void resetDjResponseOverlayCache();
@@ -161,11 +161,11 @@ private:
   void renderLogs(Canvas &canvas, const String *lines, size_t lineCount, const StatusNotice &notice);
 
   template <typename Canvas>
-  void renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, bool missFlash, const StatusNotice &notice);
+  void renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice);
   template <typename Canvas>
-  void renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, bool hitFlash, const StatusNotice &notice);
+  void renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
   template <typename Canvas>
-  void renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, bool hitFlash, const StatusNotice &notice);
+  void renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
 
   template <typename Canvas>
   String clippedText(Canvas &canvas, String text, int maxWidth, uint8_t font);
@@ -219,6 +219,7 @@ private:
   uint8_t activeBrightnessPercent_ = 100;
   String lastAlbumArtPath_;
   String lastDjResponseOverlayText_;
+  String lastDjResponseOverlayTitle_;
   bool albumArtPaneDirty_ = true;
   uint32_t dimStartAfterMs_ = Config::DisplayDimStartAfterMs;
   uint32_t dimTargetAfterMs_ = Config::DisplayDimAfterMs;

@@ -6,6 +6,8 @@
 #include "OkayNabuWakeWordModel.h"
 
 extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t sampleCount) __attribute__((weak));
+// Implemented only when a TFLite Micro/microWakeWord runtime is linked. The
+// vendored Okay Nabu model bytes alone are not an executable detector.
 extern "C" bool djconnect_oke_nabu_wake_word_detect(const int16_t *samples, size_t sampleCount) __attribute__((weak));
 
 void WakeWordEngine::begin() {

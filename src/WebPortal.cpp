@@ -227,10 +227,18 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .playback-actions { margin-top:12px; }
     .queue { display:grid; gap:8px; }
-    .queue-item { border-top:1px solid var(--row-line); padding-top:8px; }
+    .queue-item { border-top:1px solid var(--row-line); padding-top:8px; display:grid; grid-template-columns:42px 1fr 38px; gap:10px; align-items:center; }
     .queue-item:first-child { border-top:0; padding-top:0; }
+    .queue-art { width:42px; height:42px; border-radius:6px; border:1px solid var(--line); background:var(--art-bg); object-fit:cover; }
+    .queue-art.empty { display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:17px; }
     .queue-title { font-size:14px; color:var(--text); overflow-wrap:anywhere; }
     .queue-subtitle { margin-top:2px; font-size:12px; color:var(--muted); overflow-wrap:anywhere; }
+    button.queue-play { width:38px; height:38px; min-width:38px; min-height:38px; justify-self:end; }
+    button.queue-play svg { width:18px; height:18px; }
+    .section-title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .section-title-row h2 { margin:0; }
+    button.header-icon { width:38px; height:38px; min-width:38px; min-height:38px; }
+    button.header-icon svg { width:18px; height:18px; }
     .fine { color:var(--muted); font-size:12px; line-height:1.35; }
     .fine + .fine, button + .fine, form + .fine { margin-top:10px; }
     .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px; }
@@ -255,6 +263,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .pair-banner strong { display:block; font-size:18px; margin-bottom:4px; color:#ffdf5d; }
     .pair-banner a { color:#fff; font-weight:800; text-decoration:none; }
     .pair-banner .pair-code { display:inline-block; margin-left:4px; padding:2px 7px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.22); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.08em; }
+    .game-shell { display:grid; gap:10px; }
+    .game-tabs { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+    .game-tab { min-height:38px; padding:6px; background:var(--field); border-color:var(--line); color:var(--text); }
+    .game-tab.active { border-color:var(--green); color:#dfffea; box-shadow:0 0 0 1px rgba(30,215,96,.25) inset; }
+    .game-hud { display:flex; justify-content:space-between; gap:10px; color:var(--muted); font-size:13px; }
+    canvas.game-canvas { width:100%; max-width:640px; aspect-ratio:320/170; border:1px solid var(--line); border-radius:8px; background:#020405; touch-action:none; image-rendering:pixelated; }
+    .game-controls { display:grid; grid-template-columns:repeat(4, 46px); gap:8px; justify-content:start; }
+    .game-controls button { min-height:42px; padding:0; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--log-bg); color:var(--log-text); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
     @media (max-width:420px) { button.ptt { width:100%; } }
@@ -263,7 +279,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <body>
   <header>
     <h1><img class="brand-icon" src="/icon-192.png?v=3" alt="">DJConnect <span id="appVersion" class="sub">-</span></h1>
-    <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
+    <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Playback">♪</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">
     <svg class="pair-alert-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -325,7 +341,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     </section>
 
     <section id="queuePanel" class="panel">
-      <h2 data-i18n="upNext">Up Next</h2>
+      <div class="section-title-row">
+        <h2 data-i18n="upNext">Up Next</h2>
+        <button id="refreshQueueButton" class="icon-button header-icon" type="button" aria-label="Refresh Up Next" title="Refresh Up Next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2"></path><path d="M3 12A9 9 0 0 1 18.5 5.8"></path><path d="M18 2v4h4"></path><path d="M6 22v-4H2"></path></svg>
+        </button>
+      </div>
       <div id="queueList" class="queue"><div class="fine" data-i18n="loadingQueue">Loading queue...</div></div>
       <div id="queueStatus" class="status"></div>
     </section>
@@ -335,6 +356,25 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <select id="playlistSelect" aria-label="Playlist"><option value="">Loading playlists...</option></select>
       <button id="startPlaylistButton" class="section-action" type="button">Start playlist</button>
       <div id="playlistStatus" class="status"></div>
+    </section>
+
+    <section class="panel wide">
+      <h2 data-i18n="games">Games</h2>
+      <div class="game-shell">
+        <div class="game-tabs" role="tablist" aria-label="Games">
+          <button class="game-tab active" type="button" data-game="pong">Pong</button>
+          <button class="game-tab" type="button" data-game="asteroids">Asteroids</button>
+          <button class="game-tab" type="button" data-game="fly">Fly</button>
+        </div>
+        <div class="game-hud"><span id="gameScore">Score 0</span><span id="gameHighScore">High 0</span></div>
+        <canvas id="gameCanvas" class="game-canvas" width="320" height="170"></canvas>
+        <div class="game-controls">
+          <button id="gameUpButton" class="icon-button" type="button" aria-label="Up" title="Up"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 8H5z"></path></svg></button>
+          <button id="gameDownButton" class="icon-button" type="button" aria-label="Down" title="Down"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l-7-8h14z"></path></svg></button>
+          <button id="gameFireButton" class="icon-button" type="button" aria-label="Fire" title="Fire"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6z"></path></svg></button>
+          <button id="gameResetButton" class="icon-button" type="button" aria-label="Reset" title="Reset"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6"></path><path d="M20 20v-6h-6"></path><path d="M20 9a8 8 0 0 0-13.7-3.6L4 7.7"></path><path d="M4 15a8 8 0 0 0 13.7 3.6L20 16.3"></path></svg></button>
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -516,8 +556,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start DJConnect Liked Proxy",
         webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
         webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect response flow", spotifyUnavailable:"Playback not connected",
-        output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", loadingQueue:"Loading queue...",
-        playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", settings:"Settings",
+        output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", refreshUpNext:"Refresh Up Next", loadingQueue:"Loading queue...",
+        playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", games:"Games", settings:"Settings",
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
         language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error",
         timeout30s:"30 seconds", timeout1m:"1 minute", timeout2m:"2 minutes", timeout4m:"4 minutes", timeout5m:"5 minutes", timeout15m:"15 minutes", timeout30m:"30 minutes", timeout60m:"60 minutes",
@@ -536,7 +576,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         discharging:"discharging", paired:"Paired", pairingMode:"Pairing mode", pairingUnavailable:"Pairing info unavailable",
         none:"None", noOutputs:"No sound outputs", outputsFailed:"Sound outputs failed", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
         playlistsFailed:"Playlists failed", noLogs:"No logs yet", switchingOutput:"Switching output...", skipping:"Skipping...",
-        goingBack:"Going back...", startingLiked:"Starting Liked Proxy...", selectPlaylist:"Select a playlist",
+        goingBack:"Going back...", startingLiked:"Starting Liked Proxy...", startingQueueItem:"Starting selected song...", selectPlaylist:"Select a playlist",
         startingPlaylist:"Starting playlist...", resumeLogs:"Resume logs", logsPaused:"Logs paused", logsLive:"Logs live",
         logsPausedSelected:"Logs paused and selected", saving:"Saving...", testWifiConfirm:"Test these WiFi credentials? The web page may disconnect during the test.",
         startingWifiTest:"Starting WiFi test...", refreshing:"Refreshing...", restartConfirm:"Restart DJConnect?",
@@ -551,8 +591,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start DJConnect Liked Proxy",
         webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
         webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect response flow", spotifyUnavailable:"Afspelen niet verbonden",
-        output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
-        playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", settings:"Instellingen",
+        output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummer", refreshUpNext:"Volgende verversen", loadingQueue:"Wachtrij laden...",
+        playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", games:"Games", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
         language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout",
         timeout30s:"30 seconden", timeout1m:"1 minuut", timeout2m:"2 minuten", timeout4m:"4 minuten", timeout5m:"5 minuten", timeout15m:"15 minuten", timeout30m:"30 minuten", timeout60m:"60 minuten",
@@ -571,7 +611,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         discharging:"ontladen", paired:"Gekoppeld", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformatie niet beschikbaar",
         none:"Geen", noOutputs:"Geen geluidsuitgangen", outputsFailed:"Geluidsuitgangen mislukt", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
         playlistsFailed:"Afspeellijsten mislukt", noLogs:"Nog geen logs", switchingOutput:"Output wisselen...", skipping:"Overslaan...",
-        goingBack:"Teruggaan...", startingLiked:"Liked Proxy starten...", selectPlaylist:"Selecteer een afspeellijst",
+        goingBack:"Teruggaan...", startingLiked:"Liked Proxy starten...", startingQueueItem:"Gekozen nummer starten...", selectPlaylist:"Selecteer een afspeellijst",
         startingPlaylist:"Afspeellijst starten...", resumeLogs:"Logs hervatten", logsPaused:"Logs gepauzeerd", logsLive:"Logs live",
         logsPausedSelected:"Logs gepauzeerd en geselecteerd", saving:"Opslaan...", testWifiConfirm:"Deze WiFi-gegevens testen? De webpagina kan tijdens de test loskoppelen.",
         startingWifiTest:"WiFi-test starten...", refreshing:"Verversen...", restartConfirm:"DJConnect herstarten?",
@@ -598,6 +638,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("startLikedProxyButton").textContent = tr("liked");
       if (!webPttRunning) $("webPttButton").textContent = tr("webPttHold");
       $("pauseLogsButton").textContent = logsPaused ? tr("resumeLogs") : tr("pauseLogs");
+      setButtonLabel("refreshQueueButton", tr("refreshUpNext"));
       const outputOption = $("soundOutputSelect").querySelector("option[data-i18n='loadingOutputs']");
       if (spotifyControlsEnabled && outputOption) outputOption.textContent = tr("loadingOutputs");
       const playlistOption = $("playlistSelect").querySelector("option");
@@ -686,6 +727,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let shuffleEnabled = false;
     let repeatState = "off";
     let webPttRunning = false;
+    let webPttAvailable = false;
     let homeAssistantRuntimePaired = false;
     let albumArtUrl = "";
     let logsVisible = false;
@@ -723,31 +765,180 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         if (visible && spotifyControlsEnabled) loadSoundOutputs();
       });
     }
+    const game = {
+      mode:"pong", visible:true, score:0, high:{ pong:0, asteroids:0, fly:0 },
+      paddleY:86, ballX:160, ballY:86, ballVX:3, ballVY:2,
+      shipX:160, asteroidX:180, asteroidY:48, asteroidVX:2, asteroidVY:2, bullet:false, bulletY:0,
+      planeY:86, obstacleX:300, obstacleY:86, shot:false, shotX:0, flashUntil:0, last:0
+    };
+    function gameHighKey(mode) { return `djconnect.web.${mode}.high`; }
+    function loadGameHighScores() {
+      for (const mode of ["pong","asteroids","fly"]) game.high[mode] = Number(localStorage.getItem(gameHighKey(mode)) || 0);
+    }
+    function updateGameHud() {
+      $("gameScore").textContent = `Score ${game.score}`;
+      $("gameHighScore").textContent = `High ${game.high[game.mode] || 0}`;
+    }
+    function setGameButton(button, label, svgPath) {
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${svgPath}"></path></svg>`;
+    }
+    function updateGameControls() {
+      const horizontal = game.mode === "asteroids";
+      setGameButton($("gameUpButton"), horizontal ? "Left" : "Up", horizontal ? "M5 12l8-7v14z" : "M12 5l7 8H5z");
+      setGameButton($("gameDownButton"), horizontal ? "Right" : "Down", horizontal ? "M19 12l-8 7V5z" : "M12 19l-7-8h14z");
+      $("gameFireButton").style.display = game.mode === "pong" ? "none" : "";
+    }
+    function setGameScore(score) {
+      game.score = score;
+      if (score > (game.high[game.mode] || 0)) {
+        game.high[game.mode] = score;
+        localStorage.setItem(gameHighKey(game.mode), String(score));
+      }
+      updateGameHud();
+    }
+    function resetGame() {
+      game.score = 0;
+      game.flashUntil = 0;
+      if (game.mode === "pong") {
+        game.paddleY = 86; game.ballX = 160; game.ballY = 86; game.ballVX = 3; game.ballVY = 2;
+      } else if (game.mode === "asteroids") {
+        game.shipX = 160; game.asteroidX = 40 + Math.random() * 240; game.asteroidY = 48; game.asteroidVX = Math.random() > .5 ? 2 : -2; game.asteroidVY = 2; game.bullet = false;
+      } else {
+        game.planeY = 86; game.obstacleX = 300; game.obstacleY = 52 + Math.random() * 92; game.shot = false;
+      }
+      updateGameHud();
+    }
+    function selectGame(mode) {
+      game.mode = mode;
+      document.querySelectorAll(".game-tab").forEach(button => button.classList.toggle("active", button.dataset.game === mode));
+      updateGameControls();
+      resetGame();
+    }
+    function moveGame(delta) {
+      if (game.mode === "pong") game.paddleY = Math.max(42, Math.min(126, game.paddleY + delta * 6));
+      if (game.mode === "asteroids") game.shipX = Math.max(24, Math.min(296, game.shipX + delta * 8));
+      if (game.mode === "fly") game.planeY = Math.max(52, Math.min(138, game.planeY + delta * 7));
+    }
+    function fireGame() {
+      if (game.mode === "asteroids" && !game.bullet) { game.bullet = true; game.bulletY = 120; }
+      if (game.mode === "fly" && !game.shot) { game.shot = true; game.shotX = 58; }
+    }
+    function drawGame() {
+      const canvas = $("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, 320, 170);
+      ctx.fillStyle = "#020405"; ctx.fillRect(0, 0, 320, 170);
+      ctx.strokeStyle = "#30383a"; ctx.beginPath(); ctx.moveTo(8, 36); ctx.lineTo(312, 36); ctx.stroke();
+      ctx.font = "14px system-ui"; ctx.fillStyle = game.mode === "pong" ? "#ff9f1a" : game.mode === "asteroids" ? "#5fa7ff" : "#5cccff";
+      ctx.fillText(game.mode === "fly" ? "Fly" : game.mode[0].toUpperCase() + game.mode.slice(1), 8, 20);
+      ctx.fillStyle = "#f3f7f5"; ctx.textAlign = "right"; ctx.fillText(`Score ${game.score}  High ${game.high[game.mode] || 0}`, 312, 20); ctx.textAlign = "left";
+      if (game.mode === "pong") {
+        ctx.strokeStyle = "#30383a"; ctx.beginPath(); ctx.moveTo(160,42); ctx.lineTo(160,160); ctx.stroke();
+        ctx.fillStyle = "#ff9f1a"; ctx.fillRect(18, game.paddleY, 8, 34);
+        ctx.fillStyle = "#1ed760"; ctx.beginPath(); ctx.arc(game.ballX, game.ballY, 4, 0, Math.PI * 2); ctx.fill();
+      } else if (game.mode === "asteroids") {
+        ctx.strokeStyle = "#5fa7ff"; ctx.beginPath(); ctx.moveTo(game.shipX, 128); ctx.lineTo(game.shipX - 8, 146); ctx.lineTo(game.shipX + 8, 146); ctx.closePath(); ctx.stroke();
+        ctx.strokeStyle = "#ff6ab7"; ctx.beginPath(); ctx.arc(game.asteroidX, game.asteroidY, 9, 0, Math.PI * 2); ctx.stroke();
+        if (game.bullet) { ctx.fillStyle = "#5cccff"; ctx.fillRect(game.shipX - 2, game.bulletY, 4, 10); }
+      } else {
+        ctx.fillStyle = "#5cccff"; ctx.beginPath(); ctx.moveTo(60, game.planeY); ctx.lineTo(30, game.planeY - 10); ctx.lineTo(30, game.planeY + 10); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "#5cccff"; ctx.beginPath(); ctx.moveTo(38, game.planeY); ctx.lineTo(20, game.planeY - 18); ctx.moveTo(38, game.planeY); ctx.lineTo(20, game.planeY + 18); ctx.stroke();
+        ctx.fillStyle = "#9a6a43"; ctx.fillRect(game.obstacleX - 8, game.obstacleY - 16, 16, 32);
+        if (game.shot) { ctx.fillStyle = "#5cccff"; ctx.fillRect(game.shotX, game.planeY - 2, 14, 4); }
+      }
+      if (Date.now() < game.flashUntil) { ctx.strokeStyle = "#ff735d"; ctx.lineWidth = 2; ctx.strokeRect(1, 1, 318, 168); ctx.lineWidth = 1; }
+    }
+    function stepGame(ts) {
+      if (!game.last) game.last = ts;
+      if (game.visible && ts - game.last > 32) {
+        game.last = ts;
+        if (game.mode === "pong") {
+          game.ballX += game.ballVX; game.ballY += game.ballVY;
+          if (game.ballY <= 42 || game.ballY >= 156) game.ballVY *= -1;
+          if (game.ballX >= 306) game.ballVX = -Math.abs(game.ballVX);
+          if (game.ballX <= 30) {
+            if (game.ballY >= game.paddleY - 4 && game.ballY <= game.paddleY + 38) { game.ballVX = Math.abs(game.ballVX); setGameScore(game.score + 1); }
+            else { game.ballX = 160; game.ballY = 86; game.ballVX = 3; game.ballVY = Math.random() > .5 ? 2 : -2; setGameScore(0); game.flashUntil = Date.now() + 350; }
+          }
+        } else if (game.mode === "asteroids") {
+          game.asteroidX += game.asteroidVX; game.asteroidY += game.asteroidVY;
+          if (game.asteroidX < 24 || game.asteroidX > 296) game.asteroidVX *= -1;
+          if (game.bullet) {
+            game.bulletY -= 8;
+            if (game.bulletY < 38) game.bullet = false;
+            else if (Math.abs(game.asteroidX - game.shipX) < 16 && Math.abs(game.asteroidY - game.bulletY) < 16) {
+              setGameScore(game.score + 1); game.bullet = false; game.asteroidX = 30 + Math.random() * 260; game.asteroidY = 46; game.asteroidVX = Math.random() > .5 ? 2 : -2; game.asteroidVY = 2 + Math.min(Math.floor(game.score / 5), 3);
+            }
+          }
+          if (game.asteroidY > 150) { game.flashUntil = Date.now() + 350; game.asteroidX = 30 + Math.random() * 260; game.asteroidY = 46; setGameScore(0); }
+        } else {
+          game.obstacleX -= 4 + Math.min(Math.floor(game.score / 6), 4);
+          if (game.shot) {
+            game.shotX += 9;
+            if (game.shotX > 310) game.shot = false;
+            else if (Math.abs(game.shotX - game.obstacleX) < 16 && Math.abs(game.planeY - game.obstacleY) < 24) { setGameScore(game.score + 1); game.shot = false; game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; }
+          }
+          if (game.obstacleX < 24) { game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; setGameScore(game.score + 1); }
+          if (game.obstacleX < 64 && game.obstacleX > 28 && Math.abs(game.planeY - game.obstacleY) < 28) { game.flashUntil = Date.now() + 350; game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; setGameScore(0); }
+        }
+        drawGame();
+      }
+      requestAnimationFrame(stepGame);
+    }
+    function setupGames() {
+      loadGameHighScores();
+      updateGameControls();
+      resetGame();
+      document.querySelectorAll(".game-tab").forEach(button => button.addEventListener("click", () => selectGame(button.dataset.game)));
+      $("gameUpButton").addEventListener("click", () => moveGame(-1));
+      $("gameDownButton").addEventListener("click", () => moveGame(1));
+      $("gameFireButton").addEventListener("pointerdown", event => { event.preventDefault(); fireGame(); });
+      $("gameResetButton").addEventListener("click", resetGame);
+      $("gameCanvas").addEventListener("pointerdown", event => { event.preventDefault(); fireGame(); });
+      window.addEventListener("keydown", event => {
+        if (!game.visible || ["INPUT","SELECT","TEXTAREA","BUTTON"].includes(document.activeElement?.tagName || "")) return;
+        const movementKeys = game.mode === "asteroids" ? ["ArrowLeft","ArrowRight"] : ["ArrowUp","ArrowDown"];
+        if (![...movementKeys, " ", "Enter"].includes(event.key)) return;
+        event.preventDefault();
+        if (event.key === movementKeys[0]) moveGame(-1);
+        if (event.key === movementKeys[1]) moveGame(1);
+        if (event.key === " " || event.key === "Enter") fireGame();
+      });
+      watchVisibility("gameCanvas", visible => { game.visible = visible; if (visible) drawGame(); });
+      requestAnimationFrame(stepGame);
+    }
     async function startWebPtt() {
       if ($("webPttButton").disabled) return;
       if (webPttRunning) return;
       webPttRunning = true;
+      $("webPttButton").disabled = true;
       $("webPttTranscript").textContent = tr("webPttTestCommand");
       $("webPttStatus").textContent = tr("webPttProcessing");
       $("webPttButton").textContent = tr("webPttListening");
       $("webPttButton").classList.add("recording");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
       try {
         const body = new URLSearchParams({ text: tr("webPttTestCommand") });
-        const response = await fetch("/api/voice-text", { method:"POST", body });
+        const response = await fetch("/api/voice-text", { method:"POST", body, signal:controller.signal });
         const payload = await response.json();
         $("webPttStatus").textContent = payload.message || (payload.success ? "OK" : tr("webPttFailed"));
         refresh();
       } catch (error) {
         $("webPttStatus").textContent = tr("webPttFailed");
       } finally {
+        clearTimeout(timeout);
         webPttRunning = false;
         $("webPttButton").classList.remove("recording");
         $("webPttButton").textContent = tr("webPttHold");
+        $("webPttButton").disabled = !webPttAvailable;
       }
     }
     function setSpotifyControlsEnabled(enabled) {
       spotifyControlsEnabled = !!enabled;
-      for (const id of ["previousButton", "nextButton", "shuffleButton", "repeatButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
+      for (const id of ["previousButton", "nextButton", "shuffleButton", "repeatButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton", "refreshQueueButton"]) {
         $(id).disabled = !spotifyControlsEnabled;
       }
       updatePlaybackButtonStates();
@@ -817,7 +1008,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       homeAssistantRuntimePaired = !!(data.ha && data.ha.paired);
       setStatusDot("haHeaderStatus", homeAssistantRuntimePaired);
       text("haPaired", homeAssistantRuntimePaired ? tr("paired") : tr("pairingMode"));
-      $("webPttButton").disabled = !(data.voice && data.voice.available);
+      webPttAvailable = !!(data.voice && data.voice.available);
+      if (!webPttRunning) $("webPttButton").disabled = !webPttAvailable;
       text("screenState", `${data.screen.state} (${data.screen.brightnessLevel}%)`);
       text("ledState", data.led.state);
       text("uptime", duration(data.app.uptimeMs));
@@ -919,14 +1111,40 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         for (const item of data.items) {
           const row = document.createElement("div");
           row.className = "queue-item";
+          if (item.imageUrl) {
+            const art = document.createElement("img");
+            art.className = "queue-art";
+            art.alt = "";
+            art.loading = "lazy";
+            art.decoding = "async";
+            art.referrerPolicy = "no-referrer";
+            art.src = item.imageUrl;
+            row.appendChild(art);
+          } else {
+            const art = document.createElement("div");
+            art.className = "queue-art empty";
+            art.textContent = "♪";
+            row.appendChild(art);
+          }
+          const meta = document.createElement("div");
           const title = document.createElement("div");
           title.className = "queue-title";
           title.textContent = item.title || "-";
           const subtitle = document.createElement("div");
           subtitle.className = "queue-subtitle";
           subtitle.textContent = item.subtitle || "-";
-          row.appendChild(title);
-          row.appendChild(subtitle);
+          meta.appendChild(title);
+          meta.appendChild(subtitle);
+          row.appendChild(meta);
+          const button = document.createElement("button");
+          button.className = "icon-button queue-play";
+          button.type = "button";
+          button.title = tr("play");
+          button.setAttribute("aria-label", tr("play"));
+          button.disabled = !spotifyControlsEnabled || !item.uri;
+          button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
+          button.addEventListener("click", () => playQueueItem(item.uri));
+          row.appendChild(button);
           list.appendChild(row);
         }
         $("queueStatus").textContent = "";
@@ -998,6 +1216,21 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       await refresh();
       await loadQueue();
     }
+    async function playQueueItem(uri) {
+      if (!spotifyControlsEnabled || !uri) return;
+      $("queueStatus").textContent = tr("startingQueueItem");
+      const body = new URLSearchParams({ action:"queue_item", uri });
+      const response = await fetch("/api/playback", { method:"POST", body });
+      $("queueStatus").textContent = await response.text();
+      await refresh();
+      await loadQueue();
+    }
+    $("refreshQueueButton").addEventListener("click", async () => {
+      if (!spotifyControlsEnabled) return;
+      queueLoadedAt = 0;
+      $("queueStatus").textContent = tr("refreshing");
+      await loadQueue();
+    });
     $("previousButton").addEventListener("click", () => sendPlaybackCommand("previous"));
     $("nextButton").addEventListener("click", () => sendPlaybackCommand("next"));
     $("playPauseButton").addEventListener("click", () => sendPlaybackCommand(playbackIsPlaying ? "pause" : "play"));
@@ -1115,6 +1348,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     setupStatusStyling();
     setupVisibilityObservers();
     setupDirtyInputTracking();
+    setupGames();
     refresh();
     loadPairingInfo();
     setInterval(refresh, 3000);
@@ -1574,6 +1808,8 @@ void WebPortal::handleQueueJson() {
     JsonObject item = items.add<JsonObject>();
     item["title"] = queue.items[index].title;
     item["subtitle"] = queue.items[index].subtitle;
+    item["uri"] = queue.items[index].uri;
+    item["imageUrl"] = queue.items[index].imageUrl;
   }
 
   String body;
@@ -1697,6 +1933,24 @@ void WebPortal::handlePlaybackCommandPost() {
       return;
     }
     ok = spotify_->startPlaylist(playlistUri);
+  } else if (action == "queue_item") {
+    const String itemUri = server_.arg("uri");
+    String contextUri = playback_ == nullptr ? "" : playback_->contextUri;
+    if (itemUri.isEmpty()) {
+      server_.send(400, "text/plain", "Missing queue item");
+      return;
+    }
+    if (contextUri.isEmpty()) {
+      QueueState queue;
+      if (spotify_->refreshQueue(queue)) {
+        contextUri = queue.contextUri;
+      }
+    }
+    if (contextUri.isEmpty()) {
+      server_.send(409, "text/plain", localizedText("Queue context unavailable", "Wachtrijcontext niet beschikbaar"));
+      return;
+    }
+    ok = spotify_->playQueueItem(itemUri, contextUri);
   } else {
     server_.send(400, "text/plain", "Unknown playback action");
     return;
@@ -1723,6 +1977,8 @@ void WebPortal::handlePlaybackCommandPost() {
     message = localizedText("Paused", "Gepauzeerd");
   } else if (action == "playlist") {
     message = localizedText("Playlist started", "Afspeellijst gestart");
+  } else if (action == "queue_item") {
+    message = localizedText("Selected song started", "Gekozen nummer gestart");
   }
   server_.send(200, "text/plain", message);
 }

@@ -15,8 +15,8 @@ DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotif
 - Theme setting for the device and web portal: Auto, Dark or Light.
 - Log level setting from the device, web portal and Home Assistant command API: debug, info, warning or error. The default is info.
 - Playlist browser on the device and web portal to start playlists directly.
-- Current Song menu screen with album art download/cache.
-- Local Games menu with Pong, Asteroids and Flyer mini-games.
+- Current song menu screen with album art download/cache.
+- Local Games menu and web portal games panel with Pong, Asteroids and Fly mini-games.
 - Help screen with button/encoder controls, shown once after initial Home Assistant pairing and available from the main menu.
 - Encoder short press on Now Playing: pause/resume.
 - Encoder long press on Now Playing: push-to-talk through Home Assistant Assist; release stops listening.
@@ -25,8 +25,8 @@ DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotif
 - Top button long press: open the menu.
 - Top button held for 10 seconds: restart/soft reset.
 - Encoder button + top button held for 10 seconds: factory reset when battery state allows it.
-- Menus for Current Song, Up Next, Playlists, Sound Outputs, Games, Help, Settings, About and Logs.
-- Mobile web portal with Now Playing, DJ-response simulation, album art, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update and OTA upload.
+- Menus for Current song, Up Next, Playlists, Sound Outputs, Games, Help, Settings, About and Logs.
+- Mobile web portal with Now Playing, DJ-response simulation, album art, volume slider, outputs, queue, playlists, local games, logs, diagnostics, settings, WiFi update and OTA upload.
 - Home Assistant pairing with mDNS discovery and device-token authentication.
 - BLE WiFi provisioning in setup mode for apps/flows that actively write credentials to the device.
 - Home Assistant discovery, periodic status updates and two-way commands, including selected settings such as log level.
@@ -198,9 +198,9 @@ Physical PTT, from the Now Playing screen:
 7. The ESP displays the DJ text briefly, detects the audio type from `Content-Type` or magic bytes, and plays compatible WAV/MP3 audio through the built-in speaker.
 8. The UI returns to Now Playing.
 
-The Current Song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
+The Current song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
-Games are local mini-games in the device menu. Pong shows score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Asteroids uses the encoder to move horizontally and the center button to shoot upward. Flyer uses the encoder to move vertically and the center button to shoot obstacles while flying left-to-right.
+Games are local mini-games in the device menu and web portal. Pong shows score and high score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Asteroids uses the encoder to move horizontally and shoots on encoder press. Fly uses the encoder to move vertically and shoots on encoder press while flying left-to-right. Device game highscores are stored in the `provision` NVS namespace and are cleared by factory reset; web game highscores are stored locally in the browser.
 
 Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
 
@@ -258,15 +258,17 @@ Supported command payloads:
 {"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/djconnect/tts/example.mp3"}
 ```
 
-Status is still posted periodically to the Home Assistant integration through `/api/djconnect/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. The status payload mirrors user device settings both top-level and under `settings`, including `ha_pairing_status`, `local_url`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `ota_state` and `update_state`. It also includes `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to minimum values.
+Status is still posted periodically to the Home Assistant integration through `/api/djconnect/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. Every ESP-to-Home Assistant JSON payload for `/api/djconnect/status` and `/api/djconnect/command` includes top-level `device_id` and `client_type:"esp32"`; the firmware does not send `device_type` in those payloads. Raw WAV uploads to `/api/djconnect/voice` use the bearer token and `X-DJConnect-Device-ID` headers instead of a JSON body.
 
-Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing.
+The status payload mirrors user device settings both top-level and under `settings`, including `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `ha_remote_url`, `ha_active_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `ota_state`, `update_state` and `sound_output`. It also includes `screen_state`, `led_state`, `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to unknown or minimum values.
+
+Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing. If HA returns `{"success":false,"error":"invalid_client_type"}` or an HTTP error body with `error:"invalid_client_type"`, the ESP logs `HA rejected payload: missing client_type=esp32`, treats it as a firmware/HA contract problem and does not clear NVS pairing or the device token.
 
 After boot and Home Assistant setup, the ESP forces an immediate playback status command instead of waiting for the normal polling interval. This keeps the device `S` status indicator and LED-ring state in sync before the first physical control action.
 
 ## Web Portal
 
-The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, S, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The `S` playback indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
+The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, local games, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, playback music-note icon, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The playback music-note indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
 
 The device Logs screen shows the newest log tail by default and can be scrolled with the encoder to inspect older buffered entries. Serial, web and device logs use the compact `HH:mm INF` severity prefix format.
 
@@ -356,7 +358,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 3.0.9 --dry-run` validates the release plan without touching files. Both `3.0.9` and `v3.0.9` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 3.0.10 --dry-run` validates the release plan without touching files. Both `3.0.10` and `v3.0.10` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

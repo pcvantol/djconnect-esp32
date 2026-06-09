@@ -175,10 +175,15 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   AppLog.println(code);
 
   if (code < 200 || code >= 300) {
-    if (code == 426) {
+    if (!payload.isEmpty()) {
       JsonDocument errorDoc;
       const DeserializationError error = deserializeJson(errorDoc, payload);
       const char *errorKey = error ? "" : (errorDoc["error"] | "");
+      if (Logic::isDjConnectInvalidClientType(errorKey)) {
+        setProxyError("HA rejected payload: missing client_type=esp32");
+        AppLog.println("HA rejected payload: missing client_type=esp32");
+        return false;
+      }
       if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
         tokenInvalidGrant_ = false;
         lastProxyFailureAt_ = millis();
@@ -206,6 +211,12 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
     }
     const bool success = (*response)["success"] | true;
     if (!success) {
+      const char *errorKey = (*response)["error"] | "";
+      if (Logic::isDjConnectInvalidClientType(errorKey)) {
+        setProxyError("HA rejected payload: missing client_type=esp32");
+        AppLog.println("HA rejected payload: missing client_type=esp32");
+        return false;
+      }
       const bool backendAvailable = (*response)["backend_available"] | true;
       if (!backendAvailable) {
         lastProxyFailureAt_ = millis();
@@ -304,17 +315,26 @@ void SpotifyClient::applyDeviceList(JsonVariantConst source, DeviceListState &de
 void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {
   queue.available = false;
   queue.error = "";
+  queue.contextUri = source["context_uri"] | source["contextUri"] | "";
+  if (queue.contextUri.isEmpty()) {
+    JsonVariantConst playback = source["playback"];
+    if (!playback.isNull()) {
+      queue.contextUri = playback["context_uri"] | playback["contextUri"] | "";
+    }
+  }
   queue.count = 0;
   JsonArrayConst items = source["queue"].is<JsonArrayConst>()
                              ? source["queue"].as<JsonArrayConst>()
                              : source["items"].as<JsonArrayConst>();
   for (JsonVariantConst item : items) {
-    if (queue.count >= 5) {
+    if (queue.count >= QueueState::MaxItems) {
       break;
     }
     QueueItemState &target = queue.items[queue.count];
     target.title = item["title"] | item["name"] | "";
     target.subtitle = item["subtitle"] | item["artist"] | item["artists"] | "";
+    target.uri = item["uri"] | item["track_uri"] | "";
+    target.imageUrl = item["album_image_url"] | item["albumImageUrl"] | item["image_url"] | item["imageUrl"] | item["thumbnail_url"] | "";
     if (target.title.isEmpty()) {
       continue;
     }
@@ -351,7 +371,10 @@ bool SpotifyClient::refreshPlayback() {
   if (!proxyCommand("status", &response)) {
     return false;
   }
-  applyPlayback(response.as<JsonVariantConst>());
+  JsonVariantConst playback = response["playback"].is<JsonVariantConst>()
+                                  ? response["playback"].as<JsonVariantConst>()
+                                  : response.as<JsonVariantConst>();
+  applyPlayback(playback);
   return true;
 }
 
@@ -404,6 +427,7 @@ bool SpotifyClient::refreshQueue(QueueState &queue) {
   if (!proxyCommand("queue", &response)) {
     queue.available = false;
     queue.error = state_.error;
+    queue.contextUri = "";
     queue.count = 0;
     return false;
   }
@@ -454,6 +478,34 @@ bool SpotifyClient::startLikedProxyPlaylist() {
 
 bool SpotifyClient::startPlaylist(const String &playlistUri) {
   return proxyCommand("start_playlist", playlistUri);
+}
+
+bool SpotifyClient::playQueueItem(const String &itemUri, const String &contextUri) {
+  if (itemUri.isEmpty()) {
+    state_.error = "Queue item unavailable";
+    return false;
+  }
+  if (contextUri.isEmpty()) {
+    state_.error = "Queue context unavailable";
+    return false;
+  }
+
+  JsonDocument request;
+  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
+  JsonDocument response;
+  request["command"] = "play_context_at";
+  JsonObject value = request["value"].to<JsonObject>();
+  value["context_uri"] = contextUri;
+  value["offset_uri"] = itemUri;
+  if (!proxyRequest(request, &response)) {
+    return false;
+  }
+  JsonVariantConst playback = response["playback"].is<JsonVariantConst>()
+                                  ? response["playback"].as<JsonVariantConst>()
+                                  : response.as<JsonVariantConst>();
+  applyPlayback(playback);
+  return true;
 }
 
 bool SpotifyClient::setShuffle(bool enabled) {

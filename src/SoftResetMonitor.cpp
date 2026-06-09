@@ -97,6 +97,7 @@ void SoftResetMonitor::hardResetToSetupPortal() {
   Preferences provision;
   provision.begin("provision", false);
   provision.clear();
+  provision.putUInt("speaker_volume", 100);
   provision.putBool("setup", true);
   provision.end();
 

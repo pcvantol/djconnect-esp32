@@ -122,11 +122,20 @@ static void testHomeAssistantStatusAliasContractNames() {
       "log_level",
       "ota_state",
       "update_state",
+      "sound_output",
   };
   for (const char *alias : aliases) {
     assert(alias != nullptr);
     assert(std::strlen(alias) > 0);
   }
+}
+
+static void testHomeAssistantClientTypeErrorContract() {
+  assert(Logic::isDjConnectInvalidClientType("invalid_client_type"));
+  assert(!Logic::isDjConnectInvalidClientType(nullptr));
+  assert(!Logic::isDjConnectInvalidClientType(""));
+  assert(!Logic::isDjConnectInvalidClientType("invalid_token"));
+  assert(!Logic::isHomeAssistantPairingInvalidStatus(400));
 }
 
 static void testImmediatePollTimestampConvention() {
@@ -762,6 +771,7 @@ int main() {
   testHaPlaybackConnectionErrorClassification();
   testHomeAssistantStatusMirroredSettingsDefaults();
   testHomeAssistantStatusAliasContractNames();
+  testHomeAssistantClientTypeErrorContract();
   testImmediatePollTimestampConvention();
   testSpotifyConfiguredForHomeAssistantStatus();
   testProgressEstimation();

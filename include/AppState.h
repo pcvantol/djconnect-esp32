@@ -117,13 +117,17 @@ struct AboutStatus {
 struct QueueItemState {
   String title;
   String subtitle;
+  String uri;
+  String imageUrl;
 };
 
 struct QueueState {
+  static constexpr size_t MaxItems = 12;
   bool available = false;
   String error;
+  String contextUri;
   size_t count = 0;
-  QueueItemState items[5];
+  QueueItemState items[MaxItems];
 };
 
 struct PlaylistItemState {

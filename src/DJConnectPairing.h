@@ -25,7 +25,8 @@ public:
       const BatteryState &battery,
       bool playbackConfigured,
       const DeviceSettingsStatus &settings,
-      const VisualState &visualState);
+      const VisualState &visualState,
+      const String &soundOutput);
 
 private:
   void applyProvisionedLanguage(JsonVariantConst payload);

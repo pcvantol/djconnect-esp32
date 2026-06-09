@@ -136,7 +136,8 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
     const BatteryState &battery,
     bool playbackConfigured,
     const DeviceSettingsStatus &settings,
-    const VisualState &visualState) {
+    const VisualState &visualState,
+    const String &soundOutput) {
   if (device_ == nullptr || !device_->isPaired()) {
     return StatusResult::Skipped;
   }
@@ -181,6 +182,7 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   request["screen_state"] = visualState.screenOn ? "on" : "off";
   request["screen_brightness_level"] = visualState.screenBrightnessLevel;
   request["led_state"] = visualState.ledOn ? "on" : "off";
+  request["sound_output"] = soundOutput;
   JsonObject settingsObject = request["settings"].to<JsonObject>();
   settingsObject["screen_brightness_percent"] = settings.screenBrightnessPercent;
   settingsObject["brightness"] = settings.screenBrightnessPercent;
@@ -226,10 +228,14 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
 
   AppLog.print("HA status response: ");
   AppLog.println(code);
-  if (code == 426) {
+  if (!payload.isEmpty()) {
     JsonDocument response;
     const DeserializationError error = deserializeJson(response, payload);
     const char *errorKey = error ? "" : (response["error"] | "");
+    if (Logic::isDjConnectInvalidClientType(errorKey)) {
+      AppLog.println("HA rejected payload: missing client_type=esp32");
+      return StatusResult::Failed;
+    }
     if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
       AppLog.print("HA version mismatch: HA ");
       AppLog.print(response["ha_version"] | response["ha_major_minor"] | "?");
@@ -237,16 +243,13 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
       AppLog.println(response["firmware"] | response["firmware_major_minor"] | device_->getFirmwareVersion().c_str());
       return StatusResult::VersionMismatch;
     }
+    if (code >= 200 && code < 300) {
+      applyProvisionedLanguage(response.as<JsonVariantConst>());
+    }
   }
   if (Logic::isHomeAssistantPairingInvalidStatus(code)) {
     AppLog.println("HA pairing appears invalid");
     return StatusResult::PairingInvalid;
-  }
-  if (code >= 200 && code < 300 && !payload.isEmpty()) {
-    JsonDocument response;
-    if (!deserializeJson(response, payload)) {
-      applyProvisionedLanguage(response.as<JsonVariantConst>());
-    }
   }
   return code >= 200 && code < 300 ? StatusResult::Ok : StatusResult::Failed;
 }

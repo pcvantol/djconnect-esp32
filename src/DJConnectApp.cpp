@@ -12,6 +12,7 @@
 #include <WiFiClientSecure.h>
 #include <esp_heap_caps.h>
 #include <esp_sleep.h>
+#include <climits>
 #include <cstring>
 #include <time.h>
 
@@ -208,7 +209,8 @@ void DJConnectApp::loop() {
       stopVoiceRecordingAndSendText();
     }
   }
-  if (!voiceRecording_ && voiceState_ == VoiceState::Idle && homeAssistantPaired_) {
+  if (!voiceRecording_ && voiceState_ == VoiceState::Idle && homeAssistantPaired_ &&
+      playbackConnectionState() == PlaybackConnectionState::Ok) {
     wakeWord_.loop(voiceRecorder_);
   }
   flushPendingVolume();
@@ -273,6 +275,9 @@ void DJConnectApp::loadProvisioning() {
   AppLog.setLevel(logLevel_);
   speakerVolumePercent_ = settings.speakerVolumePercent;
   volumeFeedbackEnabled_ = settings.volumeFeedbackEnabled;
+  pongHighScore_ = static_cast<int>(min(settings.pongHighScore, static_cast<uint32_t>(INT_MAX)));
+  asteroidHighScore_ = static_cast<int>(min(settings.asteroidsHighScore, static_cast<uint32_t>(INT_MAX)));
+  flyerHighScore_ = static_cast<int>(min(settings.flyerHighScore, static_cast<uint32_t>(INT_MAX)));
   setupModeRequested_ = settings.setupModeRequested;
   helpShown_ = settings.helpShown;
 
@@ -978,8 +983,11 @@ void DJConnectApp::handleMenuInputEvents(const InputEvents &events) {
     return;
   }
   if (activeScreen_ == UiScreen::Asteroids) {
-    if (events.encoderClick) {
+    if (events.encoderPress) {
       fireAsteroids();
+      return;
+    }
+    if (events.encoderClick) {
       return;
     }
     if (events.encoderLongClick) {
@@ -989,8 +997,11 @@ void DJConnectApp::handleMenuInputEvents(const InputEvents &events) {
     }
   }
   if (activeScreen_ == UiScreen::Flyer) {
-    if (events.encoderClick) {
+    if (events.encoderPress) {
       fireFlyer();
+      return;
+    }
+    if (events.encoderClick) {
       return;
     }
     if (events.encoderLongClick) {
@@ -1032,6 +1043,8 @@ void DJConnectApp::handleMenuInputEvents(const InputEvents &events) {
 void DJConnectApp::openRootMenu() {
   activeScreen_ = UiScreen::RootMenu;
   menuStackSize_ = 0;
+  ledRing_.clear();
+  visualState_.ledOn = ledRing_.isOn();
   if (volumeFeedbackEnabled_) {
     sound_.playMenuOpen();
   }
@@ -1298,11 +1311,13 @@ void DJConnectApp::selectCurrentMenuItem() {
     case UiScreen::About:
     case UiScreen::Help:
     case UiScreen::NowPlaying:
-    case UiScreen::Queue:
     case UiScreen::Logs:
     case UiScreen::Pong:
     case UiScreen::Asteroids:
     case UiScreen::Flyer:
+      break;
+    case UiScreen::Queue:
+      startSelectedQueueItem();
       break;
   }
 }
@@ -1479,6 +1494,9 @@ bool DJConnectApp::isMenuActive() const {
 }
 
 size_t DJConnectApp::menuItemCount(UiScreen screen) const {
+  if (screen == UiScreen::Queue) {
+    return queue_.available && queue_.count > 0 ? queue_.count : 1;
+  }
   return itemCount(screen, playlists_, deviceList_);
 }
 
@@ -1520,8 +1538,9 @@ size_t DJConnectApp::selectedIndexForScreen(UiScreen screen) const {
       return soundOutputSelection_;
     case UiScreen::About:
       return aboutSelection_;
-    case UiScreen::AlbumArt:
     case UiScreen::Queue:
+      return queueSelection_;
+    case UiScreen::AlbumArt:
     case UiScreen::Logs:
     case UiScreen::Pong:
     case UiScreen::Asteroids:
@@ -1570,8 +1589,9 @@ size_t &DJConnectApp::selectedIndexRefForScreen(UiScreen screen) {
       return soundOutputSelection_;
     case UiScreen::About:
       return aboutSelection_;
-    case UiScreen::AlbumArt:
     case UiScreen::Queue:
+      return queueSelection_;
+    case UiScreen::AlbumArt:
     case UiScreen::Logs:
     case UiScreen::Pong:
     case UiScreen::Asteroids:
@@ -1751,6 +1771,17 @@ void DJConnectApp::resetPong() {
   lastPongFrameAt_ = 0;
 }
 
+void DJConnectApp::updateGameHighScore(int &highScore, int score) {
+  if (score <= highScore) {
+    return;
+  }
+  highScore = score;
+  provisioning_.saveGameHighScores(
+      static_cast<uint32_t>(max(pongHighScore_, 0)),
+      static_cast<uint32_t>(max(asteroidHighScore_, 0)),
+      static_cast<uint32_t>(max(flyerHighScore_, 0)));
+}
+
 void DJConnectApp::updatePong() {
   const uint32_t now = millis();
   if (!display_.isOn() || display_.backlightPercent() == 0) {
@@ -1781,6 +1812,7 @@ void DJConnectApp::updatePong() {
     if (pongBallY_ >= pongPaddleY_ - 4 && pongBallY_ <= pongPaddleY_ + 38) {
       pongVelocityX_ = abs(pongVelocityX_);
       pongScore_++;
+      updateGameHighScore(pongHighScore_, pongScore_);
       if (volumeFeedbackEnabled_) {
         sound_.playConfirm();
       }
@@ -1850,6 +1882,7 @@ void DJConnectApp::updateAsteroids() {
       asteroidBulletActive_ = false;
     } else if (abs(asteroidX_ - asteroidShipX_) < 16 && abs(asteroidY_ - asteroidBulletY_) < 16) {
       asteroidScore_++;
+      updateGameHighScore(asteroidHighScore_, asteroidScore_);
       asteroidBulletActive_ = false;
       asteroidX_ = 30 + static_cast<int>(esp_random() % 260);
       asteroidY_ = 46;
@@ -1916,6 +1949,7 @@ void DJConnectApp::updateFlyer() {
       flyerShotActive_ = false;
     } else if (abs(flyerShotX_ - flyerObstacleX_) < 16 && abs(flyerPlaneY_ - flyerObstacleY_) < 24) {
       flyerScore_++;
+      updateGameHighScore(flyerHighScore_, flyerScore_);
       flyerShotActive_ = false;
       flyerObstacleX_ = 310;
       flyerObstacleY_ = 52 + static_cast<int>(esp_random() % 92);
@@ -1928,6 +1962,7 @@ void DJConnectApp::updateFlyer() {
     flyerObstacleX_ = 310;
     flyerObstacleY_ = 52 + static_cast<int>(esp_random() % 92);
     flyerScore_++;
+    updateGameHighScore(flyerHighScore_, flyerScore_);
   }
   if (flyerObstacleX_ < 64 && flyerObstacleX_ > 28 && abs(flyerPlaneY_ - flyerObstacleY_) < 28) {
     flyerFlashUntil_ = now + 350;
@@ -1944,6 +1979,7 @@ void DJConnectApp::updateFlyer() {
 bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &message) {
   if (command.type == DeviceCommandType::Status) {
     AppLog.println("Device command: status");
+    refreshPlaybackAndBattery();
     sendHomeAssistantStatusIfDue(true);
     message = "Status sent";
     return true;
@@ -2302,6 +2338,7 @@ void DJConnectApp::handleVoiceButton() {
   voiceClient_.sendStatus(true, "recording");
   diagnostics_.lastDjText = I18n::text("voice_listening");
   display_.resetDjResponseOverlayCache();
+  djResponseOverlayTitle_ = "DJConnect";
   djResponseOverlayVisible_ = true;
   djResponseOverlayUntil_ = millis() + Config::VoiceMaxRecordMs + 1000;
   showNotice(I18n::text("voice_listening"), Config::VoiceMaxRecordMs + 1000);
@@ -2321,6 +2358,7 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
   ledRing_.playPulse(CRGB::Blue);
   diagnostics_.lastDjText = I18n::text("voice_processing");
   display_.resetDjResponseOverlayCache();
+  djResponseOverlayTitle_ = "DJConnect";
   djResponseOverlayVisible_ = true;
   djResponseOverlayUntil_ = millis() + 3000;
   showNotice(I18n::text("voice_processing"), 3000);
@@ -2331,7 +2369,7 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
     AppLog.println(error);
     voiceState_ = VoiceState::Error;
     voiceClient_.sendStatus(false, "error", error);
-    showNotice(error, 3500);
+    showDjResponseOverlay(I18n::text("voice_dj_response"), error, 6000);
     renderNow();
     return;
   }
@@ -2353,9 +2391,12 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
       handleDjResponseText(message, audioUrl, spoken);
     } else if (!audioUrl.isEmpty()) {
       spoken = djAudio_.play(audioUrl).spoken;
-      showNotice(spoken ? I18n::text("voice_response_played") : I18n::text("voice_response_audio_failed"), 3500);
+      showDjResponseOverlay(
+          I18n::text("voice_dj_response"),
+          spoken ? I18n::text("voice_response_played") : I18n::text("voice_response_audio_failed"),
+          6000);
     } else {
-      showNotice(message, 3500);
+      showDjResponseOverlay(I18n::text("voice_dj_response"), I18n::text("voice_no_dj_response"), 6000);
     }
   } else {
     voiceState_ = VoiceState::Error;
@@ -2366,7 +2407,7 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
       markHomeAssistantPairingInvalid(message);
       return;
     }
-    showNotice(message, 3500);
+    showDjResponseOverlay(I18n::text("voice_dj_response"), message, 6000);
   }
   voiceRecorder_.abort();
   if (voiceState_ == VoiceState::Done) {
@@ -2612,14 +2653,55 @@ void DJConnectApp::openAlbumArtScreen() {
 void DJConnectApp::openQueueScreen() {
   activeScreen_ = UiScreen::Queue;
   menuStackSize_ = 0;
+  queueSelection_ = 0;
   showNotice(I18n::text("loading_queue"), 1200);
   renderNow();
   if (playbackProxyReady()) {
     spotify_.refreshQueue(queue_);
+    if (queueSelection_ >= queue_.count) {
+      queueSelection_ = 0;
+    }
   } else {
     queue_.available = false;
     queue_.error = I18n::text("ha_pairing_invalid");
   }
+  renderNow();
+}
+
+void DJConnectApp::startSelectedQueueItem() {
+  if (!queue_.available || queue_.count == 0 || queueSelection_ >= queue_.count) {
+    showNotice(queue_.error.isEmpty() ? I18n::text("queue_empty") : queue_.error, 1800);
+    renderNow();
+    return;
+  }
+
+  const QueueItemState &item = queue_.items[queueSelection_];
+  if (item.uri.isEmpty()) {
+    showNotice(I18n::text("queue_empty"), 1800);
+    renderNow();
+    return;
+  }
+
+  showNotice(item.title, 1200);
+  renderNow();
+  String contextUri = playback_.contextUri;
+  if (contextUri.isEmpty()) {
+    contextUri = queue_.contextUri;
+  }
+  if (spotify_.playQueueItem(item.uri, contextUri)) {
+    refreshPlaybackAndBattery();
+    if (activeScreen_ == UiScreen::Queue && playbackProxyReady()) {
+      showNotice(I18n::text("loading_queue"), 900);
+      renderNow();
+      spotify_.refreshQueue(queue_);
+      if (queueSelection_ >= queue_.count) {
+        queueSelection_ = queue_.count == 0 ? 0 : queue_.count - 1;
+      }
+      renderNow();
+    }
+    return;
+  }
+  showNotice(playback_.error.isEmpty() ? "Queue start failed" : playback_.error, 2200);
   renderNow();
 }
 
@@ -2707,13 +2789,13 @@ void DJConnectApp::renderNow() {
   if (lowBatteryGuardActive_ || criticalBatteryGuardActive_) {
     renderLowBatteryGuard();
     if (djResponseOverlayVisible_) {
-      display_.renderDjResponseOverlay(diagnostics_.lastDjText);
+      display_.renderDjResponseOverlay(djResponseOverlayTitle_, diagnostics_.lastDjText);
     }
     return;
   }
 
   if (djResponseOverlayVisible_) {
-    display_.renderDjResponseOverlay(diagnostics_.lastDjText);
+    display_.renderDjResponseOverlay(djResponseOverlayTitle_, diagnostics_.lastDjText);
     visualState_.screenOn = display_.isOn();
     visualState_.screenBrightnessLevel = display_.backlightPercent();
     visualState_.ledOn = ledRing_.isOn();
@@ -2727,6 +2809,8 @@ void DJConnectApp::renderNow() {
     visualState_.ledOn = ledRing_.isOn();
     return;
   }
+
+  const bool gameScreen = activeScreen_ == UiScreen::Pong || activeScreen_ == UiScreen::Asteroids || activeScreen_ == UiScreen::Flyer;
 
   // Render from the same snapshot into both visual outputs so screen and ring agree.
   if (isMenuActive()) {
@@ -2748,11 +2832,34 @@ void DJConnectApp::renderNow() {
     visualState_.ledOn = ledRing_.isOn();
     return;
   }
+  if (activeScreen_ == UiScreen::Asteroids && display_.backlightPercent() > 0) {
+    ledRing_.showGamePosition(asteroidShipX_, 24, 296, CRGB(64, 150, 255));
+    ledRing_.setPowerPercent(display_.backlightPercent());
+    visualState_.screenOn = display_.isOn();
+    visualState_.screenBrightnessLevel = display_.backlightPercent();
+    visualState_.ledOn = ledRing_.isOn();
+    return;
+  }
+  if (activeScreen_ == UiScreen::Flyer && display_.backlightPercent() > 0) {
+    ledRing_.showGamePosition(flyerPlaneY_, 52, 138, CRGB(92, 204, 255));
+    ledRing_.setPowerPercent(display_.backlightPercent());
+    visualState_.screenOn = display_.isOn();
+    visualState_.screenBrightnessLevel = display_.backlightPercent();
+    visualState_.ledOn = ledRing_.isOn();
+    return;
+  }
+  if (gameScreen || isMenuActive()) {
+    ledRing_.clear();
+    visualState_.screenOn = display_.isOn();
+    visualState_.screenBrightnessLevel = display_.backlightPercent();
+    visualState_.ledOn = ledRing_.isOn();
+    return;
+  }
   if (connectionHealthy()) {
     if (playback_.hasPlayback && playback_.supportsVolume && displayedVolume() >= 0) {
       ledRing_.showVolume(displayedVolume());
     } else {
-      ledRing_.setPowerPercent(0);
+      ledRing_.clear();
     }
   } else {
     ledRing_.showSolid(CRGB::Red, display_.backlightPercent());
@@ -3379,8 +3486,9 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
   settings.language = languageCode_;
   settings.theme = themeCode_;
   settings.logLevel = logLevel_;
+  const String soundOutput = playback_.deviceName.isEmpty() ? "" : playback_.deviceName;
   const DJConnectPairing::StatusResult result =
-      haPairing_.sendStatusToHA(battery_, playbackProxyUsable, settings, visualState_);
+      haPairing_.sendStatusToHA(battery_, playbackProxyUsable, settings, visualState_, soundOutput);
   if (result == DJConnectPairing::StatusResult::Ok) {
     homeAssistantPaired_ = true;
     haPairingPendingValidation_ = false;
@@ -3556,7 +3664,8 @@ void DJConnectApp::wakeWordDetectedCallback(void *context) {
     return;
   }
   DJConnectApp *app = static_cast<DJConnectApp *>(context);
-  if (app->voiceRecording_ || app->voiceState_ != VoiceState::Idle || !app->homeAssistantPaired_) {
+  if (app->voiceRecording_ || app->voiceState_ != VoiceState::Idle || !app->homeAssistantPaired_ ||
+      app->playbackConnectionState() != PlaybackConnectionState::Ok) {
     return;
   }
   AppLog.println("Wake word: starting push-to-talk flow");
@@ -3641,15 +3750,10 @@ bool DJConnectApp::handleDjResponseText(const String &text, const String &audioU
     return false;
   }
   spoken = false;
-  diagnostics_.lastDjText = text;
+  showDjResponseOverlay(I18n::text("voice_dj_response"), text, 6000);
   lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "unknown";
   AppLog.print("DJ response displayed chars=");
   AppLog.println(text.length());
-  display_.resetDjResponseOverlayCache();
-  djResponseOverlayVisible_ = true;
-  djResponseOverlayUntil_ = millis() + 6000;
-  display_.wakeForUserActivity();
-  renderNow();
   if (!audioUrl.isEmpty()) {
     const DjResponseAudioResult audioResult = djAudio_.play(audioUrl);
     spoken = audioResult.spoken;
@@ -3663,6 +3767,17 @@ bool DJConnectApp::handleDjResponseText(const String &text, const String &audioU
   }
   renderNow();
   return true;
+}
+
+void DJConnectApp::showDjResponseOverlay(const String &title, const String &text, uint32_t ttlMs) {
+  diagnostics_.lastDjText = text;
+  djResponseOverlayTitle_ = title;
+  display_.resetDjResponseOverlayCache();
+  djResponseOverlayVisible_ = true;
+  djResponseOverlayUntil_ = millis() + ttlMs;
+  display_.wakeForUserActivity();
+  showNotice(text, ttlMs);
+  renderNow();
 }
 
 void DJConnectApp::renderMenuNow() {
@@ -3707,12 +3822,13 @@ void DJConnectApp::renderMenuNow() {
     }
 
     case UiScreen::Queue: {
-      MenuItemView items[5];
+      MenuItemView items[QueueState::MaxItems];
       size_t itemCount = queue_.count;
       if (!queue_.available || itemCount == 0) {
         items[0].label = queue_.error.isEmpty() ? I18n::text("queue_empty") : queue_.error;
         itemCount = 1;
       } else {
+        itemCount = min(itemCount, QueueState::MaxItems);
         for (size_t index = 0; index < itemCount; index++) {
           items[index].label = queue_.items[index].title;
           if (!queue_.items[index].subtitle.isEmpty()) {
@@ -3720,7 +3836,10 @@ void DJConnectApp::renderMenuNow() {
           }
         }
       }
-      display_.renderMenuList(I18n::text("up_next"), items, itemCount, 0, notice_);
+      if (queueSelection_ >= itemCount) {
+        queueSelection_ = 0;
+      }
+      display_.renderMenuList(I18n::text("up_next"), items, itemCount, queueSelection_, notice_);
       break;
     }
 
@@ -3759,15 +3878,15 @@ void DJConnectApp::renderMenuNow() {
     }
 
     case UiScreen::Pong:
-      display_.renderPongScreen(pongPaddleY_, pongBallX_, pongBallY_, pongScore_, millis() < pongMissFlashUntil_, notice_);
+      display_.renderPongScreen(pongPaddleY_, pongBallX_, pongBallY_, pongScore_, pongHighScore_, millis() < pongMissFlashUntil_, notice_);
       break;
 
     case UiScreen::Asteroids:
-      display_.renderAsteroidsScreen(asteroidShipX_, asteroidShipY_, asteroidX_, asteroidY_, asteroidBulletY_, asteroidBulletActive_, asteroidScore_, millis() < asteroidFlashUntil_, notice_);
+      display_.renderAsteroidsScreen(asteroidShipX_, asteroidShipY_, asteroidX_, asteroidY_, asteroidBulletY_, asteroidBulletActive_, asteroidScore_, asteroidHighScore_, millis() < asteroidFlashUntil_, notice_);
       break;
 
     case UiScreen::Flyer:
-      display_.renderFlyerScreen(flyerPlaneY_, flyerObstacleX_, flyerObstacleY_, flyerShotX_, flyerShotActive_, flyerScore_, millis() < flyerFlashUntil_, notice_);
+      display_.renderFlyerScreen(flyerPlaneY_, flyerObstacleX_, flyerObstacleY_, flyerShotX_, flyerShotActive_, flyerScore_, flyerHighScore_, millis() < flyerFlashUntil_, notice_);
       break;
 
     case UiScreen::Games: {

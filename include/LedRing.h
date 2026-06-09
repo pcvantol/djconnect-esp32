@@ -14,11 +14,17 @@ public:
   // Shows volume as orange segments around the ring; partially lit LEDs represent partial steps.
   void showVolume(int volume, bool force = false);
 
-  // Shows a bright orange Pong paddle marker mapped to the current paddle position.
+  // Shows a bright green Pong paddle marker mapped to the current paddle position.
   void showPongPaddle(int paddleY);
+
+  // Shows a three-LED game position marker mapped into the ring.
+  void showGamePosition(int position, int minPosition, int maxPosition, const CRGB &color);
 
   // Shows all LEDs as one solid color, used for setup/provisioning states.
   void showSolid(const CRGB &color, uint8_t brightnessPercent = 100);
+
+  // Clears all ring pixels and marks the ring as off.
+  void clear();
 
   // Plays one short color lap for transient actions such as push-to-talk state changes.
   void playPulse(const CRGB &color);

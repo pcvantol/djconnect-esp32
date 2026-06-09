@@ -3,7 +3,7 @@
 Werk in de bestaande Home Assistant custom integration repo voor `djconnect`.
 
 Doel:
-Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmware release `v3.0.7`.
+Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmware release `v3.0.10`.
 
 
 ## 0. Repository/Release Hygiene
@@ -11,7 +11,7 @@ Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmwar
 - ESP source repo is `pcvantol/djconnect-esp32`.
 - Public OTA firmware repo is `pcvantol/djconnect-firmware`.
 - Firmware binaries/manifests must be consumed from `djconnect-firmware`; the ESP source repo should not be treated as the OTA asset host.
-- Current firmware release/tag baseline is `v3.0.7`; do not reference old 2.x firmware assets or tags.
+- Current firmware release/tag baseline is `v3.0.10`; do not reference old 2.x firmware assets or tags.
 
 Belangrijke architectuur:
 
@@ -74,7 +74,7 @@ Payload bevat onder andere:
   "battery_mv": 4120,
   "charging": false,
   "wifi_rssi": -55,
-  "firmware": "3.0.7",
+  "firmware": "3.0.10",
   "language": "nl",
   "device_language": "nl",
   "theme": "dark",
@@ -163,6 +163,7 @@ Payload examples:
 {"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_output","value":"iPhone","play":true}
 {"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"start_liked_proxy"}
 {"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"start_playlist","value":"spotify:playlist:..."}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"play_context_at","value":{"context_uri":"spotify:playlist:...","offset_uri":"spotify:track:..."}}
 {"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_shuffle","value":true}
 {"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_repeat","value":"track"}
 ```
@@ -218,8 +219,27 @@ Taken:
 - Never return HTTP 503 for normal playback backend unavailable during command/status, because ESP interprets HTTP 5xx as playback connection error/cooldown.
 - Keep backend unavailable as JSON failure on 200.
 - Keep 401/403/404 only for actual auth/pairing invalid cases.
-- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v3.0.7 forceert direct een playback status poll na HA setup.
+- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v3.0.10 forceert direct een playback status poll na HA setup.
 - Queue/devices/playlists should return `success:true` with empty arrays if backend is reachable but no data is available.
+- `command=queue` should include a top-level `context_uri`/`contextUri` when playback has a playlist/album/context. ESP uses this for `play_context_at` from Up Next.
+- Queue items should include per-item album art where available. Supported ESP field names are `album_image_url`, `albumImageUrl`, `image_url`, `imageUrl` or `thumbnail_url`. Example:
+
+```json
+{
+  "success": true,
+  "context_uri": "spotify:playlist:...",
+  "queue": [
+    {
+      "title": "Track",
+      "subtitle": "Artist",
+      "uri": "spotify:track:...",
+      "album_image_url": "https://..."
+    }
+  ]
+}
+```
+
+- The ESP does not download queue thumbnails. It passes image URLs through `/api/queue`; the web browser lazy-loads images only when the Up Next panel is visible.
 - Avoid spamming `/api/device/pair` callbacks while normal playback commands are running; use a debounced settings sync path if needed.
 - Do not call ESP `POST /api/device/pair` as a generic status/settings synchronization endpoint after the device is already paired. Use it only for initial config-flow pairing, explicit re-pair/token rotation, or recovery. Use `POST /api/device/command` for settings changes and `/api/djconnect/status` responses for state acknowledgement.
 
@@ -308,9 +328,9 @@ Add or update tests for:
 
 ## 8. Acceptance Criteria
 
-- ESP v3.0.7 can pair with HA integration without repeated stale-pairing loops.
+- ESP v3.0.10 can pair with HA integration without repeated stale-pairing loops.
 - After a 6-digit setup-code flow, ESP logs `Home Assistant direct pairing stored: device_token=present`, exits the pairing screen and after reboot logs `Home Assistant pairing: paired`.
-- After ESP reboot, HA status and playback command flow make the ESP `S` indicator green/grey/red correctly before any physical control action.
+- After ESP reboot, HA status and playback command flow make the ESP playback music-note indicator green/grey/red correctly before any physical control action.
 - HA brightness/speaker volume/timeouts/language/theme/log-level entities reflect ESP state after reboot/status post.
-- Playback backend unavailable shows playback/S error but keeps HA pairing intact.
+- Playback backend unavailable shows playback music-note error but keeps HA pairing intact.
 - Backend credentials remain only in Home Assistant.
