@@ -370,14 +370,30 @@ void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {
     if (queue.count >= QueueState::MaxItems) {
       break;
     }
-    QueueItemState &target = queue.items[queue.count];
-    target.title = item["title"] | item["name"] | "";
-    target.subtitle = item["subtitle"] | item["artist"] | item["artists"] | "";
-    target.uri = item["uri"] | item["track_uri"] | "";
-    target.imageUrl = item["album_image_url"] | item["albumImageUrl"] | item["image_url"] | item["imageUrl"] | item["thumbnail_url"] | "";
-    if (target.title.isEmpty()) {
+    QueueItemState candidate;
+    candidate.title = item["title"] | item["name"] | "";
+    candidate.subtitle = item["subtitle"] | item["artist"] | item["artists"] | "";
+    candidate.uri = item["uri"] | item["track_uri"] | "";
+    candidate.imageUrl = item["album_image_url"] | item["albumImageUrl"] | item["image_url"] | item["imageUrl"] | item["thumbnail_url"] | "";
+    if (candidate.title.isEmpty()) {
       continue;
     }
+    bool duplicate = false;
+    for (size_t existing = 0; existing < queue.count; existing++) {
+      const QueueItemState &seen = queue.items[existing];
+      const bool sameUri = !candidate.uri.isEmpty() && candidate.uri == seen.uri;
+      const bool sameFallback =
+          candidate.uri.isEmpty() && seen.uri.isEmpty() && candidate.title == seen.title &&
+          candidate.subtitle == seen.subtitle;
+      if (sameUri || sameFallback) {
+        duplicate = true;
+        break;
+      }
+    }
+    if (duplicate) {
+      continue;
+    }
+    queue.items[queue.count] = candidate;
     queue.count++;
   }
   queue.available = true;
