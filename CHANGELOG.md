@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.0.21
+## v3.0.22
 
 Patch release for HA local-route pairing, wake-word/PTT stability, queue rendering, playback control feedback and About-screen copy.
 
