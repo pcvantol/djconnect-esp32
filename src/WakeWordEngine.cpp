@@ -47,7 +47,18 @@ void WakeWordEngine::loop(VoiceRecorder &recorder) {
   uint8_t audio[Config::WakeWordPcmChunkBytes] = {};
   size_t bytesRead = 0;
   if (!recorder.readMonitorChunk(audio, sizeof(audio), bytesRead) || bytesRead < sizeof(int16_t)) {
+    if (now - lastEmptyLogAt_ > 5000) {
+      AppLog.line("Wake word: monitor waiting for microphone samples");
+      lastEmptyLogAt_ = now;
+    }
     return;
+  }
+  if (!loggedFirstAudio_) {
+    AppLog.line(String("Wake word: monitor active, chunk bytes=") + String(bytesRead));
+    loggedFirstAudio_ = true;
+  } else if (now - lastMonitorLogAt_ > 30000) {
+    AppLog.line("Wake word: monitor active");
+    lastMonitorLogAt_ = now;
   }
 
   const size_t sampleCount = bytesRead / sizeof(int16_t);

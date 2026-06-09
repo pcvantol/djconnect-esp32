@@ -88,8 +88,9 @@ String SpotifyClient::proxyEndpoint() const {
   if (device_ == nullptr) {
     return "";
   }
-  const String haUrl = device_->getActiveHaUrl();
+  const String haUrl = device_->getHaLocalUrl();
   if (haUrl.isEmpty()) {
+    AppLog.line("HA playback command unavailable: local HA URL missing");
     return "";
   }
   return haUrl + "/api/djconnect/command";
@@ -149,6 +150,10 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
 
   String payload;
   int code = postProxyRequest(url, token, body, command, payload);
+  if (code < 0 && isStatusCommand) {
+    AppLog.println("HA playback status transport failed, keeping last playback state");
+    return false;
+  }
   if (code < 0 && device_ != nullptr) {
     AppLog.println("HA playback command transport failed, retrying route");
     device_->invalidateActiveHaUrl();
@@ -158,7 +163,7 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
       code = postProxyRequest(retryUrl, token, body, command, payload);
     }
   }
-  AppLog.println("HA playback command response: " + String(code));
+  AppLog.line("HA playback command response: " + String(code));
 
   if (code < 200 || code >= 300) {
     if (!payload.isEmpty()) {
@@ -253,7 +258,12 @@ int SpotifyClient::postProxyRequest(
   {
     ScopedWatchdogPause watchdogPause;
     code = http.POST(body);
-    payload = http.getString();
+    if (code > 0) {
+      payload = http.getString();
+    }
+  }
+  if (code < 0) {
+    AppLog.line(String("HA playback command transport: ") + http.errorToString(code) + " url=" + url);
   }
   ScopedWatchdogPause::resetIfAttached();
   http.end();
@@ -267,7 +277,7 @@ bool SpotifyClient::proxyCooldownActive() const {
 
 void SpotifyClient::setProxyError(const String &message) {
   state_.error = message;
-  AppLog.println(message);
+  AppLog.line(message);
 }
 
 void SpotifyClient::applyPlayback(JsonVariantConst playback) {
@@ -598,7 +608,7 @@ bool SpotifyClient::queueVolume(int volume) {
   VolumeCommand queuedVolume;
   queuedVolume.volume = volume;
   xQueueOverwrite(volumeCommandQueue_, &queuedVolume);
-  AppLog.println("Playback: volume queued " + String(volume));
+  AppLog.line("Playback: volume queued " + String(volume));
   return true;
 }
 
@@ -613,19 +623,19 @@ VolumeResult SpotifyClient::sendVolumeToSpotify(const VolumeCommand &command) {
   VolumeResult result;
   result.volume = command.volume;
 
-  AppLog.println("Playback: volume requested " + String(command.volume));
+  AppLog.line("Playback: volume requested " + String(command.volume));
 
   if (proxyCommand("set_volume", command.volume)) {
     result.ok = true;
     copyToBuffer(result.message, sizeof(result.message), "Volume " + String(command.volume) + "%");
-    AppLog.println("Playback: volume accepted " + String(command.volume));
+    AppLog.line("Playback: volume accepted " + String(command.volume));
     return result;
   }
 
   const String message = state_.error.isEmpty() ? "Volume failed" : state_.error;
   result.ok = false;
   copyToBuffer(result.message, sizeof(result.message), message);
-  AppLog.println("Playback: volume failed: " + message);
+  AppLog.line("Playback: volume failed: " + message);
   return result;
 }
 

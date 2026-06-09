@@ -24,6 +24,10 @@ int appLogVprintf(const char *format, va_list args) {
 }  // namespace
 
 void AppLogger::begin() {
+  if (mutex_ == nullptr) {
+    mutex_ = xSemaphoreCreateMutex();
+  }
+  lock();
   setenv("TZ", Config::AmsterdamTimezone, 1);
   tzset();
   currentLine_[0] = '\0';
@@ -32,6 +36,7 @@ void AppLogger::begin() {
   nextLine_ = 0;
   lineCount_ = 0;
   ready_ = true;
+  unlock();
   esp_log_set_vprintf(appLogVprintf);
 }
 
@@ -64,18 +69,38 @@ String AppLogger::level() const {
 }
 
 size_t AppLogger::write(uint8_t value) {
-  appendChar(static_cast<char>(value));
+  lock();
+  appendCharUnlocked(static_cast<char>(value));
+  unlock();
   return 1;
 }
 
 size_t AppLogger::write(const uint8_t *buffer, size_t size) {
+  lock();
   for (size_t index = 0; index < size; index++) {
-    appendChar(static_cast<char>(buffer[index]));
+    appendCharUnlocked(static_cast<char>(buffer[index]));
   }
+  unlock();
   return size;
 }
 
+void AppLogger::line(const String &line) {
+  lock();
+  if (currentLength_ > 0) {
+    commitCurrentLineUnlocked();
+  }
+  snprintf(currentLine_, MaxLineLength, "%s", line.c_str());
+  currentLength_ = strlen(currentLine_);
+  commitCurrentLineUnlocked();
+  unlock();
+}
+
+void AppLogger::line(const char *lineValue) {
+  line(String(lineValue == nullptr ? "" : lineValue));
+}
+
 String AppLogger::text() const {
+  lock();
   String output;
   output.reserve((lineCount_ + (currentLength_ == 0 ? 0 : 1)) * 80);
   const size_t first = lineCount_ == MaxLines ? nextLine_ : 0;
@@ -91,6 +116,7 @@ String AppLogger::text() const {
       output += linePrefix(severity) + line;
     }
   }
+  unlock();
   return output;
 }
 
@@ -99,6 +125,7 @@ size_t AppLogger::newestLines(String *target, size_t maxLines, size_t scrollBack
     return 0;
   }
 
+  lock();
   const size_t available = lineCount_ + (currentLength_ == 0 ? 0 : 1);
   const size_t count = min(maxLines, available);
   const size_t maxScrollBack = available > count ? available - count : 0;
@@ -117,14 +144,24 @@ size_t AppLogger::newestLines(String *target, size_t maxLines, size_t scrollBack
       target[index] = shouldLogSeverity(severity) ? linePrefix(severity) + line : "";
     }
   }
+  unlock();
   return count;
 }
 
 size_t AppLogger::availableLines() const {
-  return lineCount_ + (currentLength_ == 0 ? 0 : 1);
+  lock();
+  const size_t available = lineCount_ + (currentLength_ == 0 ? 0 : 1);
+  unlock();
+  return available;
 }
 
 void AppLogger::appendChar(char value) {
+  lock();
+  appendCharUnlocked(value);
+  unlock();
+}
+
+void AppLogger::appendCharUnlocked(char value) {
   if (!ready_) {
     return;
   }
@@ -132,21 +169,27 @@ void AppLogger::appendChar(char value) {
     return;
   }
   if (value == '\n') {
-    commitCurrentLine();
+    commitCurrentLineUnlocked();
     return;
   }
 
   if (currentLength_ + 1 >= MaxLineLength) {
-    commitCurrentLine();
+    commitCurrentLineUnlocked();
   }
   currentLine_[currentLength_++] = value;
   currentLine_[currentLength_] = '\0';
   if (currentLength_ >= 120) {
-    commitCurrentLine();
+    commitCurrentLineUnlocked();
   }
 }
 
 void AppLogger::commitCurrentLine() {
+  lock();
+  commitCurrentLineUnlocked();
+  unlock();
+}
+
+void AppLogger::commitCurrentLineUnlocked() {
   if (currentLength_ == 0) {
     return;
   }
@@ -163,6 +206,18 @@ void AppLogger::commitCurrentLine() {
   nextLine_ = (nextLine_ + 1) % MaxLines;
   if (lineCount_ < MaxLines) {
     lineCount_++;
+  }
+}
+
+void AppLogger::lock() const {
+  if (mutex_ != nullptr) {
+    xSemaphoreTake(mutex_, portMAX_DELAY);
+  }
+}
+
+void AppLogger::unlock() const {
+  if (mutex_ != nullptr) {
+    xSemaphoreGive(mutex_);
   }
 }
 

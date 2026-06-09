@@ -174,12 +174,12 @@ Repeated direct callbacks with the same local/remote URLs and `device_token` are
 
 ### Local And Cloud Home Assistant URLs
 
-The ESP supports a local-first/cloud-fallback route to Home Assistant:
+The ESP stores separate local and remote Home Assistant URLs:
 
-- `ha_local_url`: the LAN URL the ESP should try first, for example `http://homeassistant.local:8123`.
+- `ha_local_url`: the LAN URL the ESP should use for normal control, for example `http://192.168.1.10:8123`.
 - `ha_remote_url`: the optional Nabu Casa/cloud URL, for example `https://example.ui.nabu.casa`.
 
-Playback, status, PTT voice and DJ response requests use the active HA route. The firmware briefly probes the local URL and falls back to the remote URL when local HA is not reachable. This keeps normal LAN latency low while still allowing the device to work when it is on another WiFi network with internet access. If both URLs are missing, pairing is rejected.
+`ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant accidentally sends a Nabu Casa URL as `ha_local_url`, the ESP normalizes it into `ha_remote_url` and clears the local NVS key on the next pairing save. Playback proxy commands intentionally use the local URL only; if no local URL is available, playback fails clearly with `HA playback command unavailable: local HA URL missing` instead of silently trying the cloud endpoint. Status and voice flows still report both stored URLs to Home Assistant for diagnostics and future route handling. If both URLs are missing, pairing is rejected.
 
 A Postman collection for these local ESP endpoints is available at `postman/DJConnect ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
 
@@ -210,14 +210,23 @@ If the Home Assistant integration has been removed while the ESP still has an ol
 
 The ESP also checks pairing health during periodic Home Assistant status updates and during device/web push-to-talk calls. HTTP 401, 403 or 404 responses from the Home Assistant DJConnect endpoints mark the pairing as stale in runtime status, show a reset-pairing message, and turn the Home Assistant status indicator red. A freshly received direct-pairing token is treated as pending until HA accepts a status/playback command; if HA immediately rejects that pending token, the ESP clears only that pending pairing and returns to the pairing-code screen. Established pairings are not erased automatically; use Reset Home Assistant pairing to intentionally return to the pairing screen.
 
-Optional micro wake word support includes the ESPHome `Okay Nabu` model asset
-vendored under `third_party/micro_wake_word/` and linked into the firmware as
-flash-resident model data. To make detection active, link a local inference
-implementation that consumes that model and provides:
+Micro wake word support includes the ESPHome `Okay Nabu` model asset vendored
+under `third_party/micro_wake_word/` and linked into the firmware as
+flash-resident model data. The firmware runs it locally with TensorFlow Lite
+Micro and the TensorFlow micro_speech frontend: idle mono PCM16 microphone
+chunks are converted into 40-bin features every 10 ms, three feature frames are
+fed into the streaming model, and detection is accepted when the 5-frame sliding
+average reaches the configured `0.97` cutoff.
 
-```cpp
-extern "C" bool djconnect_oke_nabu_wake_word_detect(const int16_t *samples, size_t sampleCount);
-```
+Wake-word monitoring is enabled only while the device is in normal mode, not
+already recording voice, and Home Assistant pairing is confirmed. It does not
+require an active music playback session, so the user can request music while
+playback is idle or paused. Direct pairing exits the BLE/pairing screen before
+the wake-word runtime starts so the TensorFlow arena is allocated after the
+pairing heap pressure has dropped. On detection, the device starts the same
+local PTT WAV upload flow as an encoder-button voice request; no wake-word audio
+leaves the device until the wake phrase has been detected and the normal PTT
+recording starts.
 
 The older `DJConnect` hook remains supported for compatibility:
 
@@ -225,7 +234,9 @@ The older `DJConnect` hook remains supported for compatibility:
 extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t sampleCount);
 ```
 
-The firmware feeds idle mono PCM16 microphone chunks to the linked hook and prefers the `oke nabu` hook when both are present. Without a linked model hook, wake word monitoring stays inactive and normal encoder push-to-talk behavior is unchanged.
+The built-in `oke nabu` runtime is preferred over the legacy hook when both are
+present. Detection is local-only and does not perform network I/O from the audio
+poll path.
 
 ## Home Assistant Native Commands
 

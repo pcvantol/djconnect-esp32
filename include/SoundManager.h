@@ -28,6 +28,10 @@ public:
   // Gentle confirmation cue for completed UI actions.
   void playConfirm();
 
+  // Simple directional cues for device previous/next track button presses.
+  void playPreviousTrack();
+  void playNextTrack();
+
   // Subtle game cue when the Pong ball bounces off a wall.
   void playPongBounce();
 
@@ -98,6 +102,8 @@ private:
     MenuRight,
     ButtonPress,
     Confirm,
+    PreviousTrack,
+    NextTrack,
     PongBounce,
     PongMiss,
     MenuOpen,

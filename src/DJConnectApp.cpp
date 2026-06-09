@@ -216,9 +216,21 @@ void DJConnectApp::loop() {
       stopVoiceRecordingAndSendText();
     }
   }
-  if (!voiceRecording_ && voiceState_ == VoiceState::Idle && homeAssistantPaired_ &&
-      playbackConnectionState() == PlaybackConnectionState::Ok) {
+  if (!voiceRecording_ && voiceState_ == VoiceState::Idle && homeAssistantPaired_) {
     wakeWord_.loop(voiceRecorder_);
+  } else if (wakeWord_.available() && millis() - lastWakeWordGateLogAt_ > 5000) {
+    String reason;
+    if (voiceRecording_) {
+      reason = "recording active";
+    } else if (voiceState_ != VoiceState::Idle) {
+      reason = String("voice state ") + String(static_cast<int>(voiceState_));
+    } else if (!homeAssistantPaired_) {
+      reason = "HA not paired";
+    } else {
+      reason = "voice unavailable";
+    }
+    AppLog.line(String("Wake word: waiting, ") + reason);
+    lastWakeWordGateLogAt_ = millis();
   }
   flushPendingVolume();
   processVolumeResult();
@@ -2446,6 +2458,7 @@ void DJConnectApp::goToNextTrack() {
   AppLog.println("Playback: next track requested");
   if (spotify_.nextTrack()) {
     AppLog.println("Playback: next track accepted");
+    sound_.playNextTrack();
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
     playback_.trackName = I18n::text("loading_next_track");
     playback_.artistName = "";
@@ -2482,6 +2495,7 @@ void DJConnectApp::goToPreviousTrack() {
   AppLog.println("Playback: previous track requested");
   if (spotify_.previousTrack()) {
     AppLog.println("Playback: previous track accepted");
+    sound_.playPreviousTrack();
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
     playback_.trackName = I18n::text("loading_previous_track");
     playback_.artistName = "";
@@ -3467,6 +3481,7 @@ void DJConnectApp::setupHomeAssistantLayer() {
     return;
   }
 
+  const bool apiWasRunning = haApiServer_.isRunning();
   haDiscovery_.begin(haDevice_);
   haApiServer_.begin(
       webPortal_.server(),
@@ -3486,11 +3501,17 @@ void DJConnectApp::setupHomeAssistantLayer() {
       deviceCommandCallback,
       directPairCallback);
 
-  AppLog.print("Home Assistant paired: ");
-  AppLog.println(haDevice_.isPaired() ? "true" : "false");
-  if (haDevice_.isPaired()) {
-    AppLog.println("Home Assistant URL configured");
-  } else {
+  if (!apiWasRunning) {
+    AppLog.line(String("Home Assistant: paired=") + (haDevice_.isPaired() ? "true" : "false") +
+                (haDevice_.isPaired() ? ", URL configured" : ", showing pairing code"));
+    if (haDevice_.isPaired()) {
+      AppLog.line(String("Home Assistant local URL: ") +
+                  (haDevice_.getHaLocalUrl().isEmpty() ? String("(empty)") : haDevice_.getHaLocalUrl()));
+      AppLog.line(String("Home Assistant remote URL: ") +
+                  (haDevice_.getHaRemoteUrl().isEmpty() ? String("(empty)") : haDevice_.getHaRemoteUrl()));
+    }
+  }
+  if (!haDevice_.isPaired()) {
     haDevice_.displayPairingCode();
   }
 }
@@ -3705,8 +3726,7 @@ void DJConnectApp::wakeWordDetectedCallback(void *context) {
     return;
   }
   DJConnectApp *app = static_cast<DJConnectApp *>(context);
-  if (app->voiceRecording_ || app->voiceState_ != VoiceState::Idle || !app->homeAssistantPaired_ ||
-      app->playbackConnectionState() != PlaybackConnectionState::Ok) {
+  if (app->voiceRecording_ || app->voiceState_ != VoiceState::Idle || !app->homeAssistantPaired_) {
     return;
   }
   AppLog.println("Wake word: starting push-to-talk flow");
@@ -3790,15 +3810,16 @@ void DJConnectApp::directPairCallback(void *context) {
 }
 
 void DJConnectApp::noteDirectPairingReceived() {
-  homeAssistantPaired_ = true;
-  haPairingPendingValidation_ = true;
-  playbackRefreshAfterPairing_ = true;
   playback_.error = "";
   spotify_.reloadCredentials();
   if (haPairingScreenActive_) {
-    haPairingScreenActive_ = false;
-    haPairingStartedAt_ = 0;
+    AppLog.println("Home Assistant direct pairing received, leaving pairing mode");
+    lastHaStatusAt_ = Logic::forceImmediatePollTimestamp();
+    return;
   }
+  homeAssistantPaired_ = true;
+  haPairingPendingValidation_ = true;
+  playbackRefreshAfterPairing_ = true;
   lastHaStatusAt_ = Logic::forceImmediatePollTimestamp();
   lastPlaybackPollAt_ = millis();
   showNotice(I18n::text("boot_paired"), 1500);

@@ -83,6 +83,7 @@ constexpr Entry Entries[] = {
     {"loading_previous_track", "Loading previous track", "Vorige nummer laden"},
     {"loading_queue", "Loading queue", "Wachtrij laden"},
     {"menu", "Menu", "Menu"},
+    {"music", "Music", "Muziek"},
     {"next_track", "Next track", "Volgend nummer"},
     {"no_active_device", "No active device", "Geen actief apparaat"},
     {"no_current_song", "No current song", "Geen huidig nummer"},

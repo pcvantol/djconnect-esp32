@@ -6,7 +6,7 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release prepared from this repo: `v3.0.17`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
+- Latest firmware release being prepared from this repo: `v3.0.18`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
@@ -23,7 +23,8 @@ Current repo state includes:
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
 - Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
 - HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/status` plus an immediate playback status poll.
-- The ESP resolves Home Assistant local-first/cloud-fallback: it briefly probes `ha_local_url` and falls back to `ha_remote_url` when local HA is unreachable. This supports Nabu Casa remote access for ESP→HA calls without exposing ESP local endpoints through the cloud.
+- The ESP requires a real LAN `ha_local_url` for playback proxy commands. If Home Assistant sends a Nabu Casa `.ui.nabu.casa` URL as `ha_local_url`, firmware normalizes it into `ha_remote_url` and clears the local NVS key on the next pairing save. Playback fails clearly with `HA playback command unavailable: local HA URL missing` when local is absent instead of silently using cloud.
+- Direct pairing during the pairing screen leaves pairing mode first so BLE can shut down before the Okay Nabu TensorFlow runtime allocates its arena.
 - After WiFi/Home Assistant setup, the ESP forces an immediate `/api/djconnect/command` status poll so the device playback music-note indicator does not remain grey until the first physical control action.
 - `/api/djconnect/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow. Command payloads are identity-only (`device_id`, `client_type:"esp32"`, `payload_type:"command"` and `firmware`) and must not be treated as authoritative device-status snapshots.
 - Periodic `/api/djconnect/status` is the authoritative source for Home Assistant ESP sensors and mirrors device settings/entities: `ha_pairing_status`, `local_url`, screen brightness aliases, screen timeout aliases, turn-off timeout, speaker/cue volume aliases, language, theme, log level, OTA/update state, screen state and LED state.
@@ -40,7 +41,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-All passed after the v3.0.17 HA-contract and playback/logging synchronization. The v3.0.17 release should publish `djconnect-device-v3.0.17.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
+All passed after the v3.0.18 HA local-route, wake-word startup and playback-feedback synchronization. The v3.0.18 release should publish `djconnect-device-v3.0.18.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
 
 ## Architecture
 
@@ -61,7 +62,7 @@ Main module boundaries:
 Core data/security boundaries:
 
 - Device API uses `Authorization: Bearer <device_token>` for protected endpoints.
-- Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase stored pairing automatically. Playback proxy commands are disabled until a successful authenticated HA status post confirms the stored token.
+- Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase established stored pairing automatically. Playback proxy commands are disabled until a successful authenticated HA status post confirms the stored token.
 - Playback proxy backend availability is separate from pairing validity. A command response with `success:false` and `backend_available:false` marks the playback music-note indicator red but must not clear pairing or rotate tokens.
 - Device status belongs on `/api/djconnect/status`. Do not reintroduce battery, firmware, RSSI, pairing, screen, LED, settings or sound-output fields onto playback command payloads as partial snapshots.
 - Playback-backend refresh tokens are never stored on the ESP and therefore are never logged or shown back to users.
@@ -93,6 +94,7 @@ Core data/security boundaries:
 - If HA reposts direct pairing/settings callbacks too often during normal playback commands, debounce or route those updates so they do not spam `/api/device/pair`. The ESP now treats identical direct-pair callbacks as idempotent, but the integration should still reserve `/api/device/pair` for initial pairing, explicit re-pair/token rotation or recovery.
 - Keep the Home Assistant integration and firmware contract synchronized around native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payloads.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
+- The Home Assistant integration must send a real LAN `ha_local_url` during pairing. Sending Nabu Casa as local leaves playback local URL missing by design.
 - MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
 - Home Assistant STT/TTS failures are backend/integration dependent. Firmware surfaces error bodies but cannot fix missing HA STT provider configuration.
 - Web portal performance depends heavily on local WiFi quality. Polling has been reduced/visibility-aware, but poor WiFi can still make the UI feel slow.

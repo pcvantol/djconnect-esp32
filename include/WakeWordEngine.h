@@ -28,4 +28,7 @@ private:
   bool available_ = false;
   bool enabled_ = true;
   uint32_t lastPollAt_ = 0;
+  uint32_t lastMonitorLogAt_ = 0;
+  uint32_t lastEmptyLogAt_ = 0;
+  bool loggedFirstAudio_ = false;
 };

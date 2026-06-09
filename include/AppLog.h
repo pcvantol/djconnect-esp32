@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include <Print.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 class AppLogger : public Print {
 public:
@@ -20,6 +22,10 @@ public:
   size_t write(uint8_t value) override;
   size_t write(const uint8_t *buffer, size_t size) override;
 
+  // Emits one complete log line while holding the logger lock.
+  void line(const String &line);
+  void line(const char *line);
+
   // Returns all buffered lines as newline-delimited text, oldest first.
   String text() const;
 
@@ -31,7 +37,11 @@ public:
 
 private:
   void appendChar(char value);
+  void appendCharUnlocked(char value);
   void commitCurrentLine();
+  void commitCurrentLineUnlocked();
+  void lock() const;
+  void unlock() const;
   String linePrefix(const String &severity) const;
   String normalizedLine(const String &line) const;
   String severityForLine(const String &line) const;
@@ -45,6 +55,7 @@ private:
   size_t lineCount_ = 0;
   bool ready_ = false;
   int minimumSeverityRank_ = 1;
+  mutable SemaphoreHandle_t mutex_ = nullptr;
 };
 
 extern AppLogger AppLog;

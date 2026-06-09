@@ -812,7 +812,7 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
   Row rows[] = {
       {I18n::text("web"), status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE},
       {I18n::text("wifi"), I18n::connected(status.wifiConnected), static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
-      {"Spotify", I18n::connected(status.spotifyConnected), static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
+      {I18n::text("music"), I18n::connected(status.spotifyConnected), static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
       {"Home Assistant", status.haPaired ? I18n::text("connected") : I18n::text("not_paired"), static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
       {"Copyright", "2026 Peter van Tol", NeutralLightGrey},
       {"Firmware", "Proprietary", NeutralLightGrey},

@@ -72,7 +72,7 @@ String DJConnectDevice::getActiveHaUrl() const {
   const String localUrl = getHaLocalUrl();
   const String remoteUrl = getHaRemoteUrl();
   const uint32_t now = millis();
-  if (!activeHaUrl_.isEmpty() && now - activeHaUrlCheckedAt_ < ActiveHaUrlCacheMs) {
+  if (!activeHaUrl_.isEmpty() && activeHaRoute_ == "local" && now - activeHaUrlCheckedAt_ < ActiveHaUrlCacheMs) {
     return activeHaUrl_;
   }
 
@@ -196,11 +196,26 @@ void DJConnectDevice::savePairing(
     const String &deviceToken,
     const String &haLocalUrl,
     const String &haRemoteUrl) {
-  if (!haLocalUrl.isEmpty()) {
-    writeString("ha_local_url", haLocalUrl);
+  String normalizedLocalUrl = haLocalUrl;
+  String normalizedRemoteUrl = haRemoteUrl;
+  const bool localLooksRemote = normalizedLocalUrl.indexOf(".ui.nabu.casa") >= 0;
+  if (localLooksRemote) {
+    AppLog.println("Home Assistant pairing: cloud URL received as local, storing as remote");
+    if (normalizedRemoteUrl.isEmpty()) {
+      normalizedRemoteUrl = normalizedLocalUrl;
+    }
+    normalizedLocalUrl = "";
   }
-  if (!haRemoteUrl.isEmpty()) {
-    writeString("ha_remote_url", haRemoteUrl);
+
+  if (!normalizedLocalUrl.isEmpty()) {
+    writeString("ha_local_url", normalizedLocalUrl);
+  } else {
+    removeKey("ha_local_url");
+  }
+  if (!normalizedRemoteUrl.isEmpty()) {
+    writeString("ha_remote_url", normalizedRemoteUrl);
+  } else {
+    removeKey("ha_remote_url");
   }
   writeString("device_token", deviceToken);
   activeHaUrl_ = "";

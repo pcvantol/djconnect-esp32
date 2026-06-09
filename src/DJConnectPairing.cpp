@@ -217,8 +217,8 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   serializeJson(request, body);
 
   HTTPClient http;
-  NetworkActivity activity("ha_status", Config::HttpLongIoTimeoutMs);
-  NetworkActivity::configureLongHttp(http);
+  NetworkActivity activity("ha_status", Config::HttpIoTimeoutMs);
+  NetworkActivity::configureDefaultHttp(http);
   const String url = joinUrl(haUrl, "/api/djconnect/status");
   if (!http.begin(url)) {
     AppLog.println("HA status HTTP begin failed");
@@ -233,7 +233,9 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   {
     ScopedWatchdogPause watchdogPause;
     code = http.POST(body);
-    payload = http.getString();
+    if (code > 0) {
+      payload = http.getString();
+    }
   }
   ScopedWatchdogPause::resetIfAttached();
   http.end();

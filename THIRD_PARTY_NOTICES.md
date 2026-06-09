@@ -48,6 +48,13 @@ not grant additional rights to the DJConnect firmware itself.
   - License: Apache License 2.0. See
     `third_party/micro_wake_word/LICENSE`.
 
+- MicroTFLite / TensorFlow Lite Micro
+  - Used for local `Okay Nabu` wake-word inference and the TensorFlow
+    micro_speech frontend feature extractor.
+  - PlatformIO dependency: `johnosbb/MicroTFLite`
+  - Includes TensorFlow Lite Micro and TensorFlow microfrontend components.
+  - License: Apache License 2.0.
+
 ## Platform And Tooling
 
 - PlatformIO

@@ -1,19 +1,32 @@
 # Changelog
 
-## v3.0.17
+## v3.0.18
 
-Patch release for HA integration contract synchronization, playback control feedback and logging polish.
+Patch release for HA local-route pairing, wake-word startup stability, playback control feedback and About-screen copy.
 
 ### Added
 
-- Device top-button next/previous track actions now play local audio feedback when feedback is enabled.
+- Device top-button next/previous track actions now play simple directional local audio feedback when feedback is enabled.
+- Okay Nabu wake-word detection now runs locally through TensorFlow Lite Micro and the TensorFlow micro_speech frontend when the device is in normal paired playback mode.
 
 ### Changed
 
 - Playback command payloads are now identity-only and no longer include partial device-status snapshots; `/api/djconnect/status` remains the authoritative source for HA sensor values.
+- App logs now support atomic complete-line writes for async playback/volume worker messages so volume changes no longer interleave into broken serial/web log fragments.
+- Home Assistant startup state is now logged once when the local device API starts instead of repeating paired/URL lines during boot setup.
+- Wake-word listening now remains enabled when playback is idle or paused after Home Assistant is paired.
 - Postman pairing callback examples now include the canonical LilyGO `device_id`, pairing code and `client_type:"esp32"`.
 - Volume up/down logs now use the same `Playback: ... requested/accepted/failed` style as play/pause and next/previous.
 - HA playback command response logs are emitted as single atomic lines to avoid interleaved serial/web log fragments during async volume worker activity.
+- The device About screen now labels the playback/backend status as `Music` / `Muziek` instead of `Spotify`.
+
+### Fixed
+
+- Prevented Nabu Casa cloud URLs from being stored as `ha_local_url`; cloud URLs are normalized to `ha_remote_url` and the incorrect local NVS key is cleared on re-pairing.
+- Playback proxy commands are now local-URL only, avoiding broken cloud fallback attempts when local playback control is expected.
+- Wake-word runtime allocation no longer starts during the pairing/BLE transition; direct pairing now exits pairing mode first so BLE can shut down before wake-word inference starts.
+- HA status and playback transport-error paths no longer read HTTP response bodies after a negative transport code, reducing watchdog risk after `HTTP -1`.
+- Startup logs now show the stored Home Assistant local and remote URLs for pairing diagnostics.
 
 ## v3.0.12
 

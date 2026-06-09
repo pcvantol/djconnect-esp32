@@ -1,15 +1,15 @@
 // Records mono 16-bit PCM audio from the T-Embed CC1101 PDM microphone.
 #include "VoiceRecorder.h"
 
+#include <ESP_I2S.h>
 #include <LittleFS.h>
-#include <driver/i2s.h>
 
 #include "AppLog.h"
 #include "Config.h"
 
 namespace {
 // The PDM microphone is isolated on I2S0 so speaker playback can use I2S1.
-constexpr i2s_port_t MicI2sPort = I2S_NUM_0;
+I2SClass MicI2S;
 const char *VoiceWavPath = "/voice_ptt.wav";
 constexpr size_t WavHeaderBytes = 44;
 
@@ -35,52 +35,15 @@ bool VoiceRecorder::begin() {
     return false;
   }
 
-  const i2s_config_t i2sConfig = {
-      .mode = static_cast<i2s_mode_t>(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM),
-      .sample_rate = Config::VoiceSampleRate,
-      .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-      .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-      .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-      .dma_buf_count = 4,
-      .dma_buf_len = 256,
-      .use_apll = false,
-      .tx_desc_auto_clear = false,
-      .fixed_mclk = 0,
-  };
-  const i2s_pin_config_t pinConfig = {
-      .mck_io_num = I2S_PIN_NO_CHANGE,
-      .bck_io_num = Config::MicrophoneClockPin,
-      .ws_io_num = I2S_PIN_NO_CHANGE,
-      .data_out_num = I2S_PIN_NO_CHANGE,
-      .data_in_num = Config::MicrophoneDataPin,
-  };
-
-  esp_err_t result = i2s_driver_install(MicI2sPort, &i2sConfig, 0, nullptr);
-  if (result != ESP_OK) {
-    error_ = "Mic I2S init failed";
-    AppLog.print(error_);
-    AppLog.print(": ");
-    AppLog.println(esp_err_to_name(result));
+  MicI2S.setPinsPdmRx(Config::MicrophoneClockPin, Config::MicrophoneDataPin);
+  MicI2S.setTimeout(30);
+  if (!MicI2S.begin(I2S_MODE_PDM_RX, Config::VoiceSampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO)) {
+    error_ = "Mic PDM init failed";
+    AppLog.line(error_ + ": " + String(esp_err_to_name(static_cast<esp_err_t>(MicI2S.lastError()))));
     return false;
   }
-  result = i2s_set_pin(MicI2sPort, &pinConfig);
-  if (result != ESP_OK) {
-    i2s_driver_uninstall(MicI2sPort);
-    error_ = "Mic I2S pin failed";
-    AppLog.print(error_);
-    AppLog.print(": ");
-    AppLog.println(esp_err_to_name(result));
-    return false;
-  }
-  result = i2s_set_clk(MicI2sPort, Config::VoiceSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
-  if (result != ESP_OK) {
-    i2s_driver_uninstall(MicI2sPort);
-    error_ = "Mic I2S clock failed";
-    AppLog.println(error_);
-    return false;
-  }
-  i2s_zero_dma_buffer(MicI2sPort);
+  AppLog.line(String("Mic PDM ready: clk=") + String(Config::MicrophoneClockPin) +
+              ", data=" + String(Config::MicrophoneDataPin));
   ready_ = true;
   return true;
 }
@@ -93,7 +56,6 @@ bool VoiceRecorder::startRaw() {
   startedAt_ = millis();
   recording_ = true;
   error_ = "";
-  i2s_zero_dma_buffer(MicI2sPort);
   AppLog.println("Voice PCM recording started");
   return true;
 }
@@ -107,12 +69,10 @@ bool VoiceRecorder::readPcmChunk(uint8_t *buffer, size_t capacity, size_t &bytes
     error_ = "Mic unavailable";
     return false;
   }
-  const esp_err_t result = i2s_read(MicI2sPort, buffer, capacity, &bytesRead, 0);
-  if (result != ESP_OK) {
+  bytesRead = MicI2S.readBytes(reinterpret_cast<char *>(buffer), capacity);
+  if (bytesRead == 0 && MicI2S.lastError() != ESP_OK) {
     error_ = "Mic read failed";
-    AppLog.print(error_);
-    AppLog.print(": ");
-    AppLog.println(esp_err_to_name(result));
+    AppLog.line(error_ + ": " + String(esp_err_to_name(static_cast<esp_err_t>(MicI2S.lastError()))));
     return false;
   }
   if (bytesRead > 0) {
@@ -133,12 +93,10 @@ bool VoiceRecorder::readMonitorChunk(uint8_t *buffer, size_t capacity, size_t &b
   if (!ready_ && !begin()) {
     return false;
   }
-  const esp_err_t result = i2s_read(MicI2sPort, buffer, capacity, &bytesRead, 0);
-  if (result != ESP_OK) {
+  bytesRead = MicI2S.readBytes(reinterpret_cast<char *>(buffer), capacity);
+  if (bytesRead == 0 && MicI2S.lastError() != ESP_OK) {
     error_ = "Mic monitor read failed";
-    AppLog.print(error_);
-    AppLog.print(": ");
-    AppLog.println(esp_err_to_name(result));
+    AppLog.line(error_ + ": " + String(esp_err_to_name(static_cast<esp_err_t>(MicI2S.lastError()))));
     return false;
   }
   return true;
@@ -158,7 +116,6 @@ bool VoiceRecorder::start() {
   startedAt_ = millis();
   recording_ = true;
   error_ = "";
-  i2s_zero_dma_buffer(MicI2sPort);
   AppLog.println("Voice recording started");
   return true;
 }
@@ -168,9 +125,8 @@ bool VoiceRecorder::update() {
     return true;
   }
   int16_t buffer[256];
-  size_t bytesRead = 0;
-  const esp_err_t result = i2s_read(MicI2sPort, buffer, sizeof(buffer), &bytesRead, pdMS_TO_TICKS(10));
-  if (result != ESP_OK) {
+  const size_t bytesRead = MicI2S.readBytes(reinterpret_cast<char *>(buffer), sizeof(buffer));
+  if (bytesRead == 0 && MicI2S.lastError() != ESP_OK) {
     error_ = "Mic read failed";
     return false;
   }

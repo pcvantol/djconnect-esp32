@@ -7,7 +7,7 @@
 #include <AudioFileSource.h>
 #include <AudioGeneratorMP3.h>
 #include <AudioOutput.h>
-#include <driver/i2s.h>
+#include <ESP_I2S.h>
 #include <esp_task_wdt.h>
 #include <cstring>
 
@@ -15,13 +15,23 @@
 #include "Config.h"
 #include "ScopedWatchdogPause.h"
 
-// Speaker/DAC output uses I2S1 so it does not collide with the PDM microphone.
-static constexpr i2s_port_t SpeakerI2sPort = I2S_NUM_1;
 static constexpr uint32_t MinVolumeTickIntervalMs = 90;
 
 namespace {
+I2SClass SpeakerI2S;
+
 void serviceAudioWatchdog() {
   ScopedWatchdogPause::resetIfAttached();
+}
+
+bool configureSpeakerRate(uint32_t hertz) {
+  return SpeakerI2S.configureTX(hertz > 0 ? hertz : Config::SpeakerSampleRate,
+                                I2S_DATA_BIT_WIDTH_16BIT,
+                                I2S_SLOT_MODE_MONO);
+}
+
+bool writeSpeakerPcm(const void *data, size_t bytes) {
+  return data != nullptr && bytes > 0 && SpeakerI2S.write(static_cast<const uint8_t *>(data), bytes) == bytes;
 }
 
 class ScopedLoopWatchdogPause {
@@ -142,7 +152,7 @@ public:
 
   bool SetRate(int hz) override {
     hertz = hz > 0 ? hz : Config::SpeakerSampleRate;
-    return i2s_set_clk(SpeakerI2sPort, hertz, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO) == ESP_OK;
+    return configureSpeakerRate(hertz);
   }
 
   bool SetBitsPerSample(int bits) override {
@@ -160,9 +170,7 @@ public:
     MakeSampleStereo16(sample);
     const int32_t mixed = (static_cast<int32_t>(sample[LEFTCHANNEL]) + static_cast<int32_t>(sample[RIGHTCHANNEL])) / 2;
     const int16_t mono = Amplify(static_cast<int16_t>(mixed));
-    size_t written = 0;
-    const esp_err_t result = i2s_write(SpeakerI2sPort, &mono, sizeof(mono), &written, pdMS_TO_TICKS(20));
-    if (result != ESP_OK || written != sizeof(mono)) {
+    if (!writeSpeakerPcm(&mono, sizeof(mono))) {
       return false;
     }
     samplesWritten_++;
@@ -212,32 +220,11 @@ void SoundManager::begin() {
 }
 
 bool SoundManager::installI2s() {
-  const i2s_config_t i2sConfig = {
-      .mode = static_cast<i2s_mode_t>(I2S_MODE_MASTER | I2S_MODE_TX),
-      .sample_rate = Config::SpeakerSampleRate,
-      .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-      .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-      .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-      .dma_buf_count = 4,
-      .dma_buf_len = 128,
-      .use_apll = false,
-      .tx_desc_auto_clear = true,
-      .fixed_mclk = 0,
-  };
-  const i2s_pin_config_t pinConfig = {
-      .mck_io_num = I2S_PIN_NO_CHANGE,
-      .bck_io_num = Config::SpeakerBclkPin,
-      .ws_io_num = Config::SpeakerLrclkPin,
-      .data_out_num = Config::SpeakerDataPin,
-      .data_in_num = I2S_PIN_NO_CHANGE,
-  };
-
-  if (i2s_driver_install(SpeakerI2sPort, &i2sConfig, 0, nullptr) != ESP_OK ||
-      i2s_set_pin(SpeakerI2sPort, &pinConfig) != ESP_OK) {
+  SpeakerI2S.setPins(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
+  SpeakerI2S.setTimeout(100);
+  if (!SpeakerI2S.begin(I2S_MODE_STD, Config::SpeakerSampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO)) {
     return false;
   }
-  i2s_zero_dma_buffer(SpeakerI2sPort);
   return true;
 }
 
@@ -268,6 +255,14 @@ void SoundManager::playButtonPress() {
 
 void SoundManager::playConfirm() {
   enqueue(Event::Confirm);
+}
+
+void SoundManager::playPreviousTrack() {
+  enqueue(Event::PreviousTrack);
+}
+
+void SoundManager::playNextTrack() {
+  enqueue(Event::NextTrack);
 }
 
 void SoundManager::playPongBounce() {
@@ -457,7 +452,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   AppLog.print(sampleRate);
   AppLog.print(" bytes=");
   AppLog.println(dataBytes);
-  i2s_set_clk(SpeakerI2sPort, sampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  configureSpeakerRate(sampleRate);
   uint8_t buffer[512];
   uint32_t remaining = dataBytes;
   while (remaining > 0) {
@@ -468,12 +463,11 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
     if (got == 0) {
       break;
     }
-    size_t written = 0;
-    i2s_write(SpeakerI2sPort, buffer, got, &written, pdMS_TO_TICKS(100));
+    writeSpeakerPcm(buffer, got);
     remaining -= got;
     yield();
   }
-  i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  configureSpeakerRate(Config::SpeakerSampleRate);
   return finish(remaining == 0);
 }
 
@@ -503,7 +497,7 @@ bool SoundManager::playMp3Stream(const String &url) {
     id3.close();
     buffered.close();
     source.close();
-    i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+    configureSpeakerRate(Config::SpeakerSampleRate);
     endAudioState();
     return false;
   }
@@ -542,7 +536,7 @@ bool SoundManager::playMp3Stream(const String &url) {
   buffered.close();
   source.close();
   output.stop();
-  i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  configureSpeakerRate(Config::SpeakerSampleRate);
   endAudioState();
   AppLog.println("DJ response MP3 playback finished");
   return output.samplesWritten() > 0;
@@ -571,7 +565,7 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
     id3.close();
     buffered.close();
     source.close();
-    i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+    configureSpeakerRate(Config::SpeakerSampleRate);
     endAudioState();
     return false;
   }
@@ -610,7 +604,7 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   buffered.close();
   source.close();
   output.stop();
-  i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+  configureSpeakerRate(Config::SpeakerSampleRate);
   endAudioState();
   AppLog.println("DJ response MP3 playback finished");
   return output.samplesWritten() > 0;
@@ -655,6 +649,16 @@ void SoundManager::runTask() {
         break;
       case Event::Confirm:
         playTone(988, 32, 10);
+        break;
+      case Event::PreviousTrack:
+        playTone(740, 26, 11);
+        playSilence(18);
+        playTone(554, 34, 11);
+        break;
+      case Event::NextTrack:
+        playTone(554, 26, 11);
+        playSilence(18);
+        playTone(740, 34, 11);
         break;
       case Event::PongBounce:
         playTone(740, 14, 6);
@@ -781,8 +785,7 @@ void SoundManager::playTone(uint16_t frequency, uint16_t durationMs, uint8_t amp
       const bool high = ((generated + index) / halfPeriod) % 2 == 0;
       buffer[index] = high ? level : -level;
     }
-    size_t written = 0;
-    i2s_write(SpeakerI2sPort, buffer, count * sizeof(int16_t), &written, pdMS_TO_TICKS(50));
+    writeSpeakerPcm(buffer, count * sizeof(int16_t));
     generated += count;
   }
 }
@@ -796,8 +799,7 @@ void SoundManager::playSilence(uint16_t durationMs) {
   size_t generated = 0;
   while (generated < sampleCount) {
     const size_t count = min(sampleCount - generated, static_cast<size_t>(128));
-    size_t written = 0;
-    i2s_write(SpeakerI2sPort, buffer, count * sizeof(int16_t), &written, pdMS_TO_TICKS(50));
+    writeSpeakerPcm(buffer, count * sizeof(int16_t));
     generated += count;
   }
 }
