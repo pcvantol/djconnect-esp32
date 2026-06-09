@@ -23,11 +23,18 @@ public:
   String error() const;
 
 private:
+  static void recordTaskEntry(void *parameter);
+  void recordLoop();
+  bool waitForRecordTask(uint32_t timeoutMs);
   void writePlaceholderHeader();
   bool rewriteWavHeader();
 
   bool ready_ = false;
   bool recording_ = false;
+  volatile bool stopRequested_ = false;
+  volatile bool taskRunning_ = false;
+  bool taskFailed_ = false;
+  TaskHandle_t recordTask_ = nullptr;
   uint32_t startedAt_ = 0;
   size_t dataBytes_ = 0;
   String error_;

@@ -293,6 +293,15 @@ void SoundManager::playPttStart() {
   enqueue(Event::PttStart);
 }
 
+void SoundManager::playPttStartBlocking(uint32_t settleMs) {
+  if (!beginAudioState(AudioState::Cue, 80)) {
+    return;
+  }
+  playTone(1319, 42, 12);
+  playSilence(8 + static_cast<uint16_t>(min<uint32_t>(settleMs, 500)));
+  endAudioState();
+}
+
 void SoundManager::playPttStop() {
   enqueue(Event::PttStop);
 }

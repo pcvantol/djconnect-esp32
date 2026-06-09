@@ -324,6 +324,7 @@ private:
   bool volumeFeedbackEnabled_ = true;
   bool stressTestActive_ = false;
   bool voiceRecording_ = false;
+  bool voiceStopPending_ = false;
   VoiceState voiceState_ = VoiceState::Idle;
   bool webVoiceTextOnlyActive_ = false;
   bool webVoiceTextOnlyConsumeNext_ = false;

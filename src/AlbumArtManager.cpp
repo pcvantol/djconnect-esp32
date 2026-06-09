@@ -4,9 +4,11 @@
 #include <HTTPClient.h>
 #include <LittleFS.h>
 #include <WiFi.h>
+#include <esp_heap_caps.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
 
+#include "AppLog.h"
 #include "Config.h"
 #include "NetworkActivity.h"
 
@@ -29,6 +31,7 @@ void AlbumArtManager::requestCurrentSongArt(const SpotifyState &playback) {
     currentUrl_ = "";
     currentPath_ = "";
     status_ = "No album art URL";
+    AppLog.println("Album art: no URL in playback state");
     return;
   }
 
@@ -36,14 +39,24 @@ void AlbumArtManager::requestCurrentSongArt(const SpotifyState &playback) {
   currentPath_ = cachePathForUrl(currentUrl_);
   if (isCacheFresh(currentPath_)) {
     status_ = "Album art cached";
+    AppLog.print("Album art: cached ");
+    AppLog.println(currentPath_);
     return;
   }
 
   status_ = "Downloading album art";
+  AppLog.print("Album art: downloading, free=");
+  AppLog.print(heap_caps_get_free_size(MALLOC_CAP_8BIT));
+  AppLog.print(" largest=");
+  AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   if (downloadImage(currentUrl_, currentPath_)) {
     writeTimestamp(currentPath_);
     status_ = "Album art ready";
+    AppLog.print("Album art: ready ");
+    AppLog.println(currentPath_);
   } else {
+    AppLog.print("Album art: failed ");
+    AppLog.println(status_);
     currentPath_ = "";
   }
 }

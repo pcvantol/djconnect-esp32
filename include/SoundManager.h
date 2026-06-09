@@ -53,6 +53,9 @@ public:
   // Distinct cue when push-to-talk starts listening.
   void playPttStart();
 
+  // Blocking variant used before microphone capture so the cue is not recorded.
+  void playPttStartBlocking(uint32_t settleMs);
+
   // Distinct cue when push-to-talk stops and begins processing.
   void playPttStop();
 

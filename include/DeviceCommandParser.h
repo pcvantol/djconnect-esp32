@@ -80,9 +80,18 @@ inline bool firstBool(JsonVariantConst payload, const char *primary, const char 
 inline DeviceCommand parse(JsonVariantConst payload) {
   DeviceCommand command;
   const char *name = payload["command"] | "";
-  if (commandNameEquals(name, "next") || commandNameEquals(name, "next_track")) {
+  command.value = firstString(payload, "command");
+  if (commandNameEquals(name, "play") || commandNameEquals(name, "resume") || commandNameEquals(name, "media_play")) {
+    command.type = DeviceCommandType::Play;
+  } else if (commandNameEquals(name, "pause") || commandNameEquals(name, "media_pause")) {
+    command.type = DeviceCommandType::Pause;
+  } else if (commandNameEquals(name, "play_pause") ||
+             commandNameEquals(name, "toggle_play_pause") ||
+             commandNameEquals(name, "media_play_pause")) {
+    command.type = DeviceCommandType::PlayPause;
+  } else if (commandNameEquals(name, "next") || commandNameEquals(name, "next_track") || commandNameEquals(name, "media_next_track")) {
     command.type = DeviceCommandType::Next;
-  } else if (commandNameEquals(name, "previous") || commandNameEquals(name, "previous_track")) {
+  } else if (commandNameEquals(name, "previous") || commandNameEquals(name, "previous_track") || commandNameEquals(name, "media_previous_track")) {
     command.type = DeviceCommandType::Previous;
   } else if (commandNameEquals(name, "status") || commandNameEquals(name, "refresh_status")) {
     command.type = DeviceCommandType::Status;

@@ -9,6 +9,9 @@ using String = std::string;
 
 enum class DeviceCommandType {
   None,
+  Play,
+  Pause,
+  PlayPause,
   Next,
   Previous,
   Status,

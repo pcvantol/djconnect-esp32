@@ -90,7 +90,9 @@ static constexpr uint32_t SetupPromptBeepIntervalMs = 30000;
 static constexpr uint32_t SetupPromptBeepDurationMs = 600000;
 static constexpr uint32_t SpeakerSampleRate = 16000;
 static constexpr uint32_t VoiceSampleRate = 16000;
+static constexpr uint32_t VoiceMinRecordMs = 1800;
 static constexpr uint32_t VoiceMaxRecordMs = 15000;
+static constexpr uint32_t VoiceCueSettleMs = 90;
 static constexpr size_t VoiceMaxWavBytes = 2UL * 1024UL * 1024UL;
 static constexpr size_t VoicePcmChunkBytes = 1024;
 

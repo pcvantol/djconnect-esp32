@@ -92,12 +92,18 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
   }
 
   AppLog.println("DJ response audio download");
+  AppLog.print("DJ response audio URL: ");
+  AppLog.println(audioUrl);
   static const char *headers[] = {"Content-Type"};
   http.collectHeaders(headers, 1);
   const int code = http.GET();
   if (code < 200 || code >= 300) {
     AppLog.print("DJ response audio HTTP ");
     AppLog.println(code);
+    if (code < 0) {
+      AppLog.print("DJ response audio client error: ");
+      AppLog.println(HTTPClient::errorToString(code));
+    }
     http.end();
     activity.finish(code);
     result.audioType = "unknown";

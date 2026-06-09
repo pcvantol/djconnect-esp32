@@ -7,6 +7,7 @@
 #include <LittleFS.h>
 #include <TJpg_Decoder.h>
 #include <WiFi.h>
+#include <esp_heap_caps.h>
 
 #include "Config.h"
 #include "I18n.h"
@@ -302,7 +303,6 @@ void DisplayManager::renderAlbumArtScreen(
     const StatusNotice &notice,
     const String &imagePath,
     const String &albumArtStatus) {
-  (void)albumArtStatus;
   observeText(titleMarquee_, titleText(playback));
   observeText(artistMarquee_, artistText(playback));
 
@@ -317,23 +317,45 @@ void DisplayManager::renderAlbumArtScreen(
       uint16_t jpegWidth = 0;
       uint16_t jpegHeight = 0;
       TJpgDec.getFsJpgSize(&jpegWidth, &jpegHeight, imagePath, LittleFS);
-      const uint8_t scale = jpegScaleFor(jpegWidth, jpegHeight);
-      const int drawWidth = jpegWidth / scale;
-      const int drawHeight = jpegHeight / scale;
-      const int drawX = 5 + max(0, (158 - drawWidth) / 2);
-      const int drawY = 5 + max(0, (158 - drawHeight) / 2);
+      if (jpegWidth == 0 || jpegHeight == 0) {
+        AppLog.print("Album art: invalid JPEG ");
+        AppLog.println(imagePath);
+        tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
+        tft_.drawString(clippedText(tft_, albumArtStatus, 132, 2), 18, 76, 2);
+      } else {
+        const uint8_t scale = jpegScaleFor(jpegWidth, jpegHeight);
+        const int drawWidth = jpegWidth / scale;
+        const int drawHeight = jpegHeight / scale;
+        const int drawX = 5 + max(0, (158 - drawWidth) / 2);
+        const int drawY = 5 + max(0, (158 - drawHeight) / 2);
 
-      JpegTarget = &tft_;
-      JpegClipRight = 164;
-      JpegClipBottom = 164;
-      TJpgDec.setJpgScale(scale);
-      TJpgDec.drawFsJpg(drawX, drawY, imagePath, LittleFS);
-      JpegTarget = nullptr;
-      JpegClipRight = 0;
-      JpegClipBottom = 0;
+        AppLog.print("Album art: render ");
+        AppLog.print(jpegWidth);
+        AppLog.print("x");
+        AppLog.print(jpegHeight);
+        AppLog.print(" scale=");
+        AppLog.print(scale);
+        AppLog.print(" free=");
+        AppLog.print(heap_caps_get_free_size(MALLOC_CAP_8BIT));
+        AppLog.print(" largest=");
+        AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+        JpegTarget = &tft_;
+        JpegClipRight = 164;
+        JpegClipBottom = 164;
+        TJpgDec.setJpgScale(scale);
+        const uint8_t result = TJpgDec.drawFsJpg(drawX, drawY, imagePath, LittleFS);
+        JpegTarget = nullptr;
+        JpegClipRight = 0;
+        JpegClipBottom = 0;
+        if (result != 0) {
+          AppLog.print("Album art: JPEG render failed code=");
+          AppLog.println(result);
+        }
+      }
     } else {
       tft_.setTextColor(TFT_DARKGREY, TFT_BLACK);
-      tft_.drawString(I18n::text("album_art_no_art"), 52, 76, 2);
+      const String fallback = albumArtStatus.isEmpty() ? I18n::text("album_art_no_art") : albumArtStatus;
+      tft_.drawString(clippedText(tft_, fallback, 132, 2), 18, 76, 2);
     }
   }
 

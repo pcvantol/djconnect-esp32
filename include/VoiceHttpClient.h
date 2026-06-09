@@ -7,7 +7,10 @@
 
 class VoiceHttpClient {
 public:
+  using ActivityCallback = void (*)(void *context);
+
   void begin(DJConnectDevice &device);
+  void setActivityCallback(ActivityCallback callback, void *context);
 
   bool sendStatus(bool recording, const String &state, const String &lastError = "");
   bool sendRecognizedText(const String &recognizedText, String &message, String *audioUrl = nullptr);
@@ -22,4 +25,6 @@ private:
   bool pairingInvalidated_ = false;
   uint8_t consecutiveHaNotFoundCount_ = 0;
   uint32_t firstHaNotFoundAt_ = 0;
+  ActivityCallback activityCallback_ = nullptr;
+  void *activityContext_ = nullptr;
 };

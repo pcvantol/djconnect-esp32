@@ -15,7 +15,57 @@
 #include "ScopedWatchdogPause.h"
 
 namespace {
-String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs) {
+using ActivityCallback = VoiceHttpClient::ActivityCallback;
+
+void notifyActivity(ActivityCallback callback, void *context) {
+  if (callback != nullptr) {
+    callback(context);
+  }
+}
+
+class ActivityFileStream : public Stream {
+public:
+  ActivityFileStream(fs::File &file, ActivityCallback callback, void *context)
+      : file_(file), callback_(callback), context_(context) {}
+
+  int available() override {
+    return file_.available();
+  }
+
+  int read() override {
+    const int value = file_.read();
+    notifyActivity(callback_, context_);
+    ScopedWatchdogPause::resetIfAttached();
+    return value;
+  }
+
+  int read(uint8_t *buffer, size_t size) {
+    const int readBytes = file_.read(buffer, size);
+    notifyActivity(callback_, context_);
+    ScopedWatchdogPause::resetIfAttached();
+    return readBytes;
+  }
+
+  int peek() override {
+    return file_.peek();
+  }
+
+  void flush() override {
+    file_.flush();
+  }
+
+  size_t write(uint8_t value) override {
+    (void)value;
+    return 0;
+  }
+
+private:
+  fs::File &file_;
+  ActivityCallback callback_ = nullptr;
+  void *context_ = nullptr;
+};
+
+String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs, ActivityCallback callback = nullptr, void *context = nullptr) {
   String body;
   WiFiClient *stream = http.getStreamPtr();
   if (stream == nullptr) {
@@ -33,6 +83,7 @@ String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs) {
     ScopedWatchdogPause::resetIfAttached();
     const int available = stream->available();
     if (available <= 0) {
+      notifyActivity(callback, context);
       delay(1);
       yield();
       continue;
@@ -43,6 +94,7 @@ String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs) {
                             ? min(static_cast<int>(sizeof(buffer) - 1), remaining)
                             : min(static_cast<int>(sizeof(buffer) - 1), available);
     const int got = stream->readBytes(buffer, want);
+    notifyActivity(callback, context);
     if (got <= 0) {
       delay(1);
       yield();
@@ -101,6 +153,11 @@ static constexpr uint32_t HaNotFoundInvalidationWindowMs = 60000;
 
 void VoiceHttpClient::begin(DJConnectDevice &device) {
   device_ = &device;
+}
+
+void VoiceHttpClient::setActivityCallback(ActivityCallback callback, void *context) {
+  activityCallback_ = callback;
+  activityContext_ = context;
 }
 
 bool VoiceHttpClient::sendStatus(bool recording, const String &state, const String &lastError) {
@@ -168,7 +225,7 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   AppLog.print("Voice command response: ");
   AppLog.println(code);
   logVoiceHttpClientError("Voice command client error", code);
-  const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs);
+  const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs, activityCallback_, activityContext_);
   http.end();
   activity.finish(code);
   if (code < 200 || code >= 300) {
@@ -263,14 +320,15 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   int code = 0;
   {
     ScopedWatchdogPause watchdogPause;
-    code = http.sendRequest("POST", &file, fileSize);
+    ActivityFileStream uploadStream(file, activityCallback_, activityContext_);
+    code = http.sendRequest("POST", &uploadStream, fileSize);
   }
   file.close();
   ScopedWatchdogPause::resetIfAttached();
   AppLog.print("Voice WAV response: ");
   AppLog.println(code);
   logVoiceHttpClientError("Voice WAV client error", code);
-  const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs);
+  const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs, activityCallback_, activityContext_);
   http.end();
   activity.finish(code);
 

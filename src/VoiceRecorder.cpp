@@ -106,6 +106,10 @@ bool VoiceRecorder::start() {
   if (!ready_ && !begin()) {
     return false;
   }
+  if (taskRunning_) {
+    error_ = "Voice recorder busy";
+    return false;
+  }
   LittleFS.remove(VoiceWavPath);
   writePlaceholderHeader();
   if (!LittleFS.exists(VoiceWavPath)) {
@@ -114,53 +118,36 @@ bool VoiceRecorder::start() {
   }
   dataBytes_ = 0;
   startedAt_ = millis();
+  stopRequested_ = false;
+  taskFailed_ = false;
+  taskRunning_ = true;
   recording_ = true;
   error_ = "";
+  if (xTaskCreatePinnedToCore(recordTaskEntry, "voice-rec", 4096, this, 2, &recordTask_, 0) != pdPASS) {
+    taskRunning_ = false;
+    recording_ = false;
+    recordTask_ = nullptr;
+    error_ = "Voice task failed";
+    return false;
+  }
   AppLog.println("Voice recording started");
   return true;
 }
 
 bool VoiceRecorder::update() {
-  if (!recording_) {
-    return true;
-  }
-  int16_t buffer[256];
-  const size_t bytesRead = MicI2S.readBytes(reinterpret_cast<char *>(buffer), sizeof(buffer));
-  if (bytesRead == 0 && MicI2S.lastError() != ESP_OK) {
-    error_ = "Mic read failed";
-    return false;
-  }
-  if (bytesRead == 0) {
-    return true;
-  }
-  if (WavHeaderBytes + dataBytes_ + bytesRead > Config::VoiceMaxWavBytes) {
-    error_ = "Audio too large";
-    return false;
-  }
-  File file = LittleFS.open(VoiceWavPath, "a");
-  if (!file) {
-    error_ = "Voice append failed";
-    return false;
-  }
-  const size_t written = file.write(reinterpret_cast<uint8_t *>(buffer), bytesRead);
-  file.close();
-  if (written != bytesRead) {
-    error_ = "Voice write failed";
-    return false;
-  }
-  dataBytes_ += bytesRead;
-  return true;
+  return !taskFailed_;
 }
 
 bool VoiceRecorder::stop() {
   if (!recording_) {
     return false;
   }
-  for (uint8_t index = 0; index < 8; index++) {
-    update();
-    delay(2);
-  }
+  stopRequested_ = true;
+  waitForRecordTask(1500);
   recording_ = false;
+  if (taskFailed_) {
+    return false;
+  }
   if (dataBytes_ == 0) {
     error_ = "No audio recorded";
     return false;
@@ -188,6 +175,8 @@ bool VoiceRecorder::stopRaw() {
 }
 
 bool VoiceRecorder::abort() {
+  stopRequested_ = true;
+  waitForRecordTask(500);
   recording_ = false;
   LittleFS.remove(VoiceWavPath);
   return true;
@@ -215,6 +204,69 @@ String VoiceRecorder::wavPath() const {
 
 String VoiceRecorder::error() const {
   return error_;
+}
+
+void VoiceRecorder::recordTaskEntry(void *parameter) {
+  static_cast<VoiceRecorder *>(parameter)->recordLoop();
+  vTaskDelete(nullptr);
+}
+
+void VoiceRecorder::recordLoop() {
+  uint8_t buffer[Config::VoicePcmChunkBytes];
+  File file = LittleFS.open(VoiceWavPath, "a");
+  if (!file) {
+    error_ = "Voice append failed";
+    taskFailed_ = true;
+    taskRunning_ = false;
+    recordTask_ = nullptr;
+    return;
+  }
+
+  while (!stopRequested_) {
+    const size_t bytesRead = MicI2S.readBytes(reinterpret_cast<char *>(buffer), sizeof(buffer));
+    if (bytesRead == 0 && MicI2S.lastError() != ESP_OK) {
+      error_ = "Mic read failed";
+      AppLog.line(error_ + ": " + String(esp_err_to_name(static_cast<esp_err_t>(MicI2S.lastError()))));
+      taskFailed_ = true;
+      break;
+    }
+    if (bytesRead == 0) {
+      delay(1);
+      continue;
+    }
+    if (WavHeaderBytes + dataBytes_ + bytesRead > Config::VoiceMaxWavBytes) {
+      error_ = "Audio too large";
+      taskFailed_ = true;
+      break;
+    }
+    const size_t written = file.write(buffer, bytesRead);
+    if (written != bytesRead) {
+      error_ = "Voice write failed";
+      taskFailed_ = true;
+      break;
+    }
+    dataBytes_ += bytesRead;
+    yield();
+  }
+
+  file.flush();
+  file.close();
+  taskRunning_ = false;
+  recordTask_ = nullptr;
+}
+
+bool VoiceRecorder::waitForRecordTask(uint32_t timeoutMs) {
+  const uint32_t startedAt = millis();
+  while (taskRunning_ && millis() - startedAt < timeoutMs) {
+    delay(5);
+    yield();
+  }
+  if (taskRunning_) {
+    error_ = "Voice task timeout";
+    taskFailed_ = true;
+    return false;
+  }
+  return true;
 }
 
 void VoiceRecorder::writePlaceholderHeader() {
