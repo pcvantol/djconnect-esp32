@@ -1,10 +1,10 @@
 {
-  "version": "2.9.30",
-  "version_tag": "v2.9.30",
+  "version": "3.0.0",
+  "version_tag": "v3.0.0",
   "device": "lilygo-t-embed-s3",
   "channel": "stable",
-  "asset": "spotifydj-device-v2.9.30.bin",
-  "sha256": "9e043e478b42f713125dbc39c2e93f3a0baa009ff871cea0266d464ff40631ce",
-  "size": 2189120,
+  "asset": "djconnect-device-v3.0.0.bin",
+  "sha256": "8a5423a0867199fcd020dc1a5d9260f6c66d21e094fae8563302ce700f95cf4e",
+  "size": 2188816,
   "min_ha_integration": "1.0.0"
 }
