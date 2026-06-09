@@ -70,6 +70,7 @@ bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
   JsonDocument request;
   request["device_id"] = device_->getDeviceId();
   request["device_name"] = device_->getDeviceName();
+  request["client_type"] = device_->getClientType();
   request["pair_code"] = device_->getPairCode();
   request["firmware"] = device_->getFirmwareVersion();
   request["model"] = device_->getModel();
@@ -147,6 +148,7 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
 
   JsonDocument request;
   request["device_id"] = device_->getDeviceId();
+  request["client_type"] = device_->getClientType();
   request["ha_pairing_status"] = "paired";
   request["local_url"] = device_->getLocalUrl();
   request["ha_local_url"] = device_->getHaLocalUrl();
@@ -182,10 +184,12 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   JsonObject settingsObject = request["settings"].to<JsonObject>();
   settingsObject["screen_brightness_percent"] = settings.screenBrightnessPercent;
   settingsObject["brightness"] = settings.screenBrightnessPercent;
+  settingsObject["screen_brightness"] = settings.screenBrightnessPercent;
   settingsObject["screen_dim_timeout_ms"] = settings.screenOffTimeoutMs;
   settingsObject["screen_off_timeout_ms"] = settings.screenOffTimeoutMs;
   settingsObject["turn_off_after_ms"] = settings.turnOffAfterMs;
   settingsObject["cue_volume"] = settings.speakerVolumePercent;
+  settingsObject["speaker_volume"] = settings.speakerVolumePercent;
   settingsObject["speaker_volume_percent"] = settings.speakerVolumePercent;
   settingsObject["language"] = settings.language;
   settingsObject["theme"] = settings.theme;

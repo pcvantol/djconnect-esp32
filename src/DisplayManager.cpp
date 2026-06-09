@@ -1024,7 +1024,7 @@ void DisplayManager::drawWifiIndicator(Canvas &canvas, int x, int y) {
     }
   }
 
-  const uint16_t activeColor = level >= 4 ? SpotifyGreen : level >= 3 ? TFT_YELLOW : TFT_RED;
+  const uint16_t activeColor = level >= 3 ? SpotifyGreen : level >= 2 ? TFT_YELLOW : TFT_RED;
   static constexpr int heights[] = {5, 8, 11, 14};
   for (int index = 0; index < 4; index++) {
     const int barX = x + index * 5;

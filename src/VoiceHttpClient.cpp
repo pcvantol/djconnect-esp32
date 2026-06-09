@@ -132,6 +132,7 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
 
   JsonDocument doc;
   doc["device_id"] = device_->getDeviceId();
+  doc["client_type"] = device_->getClientType();
   doc["recording"] = recording;
   doc["state"] = state;
   if (!lastError.isEmpty()) {
@@ -188,6 +189,8 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   }
 
   JsonDocument doc;
+  doc["device_id"] = device_->getDeviceId();
+  doc["client_type"] = device_->getClientType();
   doc["text"] = recognizedText;
   String body;
   serializeJson(doc, body);

@@ -188,9 +188,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .signal i:nth-child(2) { height:8px; }
     .signal i:nth-child(3) { height:11px; }
     .signal i:nth-child(4) { height:14px; }
-    .signal.level-1 i:nth-child(-n+1), .signal.level-2 i:nth-child(-n+2) { background:#ff6f61; }
-    .signal.level-3 i:nth-child(-n+3) { background:#f3d37b; }
-    .signal.level-4 i:nth-child(-n+4) { background:var(--green); }
+    .signal.level-1 i:nth-child(-n+1) { background:#ff6f61; }
+    .signal.level-2 i:nth-child(-n+2) { background:#f3d37b; }
+    .signal.level-3 i:nth-child(-n+3), .signal.level-4 i:nth-child(-n+4) { background:var(--green); }
     .status-icons { display:inline-flex; gap:5px; vertical-align:middle; }
     .status-dot { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--red); color:var(--red); font-size:11px; font-weight:800; line-height:1; }
     .status-dot.ok { border-color:var(--green); color:var(--green); }

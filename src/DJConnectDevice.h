@@ -22,6 +22,7 @@ public:
   String getActiveHaUrl() const;
   String getFirmwareVersion() const;
   String getModel() const;
+  String getClientType() const;
   String getPairCode() const;
   String getLocalUrl() const;
   String getAssistPipelineId() const;

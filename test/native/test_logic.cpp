@@ -101,6 +101,7 @@ static void testHomeAssistantStatusMirroredSettingsDefaults() {
 static void testHomeAssistantStatusAliasContractNames() {
   const char *aliases[] = {
       "ha_pairing_status",
+      "client_type",
       "local_url",
       "ha_local_url",
       "ha_remote_url",

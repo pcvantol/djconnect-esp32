@@ -97,6 +97,7 @@ String SpotifyClient::proxyEndpoint() const {
 bool SpotifyClient::proxyCommand(const String &command, JsonDocument *response) {
   JsonDocument request;
   request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   request["command"] = command;
   return proxyRequest(request, response);
 }
@@ -104,6 +105,7 @@ bool SpotifyClient::proxyCommand(const String &command, JsonDocument *response) 
 bool SpotifyClient::proxyCommand(const String &command, const String &value, JsonDocument *response) {
   JsonDocument request;
   request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   request["command"] = command;
   request["value"] = value;
   return proxyRequest(request, response);
@@ -112,6 +114,7 @@ bool SpotifyClient::proxyCommand(const String &command, const String &value, Jso
 bool SpotifyClient::proxyCommand(const String &command, int value, JsonDocument *response) {
   JsonDocument request;
   request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   request["command"] = command;
   request["value"] = value;
   return proxyRequest(request, response);
@@ -138,6 +141,9 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   }
 
   String body;
+  if (doc["client_type"].isNull() && device_ != nullptr) {
+    doc["client_type"] = device_->getClientType();
+  }
   serializeJson(doc, body);
 
   RequestGuard guard(requestMutex_, 1000);
@@ -453,6 +459,7 @@ bool SpotifyClient::startPlaylist(const String &playlistUri) {
 bool SpotifyClient::setShuffle(bool enabled) {
   JsonDocument request;
   request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   request["command"] = "set_shuffle";
   request["value"] = enabled;
   if (!proxyRequest(request)) {
@@ -478,6 +485,7 @@ bool SpotifyClient::setRepeatMode(const String &repeatState) {
 bool SpotifyClient::transferPlayback(const String &deviceId, bool play) {
   JsonDocument request;
   request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   request["command"] = "set_output";
   request["value"] = deviceId;
   request["play"] = play;

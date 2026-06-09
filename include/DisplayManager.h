@@ -46,7 +46,7 @@ public:
       size_t selectedIndex,
       const StatusNotice &notice);
 
-  // Renders the static About screen with app name, drawn Spotify icon, and firmware version.
+  // Renders the static About screen with app name, DJConnect icon, and firmware version.
   void renderAboutScreen(const StatusNotice &notice, const AboutStatus &status, size_t selectedIndex);
 
   // Renders a blocking charge-required screen for low-battery protection mode.

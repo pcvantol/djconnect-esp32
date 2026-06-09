@@ -14,6 +14,7 @@ namespace {
 const char *Namespace = "djconnect";
 const char *DefaultDeviceName = "DJConnect";
 const char *Model = "lilygo-t-embed-s3";
+const char *ClientType = "esp32";
 const char *AssistPipelineKey = "assist_pipe";
 const uint32_t ActiveHaUrlCacheMs = 30000;
 
@@ -111,6 +112,10 @@ String DJConnectDevice::getFirmwareVersion() const {
 
 String DJConnectDevice::getModel() const {
   return Model;
+}
+
+String DJConnectDevice::getClientType() const {
+  return ClientType;
 }
 
 String DJConnectDevice::getPairCode() const {

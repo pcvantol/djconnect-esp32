@@ -93,6 +93,7 @@ void DJConnectApiServer::handleInfo() {
   JsonDocument doc;
   doc["device_id"] = device_->getDeviceId();
   doc["device_name"] = device_->getDeviceName();
+  doc["client_type"] = device_->getClientType();
   doc["firmware"] = device_->getFirmwareVersion();
   doc["model"] = device_->getModel();
   doc["paired"] = device_->isPaired();
@@ -115,6 +116,7 @@ void DJConnectApiServer::handlePairingInfo() {
   JsonDocument doc;
   doc["device_id"] = device_->getDeviceId();
   doc["device_name"] = device_->getDeviceName();
+  doc["client_type"] = device_->getClientType();
   doc["pair_code"] = device_->getPairCode();
   doc["firmware"] = device_->getFirmwareVersion();
   doc["local_url"] = device_->getLocalUrl();
@@ -135,12 +137,17 @@ void DJConnectApiServer::handlePair() {
     return;
   }
   const String deviceId = doc["device_id"] | "";
+  const String clientType = doc["client_type"] | "";
   if (deviceId.isEmpty()) {
     sendJson(400, "{\"error\":\"device id missing\",\"message\":\"device_id required\"}");
     return;
   }
   if (!Logic::isDjConnectLilygoDeviceId(deviceId.c_str()) || deviceId != device_->getDeviceId()) {
     sendJson(400, "{\"error\":\"device id invalid\",\"message\":\"device_id must match this DJConnect LilyGO device\"}");
+    return;
+  }
+  if (clientType != device_->getClientType()) {
+    sendJson(400, "{\"error\":\"client type invalid\",\"message\":\"client_type must be esp32\"}");
     return;
   }
   const String haLocalUrl = doc["ha_local_url"] | "";
