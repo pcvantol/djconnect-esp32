@@ -5,6 +5,7 @@
 #include <BLE2902.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
+#include <string>
 
 #include "AppLog.h"
 
@@ -14,6 +15,19 @@ constexpr char ProvisionCharacteristicUuid[] = "7f705001-9f8f-4f1a-9b5f-570071fd
 constexpr char StatusCharacteristicUuid[] = "7f705002-9f8f-4f1a-9b5f-570071fd0001";
 BleWifiProvisioning *activeProvisioning = nullptr;
 constexpr size_t MaxProvisioningPayloadBytes = 512;
+
+String bleValueToString(const String &value) {
+  return value;
+}
+
+String bleValueToString(const std::string &value) {
+  String payload;
+  payload.reserve(value.size());
+  for (char c : value) {
+    payload += c;
+  }
+  return payload;
+}
 
 bool looksLikeCompleteJsonObject(const String &payload) {
   bool inString = false;
@@ -63,12 +77,8 @@ public:
     if (activeProvisioning == nullptr || characteristic == nullptr) {
       return;
     }
-    const std::string value = characteristic->getValue();
-    String payload;
-    payload.reserve(value.size());
-    for (char c : value) {
-      payload += c;
-    }
+    const auto value = characteristic->getValue();
+    String payload = bleValueToString(value);
     if (!payload.isEmpty()) {
       activeProvisioning->receivePayload(payload);
       AppLog.print("BLE provisioning payload chunk received, bytes=");

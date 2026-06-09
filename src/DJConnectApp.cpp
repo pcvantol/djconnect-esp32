@@ -196,6 +196,10 @@ void DJConnectApp::loop() {
     display_.resetDjResponseOverlayCache();
     renderNow();
   }
+  if (webVoiceTextOnlyActive_ && static_cast<int32_t>(millis() - webVoiceTextOnlyUntil_) >= 0) {
+    webVoiceTextOnlyActive_ = false;
+    webVoiceTextOnlyConsumeNext_ = false;
+  }
   if (voiceRecording_) {
     if (!voiceRecorder_.update()) {
       const String error = voiceRecorder_.error();
@@ -2721,7 +2725,7 @@ void DJConnectApp::openSoundOutputsScreen() {
 }
 
 bool DJConnectApp::playbackProxyReady() const {
-  return homeAssistantPaired_ && spotify_.isAuthorized();
+  return homeAssistantPaired_ && !haPairingPendingValidation_ && spotify_.isAuthorized();
 }
 
 PlaybackConnectionState DJConnectApp::playbackConnectionState() const {
@@ -3490,8 +3494,14 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
   const DJConnectPairing::StatusResult result =
       haPairing_.sendStatusToHA(battery_, playbackProxyUsable, settings, visualState_, soundOutput);
   if (result == DJConnectPairing::StatusResult::Ok) {
+    const bool wasPendingValidation = haPairingPendingValidation_;
     homeAssistantPaired_ = true;
     haPairingPendingValidation_ = false;
+    if (wasPendingValidation || playbackRefreshAfterPairing_) {
+      playbackRefreshAfterPairing_ = false;
+      lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
+      AppLog.println("Home Assistant: pairing status confirmed, enabling playback proxy");
+    }
   } else if (result == DJConnectPairing::StatusResult::PairingInvalid) {
     if (haPairingPendingValidation_) {
       AppLog.println("Home Assistant: pending pairing rejected by status endpoint");
@@ -3517,6 +3527,7 @@ void DJConnectApp::markHomeAssistantPairingInvalid(const String &message) {
   }
   homeAssistantPaired_ = false;
   haPairingPendingValidation_ = false;
+  playbackRefreshAfterPairing_ = false;
   showNotice(message, 5000);
   renderNow();
 }
@@ -3526,6 +3537,7 @@ bool DJConnectApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
     if (haPairingScreenActive_) {
       homeAssistantPaired_ = true;
       haPairingPendingValidation_ = true;
+      playbackRefreshAfterPairing_ = true;
       haPairingScreenActive_ = false;
       haPairingStartedAt_ = 0;
       lastHaStatusAt_ = Logic::forceImmediatePollTimestamp();
@@ -3543,7 +3555,7 @@ bool DJConnectApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
         return false;
       }
       display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
-      lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
+      lastPlaybackPollAt_ = millis();
       renderNow();
       recordLoopMetrics(loopStartedAt);
       return false;
@@ -3636,15 +3648,20 @@ bool DJConnectApp::sendWebVoiceTextCallback(void *context, const String &text, S
   AppLog.println(text.length());
   app->voiceState_ = VoiceState::SendingCommand;
   app->voiceRecording_ = false;
+  app->webVoiceTextOnlyActive_ = true;
+  app->webVoiceTextOnlyConsumeNext_ = true;
+  app->webVoiceTextOnlyUntil_ = millis() + Config::WebVoiceTextOnlySuppressMs;
   app->notice_.visibleUntil = 0;
-  app->voiceClient_.sendStatus(false, "sending_command");
   const bool ok = app->voiceClient_.sendRecognizedText(text, message, &audioUrl);
   if (ok) {
-    bool spoken = false;
     if (message != "Voice command sent") {
-      app->handleDjResponseText(message, audioUrl, spoken);
-    } else if (!audioUrl.isEmpty()) {
-      spoken = app->djAudio_.play(audioUrl).spoken;
+      app->showDjResponseOverlay(I18n::text("voice_dj_response"), message, 6000);
+      app->lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "skipped";
+      AppLog.print("DJ response displayed chars=");
+      AppLog.println(message.length());
+    } else {
+      app->showDjResponseOverlay(I18n::text("voice_dj_response"), I18n::text("voice_no_dj_response"), 6000);
+      app->lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "skipped";
     }
   } else if (app->voiceClient_.pairingInvalidated()) {
     app->markHomeAssistantPairingInvalid(message);
@@ -3652,10 +3669,7 @@ bool DJConnectApp::sendWebVoiceTextCallback(void *context, const String &text, S
   app->voiceState_ = VoiceState::Idle;
   app->voiceRecording_ = false;
   app->notice_.visibleUntil = 0;
-  app->djResponseOverlayVisible_ = false;
-  app->display_.resetDjResponseOverlayCache();
   app->renderNow();
-  app->voiceClient_.sendStatus(false, ok ? "idle" : "error", ok ? "" : message);
   return ok;
 }
 
@@ -3704,6 +3718,24 @@ void DJConnectApp::hardResetFromWebCallback(void *context) {
 
 bool DJConnectApp::djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType) {
   DJConnectApp *app = static_cast<DJConnectApp *>(context);
+  if (app->webVoiceTextOnlyActive_ &&
+      app->webVoiceTextOnlyConsumeNext_ &&
+      static_cast<int32_t>(millis() - app->webVoiceTextOnlyUntil_) < 0) {
+    spoken = false;
+    app->webVoiceTextOnlyActive_ = false;
+    app->webVoiceTextOnlyConsumeNext_ = false;
+    app->showDjResponseOverlay(I18n::text("voice_dj_response"), text, 6000);
+    app->lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "skipped";
+    audioType = app->lastDjAudioType_;
+    if (!audioUrl.isEmpty()) {
+      AppLog.println("Web voice: DJ response audio skipped");
+    }
+    AppLog.print("DJ response displayed chars=");
+    AppLog.println(text.length());
+    return !text.isEmpty();
+  }
+  app->webVoiceTextOnlyActive_ = false;
+  app->webVoiceTextOnlyConsumeNext_ = false;
   const bool displayed = app->handleDjResponseText(text, audioUrl, spoken);
   audioType = audioUrl.isEmpty() ? "none" : app->lastDjAudioType_;
   return displayed;
@@ -3733,6 +3765,7 @@ void DJConnectApp::directPairCallback(void *context) {
 void DJConnectApp::noteDirectPairingReceived() {
   homeAssistantPaired_ = true;
   haPairingPendingValidation_ = true;
+  playbackRefreshAfterPairing_ = true;
   playback_.error = "";
   spotify_.reloadCredentials();
   if (haPairingScreenActive_) {
@@ -3740,7 +3773,7 @@ void DJConnectApp::noteDirectPairingReceived() {
     haPairingStartedAt_ = 0;
   }
   lastHaStatusAt_ = Logic::forceImmediatePollTimestamp();
-  lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
+  lastPlaybackPollAt_ = millis();
   showNotice(I18n::text("boot_paired"), 1500);
   renderNow();
 }

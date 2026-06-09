@@ -1,5 +1,33 @@
 # Changelog
 
+## v3.0.11
+
+Hygiene release for the ESP-IDF 5.3 / Arduino ESP32 3.x migration, web portal polish and DJ-response stability.
+
+### Added
+
+- Web album-art popover: clicking/tapping the Now Playing album art opens a large focused view with backdrop, close button and Escape support.
+- Web DJ-response test now shows an explicit route description: browser -> ESP `/api/voice-text` -> Home Assistant `/api/djconnect/voice` -> DJ-response text on the device.
+- PlatformIO upload+monitor stabilization for ESP32-S3 USB CDC after IDF 5 reset: monitor RTS/DTR are held low and combined upload/monitor runs wait briefly before opening the monitor.
+
+### Changed
+
+- PlatformIO now targets the pinned pioarduino ESP-IDF 5.3 / Arduino ESP32 3.x toolchain, with old Arduino 2.x / ESP-IDF 4.x compatibility branches removed.
+- TFT backlight, OTA SHA256 and watchdog code now use the Arduino 3.x / IDF 5 / mbedTLS 3 APIs directly.
+- Web Now Playing volume slider is placed directly under the compact playback button row.
+- Web DJ-response test is text-only: it displays returned DJ text and intentionally skips returned TTS audio so it cannot block the physical encoder PTT/audio path.
+- DJ-response MP3 playback now uses the existing mono speaker I2S driver through a local output adapter instead of letting ESP8266Audio install its own stereo I2S driver.
+
+### Fixed
+
+- Fixed TFT boot crash after the IDF 5 upgrade by forcing TFT_eSPI to use the HSPI port on the ESP32-S3 build.
+- Fixed BLE provisioning payload handling across Arduino BLE API return-type changes.
+- Fixed watchdog log noise during audio playback when the loop task is temporarily removed from the task watchdog.
+- Fixed initial Home Assistant pairing/playback races by delaying playback proxy use until authenticated status validation succeeds and by allowing playback `status` commands through transient cooldown.
+- Fixed Home Assistant route retry after playback transport errors by invalidating and recomputing the active local/cloud route before retry.
+- Fixed web DJ-response test watchdog hangs by removing blocking voice-status posts from the web simulation path.
+- Fixed web DJ-response test still attempting to play audio when Home Assistant later posts `/api/device/dj_response`; the next callback after a web test is consumed as text-only.
+
 ## v3.0.10
 
 Focused UI, playback, web portal and release hygiene update.

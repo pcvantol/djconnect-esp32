@@ -135,7 +135,9 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
     setProxyError("Home Assistant command unavailable");
     return false;
   }
-  if (proxyCooldownActive()) {
+  const String command = doc["command"] | "";
+  const bool isStatusCommand = command == "status";
+  if (!isStatusCommand && proxyCooldownActive()) {
     setProxyError("HA playback cooling down");
     return false;
   }
@@ -152,25 +154,17 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
     return false;
   }
 
-  HTTPClient http;
-  NetworkActivity activity("ha_playback_command", Config::HttpIoTimeoutMs);
-  NetworkActivity::configureDefaultHttp(http);
-  if (!http.begin(url)) {
-    activity.finishError("begin failed");
-    setProxyError("HA playback begin failed");
-    return false;
+  String payload;
+  int code = postProxyRequest(url, token, body, command, payload);
+  if (code < 0 && device_ != nullptr) {
+    AppLog.println("HA playback command transport failed, retrying route");
+    device_->invalidateActiveHaUrl();
+    const String retryUrl = proxyEndpoint();
+    if (!retryUrl.isEmpty()) {
+      payload = "";
+      code = postProxyRequest(retryUrl, token, body, command, payload);
+    }
   }
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
-
-  const String command = doc["command"] | "";
-  AppLog.print("HA playback command: ");
-  AppLog.println(command);
-  const int code = http.POST(body);
-  const String payload = http.getString();
-  http.end();
-  activity.finish(code);
   AppLog.print("HA playback command response: ");
   AppLog.println(code);
 
@@ -194,7 +188,7 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
     if (code == 401 || code == 403 || code == 404) {
       tokenInvalidGrant_ = true;
     }
-    if (code < 0 || code >= 500) {
+    if (!isStatusCommand && (code < 0 || code >= 500)) {
       lastProxyFailureAt_ = millis();
     }
     setProxyError("HA playback HTTP " + String(code));
@@ -219,7 +213,9 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
       }
       const bool backendAvailable = (*response)["backend_available"] | true;
       if (!backendAvailable) {
-        lastProxyFailureAt_ = millis();
+        if (!isStatusCommand) {
+          lastProxyFailureAt_ = millis();
+        }
         setProxyError("HA playback backend unavailable");
       } else {
         setProxyError((*response)["message"] | (*response)["error"] | "HA playback failed");
@@ -229,6 +225,32 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   }
   state_.error = "";
   return true;
+}
+
+int SpotifyClient::postProxyRequest(
+    const String &url,
+    const String &token,
+    const String &body,
+    const String &command,
+    String &payload) {
+  HTTPClient http;
+  NetworkActivity activity("ha_playback_command", Config::HttpIoTimeoutMs);
+  NetworkActivity::configureDefaultHttp(http);
+  if (!http.begin(url)) {
+    activity.finishError("begin failed");
+    return -1;
+  }
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + token);
+  http.addHeader("X-DJConnect-Device-ID", device_ == nullptr ? "" : device_->getDeviceId());
+
+  AppLog.print("HA playback command: ");
+  AppLog.println(command);
+  const int code = http.POST(body);
+  payload = http.getString();
+  http.end();
+  activity.finish(code);
+  return code;
 }
 
 bool SpotifyClient::proxyCooldownActive() const {

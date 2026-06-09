@@ -6,7 +6,7 @@
 #include <AudioFileSourceID3.h>
 #include <AudioFileSource.h>
 #include <AudioGeneratorMP3.h>
-#include <AudioOutputI2S.h>
+#include <AudioOutput.h>
 #include <driver/i2s.h>
 #include <esp_task_wdt.h>
 #include <cstring>
@@ -19,6 +19,12 @@ static constexpr i2s_port_t SpeakerI2sPort = I2S_NUM_1;
 static constexpr uint32_t MinVolumeTickIntervalMs = 90;
 
 namespace {
+void serviceAudioWatchdog() {
+  if (esp_task_wdt_status(nullptr) == ESP_OK) {
+    esp_task_wdt_reset();
+  }
+}
+
 class ScopedLoopWatchdogPause {
 public:
   ScopedLoopWatchdogPause() {
@@ -28,7 +34,7 @@ public:
   ~ScopedLoopWatchdogPause() {
     if (active_) {
       esp_task_wdt_add(nullptr);
-      esp_task_wdt_reset();
+      serviceAudioWatchdog();
     }
   }
 
@@ -69,7 +75,7 @@ public:
       while (bodyCopied < wanted && millis() - idleStartedAt < 120) {
         const int available = stream_.available();
         if (available <= 0) {
-          esp_task_wdt_reset();
+          serviceAudioWatchdog();
           delay(1);
           yield();
           continue;
@@ -92,7 +98,7 @@ public:
         }
       }
     }
-    esp_task_wdt_reset();
+    serviceAudioWatchdog();
     yield();
     return copied;
   }
@@ -122,6 +128,57 @@ private:
   uint32_t contentLength_ = 0;
   uint32_t position_ = 0;
   bool open_ = false;
+};
+
+class DjConnectI2sMp3Output : public AudioOutput {
+public:
+  bool begin() override {
+    running_ = true;
+    samplesWritten_ = 0;
+    return SetRate(hertz > 0 ? hertz : Config::SpeakerSampleRate);
+  }
+
+  bool SetRate(int hz) override {
+    hertz = hz > 0 ? hz : Config::SpeakerSampleRate;
+    return i2s_set_clk(SpeakerI2sPort, hertz, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO) == ESP_OK;
+  }
+
+  bool SetBitsPerSample(int bits) override {
+    return AudioOutput::SetBitsPerSample(bits);
+  }
+
+  bool SetChannels(int channels) override {
+    return AudioOutput::SetChannels(channels);
+  }
+
+  bool ConsumeSample(int16_t sample[2]) override {
+    if (!running_ || sample == nullptr) {
+      return false;
+    }
+    MakeSampleStereo16(sample);
+    const int32_t mixed = (static_cast<int32_t>(sample[LEFTCHANNEL]) + static_cast<int32_t>(sample[RIGHTCHANNEL])) / 2;
+    const int16_t mono = Amplify(static_cast<int16_t>(mixed));
+    size_t written = 0;
+    const esp_err_t result = i2s_write(SpeakerI2sPort, &mono, sizeof(mono), &written, pdMS_TO_TICKS(20));
+    if (result != ESP_OK || written != sizeof(mono)) {
+      return false;
+    }
+    samplesWritten_++;
+    return true;
+  }
+
+  bool stop() override {
+    running_ = false;
+    return true;
+  }
+
+  uint32_t samplesWritten() const {
+    return samplesWritten_;
+  }
+
+private:
+  bool running_ = false;
+  uint32_t samplesWritten_ = 0;
 };
 }  // namespace
 
@@ -304,7 +361,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   }
 
   auto readExact = [&](uint8_t *target, size_t length) -> bool {
-    esp_task_wdt_reset();
+    serviceAudioWatchdog();
     return stream.readBytes(target, length) == length;
   };
   auto readLe16 = [](const uint8_t *data) -> uint16_t {
@@ -354,7 +411,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
       bitsPerSample = readLe16(fmt + 14);
       foundFormat = true;
       for (uint32_t skip = sizeof(fmt); skip < chunkSize; skip++) {
-        esp_task_wdt_reset();
+        serviceAudioWatchdog();
         if (stream.read() < 0) {
           return finish(false);
         }
@@ -366,7 +423,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
       break;
     } else {
       for (uint32_t skip = 0; skip < chunkSize; skip++) {
-        esp_task_wdt_reset();
+        serviceAudioWatchdog();
         if (stream.read() < 0) {
           return finish(false);
         }
@@ -402,7 +459,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   uint8_t buffer[512];
   uint32_t remaining = dataBytes;
   while (remaining > 0) {
-    esp_task_wdt_reset();
+    serviceAudioWatchdog();
     notifyStreamActivity();
     const size_t want = min(static_cast<uint32_t>(sizeof(buffer)), remaining);
     const size_t got = stream.readBytes(buffer, want);
@@ -431,13 +488,10 @@ bool SoundManager::playMp3Stream(const String &url) {
     return false;
   }
 
-  i2s_driver_uninstall(SpeakerI2sPort);
-
   AudioFileSourceHTTPStream source(url.c_str());
   AudioFileSourceBuffer buffered(&source, 4096);
   AudioFileSourceID3 id3(&buffered);
-  AudioOutputI2S output(SpeakerI2sPort);
-  output.SetPinout(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
+  DjConnectI2sMp3Output output;
   output.SetGain(static_cast<float>(volumePercent_) / 100.0f);
 
   AudioGeneratorMP3 mp3;
@@ -447,10 +501,7 @@ bool SoundManager::playMp3Stream(const String &url) {
     id3.close();
     buffered.close();
     source.close();
-    if (!installI2s()) {
-      AppLog.println("Speaker I2S restore failed after MP3 start error");
-      ready_ = false;
-    }
+    i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
     endAudioState();
     return false;
   }
@@ -458,11 +509,24 @@ bool SoundManager::playMp3Stream(const String &url) {
   AppLog.println("DJ response MP3 playback started");
   ScopedLoopWatchdogPause watchdogPause;
   const uint32_t startedAt = millis();
+  uint32_t lastSampleLogAt = millis();
+  uint32_t lastSampleCount = 0;
   while (mp3.isRunning()) {
-    esp_task_wdt_reset();
+    serviceAudioWatchdog();
     notifyStreamActivity();
     if (!mp3.loop()) {
       break;
+    }
+    if (millis() - lastSampleLogAt > 3000) {
+      const uint32_t count = output.samplesWritten();
+      AppLog.print("DJ response MP3 samples=");
+      AppLog.println(count);
+      if (count == lastSampleCount) {
+        AppLog.println("MP3 playback stalled");
+        break;
+      }
+      lastSampleCount = count;
+      lastSampleLogAt = millis();
     }
     if (millis() - startedAt > Config::DjAudioIoTimeoutMs) {
       AppLog.println("MP3 playback timeout");
@@ -476,15 +540,10 @@ bool SoundManager::playMp3Stream(const String &url) {
   buffered.close();
   source.close();
   output.stop();
-
-  const bool restored = installI2s();
-  if (!restored) {
-    AppLog.println("Speaker I2S restore failed after MP3");
-    ready_ = false;
-  }
+  i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
   endAudioState();
   AppLog.println("DJ response MP3 playback finished");
-  return restored;
+  return output.samplesWritten() > 0;
 }
 
 bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t prefixLength, int contentLength) {
@@ -497,13 +556,10 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
     return false;
   }
 
-  i2s_driver_uninstall(SpeakerI2sPort);
-
   AudioFileSourceArduinoStream source(stream, prefix, prefixLength, contentLength);
   AudioFileSourceBuffer buffered(&source, 4096);
   AudioFileSourceID3 id3(&buffered);
-  AudioOutputI2S output(SpeakerI2sPort);
-  output.SetPinout(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
+  DjConnectI2sMp3Output output;
   output.SetGain(static_cast<float>(volumePercent_) / 100.0f);
 
   AudioGeneratorMP3 mp3;
@@ -513,10 +569,7 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
     id3.close();
     buffered.close();
     source.close();
-    if (!installI2s()) {
-      AppLog.println("Speaker I2S restore failed after MP3 start error");
-      ready_ = false;
-    }
+    i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
     endAudioState();
     return false;
   }
@@ -524,11 +577,24 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   AppLog.println("DJ response MP3 playback started");
   ScopedLoopWatchdogPause watchdogPause;
   const uint32_t startedAt = millis();
+  uint32_t lastSampleLogAt = millis();
+  uint32_t lastSampleCount = 0;
   while (mp3.isRunning()) {
-    esp_task_wdt_reset();
+    serviceAudioWatchdog();
     notifyStreamActivity();
     if (!mp3.loop()) {
       break;
+    }
+    if (millis() - lastSampleLogAt > 3000) {
+      const uint32_t count = output.samplesWritten();
+      AppLog.print("DJ response MP3 samples=");
+      AppLog.println(count);
+      if (count == lastSampleCount) {
+        AppLog.println("MP3 playback stalled");
+        break;
+      }
+      lastSampleCount = count;
+      lastSampleLogAt = millis();
     }
     if (millis() - startedAt > Config::DjAudioIoTimeoutMs) {
       AppLog.println("MP3 playback timeout");
@@ -542,15 +608,10 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   buffered.close();
   source.close();
   output.stop();
-
-  const bool restored = installI2s();
-  if (!restored) {
-    AppLog.println("Speaker I2S restore failed after MP3");
-    ready_ = false;
-  }
+  i2s_set_clk(SpeakerI2sPort, Config::SpeakerSampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
   endAudioState();
   AppLog.println("DJ response MP3 playback finished");
-  return restored;
+  return output.samplesWritten() > 0;
 }
 
 void SoundManager::soundTask(void *parameter) {

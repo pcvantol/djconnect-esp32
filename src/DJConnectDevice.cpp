@@ -106,6 +106,12 @@ String DJConnectDevice::getActiveHaUrl() const {
   return activeHaUrl_;
 }
 
+void DJConnectDevice::invalidateActiveHaUrl() const {
+  activeHaUrl_ = "";
+  activeHaRoute_ = "";
+  activeHaUrlCheckedAt_ = 0;
+}
+
 String DJConnectDevice::getFirmwareVersion() const {
   return Logic::otaComparableFirmwareVersion(Config::AppVersionNumber, Config::AppVersion);
 }

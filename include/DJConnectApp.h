@@ -325,10 +325,14 @@ private:
   bool stressTestActive_ = false;
   bool voiceRecording_ = false;
   VoiceState voiceState_ = VoiceState::Idle;
+  bool webVoiceTextOnlyActive_ = false;
+  bool webVoiceTextOnlyConsumeNext_ = false;
+  uint32_t webVoiceTextOnlyUntil_ = 0;
   bool topHoldMenuHintVisible_ = false;
   bool menuTopHoldActive_ = false;
   bool haPairingScreenActive_ = false;
   bool haPairingPendingValidation_ = false;
+  bool playbackRefreshAfterPairing_ = false;
   uint32_t pendingWifiSettingsRequestedAt_ = 0;
   uint32_t menuTopHoldStartedAt_ = 0;
   uint32_t wifiConnectFailedAt_ = 0;

@@ -1,6 +1,5 @@
 #include "PowerController.h"
 
-#include <esp_idf_version.h>
 #include <esp_sleep.h>
 #include <esp_task_wdt.h>
 
@@ -32,16 +31,17 @@ uint64_t PowerController::sleepTimerWakeUs(bool lowBatteryTimerWake) const {
 }
 
 void PowerController::configureWatchdog() const {
-#if ESP_IDF_VERSION_MAJOR >= 5
-  const esp_task_wdt_config_t config = {
-      .timeout_ms = Config::WatchdogTimeoutSeconds * 1000,
-      .idle_core_mask = 0,
-      .trigger_panic = true,
-  };
-  esp_err_t result = esp_task_wdt_init(&config);
-#else
-  esp_err_t result = esp_task_wdt_init(Config::WatchdogTimeoutSeconds, true);
-#endif
+  esp_err_t result = esp_task_wdt_status(nullptr);
+  if (result == ESP_ERR_INVALID_STATE) {
+    const esp_task_wdt_config_t config = {
+        .timeout_ms = Config::WatchdogTimeoutSeconds * 1000,
+        .idle_core_mask = 0,
+        .trigger_panic = true,
+    };
+    result = esp_task_wdt_init(&config);
+  } else if (result == ESP_OK || result == ESP_ERR_NOT_FOUND) {
+    result = ESP_OK;
+  }
   if (result != ESP_OK && result != ESP_ERR_INVALID_STATE) {
     AppLog.print("Watchdog init failed: ");
     AppLog.println(esp_err_to_name(result));

@@ -15,6 +15,9 @@ DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP3
 - Home Assistant device-layer support: pairing, mDNS discovery, device API, status posting and OTA trigger endpoints.
 
 The current PlatformIO environment is `t_embed_cc1101`.
+It is pinned to the pioarduino ESP32 platform line that uses ESP-IDF 5.3 with
+Arduino ESP32 3.x compatibility. Do not add Arduino ESP32 2.x / ESP-IDF 4.x
+fallback code unless the user explicitly changes the supported toolchain.
 
 ## Licensing
 
@@ -112,11 +115,12 @@ The release script keeps local dev defaults as `dev` / `vdev` and injects the
 release version through PlatformIO build flags. Do not hardcode release versions
 into `include/Config.h`.
 
-Expected recurring third-party warning:
+Expected recurring third-party warnings:
 
-- `esp32-hal-uart.c: warning: 'return' with no value...`
+- ESP-IDF 5.x legacy I2S warnings from `ESP8266Audio` and `VoiceRecorder`.
 
-This warning comes from the Arduino ESP32 framework package and is not normally actionable in this project.
+These warnings are not normally actionable until the speaker and microphone
+paths are migrated from the legacy I2S API to `i2s_std`/`i2s_pdm`.
 
 ## Architecture Rules
 
@@ -277,7 +281,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - `/api/djconnect/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
 - Do not add direct ESP Assist websocket auth; the DJConnect device token is for the integration API, not Home Assistant core.
 - Do not start physical PTT from Current song/AlbumArt. Current song is a read-only detail screen and uses the same top-button back behavior as menu screens.
-- The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
+- The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It displays returned DJ text on the device and must return the voice/PTT state to idle after completion. It intentionally must not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block physical encoder PTT. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/djconnect/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
 - Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
 - Optional wake-word support must remain inert without a linked model hook. A trained `oke nabu` model may expose `extern "C" bool djconnect_oke_nabu_wake_word_detect(const int16_t *samples, size_t sampleCount);`; the legacy `djconnect_micro_wake_word_detect` hook remains supported. The detector must be fast, local-only, and must not perform network I/O from the audio poll path.

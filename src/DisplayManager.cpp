@@ -100,11 +100,10 @@ void DisplayManager::begin() {
   digitalWrite(Config::LoraChipSelectPin, HIGH);
 
   // PWM backlight allows 100%/10%/0% idle brightness instead of only on/off.
-  ledcSetup(
-      Config::DisplayBacklightPwmChannel,
+  ledcAttach(
+      Config::DisplayBacklightPin,
       Config::DisplayBacklightPwmFrequency,
       Config::DisplayBacklightPwmResolution);
-  ledcAttachPin(Config::DisplayBacklightPin, Config::DisplayBacklightPwmChannel);
   setBacklightPercent(0);
 
   tft_.init();
@@ -477,7 +476,7 @@ void DisplayManager::setBacklightPercent(uint8_t percent) {
 
   backlightPercent_ = percent;
   const uint8_t duty = Logic::backlightDutyForPercent(percent, 255);
-  ledcWrite(Config::DisplayBacklightPwmChannel, duty);
+  ledcWrite(Config::DisplayBacklightPin, duty);
 
   AppLog.print("Backlight: ");
   AppLog.print(percent);

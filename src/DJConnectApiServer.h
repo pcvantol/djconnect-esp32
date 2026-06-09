@@ -2,6 +2,8 @@
 #pragma once
 
 #include <Arduino.h>
+#include <FS.h>
+using fs::FS;
 #include <WebServer.h>
 
 #include "AppState.h"

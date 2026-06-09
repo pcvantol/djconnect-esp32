@@ -50,6 +50,7 @@ void serviceOtaLoop(LedRing *ledRing) {
   delay(1);
   yield();
 }
+
 }
 
 bool DJConnectOTA::canUpdate(const BatteryState *battery, String &message) const {
@@ -171,7 +172,7 @@ bool DJConnectOTA::performUpdate(
   uint32_t lastProgressAt = millis();
   mbedtls_sha256_context shaContext;
   mbedtls_sha256_init(&shaContext);
-  if (mbedtls_sha256_starts_ret(&shaContext, 0) != 0) {
+  if (mbedtls_sha256_starts(&shaContext, 0) != 0) {
     message = "OTA SHA256 init failed";
     Update.abort();
     http.end();
@@ -210,7 +211,7 @@ bool DJConnectOTA::performUpdate(
       continue;
     }
     serviceOtaLoop(ledRing);
-    if (mbedtls_sha256_update_ret(&shaContext, buffer.get(), read) != 0) {
+    if (mbedtls_sha256_update(&shaContext, buffer.get(), read) != 0) {
       message = "OTA SHA256 update failed";
       AppLog.println("OTA SHA256 update failed");
       Update.abort();
@@ -259,7 +260,7 @@ bool DJConnectOTA::performUpdate(
   }
 
   unsigned char digest[32] = {};
-  if (mbedtls_sha256_finish_ret(&shaContext, digest) != 0) {
+  if (mbedtls_sha256_finish(&shaContext, digest) != 0) {
     message = "OTA SHA256 finalize failed";
     AppLog.println("OTA SHA256 finalize failed");
     Update.abort();

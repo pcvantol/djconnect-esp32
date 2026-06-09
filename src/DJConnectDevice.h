@@ -20,6 +20,7 @@ public:
   String getHaLocalUrl() const;
   String getHaRemoteUrl() const;
   String getActiveHaUrl() const;
+  void invalidateActiveHaUrl() const;
   String getFirmwareVersion() const;
   String getModel() const;
   String getClientType() const;

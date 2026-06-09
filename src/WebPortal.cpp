@@ -176,7 +176,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .artist { color:#d8e3df; font-size:18px; margin-bottom:12px; overflow-wrap:anywhere; }
     .now { display:grid; grid-template-columns:96px 1fr; gap:12px; align-items:start; margin-bottom:12px; }
     .now.no-art { grid-template-columns:1fr; }
-    .album-art { width:96px; height:96px; border-radius:8px; border:1px solid var(--line); object-fit:cover; background:var(--art-bg); display:none; }
+    .album-art { width:96px; height:96px; border-radius:8px; border:1px solid var(--line); object-fit:cover; background:var(--art-bg); display:none; cursor:pointer; }
+    .album-art:focus-visible { outline:2px solid var(--green); outline-offset:3px; }
     .grid { display:grid; gap:8px; grid-template-columns:1fr; }
     .row { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--row-line); padding-top:8px; font-size:14px; }
     .row:first-child { border-top:0; padding-top:0; }
@@ -208,6 +209,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .volume-value, .volume-label { color:var(--orange); }
     button { background:#1f8c46; border-color:#31c36a; color:#f3fff7; font-weight:700; cursor:pointer; box-shadow:inset 0 -1px 0 rgba(0,0,0,.25); }
     .compact-actions { display:grid; grid-template-columns:repeat(5, 46px); justify-content:start; gap:8px; align-items:center; }
+    .playback-volume { grid-column:1 / -1; display:grid; gap:6px; margin-top:2px; }
+    .playback-volume .volume-row { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
     button.icon-button { width:46px; height:46px; min-width:46px; min-height:46px; display:inline-flex; align-items:center; justify-content:center; padding:0; border-radius:8px; color:#f3fff7; }
     button.icon-button svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:2.25; stroke-linecap:round; stroke-linejoin:round; }
     button.icon-button .icon-pause,
@@ -271,6 +274,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     canvas.game-canvas { width:100%; max-width:640px; aspect-ratio:320/170; border:1px solid var(--line); border-radius:8px; background:#020405; touch-action:none; image-rendering:pixelated; }
     .game-controls { display:grid; grid-template-columns:repeat(4, 46px); gap:8px; justify-content:start; }
     .game-controls button { min-height:42px; padding:0; }
+    .art-popover { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(0,0,0,.78); backdrop-filter:blur(8px); }
+    .art-popover.open { display:flex; }
+    .art-popover-inner { position:relative; max-width:min(92vw,720px); max-height:88vh; }
+    .art-popover img { display:block; width:auto; max-width:100%; max-height:88vh; border-radius:8px; border:1px solid rgba(255,255,255,.22); box-shadow:0 22px 80px rgba(0,0,0,.55); background:var(--art-bg); }
+    button.art-popover-close { position:absolute; top:8px; right:8px; width:38px; height:38px; min-width:38px; min-height:38px; border-radius:8px; padding:0; background:rgba(8,11,12,.76); border-color:rgba(255,255,255,.28); color:#fff; font-size:24px; line-height:1; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--log-bg); color:var(--log-text); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
     @media (max-width:420px) { button.ptt { width:100%; } }
@@ -298,7 +306,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     <section class="panel wide">
       <h2 data-i18n="nowPlaying">Now Playing</h2>
       <div id="nowContent" class="now no-art">
-        <img id="albumArt" class="album-art" alt="Album art">
+        <img id="albumArt" class="album-art" alt="Album art" role="button" tabindex="0">
         <div>
           <div id="playbackPill" class="pill">Loading</div>
           <div id="track" class="hero-title">-</div>
@@ -324,6 +332,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <button id="repeatButton" class="icon-button is-off" type="button" aria-label="Repeat off" title="Repeat off">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><text id="repeatOneMark" x="12" y="15" text-anchor="middle" font-size="8" fill="currentColor" stroke="none" style="display:none">1</text></svg>
         </button>
+        <div class="playback-volume">
+          <div class="volume-row"><span class="volume-label" data-i18n="volume">Volume</span><span id="volume" class="volume-value">-</span></div>
+          <input id="volumeSlider" class="volume-slider" type="range" min="0" max="60" value="0" aria-label="Volume">
+        </div>
       </div>
       <div id="shuffleStatus" class="status"></div>
       <div id="repeatStatus" class="status"></div>
@@ -332,10 +344,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div class="row"><span class="key" data-i18n="output">Sound output</span><span id="device" class="value">-</span></div>
       <select id="soundOutputSelect" aria-label="Sound output"><option value="" data-i18n="loadingOutputs">Loading outputs...</option></select>
       <div id="soundOutputStatus" class="status"></div>
-      <div class="row"><span class="key volume-label" data-i18n="volume">Volume</span><span id="volume" class="value volume-value">-</span></div>
-      <input id="volumeSlider" class="volume-slider" type="range" min="0" max="60" value="0" aria-label="Volume">
       <div id="volumeStatus" class="status"></div>
       <button id="webPttButton" class="ptt section-action" type="button" data-i18n="webPttHold">Test DJ response</button>
+      <div class="fine" data-i18n="webPttFlowInfo"></div>
       <div id="webPttTranscript" class="fine"></div>
       <div id="webPttStatus" class="status"></div>
     </section>
@@ -512,7 +523,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div class="fine" data-i18n="ossNotice">This firmware includes open-source software components. Their licenses remain with their respective authors.</div>
     </section>
   </main>
-
+  <div id="albumArtPopover" class="art-popover" role="dialog" aria-modal="true" aria-label="Album art">
+    <div class="art-popover-inner">
+      <img id="albumArtLarge" alt="Album art">
+      <button id="albumArtClose" class="art-popover-close" type="button" aria-label="Close album art" title="Close album art">&times;</button>
+    </div>
+  </div>
   <script>
     const $ = id => document.getElementById(id);
     const text = (id, value) => { $(id).textContent = value ?? "-"; };
@@ -556,7 +572,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         deviceNotPaired:"Device not paired with Home Assistant", setup:"Click here to setup", providePair:"and provide pairing code:",
         nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start DJConnect Liked Proxy",
         webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
-        webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect response flow", spotifyUnavailable:"Playback not connected",
+        webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect response flow", webPttFlowInfo:"Tests: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ response text on the device.",
+        spotifyUnavailable:"Playback not connected",
         output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", refreshUpNext:"Refresh Up Next", loadingQueue:"Loading queue...",
         playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", games:"Games", settings:"Settings",
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
@@ -591,7 +608,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om te koppelen", providePair:"en vul koppelcode in:",
         nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start DJConnect Liked Proxy",
         webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
-        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect response flow", spotifyUnavailable:"Afspelen niet verbonden",
+        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect response flow", webPttFlowInfo:"Test: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ-response tekst op het device.",
+        spotifyUnavailable:"Afspelen niet verbonden",
         output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummer", refreshUpNext:"Volgende verversen", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", games:"Games", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
@@ -735,6 +753,16 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let queueVisible = false;
     let playlistsVisible = false;
     let soundOutputsVisible = false;
+    function openAlbumArtPopover() {
+      if (!albumArtUrl) return;
+      $("albumArtLarge").src = albumArtUrl;
+      $("albumArtPopover").classList.add("open");
+      $("albumArtClose").focus();
+    }
+    function closeAlbumArtPopover() {
+      $("albumArtPopover").classList.remove("open");
+      $("albumArtLarge").removeAttribute("src");
+    }
     function watchVisibility(id, callback) {
       const el = $(id);
       if (!el) return;
@@ -981,6 +1009,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         albumArtUrl = "";
         albumArt.removeAttribute("src");
         albumArt.style.display = "none";
+        closeAlbumArtPopover();
         nowContent.classList.add("no-art");
       }
       const state = data.playback.isPlaying ? tr("playing") : data.playback.hasPlayback ? tr("paused") : tr("noPlayback");
@@ -1203,6 +1232,21 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       }, 250);
     }
     $("volumeSlider").addEventListener("input", queueVolumeUpdate);
+    $("albumArt").addEventListener("click", openAlbumArtPopover);
+    $("albumArt").addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openAlbumArtPopover();
+    });
+    $("albumArtClose").addEventListener("click", closeAlbumArtPopover);
+    $("albumArtPopover").addEventListener("click", event => {
+      if (event.target === $("albumArtPopover")) closeAlbumArtPopover();
+    });
+    window.addEventListener("keydown", event => {
+      if (event.key === "Escape" && $("albumArtPopover").classList.contains("open")) {
+        closeAlbumArtPopover();
+      }
+    });
     $("soundOutputSelect").addEventListener("change", async () => {
       if (!spotifyControlsEnabled) return;
       const deviceId = $("soundOutputSelect").value;

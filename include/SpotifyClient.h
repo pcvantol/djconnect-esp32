@@ -85,6 +85,7 @@ private:
   bool proxyCommand(const String &command, const String &value, JsonDocument *response = nullptr);
   bool proxyCommand(const String &command, int value, JsonDocument *response = nullptr);
   bool proxyRequest(JsonDocument &request, JsonDocument *response = nullptr);
+  int postProxyRequest(const String &url, const String &token, const String &body, const String &command, String &payload);
   String proxyEndpoint() const;
   bool proxyCooldownActive() const;
   void applyPlayback(JsonVariantConst playback);

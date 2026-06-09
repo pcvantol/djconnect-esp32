@@ -13,6 +13,8 @@ not grant additional rights to the DJConnect firmware itself.
   - Used for the firmware runtime, WiFi, BLE, WebServer, Preferences, LittleFS,
     Update, ESPmDNS and related ESP32 Arduino APIs.
   - Project/package: `framework-arduinoespressif32`
+  - Build platform: pinned pioarduino ESP32 platform with ESP-IDF 5.3 and
+    Arduino ESP32 3.x support.
 
 - TFT_eSPI
   - Used for ST7789 display rendering.

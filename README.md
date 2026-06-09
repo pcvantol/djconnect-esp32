@@ -39,7 +39,9 @@ DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotif
 ## Hardware
 
 - LilyGO T-Embed-CC1101.
-- ESP32-S3 PlatformIO target.
+- ESP32-S3 PlatformIO target on the pinned pioarduino ESP-IDF 5.3 / Arduino
+  ESP32 3.x toolchain. Arduino ESP32 2.x / ESP-IDF 4.x compatibility is not
+  maintained.
 - ST7789 display.
 - Rotary encoder with center button.
 - Top button / board user key.
@@ -52,7 +54,7 @@ DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotif
 - Playback backend requirements are handled by the Home Assistant integration. For Spotify this may still require Spotify Premium and an available Spotify Connect output.
 - Some playback outputs may not support volume or queue metadata; the ESP disables unsupported actions when Home Assistant reports they are unavailable.
 - OTA through `/api/device/ota` requires HTTPS and verifies the streamed firmware against the manifest SHA256 before rebooting.
-- Web portal DJ-response test runs through the ESP and Home Assistant pairing; it does not require browser microphone access.
+- Web portal DJ-response test runs through the ESP and Home Assistant pairing, displays the returned DJ text on the device and does not require browser microphone access.
 
 ## License
 
@@ -202,7 +204,7 @@ The Current song screen is a read-only detail screen for album art and scrolling
 
 Games are local mini-games in the device menu and web portal. Pong shows score and high score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Asteroids uses the encoder to move horizontally and shoots on encoder press. Fly uses the encoder to move vertically and shoots on encoder press while flying left-to-right. Device game highscores are stored in the `provision` NVS namespace and are cleared by factory reset; web game highscores are stored locally in the browser.
 
-Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
+Web portal PTT is a simulation button for testing the DJ-response text path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant, displays the returned DJ text on the device and then returns the voice/PTT state to idle. The web simulation intentionally does not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block the physical encoder PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
 
 If the Home Assistant integration has been removed while the ESP still has an old pairing token, the web PTT simulation can return a Home Assistant voice endpoint 404. Reset Home Assistant pairing on the device or web portal, add the DJConnect integration again, and pair the device with the new code.
 
@@ -376,6 +378,13 @@ Build firmware:
 ```bash
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
+
+The firmware environment is pinned to the pioarduino ESP32 platform line that
+uses ESP-IDF 5.3 and Arduino ESP32 3.x. The source intentionally uses the
+Arduino 3.x pin-based LEDC API, IDF 5 watchdog API and mbedTLS 3 SHA256 API
+without older Arduino 2.x / ESP-IDF 4.x fallback branches. Recurring legacy-I2S
+warnings from `ESP8266Audio` and the current microphone recorder are expected
+until those paths move to the IDF 5.x `i2s_std`/`i2s_pdm` drivers.
 
 Run native helper tests:
 
