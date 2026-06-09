@@ -15,12 +15,12 @@ if git ls-files --error-unmatch release/firmware_manifest.json >/dev/null 2>&1; 
 fi
 
 # Asset snapshots catch stale branding in the embedded display and web portal resources.
-echo "eaae29c674786f958dac9951dd7ce4af0024936a9320eb01e39083a174cf35e3  assets/esp_display/embedded/djconnect_icon_160x160.rgb565" | shasum -a 256 -c -
-echo "81d33661c3211e5ecc24547e983005ad35dbb933a811df44ff771ad1b74c1d11  assets/esp_display/embedded/djconnect_icon_170x170.rgb565" | shasum -a 256 -c -
-echo "8932b3c70311dd91d72d3ede49b441fbc902ab8a712469152d839041c3efafb5  assets/esp_display/embedded/djconnect_splash_170x320.rgb565" | shasum -a 256 -c -
+echo "8b3f3962f3a842893cabad2f4903f9a76bdced467f1dc66ed7398db9b527308a  assets/esp_display/embedded/djconnect_icon_160x160.rgb565" | shasum -a 256 -c -
+echo "d10eb3ed736e2c704e998bdc8fde2e34852e684822139553f68fe91bcc45860b  assets/esp_display/embedded/djconnect_icon_170x170.rgb565" | shasum -a 256 -c -
+echo "c990edc52a6957ae399411a809819c394a1d829c13745f871ec2444a92c017e5  assets/esp_display/embedded/djconnect_splash_170x320.rgb565" | shasum -a 256 -c -
 echo "04017a322314225531fc501a6b6ea20a58821115cf0a2f35e895764c3b0fe9d5  assets/website/site.webmanifest" | shasum -a 256 -c -
-echo "1c45881b98c73e15693d7eb48bae16eca43b3c9e3170051171f95b1cf0131534  assets/website/icon-192.png" | shasum -a 256 -c -
-echo "dd3c38075de260a67f30e66f48e34294e5f1986c0b1034394d875faf299243fd  assets/website/favicon-32.png" | shasum -a 256 -c -
+echo "97d1a6567cc3c61d8cdb4c2ca05ed37adfd6bdc112efeb90177c4bba7095f476  assets/website/icon-192.png" | shasum -a 256 -c -
+echo "34e667173f5fe834f9282d11ab5a1f4f5fa2225010388f50a6f5bf7d72e2d460  assets/website/favicon-32.png" | shasum -a 256 -c -
 
 # The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
 if rg -n --glob "!test/native/test_release.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
