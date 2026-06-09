@@ -48,11 +48,11 @@ static void testTrackTimeFormatting() {
 
 static void testOtaComparableFirmwareVersion() {
   assert(std::strcmp(Logic::otaComparableFirmwareVersion("dev", "vdev"), "0.0.0") == 0);
-  assert(std::strcmp(Logic::otaComparableFirmwareVersion("dev", "v2.7.6"), "2.7.6") == 0);
-  assert(std::strcmp(Logic::otaComparableFirmwareVersion("2.7.6", "vdev"), "2.7.6") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("dev", "v3.0.0"), "3.0.0") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("3.0.0", "vdev"), "3.0.0") == 0);
   assert(std::strcmp(Logic::otaComparableFirmwareVersion(nullptr, nullptr), "0.0.0") == 0);
   assert(std::strcmp(Logic::otaComparableFirmwareVersion("", ""), "0.0.0") == 0);
-  assert(std::strcmp(Logic::otaComparableFirmwareVersion("2.7.6", "v2.7.6"), "2.7.6") == 0);
+  assert(std::strcmp(Logic::otaComparableFirmwareVersion("3.0.0", "v3.0.0"), "3.0.0") == 0);
 }
 
 static void testSemverComparison() {

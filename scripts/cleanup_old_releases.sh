@@ -27,7 +27,7 @@ Examples:
 
 Notes:
   - Requires GitHub CLI: gh auth login
-  - Only semver tags/releases like v2.7.3 are considered.
+  - Only semver tags/releases like v3.0.0 are considered.
   - The kept releases are selected by semantic version, not by upload date.
   - Workflow runs are kept by newest created date.
 EOF

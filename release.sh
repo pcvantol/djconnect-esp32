@@ -4,8 +4,8 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  ./release.sh 2.3.0 [--channel stable|beta] [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
-  ./release.sh v2.3.0 [--channel stable|beta] [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
+  ./release.sh 3.0.0 [--channel stable|beta] [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
+  ./release.sh v3.0.0 [--channel stable|beta] [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
 
 Environment:
   PIO_BIN                 PlatformIO executable override.
