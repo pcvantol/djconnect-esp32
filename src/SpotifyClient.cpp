@@ -14,10 +14,6 @@
 #include "SpotifyDJDevice.h"
 #include "TextHelpers.h"
 
-#ifndef SPOTIFY_MARKET
-#define SPOTIFY_MARKET ""
-#endif
-
 #ifndef SPOTIFY_ALLOW_INSECURE_TLS
 #define SPOTIFY_ALLOW_INSECURE_TLS 0
 #endif
@@ -64,8 +60,6 @@ void SpotifyClient::begin() {
         nullptr,
         0);
   }
-
-  refreshTokenSource_ = "Home Assistant";
 }
 
 bool SpotifyClient::authorize() {
@@ -74,17 +68,7 @@ bool SpotifyClient::authorize() {
 }
 
 void SpotifyClient::reloadCredentials() {
-  accessToken_ = "";
-  accessTokenExpiresAt_ = 0;
-  refreshTokenSource_ = "Home Assistant";
   tokenInvalidGrant_ = false;
-}
-
-void SpotifyClient::useCredentialsForProvisioning(const String &clientId, const String &refreshToken) {
-  (void)clientId;
-  (void)refreshToken;
-  reloadCredentials();
-  AppLog.println("Playback credentials ignored; Home Assistant owns backend credentials");
 }
 
 void SpotifyClient::clearStoredTokens() {
@@ -99,19 +83,11 @@ bool SpotifyClient::needsCredentialRefresh() const {
   return tokenInvalidGrant_;
 }
 
-uint32_t SpotifyClient::accessTokenExpiresInSeconds() const {
-  return 0;
-}
-
-String SpotifyClient::refreshTokenSource() const {
-  return refreshTokenSource_;
-}
-
 String SpotifyClient::proxyEndpoint() const {
   if (device_ == nullptr) {
     return "";
   }
-  const String haUrl = device_->getHaUrl();
+  const String haUrl = device_->getActiveHaUrl();
   if (haUrl.isEmpty()) {
     return "";
   }
@@ -463,12 +439,28 @@ bool SpotifyClient::startPlaylist(const String &playlistUri) {
   return proxyCommand("start_playlist", playlistUri);
 }
 
-bool SpotifyClient::setPlayMode(const String &mode) {
-  if (!proxyCommand("set_play_mode", mode)) {
+bool SpotifyClient::setShuffle(bool enabled) {
+  JsonDocument request;
+  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
+  request["command"] = "set_shuffle";
+  request["value"] = enabled;
+  if (!proxyRequest(request)) {
     return false;
   }
-  state_.shuffle = mode == "shuffle";
-  state_.repeatState = mode == "repeat_once" ? "track" : (mode == "repeat_infinite" ? "context" : "off");
+  state_.shuffle = enabled;
+  return true;
+}
+
+bool SpotifyClient::setRepeatMode(const String &repeatState) {
+  const String normalized = repeatState == "repeat_once" ? "track" : (repeatState == "repeat_infinite" ? "context" : repeatState);
+  if (normalized != "off" && normalized != "track" && normalized != "context") {
+    state_.error = "Unsupported repeat mode";
+    return false;
+  }
+  if (!proxyCommand("set_repeat", normalized)) {
+    return false;
+  }
+  state_.repeatState = normalized;
   return true;
 }
 
@@ -515,57 +507,6 @@ bool SpotifyClient::pollVolumeResult(VolumeResult &result) {
     return false;
   }
   return xQueueReceive(volumeResultQueue_, &result, 0) == pdTRUE;
-}
-
-void SpotifyClient::configureTls(WiFiClientSecure &client) {
-  // Direct backend HTTP is disabled; this legacy helper intentionally does not
-  // install a backend CA or weaken TLS. Playback traffic goes through HA proxy.
-  client.setHandshakeTimeout(Config::TlsHandshakeTimeoutMs);
-  client.setTimeout(Config::HttpIoTimeoutMs);
-}
-
-void SpotifyClient::loadSpotifyCredentials() {
-  reloadCredentials();
-}
-
-void SpotifyClient::saveRefreshToken(const String &newRefreshToken) {
-  (void)newRefreshToken;
-}
-
-bool SpotifyClient::refreshAccessToken() {
-  return authorize();
-}
-
-bool SpotifyClient::ensureAccessToken() {
-  return isAuthorized();
-}
-
-int SpotifyClient::apiRequest(
-    const char *method,
-    const String &path,
-    String *responsePayload,
-    bool updatePlaybackError) {
-  (void)method;
-  (void)path;
-  (void)responsePayload;
-  if (updatePlaybackError) {
-    state_.error = "Direct playback API disabled";
-  }
-  return -1;
-}
-
-bool SpotifyClient::sendPlayerCommand(const char *method, const String &path) {
-  String payload;
-  const int code = apiRequest(method, path, &payload);
-  if (code == 204 || code == 200) {
-    state_.error = "";
-    return true;
-  }
-
-  if (state_.error.isEmpty()) {
-    state_.error = "Command failed " + String(code);
-  }
-  return false;
 }
 
 VolumeResult SpotifyClient::sendVolumeToSpotify(const VolumeCommand &command) {

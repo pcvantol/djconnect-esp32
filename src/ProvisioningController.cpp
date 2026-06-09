@@ -35,6 +35,7 @@ ProvisioningSettings ProvisioningController::load() const {
   settings.speakerVolumePercent = constrain(preferences.getUInt("speaker_volume", 100), 25UL, 100UL);
   settings.volumeFeedbackEnabled = preferences.getBool("volume_feedback", true);
   settings.setupModeRequested = preferences.getBool("setup", false);
+  settings.helpShown = preferences.getBool("help_shown", false);
   preferences.end();
   return settings;
 }
@@ -69,51 +70,13 @@ void ProvisioningController::saveWifiCredentials(const String &ssid, const Strin
   provision.end();
 }
 
-void ProvisioningController::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &spotifyMarket) const {
-  (void)clientId;
-  (void)refreshToken;
-  (void)spotifyMarket;
-  Preferences provision;
-  provision.begin("provision", false);
-  provision.remove("sp_client");
-  provision.remove("sp_refresh");
-  provision.remove("spotify_market");
-  provision.end();
-
-  Preferences spotifydj;
-  spotifydj.begin("spotifydj", false);
-  spotifydj.remove("sp_client");
-  spotifydj.remove("sp_refresh");
-  spotifydj.remove("sp_market");
-  spotifydj.end();
-}
-
-void ProvisioningController::saveSetupProvisioning(
-    const String &ssid,
-    const String &password,
-    const String &clientId,
-    const String &refreshToken,
-    const String &spotifyMarket) const {
-  (void)clientId;
-  (void)refreshToken;
-  (void)spotifyMarket;
-
+void ProvisioningController::saveSetupProvisioning(const String &ssid, const String &password) const {
   Preferences provision;
   provision.begin("provision", false);
   provision.putString("ssid", ssid);
   provision.putString("pass", password);
-  provision.remove("sp_client");
-  provision.remove("sp_refresh");
-  provision.remove("spotify_market");
   provision.putBool("setup", false);
   provision.end();
-
-  Preferences spotifydj;
-  spotifydj.begin("spotifydj", false);
-  spotifydj.remove("sp_client");
-  spotifydj.remove("sp_refresh");
-  spotifydj.remove("sp_market");
-  spotifydj.end();
 }
 
 void ProvisioningController::requestSetupMode() const {
@@ -121,5 +84,19 @@ void ProvisioningController::requestSetupMode() const {
   provision.begin("provision", false);
   provision.clear();
   provision.putBool("setup", true);
+  provision.end();
+}
+
+void ProvisioningController::requestWifiChangeMode() const {
+  Preferences provision;
+  provision.begin("provision", false);
+  provision.putBool("setup", true);
+  provision.end();
+}
+
+void ProvisioningController::markHelpShown() const {
+  Preferences provision;
+  provision.begin("provision", false);
+  provision.putBool("help_shown", true);
   provision.end();
 }

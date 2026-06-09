@@ -412,31 +412,6 @@ inline bool shouldFetchNextBackendPlaylistPage(size_t itemCount, int total, int 
   return total <= 0 || offset + static_cast<int>(itemCount) < total;
 }
 
-// Converts Spotify's shuffle/repeat fields into the UI modes exposed in settings.
-inline const char *playModeFromSpotifyState(bool shuffle, const char *repeatState) {
-  if (repeatState != nullptr && strcmp(repeatState, "track") == 0) {
-    return "repeat_once";
-  }
-  if (repeatState != nullptr && strcmp(repeatState, "context") == 0) {
-    return "repeat_infinite";
-  }
-  return shuffle ? "shuffle" : "normal";
-}
-
-// Labels stay centralized so the device menu, web UI defaults, and tests agree.
-inline const char *playModeLabel(const char *mode) {
-  if (mode != nullptr && strcmp(mode, "shuffle") == 0) {
-    return "Shuffle";
-  }
-  if (mode != nullptr && strcmp(mode, "repeat_once") == 0) {
-    return "Repeat once";
-  }
-  if (mode != nullptr && strcmp(mode, "repeat_infinite") == 0) {
-    return "Repeat infinite";
-  }
-  return "No shuffle";
-}
-
 // Normalizes persisted/UI language codes. Unknown values intentionally fall back to English.
 inline const char *languageCodeOrDefault(const char *code) {
   if (code == nullptr) {

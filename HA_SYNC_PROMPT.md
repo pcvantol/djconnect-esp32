@@ -30,7 +30,10 @@ Controleer pairing flow:
 Belangrijk:
 
 - HA mag een lokaal device_token voorbereiden, maar moet pairingstatus niet als `paired` rapporteren totdat de ESP tokenopslag bevestigt.
-- `/api/device/pair` callback naar ESP mag `ha_url`, `device_token`, `device_language`/`language` en Assist pipeline settings sturen.
+- `/api/device/pair` callback naar ESP moet `device_token` plus `ha_local_url` en/of `ha_remote_url` sturen.
+- `ha_local_url` is de LAN URL die ESP eerst probeert, bijvoorbeeld `http://homeassistant.local:8123`.
+- `ha_remote_url` is de optionele Nabu Casa/cloud URL die ESP gebruikt als local niet bereikbaar is.
+- Pairing zonder `ha_local_url` en zonder `ha_remote_url` moet als configuratiefout worden behandeld.
 - Treat ESP pairing as `pending` totdat een authenticated ESP status post naar HA succesvol verwerkt is.
 - Als HA 401/403/404 teruggeeft op ESP status/command, pairing is stale/invalid.
 - Als playback backend tijdelijk niet beschikbaar is, dat is geen pairing failure.
@@ -108,7 +111,7 @@ Payload bevat onder andere:
 
 Taken:
 
-- Parse both top-level compatibility fields and nested `settings`, `screen`, `led`.
+- Parse both top-level fields and nested `settings`, `screen`, `led`.
 - Use these status fields to update native HA entities, especially:
   - screen brightness
   - screen timeout
@@ -149,7 +152,8 @@ Payload examples:
 {"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"set_output","value":"iPhone","play":true}
 {"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"start_liked_proxy"}
 {"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"start_playlist","value":"spotify:playlist:..."}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"set_play_mode","value":"shuffle"}
+{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"set_shuffle","value":true}
+{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"set_repeat","value":"track"}
 ```
 
 Response contract:

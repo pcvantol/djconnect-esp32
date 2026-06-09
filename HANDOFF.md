@@ -13,18 +13,21 @@ Current repo state includes:
 - Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL.
 - Web portal includes Now Playing, DJ-response simulation, outputs, playlists, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
 - Playback proxy control requests use short waits and transient-failure cooldown; OTA writes tolerate slow GitHub/CDN stream bursts while continuing to feed the watchdog and firmware-update LED animation.
-- Device main menu includes a small Pong mini game with local score display, encoder long-press restart, subtle bounce cues, miss feedback and a dedicated orange paddle LED-ring override.
+- Device main menu includes a local Games submenu with Pong, Asteroids and Flyer. Games are local-only, use encoder movement/center-button fire where applicable, and are not exposed through Home Assistant.
+- Device Help screen lists top button, encoder button and rotary actions. It appears once after initial Home Assistant pairing, then remains available from the main menu.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
 - Home Assistant should expose the proxied playback as a native `media_player` entity if user-facing HA media controls are desired. That entity represents the backend playback session, not the ESP speaker.
 - WiFi boot connection timeout is 30 seconds. During WiFi connect, the LED ring shows a green chase animation.
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed.
+- The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
 - Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
-- HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `ha_url` and `device_token`, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/spotify_dj/status` plus an immediate playback status poll.
+- HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/spotify_dj/status` plus an immediate playback status poll.
+- The ESP resolves Home Assistant local-first/cloud-fallback: it briefly probes `ha_local_url` and falls back to `ha_remote_url` when local HA is unreachable. This supports Nabu Casa remote access for ESP→HA calls without exposing ESP local endpoints through the cloud.
 - After WiFi/Home Assistant setup, the ESP forces an immediate `/api/spotify_dj/command` status poll so the device `S` indicator does not remain grey until the first physical control action.
 - `/api/spotify_dj/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow.
 - Periodic `/api/spotify_dj/status` now mirrors device settings/entities: `ha_pairing_status`, `local_url`, screen brightness aliases, screen timeout aliases, turn-off timeout, speaker/cue volume aliases, language, theme, log level, OTA/update state, screen state and LED state.
-- Legacy `POST /api/device/provision_spotify` is only a compatibility stub and returns `410 Gone`; backend credentials are never accepted by ESP firmware.
+- Backend credentials are never accepted by ESP firmware.
 - Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Freshly provisioned unpaired release firmware performs a graceful pre-pairing bootstrap update check after WiFi connects. It skips local `dev`/`vdev` builds and continues to pairing silently if the check fails.
 
@@ -84,7 +87,7 @@ Core data/security boundaries:
 - OTA status clearing in Home Assistant depends on the integration processing the post-boot status payload correctly.
 - HA native entities for brightness, speaker volume, timeouts, language, theme and log level should read the mirrored `/api/spotify_dj/status` settings fields; otherwise they may show minimum/default values until changed from HA.
 - If HA reposts direct pairing/settings callbacks too often during normal playback commands, debounce or route those updates so they do not spam `/api/device/pair`. The ESP now treats identical direct-pair callbacks as idempotent, but the integration should still reserve `/api/device/pair` for initial pairing, explicit re-pair/token rotation or recovery.
-- Keep the Home Assistant integration and firmware contract synchronized around native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payload compatibility.
+- Keep the Home Assistant integration and firmware contract synchronized around native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payloads.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
 - MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
 - Home Assistant STT/TTS failures are backend/integration dependent. Firmware surfaces error bodies but cannot fix missing HA STT provider configuration.

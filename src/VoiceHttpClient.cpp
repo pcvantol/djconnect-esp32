@@ -365,7 +365,7 @@ String VoiceHttpClient::endpoint(const char *path) const {
   if (device_ == nullptr) {
     return "";
   }
-  String base = device_->getHaUrl();
+  String base = device_->getActiveHaUrl();
   if (base.isEmpty()) {
     return "";
   }

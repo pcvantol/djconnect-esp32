@@ -17,13 +17,13 @@ public:
   String getDeviceId() const;
   String getDeviceName() const;
   String getDeviceToken() const;
-  String getHaUrl() const;
+  String getHaLocalUrl() const;
+  String getHaRemoteUrl() const;
+  String getActiveHaUrl() const;
   String getFirmwareVersion() const;
   String getModel() const;
   String getPairCode() const;
   String getLocalUrl() const;
-  String getSpotifyClientId() const;
-  String getSpotifyMarket() const;
   String getAssistPipelineId() const;
 
   static bool saveProvisionedLanguage(const String &languageCode);
@@ -33,9 +33,10 @@ public:
   void displayPairingCode();
   void displayPaired();
 
-  void savePairing(const String &haUrl, const String &deviceToken);
-  bool saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market);
-  bool saveSpotifyRefreshToken(const String &refreshToken);
+  void savePairing(
+      const String &deviceToken,
+      const String &haLocalUrl,
+      const String &haRemoteUrl);
   void saveAssistPipelineId(const String &pipelineId);
   void clearHomeAssistantPairing();
   void clearPairing();
@@ -47,10 +48,14 @@ private:
   String readString(const char *key, const String &fallback = "") const;
   bool writeString(const char *key, const String &value);
   void removeKey(const char *key);
+  bool isUrlReachable(const String &url) const;
   static String macSuffix();
 
   const BatteryState *battery_ = nullptr;
   DisplayManager *display_ = nullptr;
   String deviceId_;
   String pairCode_;
+  mutable String activeHaUrl_;
+  mutable String activeHaRoute_;
+  mutable uint32_t activeHaUrlCheckedAt_ = 0;
 };

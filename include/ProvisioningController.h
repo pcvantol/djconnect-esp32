@@ -18,6 +18,7 @@ struct ProvisioningSettings {
   String logLevel = "info";
   bool volumeFeedbackEnabled = true;
   bool setupModeRequested = false;
+  bool helpShown = false;
 };
 
 // Owns NVS provisioning keys so the app does not need to know storage details.
@@ -36,12 +37,8 @@ public:
       bool volumeFeedbackEnabled) const;
 
   void saveWifiCredentials(const String &ssid, const String &password) const;
-  void saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &spotifyMarket) const;
-  void saveSetupProvisioning(
-      const String &ssid,
-      const String &password,
-      const String &clientId,
-      const String &refreshToken,
-      const String &spotifyMarket) const;
+  void saveSetupProvisioning(const String &ssid, const String &password) const;
   void requestSetupMode() const;
+  void requestWifiChangeMode() const;
+  void markHelpShown() const;
 };

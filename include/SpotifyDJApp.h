@@ -79,8 +79,11 @@ private:
   // Applies selected on-board speaker cue volume and persists it to NVS.
   void applySpeakerVolumeSelection();
 
-  // Applies selected Spotify shuffle/repeat play mode.
-  void applyPlayModeSelection();
+  // Applies selected playback shuffle state through the Home Assistant proxy.
+  void applyShuffleSelection();
+
+  // Applies selected playback repeat state through the Home Assistant proxy.
+  void applyRepeatSelection();
 
   // Applies selected log level and persists it to NVS.
   void applyLogLevelSelection();
@@ -90,6 +93,9 @@ private:
 
   // Stores display/sleep settings shared by device menu and web dashboard.
   void saveDisplaySettings();
+
+  // Reboots into the WiFi setup portal without clearing Home Assistant pairing.
+  void changeWifiToProvisioning();
 
   // Clears local credentials/tokens/caches and reboots into provisioning AP mode.
   void hardResetToProvisioning();
@@ -110,6 +116,12 @@ private:
   void runStressTestStep();
   void resetPong();
   void updatePong();
+  void resetAsteroids();
+  void updateAsteroids();
+  void fireAsteroids();
+  void resetFlyer();
+  void updateFlyer();
+  void fireFlyer();
   bool transferToOutputByNameOrId(const String &output);
   bool startPlaylistByNameOrUri(const String &playlist);
 
@@ -238,13 +250,16 @@ private:
   size_t settingsSelection_ = 0;
   size_t playlistSelection_ = 0;
   size_t aboutSelection_ = 0;
+  size_t gamesSelection_ = 0;
+  size_t helpSelection_ = 0;
   size_t dimTimeoutSelection_ = 1;
   size_t brightnessSelection_ = 3;
   size_t languageSelection_ = 0;
   size_t themeSelection_ = 0;
   size_t logLevelSelection_ = 1;
   size_t speakerVolumeSelection_ = 3;
-  size_t playModeSelection_ = 0;
+  size_t shuffleSelection_ = 0;
+  size_t repeatSelection_ = 0;
   size_t sleepTimeoutSelection_ = 0;
   size_t hardResetSelection_ = 0;
   size_t wifiFailureSelection_ = 0;
@@ -257,6 +272,23 @@ private:
   int pongVelocityY_ = 2;
   int pongScore_ = 0;
   uint32_t pongMissFlashUntil_ = 0;
+  int asteroidShipX_ = 160;
+  int asteroidShipY_ = 138;
+  int asteroidX_ = 160;
+  int asteroidY_ = 48;
+  int asteroidVelocityX_ = 2;
+  int asteroidVelocityY_ = 2;
+  int asteroidBulletY_ = 0;
+  int asteroidScore_ = 0;
+  bool asteroidBulletActive_ = false;
+  uint32_t asteroidFlashUntil_ = 0;
+  int flyerPlaneY_ = 86;
+  int flyerObstacleX_ = 300;
+  int flyerObstacleY_ = 86;
+  int flyerShotX_ = 0;
+  int flyerScore_ = 0;
+  bool flyerShotActive_ = false;
+  uint32_t flyerFlashUntil_ = 0;
   uint32_t screenOffTimeoutMs_ = Config::DisplayOffAfterMs;
   uint32_t deviceSleepTimeoutMs_ = Config::DeviceSleepAfterMs;
   uint8_t screenBrightnessPercent_ = 100;
@@ -271,6 +303,7 @@ private:
   String pendingWifiSsid_;
   String pendingWifiPassword_;
   bool setupModeRequested_ = false;
+  bool helpShown_ = false;
   bool suppressInputUntilRelease_ = false;
   bool deepSleepStarted_ = false;
   bool pendingWifiSettings_ = false;
@@ -315,6 +348,8 @@ private:
   uint32_t stressTestStartedAt_ = 0;
   uint32_t lastStressTestStepAt_ = 0;
   uint32_t lastPongFrameAt_ = 0;
+  uint32_t lastAsteroidsFrameAt_ = 0;
+  uint32_t lastFlyerFrameAt_ = 0;
   uint32_t stressTestStepCount_ = 0;
   uint32_t heapTrendBaselineMinFree_ = 0;
   uint32_t heapTrendBaselineLargestBlock_ = 0;

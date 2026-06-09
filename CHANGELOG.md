@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9.29
+## v2.9.30
 
 Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -8,8 +8,9 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 
 - Home Assistant backed playback remote control with Now Playing, track progress, volume, pause/resume, next and previous controls.
 - Device menus for Up Next, Playlists, Sound Outputs, Settings, About and Logs.
-- Pong mini game from the device main menu.
-- Play mode control on the device main menu and Now Playing web portal: normal, shuffle, repeat once and repeat infinite.
+- Local Games menu with Pong, Asteroids and Flyer mini-games.
+- Help screen with button/encoder controls, shown once after initial Home Assistant pairing and available from the main menu.
+- Separate shuffle and repeat controls on the device main menu, Now Playing web portal and Home Assistant command API.
 - Language setting for the device UI, web portal and captive portal with English and Dutch support.
 - Theme setting for the device and web portal: Auto, Dark and Light.
 - Playlist browsing and playlist start from both the device and web portal.
@@ -39,6 +40,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Timestamped log severity classification with `[inf]`, `[wrn]`, `[err]` and `[dbg]` markers for serial and web logs.
 - Compact serial/web log prefix format: `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`.
 - Device Logs screen is scrollable with the encoder, keeping the newest tail as the default live position.
+- Settings now includes a confirmed Change WiFi action that opens the setup/captive portal without clearing the Home Assistant pairing.
 - Log level setting on the device, web portal and Home Assistant command API with translated UI labels and `info` as the default.
 - `ProvisioningController` for centralized NVS provisioning storage and reduced `SpotifyDJApp` responsibility.
 - `PowerController` for charger/wake/watchdog policy.
@@ -50,25 +52,25 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.29` / `v2.9.29`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `2.9.30` / `v2.9.30`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the SpotifyDJ app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.
 - WiFi, playback-backend and Home Assistant secrets are no longer hardcoded in firmware.
 - Playback control has moved to a backend-agnostic Home Assistant proxy. The ESP sends generic playback commands to HA and no longer stores Spotify OAuth credentials.
 - Captive portal and web portal no longer include Spotify client-id or refresh-token fields.
-- Legacy `sp_client`, `sp_refresh` and `sp_market` NVS keys are cleared at boot.
-- Legacy `POST /api/device/provision_spotify` is kept only as a compatibility stub and returns `410 Gone`; playback-backend credentials are managed only in Home Assistant.
+- Playback-backend credentials are managed only in Home Assistant.
 - Battery percentage is always voltage-estimated and displayed without a tilde.
 - Playback volume is limited to `0-60`; the LED ring treats `60` as full scale and uses orange segments.
 - Now Playing shows `H` and `S` status indicators for Home Assistant and playback.
 - Pairing mode shows the SpotifyDJ logo/name, battery state, instruction text and a large pairing code.
 - Pairing code is also visible in serial logs and the web interface.
 - Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off. Pairing mode also keeps BLE advertising active, shows a center-button turn-off hint and uses a deeply fading blue LED-ring breath.
-- `/api/device/pair` now also accepts a direct Home Assistant callback with `ha_url`, `device_token`, Assist pipeline id and device language, while keeping the handler lightweight to avoid watchdog stalls during pairing.
+- `/api/device/pair` now accepts the direct Home Assistant callback with `device_token`, `ha_local_url` and/or `ha_remote_url`, Assist pipeline id and device language, while keeping the handler lightweight to avoid watchdog stalls during pairing.
 - Playback proxy commands now wait for a successful authenticated Home Assistant status confirmation after boot/pairing, preventing stale or pending tokens from repeatedly sending playback 401 requests.
 - Direct Home Assistant pairing now schedules immediate status and playback polls on the next loop so the `H`/`S` indicators update right after pairing or reboot instead of waiting for a normal polling interval.
-- Repeated direct Home Assistant pair callbacks with the same `ha_url` and `device_token` are now idempotent, preventing normal status/playback synchronization from resetting pairing validation and playback polling.
+- Repeated direct Home Assistant pair callbacks with the same local/remote URLs and `device_token` are now idempotent, preventing normal status/playback synchronization from resetting pairing validation and playback polling.
+- Home Assistant routing is now local-first with cloud fallback: the ESP probes `ha_local_url` briefly and uses `ha_remote_url` when the local URL is not reachable.
 - Home Assistant playback proxy HTTP failures such as `HA playback HTTP -1` now make the device connectivity LED state red without erasing pairing data.
 - Home Assistant playback proxy calls use shorter request waits and a transient-failure cooldown so repeated HA 5xx/-1 responses do not stack blocking commands or trip the watchdog.
 - The `S` playback status indicator is now tri-state: green for active usable playback, grey for a reachable backend with no active playback, and red for playback proxy errors such as HA 5xx/-1 responses.
@@ -140,7 +142,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Reduced display flicker caused by unnecessary redraws.
 - Volume actions no longer show HTTP 411 in the UI.
 - Corrected encoder direction for volume.
-- Legacy local OAuth token storage paths are disabled; playback credentials stay in Home Assistant.
+- Local OAuth token storage paths are removed; playback credentials stay in Home Assistant.
 - Display remains usable in error, pairing and OTA states.
 - Settings such as brightness, screen dim timeout, speaker volume and turn-off timeout persist after reboot.
 - Web interface no longer clears input fields during status polling.
@@ -156,7 +158,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Captive portal no longer contains playback-backend credential fields.
 - Pairing mode blocks normal playback/menu input while keeping reset controls and the local API available.
 - `SPOTIFY_ALLOW_INSECURE_TLS` defaults to secure TLS in local `Secrets.h`.
-- Legacy PKCE helper documentation no longer suggests putting backend credentials in firmware headers.
+- PKCE helper documentation no longer suggests putting backend credentials in firmware headers.
 
 ### Known Issues
 

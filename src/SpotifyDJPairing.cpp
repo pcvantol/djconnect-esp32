@@ -17,6 +17,15 @@ String joinUrl(const String &base, const char *path) {
   }
   return base + path;
 }
+
+String jsonString(JsonVariantConst payload, const char *primary, const char *fallback = nullptr) {
+  String value = payload[primary] | "";
+  if (value.isEmpty() && fallback != nullptr) {
+    value = payload[fallback] | "";
+  }
+  value.trim();
+  return value;
+}
 }  // namespace
 
 void SpotifyDJPairing::begin(SpotifyDJDevice &device, SpotifyDJDiscovery *discovery) {
@@ -118,7 +127,9 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
     return false;
   }
 
-  device_->savePairing(haUrl, deviceToken);
+  const String localUrl = jsonString(response.as<JsonVariantConst>(), "ha_local_url");
+  const String remoteUrl = jsonString(response.as<JsonVariantConst>(), "ha_remote_url");
+  device_->savePairing(deviceToken, localUrl.isEmpty() ? haUrl : localUrl, remoteUrl);
   if (strlen(assistPipelineId) > 0) {
     device_->saveAssistPipelineId(assistPipelineId);
   }
@@ -139,7 +150,7 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
   if (device_ == nullptr || !device_->isPaired()) {
     return StatusResult::Skipped;
   }
-  const String haUrl = device_->getHaUrl();
+  const String haUrl = device_->getActiveHaUrl();
   const String token = device_->getDeviceToken();
   if (haUrl.isEmpty() || token.isEmpty()) {
     return StatusResult::Skipped;
@@ -149,6 +160,9 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
   request["device_id"] = device_->getDeviceId();
   request["ha_pairing_status"] = "paired";
   request["local_url"] = device_->getLocalUrl();
+  request["ha_local_url"] = device_->getHaLocalUrl();
+  request["ha_remote_url"] = device_->getHaRemoteUrl();
+  request["ha_active_url"] = haUrl;
   request["state"] = "online";
   request["status"] = "online";
   request["ota_state"] = "idle";

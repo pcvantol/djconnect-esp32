@@ -10,7 +10,11 @@ enum class UiScreen {
   Playlists,
   SoundOutputs,
   Logs,
+  Games,
+  Help,
   Pong,
+  Asteroids,
+  Flyer,
   RootMenu,
   About,
   Settings,
@@ -20,8 +24,10 @@ enum class UiScreen {
   Theme,
   LogLevel,
   SpeakerVolume,
-  PlayMode,
+  ShuffleMode,
+  RepeatMode,
   SleepTimeout,
+  ChangeWifiConfirm,
   ResetPairingConfirm,
   HardResetConfirm,
 };
@@ -42,13 +48,16 @@ constexpr size_t LanguageOptionCount = 2;
 constexpr size_t ThemeOptionCount = 3;
 constexpr size_t LogLevelOptionCount = 4;
 constexpr size_t SpeakerVolumeOptionCount = 4;
-constexpr size_t PlayModeOptionCount = 4;
+constexpr size_t ShuffleOptionCount = 2;
+constexpr size_t RepeatOptionCount = 3;
 constexpr size_t SleepTimeoutOptionCount = 4;
 constexpr size_t ConfirmOptionCount = 2;
 constexpr size_t HardResetOptionCount = ConfirmOptionCount;
 constexpr size_t WifiFailureOptionCount = 4;
-constexpr size_t SettingsItemCount = 13;
-constexpr size_t RootMenuItemCount = 9;
+constexpr size_t SettingsItemCount = 14;
+constexpr size_t RootMenuItemCount = 11;
+constexpr size_t GamesItemCount = 3;
+constexpr size_t HelpItemCount = 8;
 constexpr size_t AboutItemCount = 10;
 constexpr size_t FixedSoundOutputCount = 2;
 constexpr size_t MaxVisibleOutputs = 6;
@@ -63,8 +72,14 @@ inline size_t itemCount(UiScreen screen, const MenuCountInput &input) {
     case UiScreen::Queue:
     case UiScreen::Logs:
     case UiScreen::Pong:
+    case UiScreen::Asteroids:
+    case UiScreen::Flyer:
     case UiScreen::NowPlaying:
       return 0;
+    case UiScreen::Games:
+      return GamesItemCount;
+    case UiScreen::Help:
+      return HelpItemCount;
     case UiScreen::Playlists:
       return input.playlistsAvailable && input.playlistCount > 0 ? input.playlistCount : 1;
     case UiScreen::SoundOutputs:
@@ -85,11 +100,14 @@ inline size_t itemCount(UiScreen screen, const MenuCountInput &input) {
       return LogLevelOptionCount;
     case UiScreen::SpeakerVolume:
       return SpeakerVolumeOptionCount;
-    case UiScreen::PlayMode:
-      return PlayModeOptionCount;
+    case UiScreen::ShuffleMode:
+      return ShuffleOptionCount;
+    case UiScreen::RepeatMode:
+      return RepeatOptionCount;
     case UiScreen::SleepTimeout:
       return SleepTimeoutOptionCount;
     case UiScreen::HardResetConfirm:
+    case UiScreen::ChangeWifiConfirm:
     case UiScreen::ResetPairingConfirm:
       return ConfirmOptionCount;
     case UiScreen::About:
@@ -123,14 +141,17 @@ inline const char *logLevelValue(size_t index) {
   return values[index < LogLevelOptionCount ? index : 1];
 }
 
-inline const char *playModeValue(size_t index) {
-  static const char *const values[PlayModeOptionCount] = {
-      "normal",
-      "shuffle",
-      "repeat_once",
-      "repeat_infinite",
+inline bool shuffleValue(size_t index) {
+  return index == 1;
+}
+
+inline const char *repeatValue(size_t index) {
+  static const char *const values[RepeatOptionCount] = {
+      "off",
+      "track",
+      "context",
   };
-  return values[index < PlayModeOptionCount ? index : 0];
+  return values[index < RepeatOptionCount ? index : 0];
 }
 
 }  // namespace SpotifyDJMenuModel

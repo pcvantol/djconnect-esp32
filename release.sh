@@ -4,8 +4,8 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  ./release.sh 2.3.0 [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
-  ./release.sh v2.3.0 [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
+  ./release.sh 2.3.0 [--channel stable|beta] [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
+  ./release.sh v2.3.0 [--channel stable|beta] [--dry-run] [--publish-firmware-repo <path>] [--gh-release]
 
 Environment:
   PIO_BIN                 PlatformIO executable override.
@@ -87,13 +87,16 @@ replace_version_examples() {
 write_manifest() {
   local manifest="$1"
   local version="$2"
-  local asset="$3"
-  local sha="$4"
-  local size="$5"
+  local tag="$3"
+  local asset="$4"
+  local sha="$5"
+  local size="$6"
   cat > "$manifest" <<EOF
 {
   "version": "$version",
+  "version_tag": "$tag",
   "device": "lilygo-t-embed-s3",
+  "channel": "$CHANNEL",
   "asset": "$asset",
   "sha256": "$sha",
   "size": $size,
@@ -107,6 +110,7 @@ DRY_RUN=false
 GH_RELEASE=false
 PUBLISH_FIRMWARE_REPO=""
 MIN_HA_INTEGRATION="1.0.0"
+CHANNEL="stable"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -132,6 +136,11 @@ while [[ $# -gt 0 ]]; do
       MIN_HA_INTEGRATION="$2"
       shift 2
       ;;
+    --channel)
+      [[ $# -ge 2 ]] || fail "--channel requires stable or beta"
+      CHANNEL="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -150,10 +159,20 @@ done
 [[ -n "$VERSION_ARG" ]] || { usage; exit 1; }
 
 VERSION="${VERSION_ARG#v}"
+VERSION="${VERSION%-beta}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "version must be semantic X.Y.Z, got '$VERSION_ARG'"
+[[ "$CHANNEL" == "stable" || "$CHANNEL" == "beta" ]] || fail "channel must be stable or beta"
+if [[ "$VERSION_ARG" == *-beta ]]; then
+  CHANNEL="beta"
+fi
 TAG="v$VERSION"
 ASSET="spotifydj-device-$TAG.bin"
 MANIFEST="firmware_manifest.json"
+if [[ "$CHANNEL" == "beta" ]]; then
+  TAG="v$VERSION-beta"
+  ASSET="spotifydj-device-beta-v$VERSION.bin"
+  MANIFEST="firmware_manifest_beta.json"
+fi
 RELEASE_DIR="release"
 FIRMWARE_RELEASE_REPO="${FIRMWARE_RELEASE_REPO:-pcvantol/spotify-dj-firmware}"
 PIO_BIN="${PIO_BIN:-/Users/pcvantol/.platformio/penv/bin/pio}"
@@ -165,6 +184,7 @@ PIO_JOBS="${PIO_JOBS:-1}"
 echo "SpotifyDJ firmware release"
 echo "  version: $VERSION"
 echo "  tag:     $TAG"
+echo "  channel: $CHANNEL"
 echo "  asset:   $ASSET"
 echo "  dry-run: $DRY_RUN"
 
@@ -205,7 +225,7 @@ mkdir -p "$RELEASE_DIR"
 run cp "$FIRMWARE_BIN" "$RELEASE_DIR/$ASSET"
 SHA256="$(sha256_file "$RELEASE_DIR/$ASSET")"
 SIZE="$(file_size "$RELEASE_DIR/$ASSET")"
-write_manifest "$RELEASE_DIR/$MANIFEST" "$VERSION" "$ASSET" "$SHA256" "$SIZE"
+write_manifest "$RELEASE_DIR/$MANIFEST" "$VERSION" "$TAG" "$ASSET" "$SHA256" "$SIZE"
 
 run git add .
 run git commit -m "Release SpotifyDJ firmware $TAG"

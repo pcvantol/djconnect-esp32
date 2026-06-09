@@ -10,12 +10,14 @@ SpotifyDJ is not a Spotify Connect speaker/player. The ESP does not store Spotif
 - Shows current track/podcast, artist/show, duration and progress.
 - Scrolls long title and artist/show text once when the track changes.
 - Volume control through the encoder, web portal and Home Assistant command API, limited to `0-60`.
-- Play mode from the device main menu and Now Playing web portal: normal, shuffle, repeat once or repeat infinite.
+- Separate shuffle and repeat controls from the device main menu, Now Playing web portal and Home Assistant command API.
 - Language setting for the device UI, web portal and captive portal: English or Dutch.
 - Theme setting for the device and web portal: Auto, Dark or Light.
 - Log level setting from the device, web portal and Home Assistant command API: debug, info, warning or error. The default is info.
 - Playlist browser on the device and web portal to start playlists directly.
 - Current Song menu screen with album art download/cache.
+- Local Games menu with Pong, Asteroids and Flyer mini-games.
+- Help screen with button/encoder controls, shown once after initial Home Assistant pairing and available from the main menu.
 - Encoder short press on Now Playing: pause/resume.
 - Encoder long press on Now Playing: push-to-talk through Home Assistant Assist; release stops listening.
 - Top button short press: back in menus, otherwise next track.
@@ -23,7 +25,7 @@ SpotifyDJ is not a Spotify Connect speaker/player. The ESP does not store Spotif
 - Top button long press: open the menu.
 - Top button held for 10 seconds: restart/soft reset.
 - Encoder button + top button held for 10 seconds: factory reset when battery state allows it.
-- Menus for Current Song, Up Next, Playlists, Sound Outputs, Settings, About, Logs and Pong.
+- Menus for Current Song, Up Next, Playlists, Sound Outputs, Games, Help, Settings, About and Logs.
 - Mobile web portal with Now Playing, DJ-response simulation, album art, volume slider, outputs, queue, logs, diagnostics, settings, WiFi update and OTA upload.
 - Home Assistant pairing with mDNS discovery and device-token authentication.
 - BLE WiFi provisioning in setup mode for apps/flows that actively write credentials to the device.
@@ -162,11 +164,20 @@ Protected endpoints require `Authorization: Bearer <device_token>`:
 - `POST /api/device/forget`
 - `POST /api/device/dj_response`
 
-The legacy `POST /api/device/provision_spotify` compatibility route returns `410 Gone`. Playback credentials live in Home Assistant and are never accepted or stored by the ESP.
+Playback credentials live in Home Assistant and are never accepted or stored by the ESP.
 
-The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` supports both the original ESP-initiated HA pair request and a direct Home Assistant callback that supplies `ha_url` plus `device_token`. The direct callback only stores the token and lightweight settings such as Assist pipeline id and `device_language`/`language`; the main loop then immediately confirms the pairing through `/api/spotify_dj/status` and schedules an immediate playback status poll. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
+The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` accepts the Home Assistant callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`. The firmware stores only those backend URLs, Assist pipeline id and lightweight settings such as `device_language`/`language`. The main loop then confirms the pairing through `/api/spotify_dj/status` and schedules an immediate playback status poll. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
 
-Repeated direct callbacks with the same `ha_url` and `device_token` are treated as idempotent and do not reset pairing validation. Home Assistant should still avoid using `/api/device/pair` as a generic settings-sync endpoint after pairing; use `/api/device/command` for settings and the status response contract for state acknowledgements.
+Repeated direct callbacks with the same local/remote URLs and `device_token` are treated as idempotent and do not reset pairing validation. Home Assistant should still avoid using `/api/device/pair` as a generic settings-sync endpoint after pairing; use `/api/device/command` for settings and the status response contract for state acknowledgements.
+
+### Local And Cloud Home Assistant URLs
+
+The ESP supports a local-first/cloud-fallback route to Home Assistant:
+
+- `ha_local_url`: the LAN URL the ESP should try first, for example `http://homeassistant.local:8123`.
+- `ha_remote_url`: the optional Nabu Casa/cloud URL, for example `https://example.ui.nabu.casa`.
+
+Playback, status, PTT voice and DJ response requests use the active HA route. The firmware briefly probes the local URL and falls back to the remote URL when local HA is not reachable. This keeps normal LAN latency low while still allowing the device to work when it is on another WiFi network with internet access. If both URLs are missing, pairing is rejected.
 
 A Postman collection for these local ESP endpoints is available at `postman/SpotifyDJ ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
 
@@ -189,7 +200,7 @@ Physical PTT, from the Now Playing screen:
 
 The Current Song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
-Pong is a local mini game in the device menu. The score is shown in the title bar, the encoder moves the paddle, encoder long press restarts the game, wall bounces use a subtle cue, and the LED ring shows a dedicated bright-orange paddle position while Pong is active. When the screen turns off, Pong pauses so game sounds do not continue in the background.
+Games are local mini-games in the device menu. Pong shows score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Asteroids uses the encoder to move horizontally and the center button to shoot upward. Flyer uses the encoder to move vertically and the center button to shoot obstacles while flying left-to-right.
 
 Web portal PTT is a simulation button for testing the DJ-response path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant and displays/plays the returned DJ response just like the physical PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
 
@@ -275,7 +286,8 @@ Keep new provisioning writes in `ProvisioningController`, power/sleep/watchdog d
 - The ESP remains the local edge device for display, controls, LED ring, battery policy, speaker cues, microphone capture and playback of HA-provided DJ response audio. It must keep working when optional HA/web features are unused.
 - Push-to-talk uses the SpotifyDJ integration as the backend boundary: the ESP records WAV audio and uploads it to `/api/spotify_dj/voice`; the HA integration owns Assist/STT/TTS and returns DJ text plus optional audio URL. The ESP does not authenticate directly to Home Assistant core `/api/websocket`, call OpenAI directly or upload browser microphone audio.
 - Home Assistant pairing validity is a runtime state. Stored NVS pairing is not deleted automatically on HA 401/403/404, but the `H` indicator turns red, PTT/web PTT and playback proxy commands are disabled, and the UI instructs the user to reset pairing.
-- Spotify OAuth and other playback-backend credentials are never stored on the ESP. Legacy `sp_client`, `sp_refresh` and `sp_market` NVS keys are cleared at boot.
+- The device Settings menu includes `Change WiFi`, which restarts into the setup/captive portal while preserving the stored Home Assistant pairing token. Use Factory reset or Reset Home Assistant pairing when pairing should be removed.
+- Spotify OAuth and other playback-backend credentials are never stored on the ESP.
 - Long network operations are bounded by explicit timeout policy and tracked through `NetworkActivity`; UI/input responsiveness should not depend on a blocking Spotify, HA, OTA or audio download call finishing quickly.
 - Pre-pairing bootstrap OTA is a safety net for freshly provisioned devices: after WiFi connects but before Home Assistant pairing, release firmware checks the public GitHub firmware release manifest and updates itself if a newer release exists. Local `dev` / `vdev` firmware is intentionally excluded from this automatic path.
 - Web portal polling is visibility-aware for logs, queue, playlist and sound-output data. Keep root/status/log API responses uncached, but cache embedded static assets with explicit cache headers.
@@ -335,7 +347,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 2.9.29 --dry-run` validates the release plan without touching files. Both `2.9.29` and `v2.9.29` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 2.9.30 --dry-run` validates the release plan without touching files. Both `2.9.30` and `v2.9.30` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
@@ -398,6 +410,6 @@ NVS encryption status:
 
 - Playback controls do nothing: check Home Assistant pairing, the HA integration command endpoint, backend authorization and the active output.
 - No Home Assistant pairing code: check the web portal pairing banner, mDNS discovery and `/api/device/pairing-info`.
-- PTT fails: check Home Assistant pairing, `ha_url`, `device_token`, the HA integration `/api/spotify_dj/voice` handler and HA Assist/TTS logs. The ESP should not report `Assist auth_invalid`; Assist WebSocket authentication belongs on the HA integration side.
+- PTT fails: check Home Assistant pairing, `ha_local_url`/`ha_remote_url`, `device_token`, the HA integration `/api/spotify_dj/voice` handler and HA Assist/TTS logs. The ESP should not report `Assist auth_invalid`; Assist WebSocket authentication belongs on the HA integration side.
 - OTA fails: check battery/charging state, firmware URL, device type and network reachability.
 - Device becomes sluggish: check logs for `Responsiveness: slow loop`, `free_heap`, `min_free_heap` and `largest_block`.

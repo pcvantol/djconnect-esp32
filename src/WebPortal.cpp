@@ -207,11 +207,23 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     input.volume-slider { accent-color:var(--orange); }
     .volume-value, .volume-label { color:var(--orange); }
     button { background:#1f8c46; border-color:#31c36a; color:#f3fff7; font-weight:700; cursor:pointer; box-shadow:inset 0 -1px 0 rgba(0,0,0,.25); }
-    .playback-actions button::before { display:inline-block; min-width:16px; margin-right:7px; font-weight:900; }
-    #previousButton::before { content:"⏮"; }
-    #nextButton::before { content:"⏭"; }
-    #playButton::before { content:"▶"; }
-    #pauseButton::before { content:"⏸"; }
+    .compact-actions { display:grid; grid-template-columns:repeat(4, minmax(0, auto)); justify-content:start; gap:8px; }
+    button.icon-button { width:auto; min-width:0; min-height:38px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:7px 10px; white-space:nowrap; }
+    .css-icon { position:relative; display:inline-block; width:14px; height:14px; flex:0 0 14px; }
+    .css-icon.play::before,
+    .css-icon.next::before,
+    .css-icon.next::after,
+    .css-icon.previous::before,
+    .css-icon.previous::after { content:""; position:absolute; top:1px; width:0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; }
+    .css-icon.play::before { left:3px; border-left:9px solid currentColor; }
+    .css-icon.next::before { left:1px; border-left:7px solid currentColor; }
+    .css-icon.next::after { left:7px; border-left:7px solid currentColor; }
+    .css-icon.previous::before { right:1px; border-right:7px solid currentColor; }
+    .css-icon.previous::after { right:7px; border-right:7px solid currentColor; }
+    .css-icon.pause::before,
+    .css-icon.pause::after { content:""; position:absolute; top:1px; width:4px; height:12px; border-radius:1px; background:currentColor; }
+    .css-icon.pause::before { left:2px; }
+    .css-icon.pause::after { right:2px; }
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
     button.warning { background:#a57912; border-color:#d6a329; color:#fff3c4; }
     button.firmware { background:#6f3bd8; border-color:#9b72ff; color:#f4edff; }
@@ -222,6 +234,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.danger { background:#3a1714; border-color:#632b25; color:#ffd1c9; }
     .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .playback-actions { margin-top:12px; }
+    .playback-mode-controls { margin-top:10px; }
     .queue { display:grid; gap:8px; }
     .queue-item { border-top:1px solid var(--row-line); padding-top:8px; }
     .queue-item:first-child { border-top:0; padding-top:0; }
@@ -251,7 +264,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .pair-banner .pair-code { display:inline-block; margin-left:4px; padding:2px 7px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.22); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.08em; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--log-bg); color:var(--log-text); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
-    @media (max-width:420px) { button.ptt { width:100%; } }
+    @media (max-width:420px) { button.ptt { width:100%; } .compact-actions { grid-template-columns:1fr 1fr; } button.icon-button { width:100%; } }
   </style>
 </head>
 <body>
@@ -278,20 +291,26 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       </div>
       <div class="bar"><i id="progressBar"></i></div>
       <div class="row"><span class="key" data-i18n="time">Time</span><span id="time" class="value">-</span></div>
-      <div class="two playback-actions">
-        <button id="previousButton" type="button">Previous song</button>
-        <button id="nextButton" type="button">Next song</button>
+      <div class="playback-actions compact-actions">
+        <button id="previousButton" class="icon-button" type="button"><span class="css-icon previous"></span><span data-i18n="previous">Previous song</span></button>
+        <button id="playButton" class="icon-button" type="button"><span class="css-icon play"></span><span data-i18n="play">Play</span></button>
+        <button id="pauseButton" class="icon-button" type="button"><span class="css-icon pause"></span><span data-i18n="pause">Pause</span></button>
+        <button id="nextButton" class="icon-button" type="button"><span class="css-icon next"></span><span data-i18n="next">Next song</span></button>
       </div>
-      <div class="two playback-actions">
-        <button id="playButton" type="button">Play</button>
-        <button id="pauseButton" type="button">Pause</button>
+      <div class="two playback-mode-controls">
+        <label data-i18n-label="shuffle">Shuffle
+          <select id="shuffleMode">
+            <option value="off" data-i18n="shuffleOff">Shuffle off</option><option value="on" data-i18n="shuffleOn">Shuffle on</option>
+          </select>
+        </label>
+        <label data-i18n-label="repeat">Repeat
+          <select id="repeatMode">
+            <option value="off" data-i18n="repeatOff">Repeat off</option><option value="track" data-i18n="repeatOnce">Repeat once</option><option value="context" data-i18n="repeatInfinite">Repeat infinite</option>
+          </select>
+        </label>
       </div>
-      <label data-i18n-label="playMode">Play mode
-        <select id="playMode">
-          <option value="normal" data-i18n="noShuffle">No shuffle</option><option value="shuffle" data-i18n="shuffle">Shuffle</option><option value="repeat_once" data-i18n="repeatOnce">Repeat once</option><option value="repeat_infinite" data-i18n="repeatInfinite">Repeat infinite</option>
-        </select>
-      </label>
-      <div id="playModeStatus" class="status"></div>
+      <div id="shuffleStatus" class="status"></div>
+      <div id="repeatStatus" class="status"></div>
       <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start SpotifyDJ Liked Proxy</button>
       <div id="playbackCommandStatus" class="status"></div>
       <div class="row"><span class="key" data-i18n="output">Sound output</span><span id="device" class="value">-</span></div>
@@ -500,9 +519,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", loadingQueue:"Loading queue...",
         playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", settings:"Settings",
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
-        language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error", playMode:"Play mode", noShuffle:"No shuffle",
+        language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error",
         timeout30s:"30 seconds", timeout1m:"1 minute", timeout2m:"2 minutes", timeout4m:"4 minutes", timeout5m:"5 minutes", timeout15m:"15 minutes", timeout30m:"30 minutes", timeout60m:"60 minutes",
-        shuffle:"Shuffle", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", saveSettings:"Save settings", settingsFine:"Screen turns off after the selected idle timeout. LED ring follows the screen power state.",
+        shuffle:"Shuffle", shuffleOff:"Shuffle off", shuffleOn:"Shuffle on", repeat:"Repeat", repeatOff:"Repeat off", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", saveSettings:"Save settings", settingsFine:"Screen turns off after the selected idle timeout. LED ring follows the screen power state.",
         wifi:"WiFi", state:"State", newWifiSsid:"New WiFi SSID", newWifiPassword:"New WiFi password", wifiButton:"Test WiFi & restart device",
         wifiFine:"The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.",
         wifiPasswordPlaceholder:"leave blank to keep current",
@@ -535,9 +554,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
-        language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout", playMode:"Speelmodus", noShuffle:"Geen shuffle",
+        language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout",
         timeout30s:"30 seconden", timeout1m:"1 minuut", timeout2m:"2 minuten", timeout4m:"4 minuten", timeout5m:"5 minuten", timeout15m:"15 minuten", timeout30m:"30 minuten", timeout60m:"60 minuten",
-        shuffle:"Shuffle", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", saveSettings:"Instellingen opslaan", settingsFine:"Scherm gaat uit na de ingestelde inactiviteit. LED-ring volgt de schermstatus.",
+        shuffle:"Shuffle", shuffleOff:"Shuffle uit", shuffleOn:"Shuffle aan", repeat:"Herhalen", repeatOff:"Herhalen uit", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", saveSettings:"Instellingen opslaan", settingsFine:"Scherm gaat uit na de ingestelde inactiviteit. LED-ring volgt de schermstatus.",
         wifi:"WiFi", state:"Status", newWifiSsid:"Nieuwe WiFi SSID", newWifiPassword:"Nieuw WiFi wachtwoord", wifiButton:"Test WiFi & herstart device",
         wifiFine:"Het device test de nieuwe WiFi nadat deze pagina antwoord krijgt. Bij succes worden credentials opgeslagen en herstart het device.",
         wifiPasswordPlaceholder:"leeg laten om huidige te behouden",
@@ -687,13 +706,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     function setSpotifyControlsEnabled(enabled) {
       spotifyControlsEnabled = !!enabled;
-      for (const id of ["previousButton", "nextButton", "playButton", "pauseButton", "playMode", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
+      for (const id of ["previousButton", "nextButton", "playButton", "pauseButton", "shuffleMode", "repeatMode", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
         $(id).disabled = !spotifyControlsEnabled;
       }
       if (!spotifyControlsEnabled) {
         $("soundOutputStatus").textContent = "";
         $("playbackCommandStatus").textContent = "";
-        $("playModeStatus").textContent = "";
+        $("shuffleStatus").textContent = "";
+        $("repeatStatus").textContent = "";
         $("volumeStatus").textContent = "";
         $("soundOutputSelect").innerHTML = `<option value="none">${tr("none")}</option><option value="iPhone">iPhone</option>`;
         $("playlistSelect").innerHTML = `<option value="">${tr("spotifyUnavailable")}</option>`;
@@ -769,7 +789,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setInput("language", currentLanguage);
       setInput("theme", data.settings.theme || "dark");
       setInput("logLevel", data.settings.logLevel || "info");
-      setInput("playMode", data.playback.playMode || "normal");
+      setInput("shuffleMode", data.playback.shuffle ? "on" : "off");
+      setInput("repeatMode", data.playback.repeatState || "off");
     }
     async function refresh() {
       const response = await fetch("/api/status", { cache: "no-store" });
@@ -788,7 +809,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         text("haMdnsUrl", info.device_id ? `http://${info.device_id}.local` : "-");
         text("haFirmware", info.firmware || "-");
         text("haModel", info.model || "-");
-        text("haUrl", info.ha_url || "-");
+        text("haUrl", info.ha_active_url || info.ha_local_url || info.ha_remote_url || "-");
         text("haStatus", "");
         if (homeAssistantRuntimePaired) {
           $("haPairBanner").style.display = "none";
@@ -989,11 +1010,18 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("settingsStatus").textContent = await response.text();
       refresh();
     });
-    $("playMode").addEventListener("change", async () => {
-      $("playModeStatus").textContent = tr("refreshing");
-      const body = new URLSearchParams({ playMode: $("playMode").value });
-      const response = await fetch("/api/play-mode", { method:"POST", body });
-      $("playModeStatus").textContent = await response.text();
+    $("shuffleMode").addEventListener("change", async () => {
+      $("shuffleStatus").textContent = tr("refreshing");
+      const body = new URLSearchParams({ enabled: $("shuffleMode").value });
+      const response = await fetch("/api/shuffle", { method:"POST", body });
+      $("shuffleStatus").textContent = await response.text();
+      await refresh();
+    });
+    $("repeatMode").addEventListener("change", async () => {
+      $("repeatStatus").textContent = tr("refreshing");
+      const body = new URLSearchParams({ repeat: $("repeatMode").value });
+      const response = await fetch("/api/repeat", { method:"POST", body });
+      $("repeatStatus").textContent = await response.text();
       await refresh();
     });
     $("wifiForm").addEventListener("submit", async event => {
@@ -1158,7 +1186,8 @@ void WebPortal::configureRoutes() {
   server_.on("/api/status", HTTP_GET, [this]() { handleStatusJson(); });
   server_.on("/api/logs", HTTP_GET, [this]() { handleLogsText(); });
   server_.on("/api/settings", HTTP_POST, [this]() { handleSettingsPost(); });
-  server_.on("/api/play-mode", HTTP_POST, [this]() { handlePlayModePost(); });
+  server_.on("/api/shuffle", HTTP_POST, [this]() { handleShufflePost(); });
+  server_.on("/api/repeat", HTTP_POST, [this]() { handleRepeatPost(); });
   server_.on("/api/wifi", HTTP_POST, [this]() { handleWifiPost(); });
   server_.on("/api/volume", HTTP_POST, [this]() { handleVolumePost(); });
   server_.on("/api/devices", HTTP_GET, [this]() { handleDevicesJson(); });
@@ -1206,7 +1235,6 @@ void WebPortal::handleStatusJson() {
   playback["albumImageUrl"] = playback_->albumImageUrl;
   playback["shuffle"] = playback_->shuffle;
   playback["repeatState"] = playback_->repeatState;
-  playback["playMode"] = Logic::playModeFromSpotifyState(playback_->shuffle, playback_->repeatState.c_str());
   playback["progressMs"] = estimatedProgressMs();
   playback["durationMs"] = playback_->durationMs;
   playback["progressPercent"] = playback_->durationMs > 0
@@ -1270,7 +1298,6 @@ void WebPortal::handleStatusJson() {
   spotify["status"] = !spotify_->isAuthorized() || playbackError
                           ? "error"
                           : !playback_->hasPlayback ? "idle" : "ok";
-  spotify["tokenExpiresInSec"] = spotify_->accessTokenExpiresInSeconds();
   spotify["error"] = playback_->error;
 
   JsonObject ha = doc["ha"].to<JsonObject>();
@@ -1358,9 +1385,9 @@ void WebPortal::handleSettingsPost() {
   server_.send(200, "text/plain", "Settings saved");
 }
 
-void WebPortal::handlePlayModePost() {
-  if (!server_.hasArg("playMode")) {
-    server_.send(400, "text/plain", "Missing play mode");
+void WebPortal::handleShufflePost() {
+  if (!server_.hasArg("enabled")) {
+    server_.send(400, "text/plain", "Missing shuffle value");
     return;
   }
   if (spotify_ == nullptr || !spotify_->isAuthorized()) {
@@ -1368,16 +1395,45 @@ void WebPortal::handlePlayModePost() {
     return;
   }
 
-  const String playMode = server_.arg("playMode");
-  AppLog.print("Web playback: play mode ");
-  AppLog.println(playMode);
-  if (!spotify_->setPlayMode(playMode)) {
-    AppLog.print("Web playback: play mode failed: ");
+  const String value = server_.arg("enabled");
+  const bool enabled = value == "on" || value == "true" || value == "1";
+  AppLog.print("Web playback: shuffle ");
+  AppLog.println(enabled ? "on" : "off");
+  if (!spotify_->setShuffle(enabled)) {
+    AppLog.print("Web playback: shuffle failed: ");
     AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
-    server_.send(500, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Play mode failed" : playback_->error);
+    server_.send(500, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Shuffle failed" : playback_->error);
     return;
   }
-  server_.send(200, "text/plain", Logic::playModeLabel(playMode.c_str()));
+  server_.send(200, "text/plain", localizedText(enabled ? "Shuffle on" : "Shuffle off", enabled ? "Shuffle aan" : "Shuffle uit"));
+}
+
+void WebPortal::handleRepeatPost() {
+  if (!server_.hasArg("repeat")) {
+    server_.send(400, "text/plain", "Missing repeat value");
+    return;
+  }
+  if (spotify_ == nullptr || !spotify_->isAuthorized()) {
+    server_.send(409, "text/plain", localizedText("Playback not connected", "Afspelen niet verbonden"));
+    return;
+  }
+
+  const String repeat = server_.arg("repeat");
+  AppLog.print("Web playback: repeat ");
+  AppLog.println(repeat);
+  if (!spotify_->setRepeatMode(repeat)) {
+    AppLog.print("Web playback: repeat failed: ");
+    AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
+    server_.send(500, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Repeat failed" : playback_->error);
+    return;
+  }
+  if (repeat == "track") {
+    server_.send(200, "text/plain", localizedText("Repeat once", "Eenmaal herhalen"));
+  } else if (repeat == "context") {
+    server_.send(200, "text/plain", localizedText("Repeat infinite", "Oneindig herhalen"));
+  } else {
+    server_.send(200, "text/plain", localizedText("Repeat off", "Herhalen uit"));
+  }
 }
 
 void WebPortal::handleWifiPost() {

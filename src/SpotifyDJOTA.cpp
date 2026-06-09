@@ -122,6 +122,7 @@ bool SpotifyDJOTA::performUpdate(
   WiFiClientSecure secureClient;
   // Firmware authenticity is enforced with the manifest SHA256 below.
   secureClient.setInsecure();
+  secureClient.setTimeout(Config::OtaIoTimeoutMs);
 
   const bool begun = http.begin(secureClient, request.url);
   if (!begun) {
@@ -186,6 +187,7 @@ bool SpotifyDJOTA::performUpdate(
         failWithCue();
         return false;
       }
+      delay(10);
       continue;
     }
 

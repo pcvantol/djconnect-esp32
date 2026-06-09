@@ -136,7 +136,7 @@ Keep concerns separated:
 - `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
 - `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
 - User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated. Loglevel UI labels still need translated strings.
-- App logs are centrally formatted as `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`. Do not manually add timestamps, severity labels, or `[SpotifyDJ]` to new log messages; the central logger strips that legacy prefix when it appears at the start of older callsites.
+- App logs are centrally formatted as `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`. Do not manually add timestamps, severity labels, or `[SpotifyDJ]` to new log messages; the central logger strips that prefix when it appears at the start of older callsites.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.
 
@@ -151,7 +151,7 @@ The HA custom integration uses:
 - ESP OTA endpoint: `POST /api/device/ota`
 - ESP DJ response endpoint: `POST /api/device/dj_response`
 
-Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state and LED state. Keep both top-level compatibility fields and the nested `settings`, `screen` and `led` objects unless the HA integration contract is changed in lockstep. Required compatibility names include `ha_pairing_status`, `local_url`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
+Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state and LED state. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `ha_pairing_status`, `local_url`, `ha_local_url`, `ha_remote_url`, `ha_active_url`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
 
 For `/api/spotify_dj/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404 means stale pairing. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
 
@@ -161,7 +161,6 @@ Local ESP endpoints currently include:
 - `GET /api/device/pairing-info`
 - `POST /api/device/pair`
 - `POST /api/device/dj_response`
-- `POST /api/device/provision_spotify` compatibility stub returning `410 Gone`
 
 DJ response playback rules:
 
@@ -180,7 +179,7 @@ Protected local endpoints must require `Authorization: Bearer <device_token>`. O
 
 HA may provision UI language through `device_language` with `language` as fallback. Accept only `en` and `nl`, save valid values to `provision.language`, and apply them at runtime when possible. Ignore unknown language values without changing local menu-selected language.
 
-Do not store Spotify OAuth credentials, Sonos credentials or any playback-backend secrets on the ESP. Home Assistant owns backend credentials and translates generic ESP playback commands into backend-specific actions. Legacy NVS keys `sp_client`, `sp_refresh` and `sp_market` must be cleared, not reused. The web portal and captive portal must not expose refresh-token/client-id forms.
+Do not store Spotify OAuth credentials, Sonos credentials or any playback-backend secrets on the ESP. Home Assistant owns backend credentials and translates generic ESP playback commands into backend-specific actions. The web portal and captive portal must not expose refresh-token/client-id forms.
 
 mDNS:
 
@@ -222,12 +221,10 @@ NVS namespaces:
 
 `spotifydj` keys:
 
-- `ha_url`
+- `ha_local_url`
+- `ha_remote_url`
 - `device_token`
 - `device_name`
-- `sp_client` legacy key, cleared by firmware
-- `sp_refresh` legacy key, cleared by firmware
-- `sp_market` legacy key, cleared by firmware
 - `fw_channel`
 - `assist_pipe`
 
@@ -289,7 +286,8 @@ When WiFi is configured but Home Assistant is not paired:
 - Consume top-button press/hold/long-click UI events in pairing mode so holding the top button for the 10-second soft reset never flashes the normal menu first.
 - Soft reset and hard reset must remain available through the reset monitor.
 - The pairing code should also be available in Serial logging and the web pairing panel.
-- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token. `/api/device/pair` may receive a direct HA callback with `ha_url` and `device_token`; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/spotify_dj/status`; playback proxy commands must stay disabled until that authenticated status call succeeds.
+- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token. `/api/device/pair` may receive a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/spotify_dj/status`; playback proxy commands must stay disabled until that authenticated status call succeeds.
+- HA calls from ESP use a local-first/cloud-fallback resolver: probe `ha_local_url`, then use `ha_remote_url` when local HA is not reachable. This is for ESP→HA outbound requests only; do not assume Nabu Casa can reach ESP local endpoints directly.
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
 
@@ -401,14 +399,18 @@ Spotify volume is intentionally capped:
 - LED ring treats `60` as full.
 - Disable Spotify volume controls when there is no active playback or the active output does not support volume.
 
-Play mode is controlled through `SpotifyClient::setPlayMode()`:
+Shuffle and repeat are separate controls:
 
-- `normal`: shuffle off, repeat off.
-- `shuffle`: shuffle on, repeat off.
-- `repeat_once`: shuffle off, repeat track.
-- `repeat_infinite`: shuffle off, repeat context.
-- Do not expose Smart Shuffle unless Spotify adds a public Web API control for it; regular shuffle is the only supported shuffle command today.
-- Keep the device main menu and Now Playing web control labels aligned when changing these modes.
+- Device menu and web portal expose separate Shuffle and Repeat controls.
+- Home Assistant should use `set_shuffle` with boolean `value`.
+- Home Assistant should use `set_repeat` with `value` `off`, `track` or `context`.
+- Do not reintroduce a combined `set_play_mode` command or Smart Shuffle; regular shuffle is the only supported shuffle command today.
+- Keep device menu, web labels and HA command names aligned when changing these modes.
+
+Local games are intentionally local-only:
+
+- `Games` in the root menu opens Pong, Asteroids and Flyer.
+- Game input/rendering belongs in `SpotifyDJApp` and `DisplayManager`; do not route game state through Home Assistant.
 
 Built-in speaker cue volume is separate from Spotify volume:
 
@@ -438,7 +440,7 @@ The web portal is intended to be usable on mobile. Keep controls responsive and 
 
 Current web expectations:
 
-- Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and HA URL/status.
+- Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and active HA URL/status.
 - The Home Assistant pairing banner setup link must open in a new tab/window so the local ESP web portal remains loaded.
 - The top web status bar is right-aligned and follows the device order: H, M, S, WiFi signal bars, CSS battery icon. Keep the IP address in the WiFi block, not in the top status bar.
 - The Home Assistant URL label in the web portal is `URL`, not `HA URL`.

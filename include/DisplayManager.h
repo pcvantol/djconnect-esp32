@@ -58,6 +58,12 @@ public:
   // Renders the tiny Pong mini game screen.
   void renderPongScreen(int paddleY, int ballX, int ballY, int score, bool missFlash, const StatusNotice &notice);
 
+  // Renders the local Asteroids-style mini game.
+  void renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, bool hitFlash, const StatusNotice &notice);
+
+  // Renders the local side-scrolling plane mini game.
+  void renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, bool hitFlash, const StatusNotice &notice);
+
   // Renders the 160x160 current-song album art view.
   void renderAlbumArtScreen(
       const SpotifyState &playback,
@@ -156,6 +162,10 @@ private:
 
   template <typename Canvas>
   void renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, bool missFlash, const StatusNotice &notice);
+  template <typename Canvas>
+  void renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, bool hitFlash, const StatusNotice &notice);
+  template <typename Canvas>
+  void renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, bool hitFlash, const StatusNotice &notice);
 
   template <typename Canvas>
   String clippedText(Canvas &canvas, String text, int maxWidth, uint8_t font);

@@ -270,6 +270,28 @@ void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int sco
   renderPong(tft_, paddleY, ballX, ballY, score, missFlash, notice);
 }
 
+void DisplayManager::renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, bool hitFlash, const StatusNotice &notice) {
+  if (screenBufferReady_) {
+    screen_.fillSprite(TFT_BLACK);
+    renderAsteroids(screen_, shipX, shipY, asteroidX, asteroidY, bulletY, bulletActive, score, hitFlash, notice);
+    screen_.pushSprite(0, 0);
+    return;
+  }
+  tft_.fillScreen(TFT_BLACK);
+  renderAsteroids(tft_, shipX, shipY, asteroidX, asteroidY, bulletY, bulletActive, score, hitFlash, notice);
+}
+
+void DisplayManager::renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, bool hitFlash, const StatusNotice &notice) {
+  if (screenBufferReady_) {
+    screen_.fillSprite(TFT_BLACK);
+    renderFlyer(screen_, planeY, obstacleX, obstacleY, shotX, shotActive, score, hitFlash, notice);
+    screen_.pushSprite(0, 0);
+    return;
+  }
+  tft_.fillScreen(TFT_BLACK);
+  renderFlyer(tft_, planeY, obstacleX, obstacleY, shotX, shotActive, score, hitFlash, notice);
+}
+
 void DisplayManager::renderAlbumArtScreen(
     const SpotifyState &playback,
     const StatusNotice &notice,
@@ -862,6 +884,59 @@ void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ball
   canvas.fillRoundRect(18, paddleY, 8, 34, 3, TFT_GREEN);
   canvas.fillCircle(ballX, ballY, 4, TFT_ORANGE);
   if (missFlash) {
+    canvas.drawRect(0, 0, 320, 170, TFT_RED);
+    canvas.drawRect(1, 1, 318, 168, TFT_RED);
+  }
+  drawMenuFooter(canvas, notice);
+}
+
+template <typename Canvas>
+void DisplayManager::renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, bool hitFlash, const StatusNotice &notice) {
+  canvas.setTextDatum(TL_DATUM);
+  canvas.fillScreen(TFT_BLACK);
+  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.drawString(I18n::text("asteroids"), 8, 5, 2);
+  const String scoreText = String("Score ") + String(score);
+  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
+  canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
+  canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
+  canvas.drawLine(shipX, shipY - 12, shipX - 10, shipY + 10, TFT_GREEN);
+  canvas.drawLine(shipX, shipY - 12, shipX + 10, shipY + 10, TFT_GREEN);
+  canvas.drawLine(shipX - 10, shipY + 10, shipX + 10, shipY + 10, TFT_GREEN);
+  canvas.drawCircle(asteroidX, asteroidY, 12, TFT_ORANGE);
+  canvas.drawLine(asteroidX - 8, asteroidY - 4, asteroidX - 2, asteroidY - 12, TFT_ORANGE);
+  canvas.drawLine(asteroidX + 3, asteroidY + 11, asteroidX + 10, asteroidY + 3, TFT_ORANGE);
+  if (bulletActive) {
+    canvas.fillRoundRect(shipX - 2, bulletY, 4, 10, 2, TFT_YELLOW);
+  }
+  if (hitFlash) {
+    canvas.drawRect(0, 0, 320, 170, TFT_RED);
+    canvas.drawRect(1, 1, 318, 168, TFT_RED);
+  }
+  drawMenuFooter(canvas, notice);
+}
+
+template <typename Canvas>
+void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, bool hitFlash, const StatusNotice &notice) {
+  canvas.setTextDatum(TL_DATUM);
+  canvas.fillScreen(TFT_BLACK);
+  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.drawString(I18n::text("flyer"), 8, 5, 2);
+  const String scoreText = String("Score ") + String(score);
+  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
+  canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
+  canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
+  const int planeX = 42;
+  canvas.fillTriangle(planeX + 18, planeY, planeX - 12, planeY - 10, planeX - 12, planeY + 10, TFT_GREEN);
+  canvas.drawLine(planeX - 4, planeY, planeX - 22, planeY - 18, TFT_GREEN);
+  canvas.drawLine(planeX - 4, planeY, planeX - 22, planeY + 18, TFT_GREEN);
+  canvas.fillRect(obstacleX - 8, obstacleY - 16, 16, 32, TFT_ORANGE);
+  canvas.drawCircle(obstacleX, obstacleY - 22, 5, TFT_DARKGREY);
+  canvas.drawCircle(obstacleX, obstacleY + 22, 5, TFT_DARKGREY);
+  if (shotActive) {
+    canvas.fillRoundRect(shotX, planeY - 2, 14, 4, 2, TFT_YELLOW);
+  }
+  if (hitFlash) {
     canvas.drawRect(0, 0, 320, 170, TFT_RED);
     canvas.drawRect(1, 1, 318, 168, TFT_RED);
   }

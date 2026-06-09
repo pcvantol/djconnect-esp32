@@ -17,13 +17,16 @@ constexpr size_t LanguageOptionCount = SpotifyDJMenuModel::LanguageOptionCount;
 constexpr size_t ThemeOptionCount = SpotifyDJMenuModel::ThemeOptionCount;
 constexpr size_t LogLevelOptionCount = SpotifyDJMenuModel::LogLevelOptionCount;
 constexpr size_t SpeakerVolumeOptionCount = SpotifyDJMenuModel::SpeakerVolumeOptionCount;
-constexpr size_t PlayModeOptionCount = SpotifyDJMenuModel::PlayModeOptionCount;
+constexpr size_t ShuffleOptionCount = SpotifyDJMenuModel::ShuffleOptionCount;
+constexpr size_t RepeatOptionCount = SpotifyDJMenuModel::RepeatOptionCount;
 constexpr size_t SleepTimeoutOptionCount = SpotifyDJMenuModel::SleepTimeoutOptionCount;
 constexpr size_t ConfirmOptionCount = SpotifyDJMenuModel::ConfirmOptionCount;
 constexpr size_t HardResetOptionCount = SpotifyDJMenuModel::HardResetOptionCount;
 constexpr size_t WifiFailureOptionCount = SpotifyDJMenuModel::WifiFailureOptionCount;
 constexpr size_t SettingsItemCount = SpotifyDJMenuModel::SettingsItemCount;
 constexpr size_t RootMenuItemCount = SpotifyDJMenuModel::RootMenuItemCount;
+constexpr size_t GamesItemCount = SpotifyDJMenuModel::GamesItemCount;
+constexpr size_t HelpItemCount = SpotifyDJMenuModel::HelpItemCount;
 constexpr size_t AboutItemCount = SpotifyDJMenuModel::AboutItemCount;
 constexpr size_t MaxVisibleOutputs = SpotifyDJMenuModel::MaxVisibleOutputs;
 
@@ -40,8 +43,9 @@ String themeValue(size_t index);
 String themeLabel(const String &theme);
 String logLevelValue(size_t index);
 String logLevelLabel(const String &level);
-String playModeValue(size_t index);
-String playModeLabel(const String &mode);
-String currentPlayModeValue(const SpotifyState &playback);
+bool shuffleValue(size_t index);
+String shuffleLabel(bool enabled);
+String repeatValue(size_t index);
+String repeatLabel(const String &repeatState);
 
 }  // namespace SpotifyDJMenu

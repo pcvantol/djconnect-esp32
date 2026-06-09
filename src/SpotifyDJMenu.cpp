@@ -66,16 +66,26 @@ String logLevelLabel(const String &level) {
   return I18n::text("log_level_info");
 }
 
-String playModeValue(size_t index) {
-  return SpotifyDJMenuModel::playModeValue(index);
+bool shuffleValue(size_t index) {
+  return SpotifyDJMenuModel::shuffleValue(index);
 }
 
-String playModeLabel(const String &mode) {
-  return Logic::playModeLabel(mode.c_str());
+String shuffleLabel(bool enabled) {
+  return I18n::text(enabled ? "shuffle_on" : "shuffle_off");
 }
 
-String currentPlayModeValue(const SpotifyState &playback) {
-  return Logic::playModeFromSpotifyState(playback.shuffle, playback.repeatState.c_str());
+String repeatValue(size_t index) {
+  return SpotifyDJMenuModel::repeatValue(index);
+}
+
+String repeatLabel(const String &repeatState) {
+  if (repeatState == "track" || repeatState == "repeat_once") {
+    return I18n::text("repeat_once");
+  }
+  if (repeatState == "context" || repeatState == "repeat_infinite") {
+    return I18n::text("repeat_infinite");
+  }
+  return I18n::text("repeat_off");
 }
 
 }  // namespace SpotifyDJMenu

@@ -53,6 +53,29 @@ inline int firstInt(JsonVariantConst payload, const char *primary, const char *s
   return fallback;
 }
 
+inline bool firstBool(JsonVariantConst payload, const char *primary, const char *secondary, bool fallback) {
+  if (payload[primary].is<bool>()) {
+    return payload[primary].as<bool>();
+  }
+  if (secondary != nullptr && payload[secondary].is<bool>()) {
+    return payload[secondary].as<bool>();
+  }
+  if (payload[primary].is<int>()) {
+    return payload[primary].as<int>() != 0;
+  }
+  if (secondary != nullptr && payload[secondary].is<int>()) {
+    return payload[secondary].as<int>() != 0;
+  }
+  const String raw = firstString(payload, primary, secondary);
+  if (raw == "true" || raw == "on" || raw == "1") {
+    return true;
+  }
+  if (raw == "false" || raw == "off" || raw == "0") {
+    return false;
+  }
+  return fallback;
+}
+
 // Parses Home Assistant native command payloads posted to /api/device/command.
 inline DeviceCommand parse(JsonVariantConst payload) {
   DeviceCommand command;
@@ -76,6 +99,12 @@ inline DeviceCommand parse(JsonVariantConst payload) {
   } else if (commandNameEquals(name, "start_playlist")) {
     command.type = DeviceCommandType::StartPlaylist;
     command.value = firstString(payload, "value", "playlist", "uri");
+  } else if (commandNameEquals(name, "set_shuffle") || commandNameEquals(name, "shuffle")) {
+    command.type = DeviceCommandType::Shuffle;
+    command.numericValue = firstBool(payload, "value", "shuffle", false) ? 1 : 0;
+  } else if (commandNameEquals(name, "set_repeat") || commandNameEquals(name, "repeat")) {
+    command.type = DeviceCommandType::Repeat;
+    command.value = firstString(payload, "value", "repeat", "repeat_state");
   } else if (commandNameEquals(name, "screen_brightness") || commandNameEquals(name, "set_brightness")) {
     command.type = DeviceCommandType::ScreenBrightness;
     command.numericValue = firstInt(payload, "value", "brightness", 100);

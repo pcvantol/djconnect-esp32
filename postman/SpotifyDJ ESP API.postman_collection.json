@@ -17,8 +17,13 @@
       "type": "secret"
     },
     {
-      "key": "ha_url",
+      "key": "ha_local_url",
       "value": "http://homeassistant.local:8123",
+      "type": "string"
+    },
+    {
+      "key": "ha_remote_url",
+      "value": "https://example.ui.nabu.casa",
       "type": "string"
     },
     {
@@ -55,7 +60,7 @@
                 "info"
               ]
             },
-            "description": "Returns device identity, firmware, model, pairing state, Spotify config state, battery, WiFi RSSI, HA URL and last DJ text. No bearer token required."
+            "description": "Returns device identity, firmware, model, pairing state, playback config state, battery, WiFi RSSI, active/local/remote HA URLs and last DJ text. No bearer token required."
           },
           "response": []
         },
@@ -96,7 +101,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ha_url\": \"{{ha_url}}\"\n}"
+              "raw": "{\n  \"device_token\": \"{{device_token}}\",\n  \"ha_local_url\": \"{{ha_local_url}}\",\n  \"ha_remote_url\": \"{{ha_remote_url}}\",\n  \"device_language\": \"nl\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/device/pair",
@@ -109,7 +114,7 @@
                 "pair"
               ]
             },
-            "description": "Asks the ESP to pair with the configured Home Assistant URL. The ESP posts its device id, pair code, firmware and local URL to HA."
+            "description": "Direct Home Assistant pairing callback. Stores the device token plus local/cloud HA URLs on the ESP."
           },
           "response": []
         },
@@ -139,7 +144,7 @@
                 "forget"
               ]
             },
-            "description": "Clears HA pairing and legacy local playback credentials, updates mDNS TXT records, then restarts into pairing mode."
+            "description": "Clears HA pairing, updates mDNS TXT records, then restarts into pairing mode."
           },
           "response": []
         }

@@ -102,6 +102,9 @@ static void testHomeAssistantStatusAliasContractNames() {
   const char *aliases[] = {
       "ha_pairing_status",
       "local_url",
+      "ha_local_url",
+      "ha_remote_url",
+      "ha_active_url",
       "brightness",
       "screen_brightness",
       "screen_brightness_percent",
@@ -379,9 +382,6 @@ static void testVoiceChunkHelpers() {
   assert(std::strcmp(Logic::voiceHttpFailureMessage(403), "HA authorization failed. Reset pairing and pair again.") == 0);
   assert(Logic::voiceHttpFailureMessage(500) == nullptr);
 
-  assert(Logic::preferencesKeyFits("sp_client"));
-  assert(Logic::preferencesKeyFits("sp_refresh"));
-  assert(Logic::preferencesKeyFits("sp_market"));
   assert(!Logic::preferencesKeyFits("spotify_client_id"));
   assert(!Logic::preferencesKeyFits("spotify_refresh_token"));
 
@@ -389,21 +389,6 @@ static void testVoiceChunkHelpers() {
   assert(!Logic::isBackendPlaylistContextUri("spotify:album:abc123"));
   assert(!Logic::isBackendPlaylistContextUri("spotify:playlist:"));
   assert(!Logic::isBackendPlaylistContextUri(nullptr));
-}
-
-static void testPlayModeMapping() {
-  assert(std::strcmp(Logic::playModeFromSpotifyState(false, "off"), "normal") == 0);
-  assert(std::strcmp(Logic::playModeFromSpotifyState(true, "off"), "shuffle") == 0);
-  assert(std::strcmp(Logic::playModeFromSpotifyState(false, "track"), "repeat_once") == 0);
-  assert(std::strcmp(Logic::playModeFromSpotifyState(true, "track"), "repeat_once") == 0);
-  assert(std::strcmp(Logic::playModeFromSpotifyState(false, "context"), "repeat_infinite") == 0);
-  assert(std::strcmp(Logic::playModeFromSpotifyState(false, nullptr), "normal") == 0);
-
-  assert(std::strcmp(Logic::playModeLabel("normal"), "No shuffle") == 0);
-  assert(std::strcmp(Logic::playModeLabel("shuffle"), "Shuffle") == 0);
-  assert(std::strcmp(Logic::playModeLabel("repeat_once"), "Repeat once") == 0);
-  assert(std::strcmp(Logic::playModeLabel("repeat_infinite"), "Repeat infinite") == 0);
-  assert(std::strcmp(Logic::playModeLabel("unexpected"), "No shuffle") == 0);
 }
 
 static void testLanguageCodeNormalization() {
@@ -454,6 +439,24 @@ static void testDeviceCommandParserPlaybackControls() {
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::StartPlaylist);
   assert(command.value == "spotify:playlist:abc");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_shuffle\",\"value\":true}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Shuffle);
+  assert(command.numericValue == 1);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"shuffle\",\"value\":\"off\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Shuffle);
+  assert(command.numericValue == 0);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_repeat\",\"value\":\"track\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Repeat);
+  assert(command.value == "track");
 }
 
 static void testDeviceCommandParserSettings() {
@@ -595,9 +598,11 @@ static void testSpotifyDJMenuItemCounts() {
   assert(SpotifyDJMenuModel::isMenuScreen(UiScreen::Settings));
   assert(SpotifyDJMenuModel::itemCount(UiScreen::NowPlaying, input) == 0);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::RootMenu, input) == SpotifyDJMenuModel::RootMenuItemCount);
-  assert(SpotifyDJMenuModel::RootMenuItemCount == 9);
+  assert(SpotifyDJMenuModel::RootMenuItemCount == 11);
+  assert(SpotifyDJMenuModel::itemCount(UiScreen::Help, input) == SpotifyDJMenuModel::HelpItemCount);
+  assert(SpotifyDJMenuModel::HelpItemCount == 8);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::Settings, input) == SpotifyDJMenuModel::SettingsItemCount);
-  assert(SpotifyDJMenuModel::SettingsItemCount == 13);
+  assert(SpotifyDJMenuModel::SettingsItemCount == 14);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::About, input) == SpotifyDJMenuModel::AboutItemCount);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::Playlists, input) == 1);
   assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 2);
@@ -641,11 +646,16 @@ static void testSpotifyDJMenuOptionValues() {
   assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(3), "error") == 0);
   assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(99), "info") == 0);
 
-  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(0), "normal") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(1), "shuffle") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(2), "repeat_once") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(3), "repeat_infinite") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::playModeValue(99), "normal") == 0);
+  assert(SpotifyDJMenuModel::ShuffleOptionCount == 2);
+  assert(!SpotifyDJMenuModel::shuffleValue(0));
+  assert(SpotifyDJMenuModel::shuffleValue(1));
+  assert(!SpotifyDJMenuModel::shuffleValue(99));
+
+  assert(SpotifyDJMenuModel::RepeatOptionCount == 3);
+  assert(std::strcmp(SpotifyDJMenuModel::repeatValue(0), "off") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::repeatValue(1), "track") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::repeatValue(2), "context") == 0);
+  assert(std::strcmp(SpotifyDJMenuModel::repeatValue(99), "off") == 0);
 }
 
 static void testNetworkActivityLogicWithFakeHttp() {
@@ -681,7 +691,6 @@ int main() {
   testSha256HexValidation();
   testBq27220Interpretation();
   testVoiceChunkHelpers();
-  testPlayModeMapping();
   testLanguageCodeNormalization();
   testDeviceCommandParserPlaybackControls();
   testDeviceCommandParserSettings();

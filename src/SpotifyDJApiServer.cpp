@@ -51,9 +51,6 @@ void SpotifyDJApiServer::begin(
   server_->on("/api/device/info", HTTP_GET, [this]() { handleInfo(); });
   server_->on("/api/device/pairing-info", HTTP_GET, [this]() { handlePairingInfo(); });
   server_->on("/api/device/pair", HTTP_POST, [this]() { handlePair(); });
-  server_->on("/api/device/provision_spotify", HTTP_POST, [this]() {
-    sendJson(410, "{\"success\":false,\"error\":\"gone\",\"message\":\"Playback credentials are provisioned in Home Assistant\"}");
-  });
   server_->on("/api/device/ota", HTTP_POST, [this]() { handleOta(); });
   server_->on("/api/device/dj_response", HTTP_POST, [this]() { handleDjResponse(); });
   server_->on("/api/device/command", HTTP_POST, [this]() { handleCommand(); });
@@ -103,7 +100,9 @@ void SpotifyDJApiServer::handleInfo() {
   doc["battery_percent"] = battery_ == nullptr ? -1 : battery_->percent;
   doc["battery_mv"] = battery_ == nullptr ? 0 : battery_->voltageMv;
   doc["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
-  doc["ha_url"] = device_->getHaUrl();
+  doc["ha_local_url"] = device_->getHaLocalUrl();
+  doc["ha_remote_url"] = device_->getHaRemoteUrl();
+  doc["ha_active_url"] = device_->getActiveHaUrl();
   doc["last_dj_text"] = diagnostics_ == nullptr ? "" : diagnostics_->lastDjText;
   String payload;
   serializeJson(doc, payload);
@@ -129,60 +128,53 @@ void SpotifyDJApiServer::handlePair() {
     sendJson(400, "{\"error\":\"invalid json\"}");
     return;
   }
-  const String haUrl = doc["ha_url"] | "";
+  const String haLocalUrl = doc["ha_local_url"] | "";
+  const String haRemoteUrl = doc["ha_remote_url"] | "";
   const String deviceToken = doc["device_token"] | "";
   const String assistPipelineId = doc["assist_pipeline_id"] | "";
   String provisionedLanguage = doc["device_language"] | "";
   if (provisionedLanguage.isEmpty()) {
     provisionedLanguage = doc["language"] | "";
   }
-  if (haUrl.isEmpty()) {
-    sendJson(400, "{\"error\":\"ha_url missing\"}");
+  if (haLocalUrl.isEmpty() && haRemoteUrl.isEmpty()) {
+    sendJson(400, "{\"error\":\"ha url missing\",\"message\":\"ha_local_url or ha_remote_url required\"}");
     return;
   }
 
-  // Newer HA config flows can complete pairing server-side and callback the ESP with
-  // the issued device token. Accept that direct flow so the device leaves pairing mode
-  // immediately after HA reports the entity as paired.
-  if (!deviceToken.isEmpty()) {
-    const bool samePairing =
-        device_->isPaired() &&
-        device_->getHaUrl() == haUrl &&
-        device_->getDeviceToken() == deviceToken;
-    if (!samePairing) {
-      device_->savePairing(haUrl, deviceToken);
-    }
-    if (!assistPipelineId.isEmpty()) {
-      if (device_->getAssistPipelineId() != assistPipelineId) {
-        device_->saveAssistPipelineId(assistPipelineId);
-      }
-    }
-    const String normalizedLanguage = SpotifyDJDevice::normalizedLanguageCode(provisionedLanguage);
-    if (!normalizedLanguage.isEmpty() && normalizedLanguage != I18n::languageCode()) {
-      SpotifyDJDevice::saveProvisionedLanguage(normalizedLanguage);
-      if (languageProvisionedCallback_ != nullptr) {
-        languageProvisionedCallback_(callbackContext_, normalizedLanguage);
-      }
-    }
-    if (samePairing) {
-      AppLog.println("Home Assistant direct pairing unchanged");
-    } else {
-      AppLog.println("Home Assistant direct pairing stored: device_token=present");
-    }
-    if (!samePairing && directPairCallback_ != nullptr) {
-      directPairCallback_(callbackContext_);
-    }
-    sendJson(200, "{\"success\":true,\"paired\":true}");
+  if (deviceToken.isEmpty()) {
+    sendJson(400, "{\"error\":\"device token missing\",\"message\":\"device_token required\"}");
     return;
   }
 
-  const bool ok = pairing_->pairWithHomeAssistant(haUrl);
-  if (ok) {
-    discovery_->updateTxtRecords();
-    sendJson(200, "{\"success\":true}");
+  const bool samePairing =
+      device_->isPaired() &&
+      device_->getDeviceToken() == deviceToken &&
+      (haLocalUrl.isEmpty() || device_->getHaLocalUrl() == haLocalUrl) &&
+      (haRemoteUrl.isEmpty() || device_->getHaRemoteUrl() == haRemoteUrl);
+  if (!samePairing) {
+    device_->savePairing(deviceToken, haLocalUrl, haRemoteUrl);
+  }
+  if (!assistPipelineId.isEmpty()) {
+    if (device_->getAssistPipelineId() != assistPipelineId) {
+      device_->saveAssistPipelineId(assistPipelineId);
+    }
+  }
+  const String normalizedLanguage = SpotifyDJDevice::normalizedLanguageCode(provisionedLanguage);
+  if (!normalizedLanguage.isEmpty() && normalizedLanguage != I18n::languageCode()) {
+    SpotifyDJDevice::saveProvisionedLanguage(normalizedLanguage);
+    if (languageProvisionedCallback_ != nullptr) {
+      languageProvisionedCallback_(callbackContext_, normalizedLanguage);
+    }
+  }
+  if (samePairing) {
+    AppLog.println("Home Assistant direct pairing unchanged");
   } else {
-    sendJson(502, "{\"success\":false,\"error\":\"pairing failed\"}");
+    AppLog.println("Home Assistant direct pairing stored: device_token=present");
   }
+  if (!samePairing && directPairCallback_ != nullptr) {
+    directPairCallback_(callbackContext_);
+  }
+  sendJson(200, "{\"success\":true,\"paired\":true}");
 }
 
 void SpotifyDJApiServer::handleOta() {

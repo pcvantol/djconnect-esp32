@@ -16,6 +16,8 @@ enum class DeviceCommandType {
   Volume,
   TransferOutput,
   StartPlaylist,
+  Shuffle,
+  Repeat,
   DjResponse,
   ScreenBrightness,
   ScreenDimTimeout,

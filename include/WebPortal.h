@@ -70,7 +70,8 @@ private:
 
   // Saves display and deep-sleep settings submitted by the dashboard form.
   void handleSettingsPost();
-  void handlePlayModePost();
+  void handleShufflePost();
+  void handleRepeatPost();
   void handleWifiPost();
   void handleVolumePost();
   void handleDevicesJson();

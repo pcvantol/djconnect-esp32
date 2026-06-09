@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 
 #include "AppState.h"
 
@@ -23,19 +22,14 @@ public:
   // Checks whether Home Assistant can currently proxy playback commands.
   bool authorize();
 
-  // Compatibility no-op: playback backend credentials live in Home Assistant.
-  void useCredentialsForProvisioning(const String &clientId, const String &refreshToken);
-
   // Clears in-memory proxy/auth state.
   void clearStoredTokens();
 
-  // Kept for compatibility with older provisioning flows; HA owns playback backend credentials now.
+  // Clears in-memory Home Assistant proxy state.
   void reloadCredentials();
 
   bool isAuthorized() const;
   bool needsCredentialRefresh() const;
-  uint32_t accessTokenExpiresInSeconds() const;
-  String refreshTokenSource() const;
 
   // Reads active playback, output, track, artist, progress, and volume.
   bool refreshPlayback();
@@ -60,7 +54,8 @@ public:
   bool previousTrack();
   bool startLikedProxyPlaylist();
   bool startPlaylist(const String &playlistUri);
-  bool setPlayMode(const String &mode);
+  bool setShuffle(bool enabled);
+  bool setRepeatMode(const String &repeatState);
   bool transferPlayback(const String &deviceId, bool play);
 
   // Queues a non-blocking volume command; the worker sends only the latest queued value.
@@ -97,20 +92,6 @@ private:
   void applyPlaylists(JsonVariantConst source, PlaylistListState &playlists);
   void setProxyError(const String &message);
 
-  // Legacy direct-backend helpers retained as guarded no-ops while callers move to proxy commands.
-  void configureTls(WiFiClientSecure &client);
-  void loadSpotifyCredentials();
-  void saveRefreshToken(const String &newRefreshToken);
-  bool refreshAccessToken();
-  bool ensureAccessToken();
-
-  // Common HTTP request path. updatePlaybackError controls whether background volume failures alter the UI error.
-  int apiRequest(
-      const char *method,
-      const String &path,
-      String *responsePayload = nullptr,
-      bool updatePlaybackError = true);
-  bool sendPlayerCommand(const char *method, const String &path);
   VolumeResult sendVolumeToSpotify(const VolumeCommand &command);
   bool findPlaylistUriByName(const String &playlistName, String &playlistUri);
   bool playContextUri(const String &contextUri);
@@ -130,13 +111,6 @@ private:
   QueueHandle_t volumeCommandQueue_ = nullptr;
   QueueHandle_t volumeResultQueue_ = nullptr;
   SemaphoreHandle_t requestMutex_ = nullptr;
-  String accessToken_;
-  String clientId_;
-  String refreshToken_;
-  String market_;
-  bool refreshTokenFromStorage_ = false;
   bool tokenInvalidGrant_ = false;
-  String refreshTokenSource_ = "Unknown";
-  uint32_t accessTokenExpiresAt_ = 0;
   uint32_t lastProxyFailureAt_ = 0;
 };

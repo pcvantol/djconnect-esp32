@@ -240,6 +240,10 @@ void SpotifyDJApp::loop() {
     renderNow();
   } else if (activeScreen_ == UiScreen::Pong) {
     updatePong();
+  } else if (activeScreen_ == UiScreen::Asteroids) {
+    updateAsteroids();
+  } else if (activeScreen_ == UiScreen::Flyer) {
+    updateFlyer();
   }
 
   updateVisualPower();
@@ -271,6 +275,7 @@ void SpotifyDJApp::loadProvisioning() {
   speakerVolumePercent_ = settings.speakerVolumePercent;
   volumeFeedbackEnabled_ = settings.volumeFeedbackEnabled;
   setupModeRequested_ = settings.setupModeRequested;
+  helpShown_ = settings.helpShown;
 
   for (size_t index = 0; index < DimTimeoutOptionCount; index++) {
     if (dimTimeoutValueMs(index) == screenOffTimeoutMs_) {
@@ -814,7 +819,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
     return false;
   }
 
-  provisioning_.saveSetupProvisioning(ssid, password, "", "", "");
+  provisioning_.saveSetupProvisioning(ssid, password);
 
   wifiSsid_ = ssid;
   wifiPassword_ = password;
@@ -932,6 +937,16 @@ void SpotifyDJApp::handleMenuInputEvents(const InputEvents &events) {
     renderNow();
     return;
   }
+  if (activeScreen_ == UiScreen::Asteroids && events.encoderSteps != 0) {
+    asteroidShipX_ = constrain(asteroidShipX_ + (events.encoderSteps * 7), 24, 296);
+    renderNow();
+    return;
+  }
+  if (activeScreen_ == UiScreen::Flyer && events.encoderSteps != 0) {
+    flyerPlaneY_ = constrain(flyerPlaneY_ + (events.encoderSteps * 6), 52, 138);
+    renderNow();
+    return;
+  }
 
   if (activeScreen_ == UiScreen::Logs && events.encoderSteps != 0) {
     const size_t available = AppLog.availableLines();
@@ -952,6 +967,28 @@ void SpotifyDJApp::handleMenuInputEvents(const InputEvents &events) {
     }
     renderNow();
     return;
+  }
+  if (activeScreen_ == UiScreen::Asteroids) {
+    if (events.encoderClick) {
+      fireAsteroids();
+      return;
+    }
+    if (events.encoderLongClick) {
+      resetAsteroids();
+      renderNow();
+      return;
+    }
+  }
+  if (activeScreen_ == UiScreen::Flyer) {
+    if (events.encoderClick) {
+      fireFlyer();
+      return;
+    }
+    if (events.encoderLongClick) {
+      resetFlyer();
+      renderNow();
+      return;
+    }
   }
 
   if (events.encoderSteps != 0) {
@@ -1074,25 +1111,41 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         spotify_.refreshDevices(deviceList_);
         renderNow();
       } else if (rootMenuSelection_ == 4) {
-        playModeSelection_ = 0;
-        const String currentMode = currentPlayModeValue(playback_);
-        for (size_t index = 0; index < PlayModeOptionCount; index++) {
-          if (playModeValue(index) == currentMode) {
-            playModeSelection_ = index;
+        shuffleSelection_ = playback_.shuffle ? 1 : 0;
+        openScreen(UiScreen::ShuffleMode);
+      } else if (rootMenuSelection_ == 5) {
+        repeatSelection_ = 0;
+        for (size_t index = 0; index < RepeatOptionCount; index++) {
+          if (repeatValue(index) == playback_.repeatState) {
+            repeatSelection_ = index;
             break;
           }
         }
-        openScreen(UiScreen::PlayMode);
-      } else if (rootMenuSelection_ == 5) {
-        openScreen(UiScreen::Settings);
+        openScreen(UiScreen::RepeatMode);
       } else if (rootMenuSelection_ == 6) {
-        openScreen(UiScreen::About);
+        openScreen(UiScreen::Games);
       } else if (rootMenuSelection_ == 7) {
+        openScreen(UiScreen::Help);
+      } else if (rootMenuSelection_ == 8) {
+        openScreen(UiScreen::Settings);
+      } else if (rootMenuSelection_ == 9) {
+        openScreen(UiScreen::About);
+      } else if (rootMenuSelection_ == 10) {
         logsScrollBack_ = 0;
         openScreen(UiScreen::Logs);
-      } else if (rootMenuSelection_ == 8) {
+      }
+      break;
+
+    case UiScreen::Games:
+      if (gamesSelection_ == 0) {
         resetPong();
         openScreen(UiScreen::Pong);
+      } else if (gamesSelection_ == 1) {
+        resetAsteroids();
+        openScreen(UiScreen::Asteroids);
+      } else {
+        resetFlyer();
+        openScreen(UiScreen::Flyer);
       }
       break;
 
@@ -1146,14 +1199,17 @@ void SpotifyDJApp::selectCurrentMenuItem() {
         responsiveDelay(250);
         enterDeepSleep();
       } else if (settingsSelection_ == 10) {
+        hardResetSelection_ = 0;
+        openScreen(UiScreen::ChangeWifiConfirm);
+      } else if (settingsSelection_ == 11) {
         sound_.playHardReset();
         display_.showBootMessage(I18n::text("restarting"), battery_);
         responsiveDelay(320);
         ESP.restart();
-      } else if (settingsSelection_ == 11) {
+      } else if (settingsSelection_ == 12) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::ResetPairingConfirm);
-      } else if (settingsSelection_ == 12) {
+      } else if (settingsSelection_ == 13) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::HardResetConfirm);
       }
@@ -1194,8 +1250,12 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       applySpeakerVolumeSelection();
       break;
 
-    case UiScreen::PlayMode:
-      applyPlayModeSelection();
+    case UiScreen::ShuffleMode:
+      applyShuffleSelection();
+      break;
+
+    case UiScreen::RepeatMode:
+      applyRepeatSelection();
       break;
 
     case UiScreen::SleepTimeout:
@@ -1210,6 +1270,14 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       }
       break;
 
+    case UiScreen::ChangeWifiConfirm:
+      if (hardResetSelection_ == 0) {
+        goBackOneScreen();
+      } else {
+        changeWifiToProvisioning();
+      }
+      break;
+
     case UiScreen::HardResetConfirm:
       if (hardResetSelection_ == 0) {
         goBackOneScreen();
@@ -1219,9 +1287,13 @@ void SpotifyDJApp::selectCurrentMenuItem() {
       break;
 
     case UiScreen::About:
+    case UiScreen::Help:
     case UiScreen::NowPlaying:
     case UiScreen::Queue:
     case UiScreen::Logs:
+    case UiScreen::Pong:
+    case UiScreen::Asteroids:
+    case UiScreen::Flyer:
       break;
   }
 }
@@ -1266,19 +1338,38 @@ void SpotifyDJApp::applyLogLevelSelection() {
   renderNow();
 }
 
-void SpotifyDJApp::applyPlayModeSelection() {
-  const String mode = playModeValue(playModeSelection_);
-  AppLog.print("Playback: setting play mode ");
-  AppLog.println(mode);
-  showNotice(I18n::text("spotify_play_mode"), 1600);
+void SpotifyDJApp::applyShuffleSelection() {
+  const bool enabled = shuffleValue(shuffleSelection_);
+  AppLog.print("Playback: setting shuffle ");
+  AppLog.println(enabled ? "on" : "off");
+  showNotice(I18n::text("shuffle"), 1600);
   renderNow();
-  if (spotify_.setPlayMode(mode)) {
-    AppLog.print("Playback: play mode set to ");
-    AppLog.println(mode);
-    showNotice(playModeLabel(mode), 2200);
+  if (spotify_.setShuffle(enabled)) {
+    AppLog.print("Playback: shuffle set to ");
+    AppLog.println(enabled ? "on" : "off");
+    showNotice(shuffleLabel(enabled), 2200);
     lastPlaybackPollAt_ = 0;
   } else {
-    AppLog.print("Playback: play mode failed: ");
+    AppLog.print("Playback: shuffle failed: ");
+    AppLog.println(playback_.error);
+    showNotice(playback_.error, 3500);
+  }
+  renderNow();
+}
+
+void SpotifyDJApp::applyRepeatSelection() {
+  const String repeat = repeatValue(repeatSelection_);
+  AppLog.print("Playback: setting repeat ");
+  AppLog.println(repeat);
+  showNotice(I18n::text("repeat"), 1600);
+  renderNow();
+  if (spotify_.setRepeatMode(repeat)) {
+    AppLog.print("Playback: repeat set to ");
+    AppLog.println(repeat);
+    showNotice(repeatLabel(repeat), 2200);
+    lastPlaybackPollAt_ = 0;
+  } else {
+    AppLog.print("Playback: repeat failed: ");
     AppLog.println(playback_.error);
     showNotice(playback_.error, 3500);
   }
@@ -1342,6 +1433,18 @@ void SpotifyDJApp::hardResetToProvisioning() {
   ESP.restart();
 }
 
+void SpotifyDJApp::changeWifiToProvisioning() {
+  AppLog.println("WiFi change: restarting to setup portal, Home Assistant pairing kept");
+  voiceRecorder_.abort();
+  display_.wakeForUserActivity();
+  display_.showBootMessage(I18n::text("boot_setup_device"), battery_);
+  sound_.playSoftReset();
+  provisioning_.requestWifiChangeMode();
+  WiFi.disconnect(false, false);
+  responsiveDelay(450);
+  ESP.restart();
+}
+
 void SpotifyDJApp::resetHomeAssistantPairing() {
   AppLog.println("Home Assistant: clearing pairing and restarting to pairing mode");
   voiceRecorder_.abort();
@@ -1376,6 +1479,10 @@ size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
       return rootMenuSelection_;
     case UiScreen::Settings:
       return settingsSelection_;
+    case UiScreen::Games:
+      return gamesSelection_;
+    case UiScreen::Help:
+      return helpSelection_;
     case UiScreen::DimTimeout:
       return dimTimeoutSelection_;
     case UiScreen::Playlists:
@@ -1390,11 +1497,14 @@ size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
       return logLevelSelection_;
     case UiScreen::SpeakerVolume:
       return speakerVolumeSelection_;
-    case UiScreen::PlayMode:
-      return playModeSelection_;
+    case UiScreen::ShuffleMode:
+      return shuffleSelection_;
+    case UiScreen::RepeatMode:
+      return repeatSelection_;
     case UiScreen::SleepTimeout:
       return sleepTimeoutSelection_;
     case UiScreen::HardResetConfirm:
+    case UiScreen::ChangeWifiConfirm:
     case UiScreen::ResetPairingConfirm:
       return hardResetSelection_;
     case UiScreen::SoundOutputs:
@@ -1404,6 +1514,9 @@ size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
     case UiScreen::AlbumArt:
     case UiScreen::Queue:
     case UiScreen::Logs:
+    case UiScreen::Pong:
+    case UiScreen::Asteroids:
+    case UiScreen::Flyer:
     case UiScreen::NowPlaying:
       return 0;
   }
@@ -1416,6 +1529,10 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
       return rootMenuSelection_;
     case UiScreen::Settings:
       return settingsSelection_;
+    case UiScreen::Games:
+      return gamesSelection_;
+    case UiScreen::Help:
+      return helpSelection_;
     case UiScreen::DimTimeout:
       return dimTimeoutSelection_;
     case UiScreen::Playlists:
@@ -1430,11 +1547,14 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
       return logLevelSelection_;
     case UiScreen::SpeakerVolume:
       return speakerVolumeSelection_;
-    case UiScreen::PlayMode:
-      return playModeSelection_;
+    case UiScreen::ShuffleMode:
+      return shuffleSelection_;
+    case UiScreen::RepeatMode:
+      return repeatSelection_;
     case UiScreen::SleepTimeout:
       return sleepTimeoutSelection_;
     case UiScreen::HardResetConfirm:
+    case UiScreen::ChangeWifiConfirm:
     case UiScreen::ResetPairingConfirm:
       return hardResetSelection_;
     case UiScreen::SoundOutputs:
@@ -1445,6 +1565,8 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
     case UiScreen::Queue:
     case UiScreen::Logs:
     case UiScreen::Pong:
+    case UiScreen::Asteroids:
+    case UiScreen::Flyer:
     case UiScreen::NowPlaying:
       return rootMenuSelection_;
   }
@@ -1668,6 +1790,148 @@ void SpotifyDJApp::updatePong() {
   renderNow();
 }
 
+void SpotifyDJApp::resetAsteroids() {
+  asteroidShipX_ = 160;
+  asteroidShipY_ = 138;
+  asteroidX_ = 40 + static_cast<int>(esp_random() % 240);
+  asteroidY_ = 48;
+  asteroidVelocityX_ = (esp_random() & 1) ? 2 : -2;
+  asteroidVelocityY_ = 2;
+  asteroidBulletActive_ = false;
+  asteroidBulletY_ = 0;
+  asteroidScore_ = 0;
+  asteroidFlashUntil_ = 0;
+  lastAsteroidsFrameAt_ = 0;
+}
+
+void SpotifyDJApp::fireAsteroids() {
+  if (asteroidBulletActive_) {
+    return;
+  }
+  asteroidBulletActive_ = true;
+  asteroidBulletY_ = asteroidShipY_ - 18;
+  if (volumeFeedbackEnabled_) {
+    sound_.playConfirm();
+  }
+  renderNow();
+}
+
+void SpotifyDJApp::updateAsteroids() {
+  if (!display_.isOn()) {
+    return;
+  }
+  const uint32_t now = millis();
+  if (lastAsteroidsFrameAt_ == 0) {
+    lastAsteroidsFrameAt_ = now;
+    renderNow();
+    return;
+  }
+  if (now - lastAsteroidsFrameAt_ < 36) {
+    return;
+  }
+  lastAsteroidsFrameAt_ = now;
+  asteroidX_ += asteroidVelocityX_;
+  asteroidY_ += asteroidVelocityY_;
+  if (asteroidX_ < 24 || asteroidX_ > 296) {
+    asteroidVelocityX_ = -asteroidVelocityX_;
+  }
+  if (asteroidBulletActive_) {
+    asteroidBulletY_ -= 8;
+    if (asteroidBulletY_ < 38) {
+      asteroidBulletActive_ = false;
+    } else if (abs(asteroidX_ - asteroidShipX_) < 16 && abs(asteroidY_ - asteroidBulletY_) < 16) {
+      asteroidScore_++;
+      asteroidBulletActive_ = false;
+      asteroidX_ = 30 + static_cast<int>(esp_random() % 260);
+      asteroidY_ = 46;
+      asteroidVelocityX_ = (esp_random() & 1) ? 2 : -2;
+      asteroidVelocityY_ = 2 + static_cast<int>(min(asteroidScore_ / 5, 3));
+      if (volumeFeedbackEnabled_) {
+        sound_.playPongBounce();
+      }
+    }
+  }
+  if (asteroidY_ > 150) {
+    asteroidFlashUntil_ = now + 350;
+    if (volumeFeedbackEnabled_) {
+      sound_.playPongMiss();
+    }
+    asteroidX_ = 30 + static_cast<int>(esp_random() % 260);
+    asteroidY_ = 46;
+    asteroidScore_ = 0;
+  }
+  renderNow();
+}
+
+void SpotifyDJApp::resetFlyer() {
+  flyerPlaneY_ = 86;
+  flyerObstacleX_ = 300;
+  flyerObstacleY_ = 52 + static_cast<int>(esp_random() % 92);
+  flyerShotActive_ = false;
+  flyerShotX_ = 0;
+  flyerScore_ = 0;
+  flyerFlashUntil_ = 0;
+  lastFlyerFrameAt_ = 0;
+}
+
+void SpotifyDJApp::fireFlyer() {
+  if (flyerShotActive_) {
+    return;
+  }
+  flyerShotActive_ = true;
+  flyerShotX_ = 58;
+  if (volumeFeedbackEnabled_) {
+    sound_.playConfirm();
+  }
+  renderNow();
+}
+
+void SpotifyDJApp::updateFlyer() {
+  if (!display_.isOn()) {
+    return;
+  }
+  const uint32_t now = millis();
+  if (lastFlyerFrameAt_ == 0) {
+    lastFlyerFrameAt_ = now;
+    renderNow();
+    return;
+  }
+  if (now - lastFlyerFrameAt_ < 36) {
+    return;
+  }
+  lastFlyerFrameAt_ = now;
+  flyerObstacleX_ -= 4 + min(flyerScore_ / 6, 4);
+  if (flyerShotActive_) {
+    flyerShotX_ += 9;
+    if (flyerShotX_ > 310) {
+      flyerShotActive_ = false;
+    } else if (abs(flyerShotX_ - flyerObstacleX_) < 16 && abs(flyerPlaneY_ - flyerObstacleY_) < 24) {
+      flyerScore_++;
+      flyerShotActive_ = false;
+      flyerObstacleX_ = 310;
+      flyerObstacleY_ = 52 + static_cast<int>(esp_random() % 92);
+      if (volumeFeedbackEnabled_) {
+        sound_.playPongBounce();
+      }
+    }
+  }
+  if (flyerObstacleX_ < 24) {
+    flyerObstacleX_ = 310;
+    flyerObstacleY_ = 52 + static_cast<int>(esp_random() % 92);
+    flyerScore_++;
+  }
+  if (flyerObstacleX_ < 64 && flyerObstacleX_ > 28 && abs(flyerPlaneY_ - flyerObstacleY_) < 28) {
+    flyerFlashUntil_ = now + 350;
+    flyerScore_ = 0;
+    flyerObstacleX_ = 310;
+    flyerObstacleY_ = 52 + static_cast<int>(esp_random() % 92);
+    if (volumeFeedbackEnabled_) {
+      sound_.playPongMiss();
+    }
+  }
+  renderNow();
+}
+
 bool SpotifyDJApp::handleDeviceCommand(const DeviceCommand &command, String &message) {
   if (command.type == DeviceCommandType::Status) {
     AppLog.println("Device command: status");
@@ -1831,6 +2095,32 @@ bool SpotifyDJApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     case DeviceCommandType::Theme:
     case DeviceCommandType::LogLevel:
       break;
+
+    case DeviceCommandType::Shuffle:
+      AppLog.print("Device command: shuffle ");
+      AppLog.println(command.numericValue != 0 ? "on" : "off");
+      if (!spotify_.setShuffle(command.numericValue != 0)) {
+        message = playback_.error;
+        return false;
+      }
+      playback_.shuffle = command.numericValue != 0;
+      message = shuffleLabel(playback_.shuffle);
+      lastPlaybackPollAt_ = 0;
+      renderNow();
+      return true;
+
+    case DeviceCommandType::Repeat:
+      AppLog.print("Device command: repeat ");
+      AppLog.println(command.value);
+      if (!spotify_.setRepeatMode(command.value)) {
+        message = playback_.error;
+        return false;
+      }
+      playback_.repeatState = command.value == "repeat_once" ? "track" : (command.value == "repeat_infinite" ? "context" : command.value);
+      message = repeatLabel(playback_.repeatState);
+      lastPlaybackPollAt_ = 0;
+      renderNow();
+      return true;
 
     case DeviceCommandType::Volume:
       if (!playback_.hasPlayback || !playback_.supportsVolume) {
@@ -3101,6 +3391,14 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
       }
       haDevice_.displayPaired();
       responsiveDelay(700);
+      if (!helpShown_) {
+        helpShown_ = true;
+        provisioning_.markHelpShown();
+        openScreen(UiScreen::Help);
+        renderNow();
+        recordLoopMetrics(loopStartedAt);
+        return false;
+      }
       display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
       lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
       renderNow();
@@ -3350,11 +3648,13 @@ void SpotifyDJApp::renderMenuNow() {
           {I18n::text("up_next")},
           {I18n::text("playlists")},
           {I18n::text("outputs")},
-          {String(I18n::text("spotify_play_mode")) + " " + playModeLabel(currentPlayModeValue(playback_))},
+          {String(I18n::text("shuffle")) + " " + shuffleLabel(playback_.shuffle)},
+          {String(I18n::text("repeat")) + " " + repeatLabel(playback_.repeatState)},
+          {I18n::text("games")},
+          {I18n::text("help")},
           {I18n::text("settings")},
           {I18n::text("about")},
           {I18n::text("logs")},
-          {I18n::text("pong")},
       };
       display_.renderMenuList(I18n::text("menu"), items, RootMenuItemCount, rootMenuSelection_, notice_);
       break;
@@ -3433,6 +3733,39 @@ void SpotifyDJApp::renderMenuNow() {
       display_.renderPongScreen(pongPaddleY_, pongBallX_, pongBallY_, pongScore_, millis() < pongMissFlashUntil_, notice_);
       break;
 
+    case UiScreen::Asteroids:
+      display_.renderAsteroidsScreen(asteroidShipX_, asteroidShipY_, asteroidX_, asteroidY_, asteroidBulletY_, asteroidBulletActive_, asteroidScore_, millis() < asteroidFlashUntil_, notice_);
+      break;
+
+    case UiScreen::Flyer:
+      display_.renderFlyerScreen(flyerPlaneY_, flyerObstacleX_, flyerObstacleY_, flyerShotX_, flyerShotActive_, flyerScore_, millis() < flyerFlashUntil_, notice_);
+      break;
+
+    case UiScreen::Games: {
+      MenuItemView items[GamesItemCount] = {
+          {I18n::text("pong")},
+          {I18n::text("asteroids")},
+          {I18n::text("flyer")},
+      };
+      display_.renderMenuList(I18n::text("games"), items, GamesItemCount, gamesSelection_, notice_);
+      break;
+    }
+
+    case UiScreen::Help: {
+      MenuItemView items[HelpItemCount] = {
+          {I18n::text("help_top_short")},
+          {I18n::text("help_top_double")},
+          {I18n::text("help_top_hold")},
+          {I18n::text("help_top_10s")},
+          {I18n::text("help_center_short")},
+          {I18n::text("help_center_hold")},
+          {I18n::text("help_encoder_turn")},
+          {I18n::text("help_games")},
+      };
+      display_.renderMenuList(I18n::text("help"), items, HelpItemCount, helpSelection_, notice_);
+      break;
+    }
+
     case UiScreen::Settings: {
       MenuItemView items[] = {
           {String(I18n::text("brightness")) + " " + String(screenBrightnessPercent_) + "%"},
@@ -3445,6 +3778,7 @@ void SpotifyDJApp::renderMenuNow() {
           {String(I18n::text("speaker_volume")) + " " + String(speakerVolumePercent_) + "%"},
           {String(I18n::text("stress_test")) + " " + I18n::onOff(stressTestActive_)},
           {I18n::text("turn_off_device")},
+          {I18n::text("change_wifi")},
           {I18n::text("restart_device")},
           {I18n::text("reset_pairing")},
           {I18n::text("factory_reset")},
@@ -3556,21 +3890,38 @@ void SpotifyDJApp::renderMenuNow() {
       break;
     }
 
-    case UiScreen::PlayMode: {
-      MenuItemView items[PlayModeOptionCount];
-      const String currentMode = currentPlayModeValue(playback_);
-      for (size_t index = 0; index < PlayModeOptionCount; index++) {
-        const String mode = playModeValue(index);
-        items[index].label = playModeLabel(mode);
-        if (mode == currentMode) {
+    case UiScreen::ShuffleMode: {
+      MenuItemView items[ShuffleOptionCount];
+      for (size_t index = 0; index < ShuffleOptionCount; index++) {
+        const bool enabled = shuffleValue(index);
+        items[index].label = shuffleLabel(enabled);
+        if (enabled == playback_.shuffle) {
           items[index].label += " " + String(I18n::text("selected"));
         }
       }
       display_.renderMenuList(
-          I18n::text("spotify_play_mode"),
+          I18n::text("shuffle"),
           items,
-          PlayModeOptionCount,
-          playModeSelection_,
+          ShuffleOptionCount,
+          shuffleSelection_,
+          notice_);
+      break;
+    }
+
+    case UiScreen::RepeatMode: {
+      MenuItemView items[RepeatOptionCount];
+      for (size_t index = 0; index < RepeatOptionCount; index++) {
+        const String repeat = repeatValue(index);
+        items[index].label = repeatLabel(repeat);
+        if (repeat == playback_.repeatState) {
+          items[index].label += " " + String(I18n::text("selected"));
+        }
+      }
+      display_.renderMenuList(
+          I18n::text("repeat"),
+          items,
+          RepeatOptionCount,
+          repeatSelection_,
           notice_);
       break;
     }
@@ -3608,6 +3959,15 @@ void SpotifyDJApp::renderMenuNow() {
           {I18n::text("confirm_yes_reset_pairing")},
       };
       display_.renderMenuList(I18n::text("reset_pairing_title"), items, HardResetOptionCount, hardResetSelection_, notice_);
+      break;
+    }
+
+    case UiScreen::ChangeWifiConfirm: {
+      MenuItemView items[HardResetOptionCount] = {
+          {I18n::text("confirm_no")},
+          {I18n::text("confirm_yes_change_wifi")},
+      };
+      display_.renderMenuList(I18n::text("change_wifi_title"), items, HardResetOptionCount, hardResetSelection_, notice_);
       break;
     }
 

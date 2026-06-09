@@ -2,6 +2,8 @@
 #include "SpotifyDJDevice.h"
 
 #include <Arduino.h>
+#include <HTTPClient.h>
+#include <WiFi.h>
 #include <esp_system.h>
 
 #include "AppLog.h"
@@ -12,10 +14,8 @@ namespace {
 const char *Namespace = "spotifydj";
 const char *DefaultDeviceName = "SpotifyDJ";
 const char *Model = "lilygo-t-embed-s3";
-const char *SpotifyClientIdKey = "sp_client";
-const char *SpotifyRefreshKey = "sp_refresh";
-const char *SpotifyMarketKey = "sp_market";
 const char *AssistPipelineKey = "assist_pipe";
+const uint32_t ActiveHaUrlCacheMs = 30000;
 
 String sixDigitCode(uint32_t value) {
   char buffer[7] = {};
@@ -59,8 +59,50 @@ String SpotifyDJDevice::getDeviceToken() const {
   return readString("device_token");
 }
 
-String SpotifyDJDevice::getHaUrl() const {
-  return readString("ha_url");
+String SpotifyDJDevice::getHaLocalUrl() const {
+  return readString("ha_local_url");
+}
+
+String SpotifyDJDevice::getHaRemoteUrl() const {
+  return readString("ha_remote_url");
+}
+
+String SpotifyDJDevice::getActiveHaUrl() const {
+  const String localUrl = getHaLocalUrl();
+  const String remoteUrl = getHaRemoteUrl();
+  const uint32_t now = millis();
+  if (!activeHaUrl_.isEmpty() && now - activeHaUrlCheckedAt_ < ActiveHaUrlCacheMs) {
+    return activeHaUrl_;
+  }
+
+  activeHaUrlCheckedAt_ = now;
+  if (WiFi.status() != WL_CONNECTED) {
+    activeHaUrl_ = "";
+    activeHaRoute_ = "wifi_down";
+    return activeHaUrl_;
+  }
+
+  if (!localUrl.isEmpty() && isUrlReachable(localUrl)) {
+    activeHaUrl_ = localUrl;
+    if (activeHaRoute_ != "local") {
+      AppLog.println("Home Assistant route: local");
+    }
+    activeHaRoute_ = "local";
+    return activeHaUrl_;
+  }
+
+  if (!remoteUrl.isEmpty()) {
+    activeHaUrl_ = remoteUrl;
+    if (activeHaRoute_ != "cloud") {
+      AppLog.println("Home Assistant route: cloud");
+    }
+    activeHaRoute_ = "cloud";
+    return activeHaUrl_;
+  }
+
+  activeHaUrl_ = "";
+  activeHaRoute_ = "unavailable";
+  return activeHaUrl_;
 }
 
 String SpotifyDJDevice::getFirmwareVersion() const {
@@ -77,14 +119,6 @@ String SpotifyDJDevice::getPairCode() const {
 
 String SpotifyDJDevice::getLocalUrl() const {
   return "http://" + deviceId_ + ".local";
-}
-
-String SpotifyDJDevice::getSpotifyClientId() const {
-  return "";
-}
-
-String SpotifyDJDevice::getSpotifyMarket() const {
-  return "";
 }
 
 String SpotifyDJDevice::getAssistPipelineId() const {
@@ -147,26 +181,21 @@ void SpotifyDJDevice::displayPaired() {
   }
 }
 
-void SpotifyDJDevice::savePairing(const String &haUrl, const String &deviceToken) {
-  writeString("ha_url", haUrl);
+void SpotifyDJDevice::savePairing(
+    const String &deviceToken,
+    const String &haLocalUrl,
+    const String &haRemoteUrl) {
+  if (!haLocalUrl.isEmpty()) {
+    writeString("ha_local_url", haLocalUrl);
+  }
+  if (!haRemoteUrl.isEmpty()) {
+    writeString("ha_remote_url", haRemoteUrl);
+  }
   writeString("device_token", deviceToken);
+  activeHaUrl_ = "";
+  activeHaRoute_ = "";
+  activeHaUrlCheckedAt_ = 0;
   AppLog.println("Home Assistant pairing stored");
-}
-
-bool SpotifyDJDevice::saveSpotifyCredentials(const String &clientId, const String &refreshToken, const String &market) {
-  (void)clientId;
-  (void)refreshToken;
-  (void)market;
-  clearSpotifyCredentials();
-  AppLog.println("Legacy playback credential save ignored");
-  return false;
-}
-
-bool SpotifyDJDevice::saveSpotifyRefreshToken(const String &refreshToken) {
-  (void)refreshToken;
-  clearSpotifyCredentials();
-  AppLog.println("Legacy playback token save ignored");
-  return false;
 }
 
 void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
@@ -184,23 +213,18 @@ void SpotifyDJDevice::clearPairing() {
 }
 
 void SpotifyDJDevice::clearHomeAssistantPairing() {
-  removeKey("ha_url");
+  removeKey("ha_local_url");
+  removeKey("ha_remote_url");
   removeKey("device_token");
+  activeHaUrl_ = "";
+  activeHaRoute_ = "";
+  activeHaUrlCheckedAt_ = 0;
   pairCode_ = "";
   AppLog.println("Home Assistant pairing cleared");
 }
 
 void SpotifyDJDevice::clearSpotifyCredentials() {
-  removeKey(SpotifyClientIdKey);
-  removeKey(SpotifyRefreshKey);
-  removeKey(SpotifyMarketKey);
-  Preferences provision;
-  provision.begin("provision", false);
-  provision.remove("sp_client");
-  provision.remove("sp_refresh");
-  provision.remove("spotify_market");
-  provision.end();
-  AppLog.println("Legacy playback credentials cleared");
+  AppLog.println("Playback credentials are managed by Home Assistant");
 }
 
 const BatteryState *SpotifyDJDevice::battery() const {
@@ -230,6 +254,21 @@ void SpotifyDJDevice::removeKey(const char *key) {
   preferences.begin(Namespace, false);
   preferences.remove(key);
   preferences.end();
+}
+
+bool SpotifyDJDevice::isUrlReachable(const String &url) const {
+  if (url.isEmpty()) {
+    return false;
+  }
+  HTTPClient http;
+  http.setConnectTimeout(Config::HttpConnectTimeoutMs);
+  http.setTimeout(1500);
+  if (!http.begin(url)) {
+    return false;
+  }
+  const int code = http.GET();
+  http.end();
+  return code > 0;
 }
 
 String SpotifyDJDevice::macSuffix() {
