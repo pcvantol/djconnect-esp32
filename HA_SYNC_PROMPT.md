@@ -16,12 +16,11 @@ Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmwar
 Belangrijke architectuur:
 
 - ESP is geen Spotify Connect speaker/player.
-- ESP bewaart geen Spotify OAuth/client_id/refresh_token, MQTT credentials of backend credentials.
+- ESP bewaart geen backend OAuth/client_id/refresh_token of playback credentials.
 - ESP doet geen directe Spotify Web API calls.
 - ESP stuurt generieke playback commands naar Home Assistant.
 - Home Assistant is trusted backend voor playback, credentials, Assist/STT/TTS, OTA, native entities en optionele `media_player`.
 - ESP speaker is alleen voor local cues en DJ/voice response audio.
-- MQTT is volledig verwijderd.
 
 ## 1. Pairing Contract
 
@@ -111,7 +110,7 @@ Payload bevat onder andere:
   "led": {
     "state": "off"
   },
-  "spotify_configured": true,
+  "playback_configured": true,
   "free_heap": 123456,
   "uptime_ms": 1234567
 }
@@ -250,7 +249,7 @@ Taken:
 - HA native entities should call `/api/device/command` for device-local settings.
 - After command success, update HA entity state from command response if present, otherwise refresh from next `/api/djconnect/status`.
 - Handle ESP 401/403/404 as stale pairing.
-- Do not send Spotify OAuth, MQTT or backend secrets to ESP.
+- Do not send backend OAuth credentials or playback secrets to ESP.
 
 ## 5. PTT / DJ Response
 
@@ -296,7 +295,7 @@ Add or update tests for:
 - `/api/djconnect/status` parses nested/top-level settings and updates HA entities away from min/default.
 - `command=status` after ESP boot returns promptly.
 - OTA status clears from updating after ESP posts `ota_state/update_state=idle` plus firmware.
-- No Spotify/MQTT credentials are sent to or stored on ESP.
+- No backend playback credentials are sent to or stored on ESP.
 - `/api/device/command` canonical setting names work.
 - DJ response text + WAV URL and text + MP3 URL both work.
 - Queue/devices/playlists empty-but-successful responses do not become HTTP 503.
@@ -308,4 +307,3 @@ Add or update tests for:
 - HA brightness/speaker volume/timeouts/language/theme/log-level entities reflect ESP state after reboot/status post.
 - Playback backend unavailable shows playback/S error but keeps HA pairing intact.
 - Backend credentials remain only in Home Assistant.
-- MQTT is not present anywhere in options, diagnostics, entities or docs.
