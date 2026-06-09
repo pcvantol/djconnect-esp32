@@ -155,6 +155,9 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   activity.finish(code);
   AppLog.print("Voice status response: ");
   AppLog.println(code);
+  if (code == 426) {
+    AppLog.println("Voice status blocked by DJConnect version mismatch");
+  }
   updatePairingInvalidationForStatus(code);
   return code >= 200 && code < 300;
 }
@@ -220,7 +223,12 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   if (code < 200 || code >= 300) {
     logVoiceHttpErrorBody("Voice command error body", response);
     updatePairingInvalidationForStatus(code);
-    if (code == 404) {
+    JsonDocument errorDoc;
+    const DeserializationError jsonError = deserializeJson(errorDoc, response);
+    const char *errorKey = jsonError ? "" : (errorDoc["error"] | "");
+    if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      message = errorDoc["message"] | "Update DJConnect firmware/integration";
+    } else if (code == 404) {
       message = I18n::text("voice_ha_endpoint_missing");
     } else if (code == 401 || code == 403) {
       message = I18n::text("voice_ha_auth_failed");
@@ -311,7 +319,12 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   if (code < 200 || code >= 300) {
     logVoiceHttpErrorBody("Voice WAV error body", response);
     updatePairingInvalidationForStatus(code);
-    if (code == 404) {
+    JsonDocument errorDoc;
+    const DeserializationError jsonError = deserializeJson(errorDoc, response);
+    const char *errorKey = jsonError ? "" : (errorDoc["error"] | "");
+    if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      message = errorDoc["message"] | "Update DJConnect firmware/integration";
+    } else if (code == 404) {
       message = I18n::text("voice_ha_endpoint_missing");
     } else if (code == 401 || code == 403) {
       message = I18n::text("voice_ha_auth_failed");

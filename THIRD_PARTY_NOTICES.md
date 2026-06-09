@@ -34,6 +34,18 @@ not grant additional rights to the DJConnect firmware itself.
   - Used for JPEG album art rendering.
   - PlatformIO dependency: `bodmer/TJpg_Decoder`
 
+## Firmware Model Assets
+
+- ESPHome micro-wake-word-models: `Okay Nabu`
+  - Used as the bundled wake-word model asset for local wake-word detection.
+  - Source: `https://github.com/esphome/micro-wake-word-models`
+  - Vendored files: `third_party/micro_wake_word/okay_nabu.json`,
+    `third_party/micro_wake_word/okay_nabu.tflite`
+  - Model SHA256:
+    `0689abe1912a95a3318a0d8cb2e67bad0cbcfe3e24dd6e050c75debddfb6f891`
+  - License: Apache License 2.0. See
+    `third_party/micro_wake_word/LICENSE`.
+
 ## Platform And Tooling
 
 - PlatformIO

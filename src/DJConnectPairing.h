@@ -15,6 +15,7 @@ public:
     Ok,
     Failed,
     PairingInvalid,
+    VersionMismatch,
   };
 
   void begin(DJConnectDevice &device, DJConnectDiscovery *discovery = nullptr);

@@ -186,6 +186,28 @@ void LedRing::showWifiConnectingAnimation() {
   FastLED.show();
 }
 
+void LedRing::showWifiTestingAnimation() {
+  if (!ready_) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (now - lastWifiTestingFrameAt_ < 45) {
+    return;
+  }
+  lastWifiTestingFrameAt_ = now;
+  powerPercent_ = 100;
+  lastVolume_ = -999;
+  FastLED.setBrightness(Config::LedRingBrightness);
+
+  fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
+  const uint8_t head = wifiTestingFrame_++ % Config::Ws2812LedCount;
+  leds_[head] = CRGB(255, 180, 0);
+  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = CRGB(90, 170, 255);
+  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = CRGB(35, 80, 135);
+  FastLED.show();
+}
+
 void LedRing::showChargingAnimation() {
   if (!ready_) {
     return;

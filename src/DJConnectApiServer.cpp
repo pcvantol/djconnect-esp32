@@ -8,6 +8,7 @@
 #include "AppLog.h"
 #include "DeviceCommandParser.h"
 #include "I18n.h"
+#include "LogicHelpers.h"
 void DJConnectApiServer::begin(
     WebServer &server,
     DJConnectDevice &device,
@@ -126,6 +127,20 @@ void DJConnectApiServer::handlePair() {
   JsonDocument doc;
   if (deserializeJson(doc, server_->arg("plain"))) {
     sendJson(400, "{\"error\":\"invalid json\"}");
+    return;
+  }
+  const String legacyHaUrlKey = String("ha") + "_" + "url";
+  if (!doc[legacyHaUrlKey].isNull()) {
+    sendJson(400, "{\"error\":\"legacy_url_unsupported\",\"message\":\"use ha_local_url and/or ha_remote_url\"}");
+    return;
+  }
+  const String deviceId = doc["device_id"] | "";
+  if (deviceId.isEmpty()) {
+    sendJson(400, "{\"error\":\"device id missing\",\"message\":\"device_id required\"}");
+    return;
+  }
+  if (!Logic::isDjConnectLilygoDeviceId(deviceId.c_str()) || deviceId != device_->getDeviceId()) {
+    sendJson(400, "{\"error\":\"device id invalid\",\"message\":\"device_id must match this DJConnect LilyGO device\"}");
     return;
   }
   const String haLocalUrl = doc["ha_local_url"] | "";

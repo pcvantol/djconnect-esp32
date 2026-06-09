@@ -32,6 +32,9 @@ public:
   // Advances a blue chase while the device is trying to join WiFi.
   void showWifiConnectingAnimation();
 
+  // Advances an amber/blue scan while submitted WiFi credentials are being tested.
+  void showWifiTestingAnimation();
+
   // Advances the low-battery charging animation from red through yellow toward green.
   void showChargingAnimation();
 
@@ -66,6 +69,8 @@ private:
   uint32_t lastHomeAssistantPairingFrameAt_ = 0;
   uint32_t lastWifiFrameAt_ = 0;
   uint8_t wifiFrame_ = 0;
+  uint32_t lastWifiTestingFrameAt_ = 0;
+  uint8_t wifiTestingFrame_ = 0;
   uint32_t lastFirmwareFrameAt_ = 0;
   uint8_t firmwareFrame_ = 0;
   uint32_t lastDjResponseFrameAt_ = 0;

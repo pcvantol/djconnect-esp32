@@ -208,13 +208,22 @@ If the Home Assistant integration has been removed while the ESP still has an ol
 
 The ESP also checks pairing health during periodic Home Assistant status updates and during device/web push-to-talk calls. HTTP 401, 403 or 404 responses from the Home Assistant DJConnect endpoints mark the pairing as stale in runtime status, show a reset-pairing message, and turn the Home Assistant status indicator red. A freshly received direct-pairing token is treated as pending until HA accepts a status/playback command; if HA immediately rejects that pending token, the ESP clears only that pending pairing and returns to the pairing-code screen. Established pairings are not erased automatically; use Reset Home Assistant pairing to intentionally return to the pairing screen.
 
-Optional micro wake word support is scaffolded for a trained `DJConnect` detector. Link a model implementation that provides:
+Optional micro wake word support includes the ESPHome `Okay Nabu` model asset
+vendored under `third_party/micro_wake_word/` and linked into the firmware as
+flash-resident model data. To make detection active, link a local inference
+implementation that consumes that model and provides:
+
+```cpp
+extern "C" bool djconnect_oke_nabu_wake_word_detect(const int16_t *samples, size_t sampleCount);
+```
+
+The older `DJConnect` hook remains supported for compatibility:
 
 ```cpp
 extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t sampleCount);
 ```
 
-The firmware feeds idle mono PCM16 microphone chunks to that hook. Without a linked model hook, wake word monitoring stays inactive and normal encoder push-to-talk behavior is unchanged.
+The firmware feeds idle mono PCM16 microphone chunks to the linked hook and prefers the `oke nabu` hook when both are present. Without a linked model hook, wake word monitoring stays inactive and normal encoder push-to-talk behavior is unchanged.
 
 ## Home Assistant Native Commands
 
@@ -347,7 +356,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 3.0.3 --dry-run` validates the release plan without touching files. Both `3.0.3` and `v3.0.3` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 3.0.7 --dry-run` validates the release plan without touching files. Both `3.0.7` and `v3.0.7` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 

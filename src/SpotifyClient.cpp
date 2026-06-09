@@ -168,10 +168,21 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   AppLog.print("HA playback command response: ");
   AppLog.println(code);
 
-  if (code == 401 || code == 403 || code == 404) {
-    tokenInvalidGrant_ = true;
-  }
   if (code < 200 || code >= 300) {
+    if (code == 426) {
+      JsonDocument errorDoc;
+      const DeserializationError error = deserializeJson(errorDoc, payload);
+      const char *errorKey = error ? "" : (errorDoc["error"] | "");
+      if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+        tokenInvalidGrant_ = false;
+        lastProxyFailureAt_ = millis();
+        setProxyError(errorDoc["message"] | "Update DJConnect firmware/integration");
+        return false;
+      }
+    }
+    if (code == 401 || code == 403 || code == 404) {
+      tokenInvalidGrant_ = true;
+    }
     if (code < 0 || code >= 500) {
       lastProxyFailureAt_ = millis();
     }

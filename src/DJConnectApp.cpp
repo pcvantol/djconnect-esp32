@@ -703,9 +703,13 @@ void DJConnectApp::runCaptivePortal() {
 
 bool DJConnectApp::handleBleProvisioningPayload(const String &payload, String &message) {
   JsonDocument doc;
-  if (deserializeJson(doc, payload)) {
+  const DeserializationError jsonError = deserializeJson(doc, payload);
+  if (jsonError) {
     message = "BLE setup JSON failed.";
-    AppLog.println("BLE provisioning JSON failed");
+    AppLog.print("BLE provisioning JSON failed, bytes=");
+    AppLog.print(payload.length());
+    AppLog.print(", error=");
+    AppLog.println(jsonError.c_str());
     return false;
   }
 
@@ -744,13 +748,13 @@ String DJConnectApp::captivePortalPage(
   page += F("<meta name='apple-mobile-web-app-title' content='DJConnect Setup'>");
   page += F("<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent'>");
   page += F("<meta name='application-name' content='DJConnect Setup'>");
-  page += F("<link rel='shortcut icon' href='/favicon.ico?v=2' sizes='any'>");
-  page += F("<link rel='icon' href='/favicon.ico?v=2' sizes='any'>");
-  page += F("<link rel='icon' type='image/png' sizes='192x192' href='/icon-192.png?v=2'>");
-  page += F("<link rel='apple-touch-icon' sizes='180x180' href='/apple-touch-icon.png'>");
-  page += F("<link rel='apple-touch-icon' sizes='192x192' href='/apple-touch-icon.png?v=2'>");
-  page += F("<link rel='apple-touch-icon-precomposed' sizes='180x180' href='/apple-touch-icon-precomposed.png'>");
-  page += F("<link rel='apple-touch-icon-precomposed' sizes='192x192' href='/apple-touch-icon-precomposed.png?v=2'>");
+  page += F("<link rel='shortcut icon' href='/favicon.ico?v=3' sizes='any'>");
+  page += F("<link rel='icon' href='/favicon.ico?v=3' sizes='any'>");
+  page += F("<link rel='icon' type='image/png' sizes='192x192' href='/icon-192.png?v=3'>");
+  page += F("<link rel='apple-touch-icon' sizes='180x180' href='/apple-touch-icon.png?v=3'>");
+  page += F("<link rel='apple-touch-icon' sizes='192x192' href='/apple-touch-icon.png?v=3'>");
+  page += F("<link rel='apple-touch-icon-precomposed' sizes='180x180' href='/apple-touch-icon-precomposed.png?v=3'>");
+  page += F("<link rel='apple-touch-icon-precomposed' sizes='192x192' href='/apple-touch-icon-precomposed.png?v=3'>");
   page += F("<title>DJConnect Setup</title><style>");
   page += F("*{box-sizing:border-box}body{margin:0;background:#080b0c;color:#f3f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}");
   page += F("main{width:100%;max-width:520px;margin:0 auto;padding:18px}.brand{display:flex;align-items:center;gap:10px;margin:8px 0 4px}.brand img{width:42px;height:42px;border-radius:8px}h1{font-size:26px;margin:0}p{color:#9aa6a2;line-height:1.4}");
@@ -761,7 +765,7 @@ String DJConnectApp::captivePortalPage(
   page += F("}label{display:grid;gap:6px;margin:12px 0;color:#a8b3af;font-size:13px}");
   page += F("input,button{display:block;width:100%;max-width:100%;min-height:44px;border-radius:8px;border:1px solid #233033;background:#0c1112;color:#f3f7f5;padding:9px 10px;font-size:16px}");
   page += F("button{background:#173721;border-color:#25593a;color:#baf7ca;font-weight:700;margin-top:8px}");
-  page += F("</style></head><body><main><div class='brand'><img src='/icon-192.png' alt=''><h1>DJConnect Setup</h1></div>");
+  page += F("</style></head><body><main><div class='brand'><img src='/icon-192.png?v=3' alt=''><h1>DJConnect Setup</h1></div>");
   page += F("<p>");
   page += language_ == Language::Dutch ? F("Vul je WiFi gegevens in.") : F("Please fill in your WiFi credentials.");
   page += F("</p>");
@@ -791,15 +795,21 @@ bool DJConnectApp::testAndSaveProvisioning(
     const String &password,
     String &message) {
   display_.showBootMessage(I18n::text("boot_testing_wifi"), battery_);
-  ledRing_.showSolid(CRGB::Yellow, 100);
+  ledRing_.showWifiTestingAnimation();
 
   WiFi.mode(WIFI_AP_STA);
   WiFi.begin(ssid.c_str(), password.c_str());
 
   const uint32_t startedAt = millis();
+  uint32_t lastProgressDotAt = 0;
   while (WiFi.status() != WL_CONNECTED && millis() - startedAt < 25000) {
-    responsiveDelay(250);
-    AppLog.print(".");
+    const uint32_t now = millis();
+    ledRing_.showWifiTestingAnimation();
+    responsiveDelay(50);
+    if (lastProgressDotAt == 0 || now - lastProgressDotAt >= 250) {
+      lastProgressDotAt = now;
+      AppLog.print(".");
+    }
   }
   AppLog.println();
 
@@ -2710,6 +2720,14 @@ void DJConnectApp::renderNow() {
     return;
   }
 
+  if (haPairingScreenActive_) {
+    haDevice_.displayPairingCode();
+    visualState_.screenOn = display_.isOn();
+    visualState_.screenBrightnessLevel = display_.backlightPercent();
+    visualState_.ledOn = ledRing_.isOn();
+    return;
+  }
+
   // Render from the same snapshot into both visual outputs so screen and ring agree.
   if (isMenuActive()) {
     renderMenuNow();
@@ -2878,6 +2896,16 @@ AboutStatus DJConnectApp::aboutStatus() {
 }
 
 void DJConnectApp::updateVisualPower() {
+  if (haPairingScreenActive_) {
+    display_.forceBacklightPercent(100);
+    const uint8_t currentBacklightPercent = display_.backlightPercent();
+    ledRing_.setPowerPercent(currentBacklightPercent);
+    visualState_.screenOn = display_.isOn();
+    visualState_.screenBrightnessLevel = currentBacklightPercent;
+    visualState_.ledOn = ledRing_.isOn();
+    return;
+  }
+
   display_.updateIdleBrightness();
   const uint8_t currentBacklightPercent = display_.backlightPercent();
   ledRing_.setPowerPercent(currentBacklightPercent);
@@ -3076,15 +3104,19 @@ void DJConnectApp::applyWebSettings(
     }
   }
   display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
+  if (haPairingScreenActive_) {
+    display_.forceBacklightPercent(100);
+  }
   applyTheme();
+  if (haPairingScreenActive_) {
+    display_.forceBacklightPercent(100);
+  }
   AppLog.setLevel(logLevel_);
   sound_.setVolumePercent(speakerVolumePercent_);
   saveDisplaySettings();
   showNotice(I18n::text("web_settings_saved"), 1800);
   renderNow();
-  display_.showBootMessage(I18n::text("restarting"), battery_);
-  responsiveDelay(450);
-  ESP.restart();
+  sendHomeAssistantStatusIfDue(true);
 }
 
 void DJConnectApp::applyProvisionedLanguage(const String &languageCode) {
@@ -3251,7 +3283,7 @@ void DJConnectApp::processPendingWifiSettings() {
   AppLog.println(pendingWifiSsid_.length());
   display_.wakeForUserActivity();
   display_.showBootMessage(I18n::text("boot_testing_wifi"), battery_);
-  ledRing_.showSolid(CRGB::Yellow, 100);
+  ledRing_.showWifiTestingAnimation();
 
   WiFi.disconnect(false, false);
   responsiveDelay(250);
@@ -3259,9 +3291,15 @@ void DJConnectApp::processPendingWifiSettings() {
   WiFi.begin(pendingWifiSsid_.c_str(), targetPassword.c_str());
 
   const uint32_t startedAt = millis();
+  uint32_t lastProgressDotAt = 0;
   while (WiFi.status() != WL_CONNECTED && millis() - startedAt < 25000) {
-    responsiveDelay(250);
-    AppLog.print(".");
+    const uint32_t now = millis();
+    ledRing_.showWifiTestingAnimation();
+    responsiveDelay(50);
+    if (lastProgressDotAt == 0 || now - lastProgressDotAt >= 250) {
+      lastProgressDotAt = now;
+      AppLog.print(".");
+    }
   }
   AppLog.println();
 
@@ -3358,6 +3396,10 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
       return;
     }
     markHomeAssistantPairingInvalid(I18n::text("ha_pairing_invalid"));
+  } else if (result == DJConnectPairing::StatusResult::VersionMismatch) {
+    playback_.error = "Update DJConnect firmware/integration";
+    showNotice(playback_.error, 5000);
+    renderNow();
   }
 }
 

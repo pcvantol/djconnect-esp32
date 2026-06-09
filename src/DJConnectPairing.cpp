@@ -115,7 +115,11 @@ bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
 
   const String localUrl = jsonString(response.as<JsonVariantConst>(), "ha_local_url");
   const String remoteUrl = jsonString(response.as<JsonVariantConst>(), "ha_remote_url");
-  device_->savePairing(deviceToken, localUrl.isEmpty() ? haUrl : localUrl, remoteUrl);
+  if (localUrl.isEmpty() && remoteUrl.isEmpty()) {
+    AppLog.println("HA pair missing ha_local_url/ha_remote_url");
+    return false;
+  }
+  device_->savePairing(deviceToken, localUrl, remoteUrl);
   if (strlen(assistPipelineId) > 0) {
     device_->saveAssistPipelineId(assistPipelineId);
   }
@@ -218,6 +222,18 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
 
   AppLog.print("HA status response: ");
   AppLog.println(code);
+  if (code == 426) {
+    JsonDocument response;
+    const DeserializationError error = deserializeJson(response, payload);
+    const char *errorKey = error ? "" : (response["error"] | "");
+    if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      AppLog.print("HA version mismatch: HA ");
+      AppLog.print(response["ha_version"] | response["ha_major_minor"] | "?");
+      AppLog.print(" firmware ");
+      AppLog.println(response["firmware"] | response["firmware_major_minor"] | device_->getFirmwareVersion().c_str());
+      return StatusResult::VersionMismatch;
+    }
+  }
   if (Logic::isHomeAssistantPairingInvalidStatus(code)) {
     AppLog.println("HA pairing appears invalid");
     return StatusResult::PairingInvalid;

@@ -630,6 +630,7 @@ void DisplayManager::renderBoot(Canvas &canvas, const String &message, const Bat
 template <typename Canvas>
 void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, const BatteryState *battery) {
   canvas.setTextDatum(TL_DATUM);
+  drawWifiIndicator(canvas, 198, 3);
   if (battery != nullptr) {
     drawBatteryIndicator(canvas, *battery, 228, 5);
   }

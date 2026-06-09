@@ -292,6 +292,44 @@ inline bool isHomeAssistantPairingInvalidStatus(int statusCode) {
   return statusCode == 401 || statusCode == 403 || statusCode == 404;
 }
 
+inline bool isHexDigit(char value) {
+  return (value >= '0' && value <= '9') ||
+         (value >= 'a' && value <= 'f') ||
+         (value >= 'A' && value <= 'F');
+}
+
+inline bool isDjConnectVersionMismatch(int statusCode, const char *error) {
+  return statusCode == 426 && error != nullptr && strcmp(error, "version_mismatch") == 0;
+}
+
+inline bool isDjConnectLilygoDeviceId(const char *deviceId) {
+  static constexpr const char *prefix = "djconnect-lilygo-";
+  if (deviceId == nullptr || strncmp(deviceId, prefix, strlen(prefix)) != 0) {
+    return false;
+  }
+  const char *suffix = deviceId + strlen(prefix);
+  for (size_t index = 0; index < 12; index++) {
+    if (!isHexDigit(suffix[index])) {
+      return false;
+    }
+  }
+  return suffix[12] == '\0';
+}
+
+inline bool isLegacyDjConnectDeviceId(const char *deviceId) {
+  static constexpr const char *prefix = "djconnect-";
+  if (deviceId == nullptr || strncmp(deviceId, prefix, strlen(prefix)) != 0) {
+    return false;
+  }
+  const char *suffix = deviceId + strlen(prefix);
+  for (size_t index = 0; index < 12; index++) {
+    if (!isHexDigit(suffix[index])) {
+      return false;
+    }
+  }
+  return suffix[12] == '\0';
+}
+
 inline const char *voiceHttpFailureMessage(int statusCode) {
   if (statusCode == 404) {
     return "HA voice endpoint not found. Reset pairing and set up the DJConnect integration again.";
@@ -300,6 +338,77 @@ inline const char *voiceHttpFailureMessage(int statusCode) {
     return "HA authorization failed. Reset pairing and pair again.";
   }
   return nullptr;
+}
+
+inline bool isAsciiWhitespace(char value) {
+  return value == ' ' || value == '\t' || value == '\n' || value == '\r' || value == '\f' || value == '\v';
+}
+
+inline bool isBlankFormValue(const char *value) {
+  if (value == nullptr) {
+    return true;
+  }
+  while (*value != '\0') {
+    if (!isAsciiWhitespace(*value)) {
+      return false;
+    }
+    value++;
+  }
+  return true;
+}
+
+inline bool requiredFormFieldValid(const char *value) {
+  return !isBlankFormValue(value);
+}
+
+inline bool optionalFormFieldValid(const char *value) {
+  (void)value;
+  return true;
+}
+
+inline bool submitButtonEnabled(bool requiredFieldsValid, bool requestInFlight) {
+  return requiredFieldsValid && !requestInFlight;
+}
+
+inline bool wifiSettingsSubmitEnabled(const char *ssid, bool requestInFlight) {
+  return submitButtonEnabled(requiredFormFieldValid(ssid), requestInFlight);
+}
+
+inline bool otaUploadSubmitEnabled(bool firmwareFileSelected, bool requestInFlight) {
+  return submitButtonEnabled(firmwareFileSelected, requestInFlight);
+}
+
+struct WebPlaybackButtonStates {
+  bool previous = false;
+  bool next = false;
+  bool playPause = false;
+  bool playPauseShowsPause = false;
+  bool volume = false;
+  bool shuffle = false;
+  bool repeat = false;
+  bool soundOutput = false;
+  bool playlist = false;
+  bool webPtt = false;
+};
+
+inline WebPlaybackButtonStates webPlaybackButtonStates(
+    bool playbackAuthorized,
+    bool hasPlayback,
+    bool isPlaying,
+    bool supportsVolume,
+    bool voiceAvailable) {
+  WebPlaybackButtonStates states;
+  states.previous = playbackAuthorized;
+  states.next = playbackAuthorized;
+  states.shuffle = playbackAuthorized;
+  states.repeat = playbackAuthorized;
+  states.soundOutput = playbackAuthorized;
+  states.playlist = playbackAuthorized;
+  states.playPause = playbackAuthorized && hasPlayback;
+  states.playPauseShowsPause = isPlaying;
+  states.volume = playbackAuthorized && hasPlayback && supportsVolume;
+  states.webPtt = voiceAvailable;
+  return states;
 }
 
 // ESP32 Preferences/NVS keys are limited to 15 characters.
@@ -381,12 +490,6 @@ inline DjAudioType djAudioTypeFromHeaderBytes(const uint8_t *bytes, size_t lengt
     return DjAudioType::Mp3;
   }
   return DjAudioType::Unknown;
-}
-
-inline bool isHexDigit(char value) {
-  return (value >= '0' && value <= '9') ||
-         (value >= 'a' && value <= 'f') ||
-         (value >= 'A' && value <= 'F');
 }
 
 inline bool isSha256Hex(const char *value) {

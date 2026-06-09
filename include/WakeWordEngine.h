@@ -1,4 +1,4 @@
-// Optional wake-word front-end for "DJConnect".
+// Optional wake-word front-end for "oke nabu" and legacy "DJConnect" hooks.
 #pragma once
 
 #include <Arduino.h>

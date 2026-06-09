@@ -148,13 +148,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
   <meta name="apple-mobile-web-app-title" content="DJConnect">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="application-name" content="DJConnect">
-  <link rel="shortcut icon" href="/favicon.ico?v=2" sizes="any">
-  <link rel="icon" href="/favicon.ico?v=2" sizes="any">
-  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon.png?v=2">
-  <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon-precomposed.png">
-  <link rel="apple-touch-icon-precomposed" sizes="192x192" href="/apple-touch-icon-precomposed.png?v=2">
+  <link rel="shortcut icon" href="/favicon.ico?v=3" sizes="any">
+  <link rel="icon" href="/favicon.ico?v=3" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=3">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png?v=3">
+  <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon-precomposed.png?v=3">
+  <link rel="apple-touch-icon-precomposed" sizes="192x192" href="/icon-192.png?v=3">
   <link rel="manifest" href="/site.webmanifest?v=2">
   <title>DJConnect</title>
   <style>
@@ -207,23 +207,15 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     input.volume-slider { accent-color:var(--orange); }
     .volume-value, .volume-label { color:var(--orange); }
     button { background:#1f8c46; border-color:#31c36a; color:#f3fff7; font-weight:700; cursor:pointer; box-shadow:inset 0 -1px 0 rgba(0,0,0,.25); }
-    .compact-actions { display:grid; grid-template-columns:repeat(4, minmax(0, auto)); justify-content:start; gap:8px; }
-    button.icon-button { width:auto; min-width:0; min-height:38px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:7px 10px; white-space:nowrap; }
-    .css-icon { position:relative; display:inline-block; width:14px; height:14px; flex:0 0 14px; }
-    .css-icon.play::before,
-    .css-icon.next::before,
-    .css-icon.next::after,
-    .css-icon.previous::before,
-    .css-icon.previous::after { content:""; position:absolute; top:1px; width:0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; }
-    .css-icon.play::before { left:3px; border-left:9px solid currentColor; }
-    .css-icon.next::before { left:1px; border-left:7px solid currentColor; }
-    .css-icon.next::after { left:7px; border-left:7px solid currentColor; }
-    .css-icon.previous::before { right:1px; border-right:7px solid currentColor; }
-    .css-icon.previous::after { right:7px; border-right:7px solid currentColor; }
-    .css-icon.pause::before,
-    .css-icon.pause::after { content:""; position:absolute; top:1px; width:4px; height:12px; border-radius:1px; background:currentColor; }
-    .css-icon.pause::before { left:2px; }
-    .css-icon.pause::after { right:2px; }
+    .compact-actions { display:grid; grid-template-columns:repeat(5, 46px); justify-content:start; gap:8px; align-items:center; }
+    button.icon-button { width:46px; height:46px; min-width:46px; min-height:46px; display:inline-flex; align-items:center; justify-content:center; padding:0; border-radius:8px; color:#f3fff7; }
+    button.icon-button svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:2.25; stroke-linecap:round; stroke-linejoin:round; }
+    button.icon-button .icon-pause,
+    button.icon-button.is-playing .icon-play { display:none; }
+    button.icon-button.is-playing .icon-pause { display:block; }
+    button.icon-button.is-off { background:#243238; border-color:#3d5660; color:#a8b3af; }
+    button.icon-button.is-on { background:#176031; border-color:#31c36a; color:#caffda; }
+    button.icon-button.is-track { background:#1f6fd1; border-color:#2f8cff; color:#f2f8ff; }
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
     button.warning { background:#a57912; border-color:#d6a329; color:#fff3c4; }
     button.firmware { background:#6f3bd8; border-color:#9b72ff; color:#f4edff; }
@@ -234,7 +226,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.danger { background:#3a1714; border-color:#632b25; color:#ffd1c9; }
     .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .playback-actions { margin-top:12px; }
-    .playback-mode-controls { margin-top:10px; }
     .queue { display:grid; gap:8px; }
     .queue-item { border-top:1px solid var(--row-line); padding-top:8px; }
     .queue-item:first-child { border-top:0; padding-top:0; }
@@ -258,25 +249,34 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .header-battery.medium { color:var(--yellow); }
     .header-battery.high { color:var(--green); }
     @keyframes batteryPulse { 0%,100% { opacity:.45; transform:scale(.92); } 50% { opacity:1; transform:scale(1.08); } }
-    .pair-banner { display:none; margin:10px; padding:14px; border:1px solid rgba(255,204,51,.45); border-radius:8px; background:linear-gradient(135deg,rgba(255,204,51,.18),rgba(29,185,84,.12)); color:var(--text); }
+    .pair-banner { display:none; grid-template-columns:30px 1fr; gap:12px; align-items:start; margin:10px; padding:14px; border:1px solid rgba(255,204,51,.45); border-radius:8px; background:linear-gradient(135deg,rgba(255,204,51,.18),rgba(29,185,84,.12)); color:var(--text); }
+    .pair-banner.visible { display:grid; }
+    .pair-alert-icon { width:30px; height:30px; color:#ffdf5d; flex:0 0 30px; filter:drop-shadow(0 0 8px rgba(255,223,93,.22)); }
     .pair-banner strong { display:block; font-size:18px; margin-bottom:4px; color:#ffdf5d; }
     .pair-banner a { color:#fff; font-weight:800; text-decoration:none; }
     .pair-banner .pair-code { display:inline-block; margin-left:4px; padding:2px 7px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.22); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.08em; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--log-bg); color:var(--log-text); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
-    @media (max-width:420px) { button.ptt { width:100%; } .compact-actions { grid-template-columns:1fr 1fr; } button.icon-button { width:100%; } }
+    @media (max-width:420px) { button.ptt { width:100%; } }
   </style>
 </head>
 <body>
   <header>
-    <h1><img class="brand-icon" src="/icon-192.png" alt="">DJConnect <span id="appVersion" class="sub">-</span></h1>
+    <h1><img class="brand-icon" src="/icon-192.png?v=3" alt="">DJConnect <span id="appVersion" class="sub">-</span></h1>
     <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">
-    <strong data-i18n="deviceNotPaired">Device not paired with Home Assistant</strong>
-    <a data-i18n="setup" href="https://my.home-assistant.io/redirect/config_flow_start?domain=djconnect" target="_blank" rel="noopener noreferrer">Click here to setup</a>
-    <span data-i18n="providePair">and provide pairing code:</span>
-    <span id="haPairBannerCode" class="pair-code">------</span>
+    <svg class="pair-alert-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.2 22 20H2L12 3.2z" fill="rgba(255,223,93,.16)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+      <path d="M12 8.1v6.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+      <circle cx="12" cy="17.5" r="1.25" fill="currentColor"></circle>
+    </svg>
+    <div>
+      <strong data-i18n="deviceNotPaired">Device not paired with Home Assistant</strong>
+      <a data-i18n="setup" href="https://my.home-assistant.io/redirect/config_flow_start?domain=djconnect" target="_blank" rel="noopener noreferrer">Click here to setup</a>
+      <span data-i18n="providePair">and provide pairing code:</span>
+      <span id="haPairBannerCode" class="pair-code">------</span>
+    </div>
   </div>
   <main>
     <section class="panel wide">
@@ -291,23 +291,23 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       </div>
       <div class="bar"><i id="progressBar"></i></div>
       <div class="row"><span class="key" data-i18n="time">Time</span><span id="time" class="value">-</span></div>
-      <div class="playback-actions compact-actions">
-        <button id="previousButton" class="icon-button" type="button"><span class="css-icon previous"></span><span data-i18n="previous">Previous song</span></button>
-        <button id="playButton" class="icon-button" type="button"><span class="css-icon play"></span><span data-i18n="play">Play</span></button>
-        <button id="pauseButton" class="icon-button" type="button"><span class="css-icon pause"></span><span data-i18n="pause">Pause</span></button>
-        <button id="nextButton" class="icon-button" type="button"><span class="css-icon next"></span><span data-i18n="next">Next song</span></button>
-      </div>
-      <div class="two playback-mode-controls">
-        <label data-i18n-label="shuffle">Shuffle
-          <select id="shuffleMode">
-            <option value="off" data-i18n="shuffleOff">Shuffle off</option><option value="on" data-i18n="shuffleOn">Shuffle on</option>
-          </select>
-        </label>
-        <label data-i18n-label="repeat">Repeat
-          <select id="repeatMode">
-            <option value="off" data-i18n="repeatOff">Repeat off</option><option value="track" data-i18n="repeatOnce">Repeat once</option><option value="context" data-i18n="repeatInfinite">Repeat infinite</option>
-          </select>
-        </label>
+      <div class="playback-actions compact-actions" aria-label="Playback controls">
+        <button id="previousButton" class="icon-button" type="button" aria-label="Previous song" title="Previous song">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6l-8 6 8 6V6z"></path><path d="M11 6l-8 6 8 6V6z"></path></svg>
+        </button>
+        <button id="playPauseButton" class="icon-button" type="button" aria-label="Play" title="Play">
+          <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+          <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"></path><path d="M16 5v14"></path></svg>
+        </button>
+        <button id="nextButton" class="icon-button" type="button" aria-label="Next song" title="Next song">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6l8 6-8 6V6z"></path><path d="M13 6l8 6-8 6V6z"></path></svg>
+        </button>
+        <button id="shuffleButton" class="icon-button is-off" type="button" aria-label="Shuffle off" title="Shuffle off">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5"></path><path d="M4 20l5.5-5.5"></path><path d="M15 9l6-6"></path><path d="M4 4l5 5"></path><path d="M13 13l8 8"></path><path d="M16 21h5v-5"></path></svg>
+        </button>
+        <button id="repeatButton" class="icon-button is-off" type="button" aria-label="Repeat off" title="Repeat off">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><text id="repeatOneMark" x="12" y="15" text-anchor="middle" font-size="8" fill="currentColor" stroke="none" style="display:none">1</text></svg>
+        </button>
       </div>
       <div id="shuffleStatus" class="status"></div>
       <div id="repeatStatus" class="status"></div>
@@ -594,10 +594,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
         el.placeholder = tr(el.dataset.i18nPlaceholder);
       });
-      $("previousButton").textContent = tr("previous");
-      $("nextButton").textContent = tr("next");
-      $("playButton").textContent = tr("play");
-      $("pauseButton").textContent = tr("pause");
+      updatePlaybackButtonLabels();
       $("startLikedProxyButton").textContent = tr("liked");
       if (!webPttRunning) $("webPttButton").textContent = tr("webPttHold");
       $("pauseLogsButton").textContent = logsPaused ? tr("resumeLogs") : tr("pauseLogs");
@@ -606,10 +603,50 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       const playlistOption = $("playlistSelect").querySelector("option");
       if (spotifyControlsEnabled && playlistOption && playlistOption.value === "") playlistOption.textContent = tr("loadingPlaylists");
     }
+    function setButtonLabel(id, label) {
+      const button = $(id);
+      button.setAttribute("aria-label", label);
+      button.title = label;
+    }
+    function updatePlaybackButtonLabels() {
+      if (!$("previousButton")) return;
+      setButtonLabel("previousButton", tr("previous"));
+      setButtonLabel("nextButton", tr("next"));
+      setButtonLabel("playPauseButton", playbackIsPlaying ? tr("pause") : tr("play"));
+      setButtonLabel("shuffleButton", shuffleEnabled ? tr("shuffleOn") : tr("shuffleOff"));
+      const repeatLabel = repeatState === "track" ? tr("repeatOnce") : repeatState === "context" ? tr("repeatInfinite") : tr("repeatOff");
+      setButtonLabel("repeatButton", repeatLabel);
+    }
+    function updatePlaybackButtonStates() {
+      $("playPauseButton").classList.toggle("is-playing", playbackIsPlaying);
+      $("playPauseButton").disabled = !spotifyControlsEnabled || !playbackHasPlayback;
+      $("shuffleButton").classList.toggle("is-on", shuffleEnabled);
+      $("shuffleButton").classList.toggle("is-off", !shuffleEnabled);
+      $("repeatButton").classList.toggle("is-off", repeatState === "off");
+      $("repeatButton").classList.toggle("is-on", repeatState === "context");
+      $("repeatButton").classList.toggle("is-track", repeatState === "track");
+      $("repeatOneMark").style.display = repeatState === "track" ? "block" : "none";
+      updatePlaybackButtonLabels();
+    }
     const dirtyInputs = new Set();
+    const settingsInputIds = ["brightness", "offTimeout", "sleepTimeout", "speakerVolume", "language", "theme", "logLevel"];
+    const userEditableInputIds = [...settingsInputIds, "wifiNewSsid", "wifiNewPassword"];
     function setInput(id, value) {
       const el = $(id);
       if (document.activeElement !== el && !dirtyInputs.has(id)) el.value = value ?? "";
+    }
+    function setupDirtyInputTracking() {
+      for (const id of userEditableInputIds) {
+        const el = $(id);
+        if (!el) continue;
+        const markDirty = () => dirtyInputs.add(id);
+        el.addEventListener("focus", markDirty);
+        el.addEventListener("input", markDirty);
+        el.addEventListener("change", markDirty);
+      }
+    }
+    function clearDirtyInputs(ids) {
+      for (const id of ids) dirtyInputs.delete(id);
     }
     function wifiSignalLevel(connected, rssi) {
       if (!connected || !Number.isFinite(rssi) || rssi === 0) return 0;
@@ -644,6 +681,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let playlistsLoadedAt = 0;
     let pairingInfoLoadedAt = 0;
     let spotifyControlsEnabled = false;
+    let playbackIsPlaying = false;
+    let playbackHasPlayback = false;
+    let shuffleEnabled = false;
+    let repeatState = "off";
     let webPttRunning = false;
     let homeAssistantRuntimePaired = false;
     let albumArtUrl = "";
@@ -706,9 +747,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     function setSpotifyControlsEnabled(enabled) {
       spotifyControlsEnabled = !!enabled;
-      for (const id of ["previousButton", "nextButton", "playButton", "pauseButton", "shuffleMode", "repeatMode", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
+      for (const id of ["previousButton", "nextButton", "shuffleButton", "repeatButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton"]) {
         $(id).disabled = !spotifyControlsEnabled;
       }
+      updatePlaybackButtonStates();
       if (!spotifyControlsEnabled) {
         $("soundOutputStatus").textContent = "";
         $("playbackCommandStatus").textContent = "";
@@ -747,8 +789,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       text("playbackPill", state);
       pill($("playbackPill"), data.playback.isPlaying ? "ok" : data.playback.hasPlayback ? "warn" : "bad");
       $("startLikedProxyButton").style.display = data.spotify.authorized && !data.playback.hasPlayback ? "block" : "none";
-      $("playButton").disabled = !data.spotify.authorized || !data.playback.hasPlayback || data.playback.isPlaying;
-      $("pauseButton").disabled = !data.spotify.authorized || !data.playback.hasPlayback || !data.playback.isPlaying;
+      playbackIsPlaying = !!data.playback.isPlaying;
+      playbackHasPlayback = !!data.playback.hasPlayback;
+      shuffleEnabled = !!data.playback.shuffle;
+      repeatState = data.playback.repeatState || "off";
+      updatePlaybackButtonStates();
       text("time", `${duration(data.playback.progressMs)} / ${duration(data.playback.durationMs)}`);
       $("progressBar").style.width = `${data.playback.progressPercent || 0}%`;
       text("device", data.device.name || "-");
@@ -789,8 +834,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       setInput("language", currentLanguage);
       setInput("theme", data.settings.theme || "dark");
       setInput("logLevel", data.settings.logLevel || "info");
-      setInput("shuffleMode", data.playback.shuffle ? "on" : "off");
-      setInput("repeatMode", data.playback.repeatState || "off");
     }
     async function refresh() {
       const response = await fetch("/api/status", { cache: "no-store" });
@@ -812,7 +855,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         text("haUrl", info.ha_active_url || info.ha_local_url || info.ha_remote_url || "-");
         text("haStatus", "");
         if (homeAssistantRuntimePaired) {
-          $("haPairBanner").style.display = "none";
+          $("haPairBanner").classList.remove("visible");
           text("haPairCode", "-");
           return;
         }
@@ -820,10 +863,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         const pair = await pairResponse.json();
         text("haPairCode", pair.pair_code || "-");
         text("haPairBannerCode", pair.pair_code || "------");
-        $("haPairBanner").style.display = "block";
+        $("haPairBanner").classList.add("visible");
         text("haMdnsUrl", pair.local_url || (pair.device_id ? `http://${pair.device_id}.local` : "-"));
       } catch (error) {
-        $("haPairBanner").style.display = "none";
+        $("haPairBanner").classList.remove("visible");
         setStatusDot("haHeaderStatus", false);
         text("haStatus", tr("pairingUnavailable"));
       }
@@ -957,8 +1000,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     $("previousButton").addEventListener("click", () => sendPlaybackCommand("previous"));
     $("nextButton").addEventListener("click", () => sendPlaybackCommand("next"));
-    $("playButton").addEventListener("click", () => sendPlaybackCommand("play"));
-    $("pauseButton").addEventListener("click", () => sendPlaybackCommand("pause"));
+    $("playPauseButton").addEventListener("click", () => sendPlaybackCommand(playbackIsPlaying ? "pause" : "play"));
     $("startLikedProxyButton").addEventListener("click", () => sendPlaybackCommand("likedProxy"));
     $("webPttButton").addEventListener("click", event => {
       event.preventDefault();
@@ -1008,18 +1050,23 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       });
       const response = await fetch("/api/settings", { method:"POST", body });
       $("settingsStatus").textContent = await response.text();
-      refresh();
+      clearDirtyInputs(settingsInputIds);
+      await refresh();
     });
-    $("shuffleMode").addEventListener("change", async () => {
+    $("shuffleButton").addEventListener("click", async () => {
+      if (!spotifyControlsEnabled) return;
       $("shuffleStatus").textContent = tr("refreshing");
-      const body = new URLSearchParams({ enabled: $("shuffleMode").value });
+      const nextShuffle = shuffleEnabled ? "off" : "on";
+      const body = new URLSearchParams({ enabled: nextShuffle });
       const response = await fetch("/api/shuffle", { method:"POST", body });
       $("shuffleStatus").textContent = await response.text();
       await refresh();
     });
-    $("repeatMode").addEventListener("change", async () => {
+    $("repeatButton").addEventListener("click", async () => {
+      if (!spotifyControlsEnabled) return;
       $("repeatStatus").textContent = tr("refreshing");
-      const body = new URLSearchParams({ repeat: $("repeatMode").value });
+      const nextRepeat = repeatState === "off" ? "context" : repeatState === "context" ? "track" : "off";
+      const body = new URLSearchParams({ repeat: nextRepeat });
       const response = await fetch("/api/repeat", { method:"POST", body });
       $("repeatStatus").textContent = await response.text();
       await refresh();
@@ -1034,6 +1081,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       });
       const response = await fetch("/api/wifi", { method:"POST", body });
       $("wifiSettingsStatus").textContent = await response.text();
+      clearDirtyInputs(["wifiNewSsid", "wifiNewPassword"]);
     });
     $("refreshButton").addEventListener("click", async () => {
       $("refreshStatus").textContent = tr("refreshing");
@@ -1066,6 +1114,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     });
     setupStatusStyling();
     setupVisibilityObservers();
+    setupDirtyInputTracking();
     refresh();
     loadPairingInfo();
     setInterval(refresh, 3000);

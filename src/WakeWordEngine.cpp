@@ -1,15 +1,29 @@
-// Optional wake-word front-end for "DJConnect".
+// Optional wake-word front-end for "oke nabu" and legacy "DJConnect" hooks.
 #include "WakeWordEngine.h"
 
 #include "AppLog.h"
 #include "Config.h"
+#include "OkayNabuWakeWordModel.h"
 
 extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t sampleCount) __attribute__((weak));
+extern "C" bool djconnect_oke_nabu_wake_word_detect(const int16_t *samples, size_t sampleCount) __attribute__((weak));
 
 void WakeWordEngine::begin() {
-  available_ = djconnect_micro_wake_word_detect != nullptr;
+  available_ = djconnect_oke_nabu_wake_word_detect != nullptr || djconnect_micro_wake_word_detect != nullptr;
+  AppLog.print("Wake word model: ");
+  AppLog.print(kOkayNabuWakeWordName);
+  AppLog.print(", bytes=");
+  AppLog.print(kOkayNabuWakeWordModelLen);
+  AppLog.print(", cutoff=");
+  AppLog.println(kOkayNabuWakeWordProbabilityCutoff, 2);
   AppLog.print("Wake word: ");
-  AppLog.println(available_ ? "DJConnect model hook available" : "model hook not installed");
+  if (djconnect_oke_nabu_wake_word_detect != nullptr) {
+    AppLog.println("oke nabu model hook available");
+  } else if (djconnect_micro_wake_word_detect != nullptr) {
+    AppLog.println("DJConnect legacy model hook available");
+  } else {
+    AppLog.println("model hook not installed");
+  }
 }
 
 void WakeWordEngine::setCallback(Callback callback, void *context) {
@@ -35,7 +49,15 @@ void WakeWordEngine::loop(VoiceRecorder &recorder) {
   }
 
   const size_t sampleCount = bytesRead / sizeof(int16_t);
-  if (djconnect_micro_wake_word_detect(reinterpret_cast<const int16_t *>(audio), sampleCount)) {
+  const int16_t *samples = reinterpret_cast<const int16_t *>(audio);
+  if (djconnect_oke_nabu_wake_word_detect != nullptr &&
+      djconnect_oke_nabu_wake_word_detect(samples, sampleCount)) {
+    AppLog.println("Wake word: oke nabu detected");
+    callback_(callbackContext_);
+    return;
+  }
+  if (djconnect_micro_wake_word_detect != nullptr &&
+      djconnect_micro_wake_word_detect(samples, sampleCount)) {
     AppLog.println("Wake word: DJConnect detected");
     callback_(callbackContext_);
   }

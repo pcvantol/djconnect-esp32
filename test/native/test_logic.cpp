@@ -375,6 +375,10 @@ static void testVoiceChunkHelpers() {
   assert(Logic::isHomeAssistantPairingInvalidStatus(403));
   assert(Logic::isHomeAssistantPairingInvalidStatus(404));
   assert(!Logic::isHomeAssistantPairingInvalidStatus(500));
+  assert(!Logic::isHomeAssistantPairingInvalidStatus(426));
+  assert(Logic::isDjConnectVersionMismatch(426, "version_mismatch"));
+  assert(!Logic::isDjConnectVersionMismatch(426, "unauthorized"));
+  assert(!Logic::isDjConnectVersionMismatch(400, "version_mismatch"));
   assert(std::strcmp(
              Logic::voiceHttpFailureMessage(404),
              "HA voice endpoint not found. Reset pairing and set up the DJConnect integration again.") == 0);
@@ -387,6 +391,88 @@ static void testVoiceChunkHelpers() {
   assert(!Logic::isBackendPlaylistContextUri("spotify:album:abc123"));
   assert(!Logic::isBackendPlaylistContextUri("spotify:playlist:"));
   assert(!Logic::isBackendPlaylistContextUri(nullptr));
+}
+
+static void testDjConnectDeviceIdContract() {
+  assert(Logic::isDjConnectLilygoDeviceId("djconnect-lilygo-001122AABBCC"));
+  assert(Logic::isDjConnectLilygoDeviceId("djconnect-lilygo-001122aabbcc"));
+  const char *legacyId = "djconnect-" "001122AABBCC";
+  assert(!Logic::isDjConnectLilygoDeviceId(legacyId));
+  assert(!Logic::isDjConnectLilygoDeviceId("djconnect-lilygo-001122AABB"));
+  assert(!Logic::isDjConnectLilygoDeviceId("djconnect-lilygo-001122AABBCCDD"));
+  assert(!Logic::isDjConnectLilygoDeviceId("djconnect-lilygo-001122AABBCG"));
+  assert(!Logic::isDjConnectLilygoDeviceId(nullptr));
+
+  assert(Logic::isLegacyDjConnectDeviceId(legacyId));
+  assert(!Logic::isLegacyDjConnectDeviceId("djconnect-lilygo-001122AABBCC"));
+}
+
+static void testWebPortalFormValidation() {
+  assert(Logic::isBlankFormValue(nullptr));
+  assert(Logic::isBlankFormValue(""));
+  assert(Logic::isBlankFormValue(" \t\r\n"));
+  assert(!Logic::isBlankFormValue("DJConnect"));
+  assert(!Logic::isBlankFormValue("  DJConnect  "));
+
+  assert(!Logic::requiredFormFieldValid(nullptr));
+  assert(!Logic::requiredFormFieldValid(""));
+  assert(!Logic::requiredFormFieldValid("   "));
+  assert(Logic::requiredFormFieldValid("Kitchen WiFi"));
+
+  assert(Logic::optionalFormFieldValid(nullptr));
+  assert(Logic::optionalFormFieldValid(""));
+  assert(Logic::optionalFormFieldValid("new password"));
+
+  assert(Logic::submitButtonEnabled(true, false));
+  assert(!Logic::submitButtonEnabled(false, false));
+  assert(!Logic::submitButtonEnabled(true, true));
+
+  assert(Logic::wifiSettingsSubmitEnabled("Home WiFi", false));
+  assert(Logic::wifiSettingsSubmitEnabled("  Home WiFi  ", false));
+  assert(!Logic::wifiSettingsSubmitEnabled("", false));
+  assert(!Logic::wifiSettingsSubmitEnabled("   ", false));
+  assert(!Logic::wifiSettingsSubmitEnabled("Home WiFi", true));
+
+  assert(Logic::otaUploadSubmitEnabled(true, false));
+  assert(!Logic::otaUploadSubmitEnabled(false, false));
+  assert(!Logic::otaUploadSubmitEnabled(true, true));
+}
+
+static void testWebPortalButtonStates() {
+  auto states = Logic::webPlaybackButtonStates(false, true, true, true, true);
+  assert(!states.previous);
+  assert(!states.next);
+  assert(!states.playPause);
+  assert(states.playPauseShowsPause);
+  assert(!states.volume);
+  assert(!states.shuffle);
+  assert(!states.repeat);
+  assert(!states.soundOutput);
+  assert(!states.playlist);
+  assert(states.webPtt);
+
+  states = Logic::webPlaybackButtonStates(true, false, false, true, false);
+  assert(states.previous);
+  assert(states.next);
+  assert(!states.playPause);
+  assert(!states.playPauseShowsPause);
+  assert(!states.volume);
+  assert(states.shuffle);
+  assert(states.repeat);
+  assert(states.soundOutput);
+  assert(states.playlist);
+  assert(!states.webPtt);
+
+  states = Logic::webPlaybackButtonStates(true, true, false, true, true);
+  assert(states.playPause);
+  assert(!states.playPauseShowsPause);
+  assert(states.volume);
+  assert(states.webPtt);
+
+  states = Logic::webPlaybackButtonStates(true, true, true, false, true);
+  assert(states.playPause);
+  assert(states.playPauseShowsPause);
+  assert(!states.volume);
 }
 
 static void testLanguageCodeNormalization() {
@@ -689,6 +775,9 @@ int main() {
   testSha256HexValidation();
   testBq27220Interpretation();
   testVoiceChunkHelpers();
+  testDjConnectDeviceIdContract();
+  testWebPortalFormValidation();
+  testWebPortalButtonStates();
   testLanguageCodeNormalization();
   testDeviceCommandParserPlaybackControls();
   testDeviceCommandParserSettings();

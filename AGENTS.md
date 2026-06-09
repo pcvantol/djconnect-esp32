@@ -267,7 +267,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/djconnect/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
 - Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
-- Optional wake-word support must remain inert without a linked model hook. A trained model may expose `extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t sampleCount);`; the detector must be fast, local-only, and must not perform network I/O from the audio poll path.
+- Optional wake-word support must remain inert without a linked model hook. A trained `oke nabu` model may expose `extern "C" bool djconnect_oke_nabu_wake_word_detect(const int16_t *samples, size_t sampleCount);`; the legacy `djconnect_micro_wake_word_detect` hook remains supported. The detector must be fast, local-only, and must not perform network I/O from the audio poll path.
 - Do not call OpenAI directly from ESP firmware.
 - Keep `DJCONNECT_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.
 
@@ -305,7 +305,7 @@ Important current UI details:
 
 - App name is `DJConnect`.
 - Default device/web theme is `dark`. `Light` uses TFT inversion/high contrast on the device. `Auto` is mainly useful for the web portal, where it follows browser/device preference.
-- Changing the theme from the device or web settings intentionally saves and restarts the device so the display theme is applied cleanly from boot.
+- Changing brightness, timeouts, cue volume, language, theme or log level from the device, web settings or HA commands applies live and saves to NVS. Do not restart for these settings; restart only for flows that explicitly require it such as WiFi changes, reset, OTA or user-requested reboot.
 - Now-playing title color is bright yellow.
 - Artist/show text is light grey.
 - Track progress bar is green.

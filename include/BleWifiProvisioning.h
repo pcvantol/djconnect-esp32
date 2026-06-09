@@ -19,7 +19,7 @@ public:
   // Exposes whether BLE advertising is active, so pairing mode can reuse the setup BLE service.
   bool isStarted() const;
 
-  // Called by the BLE characteristic callback when a phone writes provisioning JSON.
+  // Called by the BLE characteristic callback when a phone writes provisioning JSON or a fragment of it.
   void receivePayload(const String &payload);
 
   // Updates the readable/notifiable status characteristic for HA Bluetooth Proxy flows.
@@ -27,6 +27,7 @@ public:
 
 private:
   bool started_ = false;
+  String receiveBuffer_;
   String pendingPayload_;
   bool payloadPending_ = false;
   BLECharacteristic *statusCharacteristic_ = nullptr;
