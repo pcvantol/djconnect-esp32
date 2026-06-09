@@ -1,6 +1,6 @@
 // Top-level application orchestration.
 // This file wires together input, Spotify, display, battery, LED ring, and periodic refresh timing.
-#include "SpotifyDJApp.h"
+#include "DJConnectApp.h"
 
 #include <ArduinoJson.h>
 #include <DNSServer.h>
@@ -19,8 +19,8 @@
 #include "Config.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
-#include "assets/spotifydj_favicon_ico.h"
-#include "assets/spotifydj_icon_192_png.h"
+#include "assets/djconnect_favicon_ico.h"
+#include "assets/djconnect_icon_192_png.h"
 
 #ifndef SPOTIFY_ALLOW_INSECURE_TLS
 #define SPOTIFY_ALLOW_INSECURE_TLS 0
@@ -71,9 +71,9 @@ String minuteLabel(uint32_t valueMs) {
 }
 }  // namespace
 
-using namespace SpotifyDJMenu;
+using namespace DJConnectMenu;
 
-void SpotifyDJApp::begin() {
+void DJConnectApp::begin() {
   pinMode(Config::DisplayBacklightPin, OUTPUT);
   digitalWrite(Config::DisplayBacklightPin, LOW);
 
@@ -98,7 +98,6 @@ void SpotifyDJApp::begin() {
   haDevice_.begin(&battery_, &display_);
   haPairing_.begin(haDevice_, &haDiscovery_);
   haPairing_.setLanguageProvisionedCallback(languageProvisionedCallback, this);
-  haPairing_.setSpotifyProvisionedCallback(spotifyProvisionedCallback, this);
   softResetMonitor_.begin(battery_, softResetCueCallback, this);
   albumArt_.begin();
   ledRing_.begin();
@@ -155,7 +154,7 @@ void SpotifyDJApp::begin() {
   renderNow();
 }
 
-void SpotifyDJApp::loop() {
+void DJConnectApp::loop() {
   const uint32_t loopStartedAt = millis();
   serviceWatchdog();
 
@@ -259,7 +258,7 @@ void SpotifyDJApp::loop() {
   responsiveDelay(5);
 }
 
-void SpotifyDJApp::loadProvisioning() {
+void DJConnectApp::loadProvisioning() {
   const ProvisioningSettings settings = provisioning_.load();
   wifiSsid_ = settings.wifiSsid;
   wifiPassword_ = settings.wifiPassword;
@@ -317,11 +316,11 @@ void SpotifyDJApp::loadProvisioning() {
   AppLog.println(wifiSsid_.isEmpty() ? "missing" : "NVS");
 }
 
-bool SpotifyDJApp::shouldStartProvisioningPortal() const {
+bool DJConnectApp::shouldStartProvisioningPortal() const {
   return setupModeRequested_ || wifiSsid_.isEmpty();
 }
 
-void SpotifyDJApp::handleWifiConnectFailureLoop(uint32_t loopStartedAt) {
+void DJConnectApp::handleWifiConnectFailureLoop(uint32_t loopStartedAt) {
   display_.forceBacklightPercent(100);
   ledRing_.setPowerPercent(0);
 
@@ -355,7 +354,7 @@ void SpotifyDJApp::handleWifiConnectFailureLoop(uint32_t loopStartedAt) {
   responsiveDelay(10);
 }
 
-void SpotifyDJApp::renderWifiConnectFailureMenu() {
+void DJConnectApp::renderWifiConnectFailureMenu() {
   StatusNotice notice;
   notice.show(I18n::text("center_select"), 1000);
   if (wifiFailureConfirmHardReset_) {
@@ -376,7 +375,7 @@ void SpotifyDJApp::renderWifiConnectFailureMenu() {
   display_.renderMenuList(I18n::text("wifi_failed"), items, WifiFailureOptionCount, wifiFailureSelection_, notice);
 }
 
-void SpotifyDJApp::applyWifiConnectFailureSelection() {
+void DJConnectApp::applyWifiConnectFailureSelection() {
   if (volumeFeedbackEnabled_) {
     sound_.playConfirm();
   }
@@ -432,7 +431,7 @@ void SpotifyDJApp::applyWifiConnectFailureSelection() {
   renderWifiConnectFailureMenu();
 }
 
-bool SpotifyDJApp::connectWiFi(uint32_t timeoutMs, bool bootScreen) {
+bool DJConnectApp::connectWiFi(uint32_t timeoutMs, bool bootScreen) {
   if (bootScreen) {
     display_.forceBacklightPercent(100);
   } else {
@@ -491,7 +490,7 @@ bool SpotifyDJApp::connectWiFi(uint32_t timeoutMs, bool bootScreen) {
   }
 }
 
-void SpotifyDJApp::startWebPortalIfNeeded() {
+void DJConnectApp::startWebPortalIfNeeded() {
   if (WiFi.status() != WL_CONNECTED || webPortal_.isRunning()) {
     return;
   }
@@ -524,7 +523,7 @@ void SpotifyDJApp::startWebPortalIfNeeded() {
   setupHomeAssistantLayer();
 }
 
-bool SpotifyDJApp::syncClock() {
+bool DJConnectApp::syncClock() {
 #if SPOTIFY_ALLOW_INSECURE_TLS
   return true;
 #else
@@ -560,7 +559,7 @@ bool SpotifyDJApp::syncClock() {
 #endif
 }
 
-void SpotifyDJApp::runCaptivePortal() {
+void DJConnectApp::runCaptivePortal() {
   display_.wakeForUserActivity();
   display_.forceBacklightPercent(100);
   auto setupScreenMessage = []() {
@@ -592,17 +591,17 @@ void SpotifyDJApp::runCaptivePortal() {
   });
 
   server.on("/favicon.ico", HTTP_GET, [&]() {
-    server.send_P(200, "image/x-icon", reinterpret_cast<const char *>(SPOTIFYDJ_FAVICON_ICO), SPOTIFYDJ_FAVICON_ICO_LEN);
+    server.send_P(200, "image/x-icon", reinterpret_cast<const char *>(DJCONNECT_FAVICON_ICO), DJCONNECT_FAVICON_ICO_LEN);
   });
 
   server.on("/icon-192.png", HTTP_GET, [&]() {
-    server.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    server.send_P(200, "image/png", reinterpret_cast<const char *>(DJCONNECT_ICON_192_PNG), DJCONNECT_ICON_192_PNG_LEN);
   });
   server.on("/apple-touch-icon.png", HTTP_GET, [&]() {
-    server.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    server.send_P(200, "image/png", reinterpret_cast<const char *>(DJCONNECT_ICON_192_PNG), DJCONNECT_ICON_192_PNG_LEN);
   });
   server.on("/apple-touch-icon-precomposed.png", HTTP_GET, [&]() {
-    server.send_P(200, "image/png", reinterpret_cast<const char *>(SPOTIFYDJ_ICON_192_PNG), SPOTIFYDJ_ICON_192_PNG_LEN);
+    server.send_P(200, "image/png", reinterpret_cast<const char *>(DJCONNECT_ICON_192_PNG), DJCONNECT_ICON_192_PNG_LEN);
   });
 
   server.on("/submit", HTTP_POST, [&]() {
@@ -702,7 +701,7 @@ void SpotifyDJApp::runCaptivePortal() {
   }
 }
 
-bool SpotifyDJApp::handleBleProvisioningPayload(const String &payload, String &message) {
+bool DJConnectApp::handleBleProvisioningPayload(const String &payload, String &message) {
   JsonDocument doc;
   if (deserializeJson(doc, payload)) {
     message = "BLE setup JSON failed.";
@@ -724,7 +723,7 @@ bool SpotifyDJApp::handleBleProvisioningPayload(const String &payload, String &m
   return testAndSaveProvisioning(ssid, password, message);
 }
 
-String SpotifyDJApp::captivePortalPage(
+String DJConnectApp::captivePortalPage(
     const String &message,
     bool error,
     const String &ssid) const {
@@ -742,9 +741,9 @@ String SpotifyDJApp::captivePortalPage(
   page += F("<meta name='theme-color' content='#080b0c'>");
   page += F("<meta name='mobile-web-app-capable' content='yes'>");
   page += F("<meta name='apple-mobile-web-app-capable' content='yes'>");
-  page += F("<meta name='apple-mobile-web-app-title' content='SpotifyDJ Setup'>");
+  page += F("<meta name='apple-mobile-web-app-title' content='DJConnect Setup'>");
   page += F("<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent'>");
-  page += F("<meta name='application-name' content='SpotifyDJ Setup'>");
+  page += F("<meta name='application-name' content='DJConnect Setup'>");
   page += F("<link rel='shortcut icon' href='/favicon.ico?v=2' sizes='any'>");
   page += F("<link rel='icon' href='/favicon.ico?v=2' sizes='any'>");
   page += F("<link rel='icon' type='image/png' sizes='192x192' href='/icon-192.png?v=2'>");
@@ -752,7 +751,7 @@ String SpotifyDJApp::captivePortalPage(
   page += F("<link rel='apple-touch-icon' sizes='192x192' href='/apple-touch-icon.png?v=2'>");
   page += F("<link rel='apple-touch-icon-precomposed' sizes='180x180' href='/apple-touch-icon-precomposed.png'>");
   page += F("<link rel='apple-touch-icon-precomposed' sizes='192x192' href='/apple-touch-icon-precomposed.png?v=2'>");
-  page += F("<title>SpotifyDJ Setup</title><style>");
+  page += F("<title>DJConnect Setup</title><style>");
   page += F("*{box-sizing:border-box}body{margin:0;background:#080b0c;color:#f3f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}");
   page += F("main{width:100%;max-width:520px;margin:0 auto;padding:18px}.brand{display:flex;align-items:center;gap:10px;margin:8px 0 4px}.brand img{width:42px;height:42px;border-radius:8px}h1{font-size:26px;margin:0}p{color:#9aa6a2;line-height:1.4}");
   page += F(".box{background:#111718;border:1px solid #233033;border-radius:8px;padding:14px;margin-top:14px}");
@@ -762,7 +761,7 @@ String SpotifyDJApp::captivePortalPage(
   page += F("}label{display:grid;gap:6px;margin:12px 0;color:#a8b3af;font-size:13px}");
   page += F("input,button{display:block;width:100%;max-width:100%;min-height:44px;border-radius:8px;border:1px solid #233033;background:#0c1112;color:#f3f7f5;padding:9px 10px;font-size:16px}");
   page += F("button{background:#173721;border-color:#25593a;color:#baf7ca;font-weight:700;margin-top:8px}");
-  page += F("</style></head><body><main><div class='brand'><img src='/icon-192.png' alt=''><h1>SpotifyDJ Setup</h1></div>");
+  page += F("</style></head><body><main><div class='brand'><img src='/icon-192.png' alt=''><h1>DJConnect Setup</h1></div>");
   page += F("<p>");
   page += language_ == Language::Dutch ? F("Vul je WiFi gegevens in.") : F("Please fill in your WiFi credentials.");
   page += F("</p>");
@@ -787,7 +786,7 @@ String SpotifyDJApp::captivePortalPage(
   return page;
 }
 
-bool SpotifyDJApp::testAndSaveProvisioning(
+bool DJConnectApp::testAndSaveProvisioning(
     const String &ssid,
     const String &password,
     String &message) {
@@ -829,7 +828,7 @@ bool SpotifyDJApp::testAndSaveProvisioning(
   return true;
 }
 
-void SpotifyDJApp::handleInputEvents(const InputEvents &events) {
+void DJConnectApp::handleInputEvents(const InputEvents &events) {
   if (suppressInputUntilRelease_) {
     input_.clearPendingButtonActions();
     if (!events.buttonHeld) {
@@ -894,7 +893,7 @@ void SpotifyDJApp::handleInputEvents(const InputEvents &events) {
   handlePlaybackInputEvents(events);
 }
 
-void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
+void DJConnectApp::handlePlaybackInputEvents(const InputEvents &events) {
   if (events.encoderSteps != 0) {
     handleEncoderTurn(events.encoderSteps);
   }
@@ -931,7 +930,7 @@ void SpotifyDJApp::handlePlaybackInputEvents(const InputEvents &events) {
   // Holding the top button for the longer reset threshold is still handled by SoftResetMonitor.
 }
 
-void SpotifyDJApp::handleMenuInputEvents(const InputEvents &events) {
+void DJConnectApp::handleMenuInputEvents(const InputEvents &events) {
   if (activeScreen_ == UiScreen::Pong && events.encoderSteps != 0) {
     pongPaddleY_ = constrain(pongPaddleY_ + (events.encoderSteps * 5), 42, 126);
     renderNow();
@@ -1020,7 +1019,7 @@ void SpotifyDJApp::handleMenuInputEvents(const InputEvents &events) {
   // Holding the top button for 10 seconds keeps its hardware reset role.
 }
 
-void SpotifyDJApp::openRootMenu() {
+void DJConnectApp::openRootMenu() {
   activeScreen_ = UiScreen::RootMenu;
   menuStackSize_ = 0;
   if (volumeFeedbackEnabled_) {
@@ -1030,7 +1029,7 @@ void SpotifyDJApp::openRootMenu() {
   renderNow();
 }
 
-void SpotifyDJApp::openScreen(UiScreen screen) {
+void DJConnectApp::openScreen(UiScreen screen) {
   if (menuStackSize_ < MenuStackCapacity) {
     menuStack_[menuStackSize_++] = activeScreen_;
   }
@@ -1041,7 +1040,7 @@ void SpotifyDJApp::openScreen(UiScreen screen) {
   renderNow();
 }
 
-void SpotifyDJApp::goBackOneScreen() {
+void DJConnectApp::goBackOneScreen() {
   if (activeScreen_ == UiScreen::NowPlaying) {
     return;
   }
@@ -1057,7 +1056,7 @@ void SpotifyDJApp::goBackOneScreen() {
   renderNow();
 }
 
-void SpotifyDJApp::moveMenuSelection(int encoderSteps) {
+void DJConnectApp::moveMenuSelection(int encoderSteps) {
   const size_t itemCount = menuItemCount(activeScreen_);
   if (itemCount == 0) {
     return;
@@ -1088,7 +1087,7 @@ void SpotifyDJApp::moveMenuSelection(int encoderSteps) {
   renderNow();
 }
 
-void SpotifyDJApp::selectCurrentMenuItem() {
+void DJConnectApp::selectCurrentMenuItem() {
   switch (activeScreen_) {
     case UiScreen::RootMenu:
       if (rootMenuSelection_ == 0) {
@@ -1298,7 +1297,7 @@ void SpotifyDJApp::selectCurrentMenuItem() {
   }
 }
 
-void SpotifyDJApp::applyDimTimeoutSelection() {
+void DJConnectApp::applyDimTimeoutSelection() {
   screenOffTimeoutMs_ = dimTimeoutValueMs(dimTimeoutSelection_);
   display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
   saveDisplaySettings();
@@ -1308,7 +1307,7 @@ void SpotifyDJApp::applyDimTimeoutSelection() {
   renderNow();
 }
 
-void SpotifyDJApp::applyBrightnessSelection() {
+void DJConnectApp::applyBrightnessSelection() {
   screenBrightnessPercent_ = brightnessValuePercent(brightnessSelection_);
   display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
   saveDisplaySettings();
@@ -1319,7 +1318,7 @@ void SpotifyDJApp::applyBrightnessSelection() {
   renderNow();
 }
 
-void SpotifyDJApp::applySpeakerVolumeSelection() {
+void DJConnectApp::applySpeakerVolumeSelection() {
   speakerVolumePercent_ = speakerVolumeValuePercent(speakerVolumeSelection_);
   sound_.setVolumePercent(speakerVolumePercent_);
   saveDisplaySettings();
@@ -1330,7 +1329,7 @@ void SpotifyDJApp::applySpeakerVolumeSelection() {
   renderNow();
 }
 
-void SpotifyDJApp::applyLogLevelSelection() {
+void DJConnectApp::applyLogLevelSelection() {
   logLevel_ = logLevelValue(logLevelSelection_);
   saveDisplaySettings();
   AppLog.setLevel(logLevel_);
@@ -1338,7 +1337,7 @@ void SpotifyDJApp::applyLogLevelSelection() {
   renderNow();
 }
 
-void SpotifyDJApp::applyShuffleSelection() {
+void DJConnectApp::applyShuffleSelection() {
   const bool enabled = shuffleValue(shuffleSelection_);
   AppLog.print("Playback: setting shuffle ");
   AppLog.println(enabled ? "on" : "off");
@@ -1357,7 +1356,7 @@ void SpotifyDJApp::applyShuffleSelection() {
   renderNow();
 }
 
-void SpotifyDJApp::applyRepeatSelection() {
+void DJConnectApp::applyRepeatSelection() {
   const String repeat = repeatValue(repeatSelection_);
   AppLog.print("Playback: setting repeat ");
   AppLog.println(repeat);
@@ -1376,7 +1375,7 @@ void SpotifyDJApp::applyRepeatSelection() {
   renderNow();
 }
 
-void SpotifyDJApp::applySleepTimeoutSelection() {
+void DJConnectApp::applySleepTimeoutSelection() {
   // The selected timeout controls full ESP32-S3 deep sleep, not just the display backlight.
   deviceSleepTimeoutMs_ = sleepTimeoutValueMs(sleepTimeoutSelection_);
   saveDisplaySettings();
@@ -1387,7 +1386,7 @@ void SpotifyDJApp::applySleepTimeoutSelection() {
   renderNow();
 }
 
-void SpotifyDJApp::saveDisplaySettings() {
+void DJConnectApp::saveDisplaySettings() {
   languageCode_ = I18n::languageCode();
   provisioning_.saveDisplaySettings(
       screenOffTimeoutMs_,
@@ -1400,7 +1399,7 @@ void SpotifyDJApp::saveDisplaySettings() {
       volumeFeedbackEnabled_);
 }
 
-void SpotifyDJApp::hardResetToProvisioning() {
+void DJConnectApp::hardResetToProvisioning() {
   AppLog.println("Factory reset: clearing local credentials, tokens, settings and caches");
   sound_.playHardReset();
   display_.wakeForUserActivity();
@@ -1433,7 +1432,7 @@ void SpotifyDJApp::hardResetToProvisioning() {
   ESP.restart();
 }
 
-void SpotifyDJApp::changeWifiToProvisioning() {
+void DJConnectApp::changeWifiToProvisioning() {
   AppLog.println("WiFi change: restarting to setup portal, Home Assistant pairing kept");
   voiceRecorder_.abort();
   display_.wakeForUserActivity();
@@ -1445,7 +1444,7 @@ void SpotifyDJApp::changeWifiToProvisioning() {
   ESP.restart();
 }
 
-void SpotifyDJApp::resetHomeAssistantPairing() {
+void DJConnectApp::resetHomeAssistantPairing() {
   AppLog.println("Home Assistant: clearing pairing and restarting to pairing mode");
   voiceRecorder_.abort();
   homeAssistantPaired_ = false;
@@ -1465,15 +1464,15 @@ void SpotifyDJApp::resetHomeAssistantPairing() {
   ESP.restart();
 }
 
-bool SpotifyDJApp::isMenuActive() const {
+bool DJConnectApp::isMenuActive() const {
   return isMenuScreen(activeScreen_);
 }
 
-size_t SpotifyDJApp::menuItemCount(UiScreen screen) const {
+size_t DJConnectApp::menuItemCount(UiScreen screen) const {
   return itemCount(screen, playlists_, deviceList_);
 }
 
-size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
+size_t DJConnectApp::selectedIndexForScreen(UiScreen screen) const {
   switch (screen) {
     case UiScreen::RootMenu:
       return rootMenuSelection_;
@@ -1523,7 +1522,7 @@ size_t SpotifyDJApp::selectedIndexForScreen(UiScreen screen) const {
   return 0;
 }
 
-size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
+size_t &DJConnectApp::selectedIndexRefForScreen(UiScreen screen) {
   switch (screen) {
     case UiScreen::RootMenu:
       return rootMenuSelection_;
@@ -1573,12 +1572,12 @@ size_t &SpotifyDJApp::selectedIndexRefForScreen(UiScreen screen) {
   return rootMenuSelection_;
 }
 
-void SpotifyDJApp::applyTheme() {
+void DJConnectApp::applyTheme() {
   // The ESP has no browser preference, so auto maps to the normal dark TFT palette.
   display_.setLightTheme(themeCode_ == "light");
 }
 
-void SpotifyDJApp::handleEncoderTurn(int encoderSteps) {
+void DJConnectApp::handleEncoderTurn(int encoderSteps) {
   if (!playback_.hasPlayback || !playback_.supportsVolume) {
     return;
   }
@@ -1600,7 +1599,7 @@ void SpotifyDJApp::handleEncoderTurn(int encoderSteps) {
   renderNow();
 }
 
-void SpotifyDJApp::flushPendingVolume() {
+void DJConnectApp::flushPendingVolume() {
   if (pendingVolume_ < 0 || millis() - pendingVolumeChangedAt_ < Config::VolumeFlushDelayMs) {
     return;
   }
@@ -1619,7 +1618,7 @@ void SpotifyDJApp::flushPendingVolume() {
   renderNow();
 }
 
-void SpotifyDJApp::processVolumeResult() {
+void DJConnectApp::processVolumeResult() {
   VolumeResult result;
   if (!spotify_.pollVolumeResult(result)) {
     return;
@@ -1636,7 +1635,7 @@ void SpotifyDJApp::processVolumeResult() {
   renderNow();
 }
 
-void SpotifyDJApp::processStressTest() {
+void DJConnectApp::processStressTest() {
   if (!stressTestActive_) {
     return;
   }
@@ -1657,7 +1656,7 @@ void SpotifyDJApp::processStressTest() {
   runStressTestStep();
 }
 
-void SpotifyDJApp::toggleStressTest() {
+void DJConnectApp::toggleStressTest() {
   if (stressTestActive_) {
     stopStressTest("manual stop");
     return;
@@ -1671,7 +1670,7 @@ void SpotifyDJApp::toggleStressTest() {
   renderNow();
 }
 
-void SpotifyDJApp::stopStressTest(const String &reason) {
+void DJConnectApp::stopStressTest(const String &reason) {
   if (!stressTestActive_) {
     return;
   }
@@ -1685,7 +1684,7 @@ void SpotifyDJApp::stopStressTest(const String &reason) {
   renderNow();
 }
 
-void SpotifyDJApp::runStressTestStep() {
+void DJConnectApp::runStressTestStep() {
   stressTestStepCount_++;
   const uint32_t randomValue = esp_random();
   switch (randomValue % 8) {
@@ -1731,7 +1730,7 @@ void SpotifyDJApp::runStressTestStep() {
   renderNow();
 }
 
-void SpotifyDJApp::resetPong() {
+void DJConnectApp::resetPong() {
   pongPaddleY_ = 86;
   pongBallX_ = 160;
   pongBallY_ = 86;
@@ -1742,7 +1741,7 @@ void SpotifyDJApp::resetPong() {
   lastPongFrameAt_ = 0;
 }
 
-void SpotifyDJApp::updatePong() {
+void DJConnectApp::updatePong() {
   const uint32_t now = millis();
   if (!display_.isOn() || display_.backlightPercent() == 0) {
     lastPongFrameAt_ = now;
@@ -1790,7 +1789,7 @@ void SpotifyDJApp::updatePong() {
   renderNow();
 }
 
-void SpotifyDJApp::resetAsteroids() {
+void DJConnectApp::resetAsteroids() {
   asteroidShipX_ = 160;
   asteroidShipY_ = 138;
   asteroidX_ = 40 + static_cast<int>(esp_random() % 240);
@@ -1804,7 +1803,7 @@ void SpotifyDJApp::resetAsteroids() {
   lastAsteroidsFrameAt_ = 0;
 }
 
-void SpotifyDJApp::fireAsteroids() {
+void DJConnectApp::fireAsteroids() {
   if (asteroidBulletActive_) {
     return;
   }
@@ -1816,7 +1815,7 @@ void SpotifyDJApp::fireAsteroids() {
   renderNow();
 }
 
-void SpotifyDJApp::updateAsteroids() {
+void DJConnectApp::updateAsteroids() {
   if (!display_.isOn()) {
     return;
   }
@@ -1863,7 +1862,7 @@ void SpotifyDJApp::updateAsteroids() {
   renderNow();
 }
 
-void SpotifyDJApp::resetFlyer() {
+void DJConnectApp::resetFlyer() {
   flyerPlaneY_ = 86;
   flyerObstacleX_ = 300;
   flyerObstacleY_ = 52 + static_cast<int>(esp_random() % 92);
@@ -1874,7 +1873,7 @@ void SpotifyDJApp::resetFlyer() {
   lastFlyerFrameAt_ = 0;
 }
 
-void SpotifyDJApp::fireFlyer() {
+void DJConnectApp::fireFlyer() {
   if (flyerShotActive_) {
     return;
   }
@@ -1886,7 +1885,7 @@ void SpotifyDJApp::fireFlyer() {
   renderNow();
 }
 
-void SpotifyDJApp::updateFlyer() {
+void DJConnectApp::updateFlyer() {
   if (!display_.isOn()) {
     return;
   }
@@ -1932,7 +1931,7 @@ void SpotifyDJApp::updateFlyer() {
   renderNow();
 }
 
-bool SpotifyDJApp::handleDeviceCommand(const DeviceCommand &command, String &message) {
+bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &message) {
   if (command.type == DeviceCommandType::Status) {
     AppLog.println("Device command: status");
     sendHomeAssistantStatusIfDue(true);
@@ -2172,7 +2171,7 @@ bool SpotifyDJApp::handleDeviceCommand(const DeviceCommand &command, String &mes
   return false;
 }
 
-void SpotifyDJApp::pauseOrResume() {
+void DJConnectApp::pauseOrResume() {
   if (!playbackProxyReady()) {
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
@@ -2208,7 +2207,7 @@ void SpotifyDJApp::pauseOrResume() {
   renderNow();
 }
 
-void SpotifyDJApp::startLikedProxyPlaylist() {
+void DJConnectApp::startLikedProxyPlaylist() {
   if (!playbackProxyReady()) {
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
@@ -2239,7 +2238,7 @@ void SpotifyDJApp::startLikedProxyPlaylist() {
   renderNow();
 }
 
-void SpotifyDJApp::handleVoiceButton() {
+void DJConnectApp::handleVoiceButton() {
   if (!homeAssistantPaired_) {
     AppLog.println("Voice: HA not paired, using pause/resume");
     pauseOrResume();
@@ -2251,7 +2250,7 @@ void SpotifyDJApp::handleVoiceButton() {
     return;
   }
 
-#if defined(SPOTIFYDJ_DEBUG_TEXT_COMMAND)
+#if defined(DJCONNECT_DEBUG_TEXT_COMMAND)
   AppLog.println("Voice: debug text command");
   String message;
   voiceState_ = VoiceState::SendingCommand;
@@ -2299,7 +2298,7 @@ void SpotifyDJApp::handleVoiceButton() {
   renderNow();
 }
 
-void SpotifyDJApp::stopVoiceRecordingAndSendText() {
+void DJConnectApp::stopVoiceRecordingAndSendText() {
   if (!voiceRecording_) {
     return;
   }
@@ -2331,7 +2330,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   voiceState_ = VoiceState::SendingCommand;
   AppLog.println("Voice: uploading WAV to HA integration");
   voiceClient_.sendStatus(false, "sending_command");
-  showNotice("SpotifyDJ...", 2500);
+  showNotice("DJConnect...", 2500);
   renderNow();
   String audioUrl;
   if (voiceClient_.uploadWav(voiceRecorder_.wavPath(), message, &audioUrl)) {
@@ -2366,7 +2365,7 @@ void SpotifyDJApp::stopVoiceRecordingAndSendText() {
   renderNow();
 }
 
-void SpotifyDJApp::goToNextTrack() {
+void DJConnectApp::goToNextTrack() {
   if (!playbackProxyReady()) {
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
@@ -2396,7 +2395,7 @@ void SpotifyDJApp::goToNextTrack() {
   renderNow();
 }
 
-void SpotifyDJApp::goToPreviousTrack() {
+void DJConnectApp::goToPreviousTrack() {
   if (!playbackProxyReady()) {
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
@@ -2418,7 +2417,7 @@ void SpotifyDJApp::goToPreviousTrack() {
   renderNow();
 }
 
-void SpotifyDJApp::startSelectedPlaylist() {
+void DJConnectApp::startSelectedPlaylist() {
   if (!playbackProxyReady()) {
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
@@ -2457,7 +2456,7 @@ void SpotifyDJApp::startSelectedPlaylist() {
   renderNow();
 }
 
-bool SpotifyDJApp::transferToOutputByNameOrId(const String &output) {
+bool DJConnectApp::transferToOutputByNameOrId(const String &output) {
   if (output.isEmpty() || output == "none") {
     playback_.error = "Output missing";
     return false;
@@ -2490,7 +2489,7 @@ bool SpotifyDJApp::transferToOutputByNameOrId(const String &output) {
   return false;
 }
 
-bool SpotifyDJApp::startPlaylistByNameOrUri(const String &playlist) {
+bool DJConnectApp::startPlaylistByNameOrUri(const String &playlist) {
   if (playlist.isEmpty() || playlist == "none") {
     playback_.error = "Playlist missing";
     return false;
@@ -2526,7 +2525,7 @@ bool SpotifyDJApp::startPlaylistByNameOrUri(const String &playlist) {
   return false;
 }
 
-void SpotifyDJApp::refreshPlaybackAndBattery() {
+void DJConnectApp::refreshPlaybackAndBattery() {
   showNotice(I18n::text("refreshing"));
   batteryMonitor_.refresh();
   evaluateBatteryTransition();
@@ -2544,7 +2543,7 @@ void SpotifyDJApp::refreshPlaybackAndBattery() {
   renderNow();
 }
 
-void SpotifyDJApp::pollBatteryIfDue() {
+void DJConnectApp::pollBatteryIfDue() {
   if (millis() - lastBatteryPollAt_ <= Config::BatteryPollIntervalMs) {
     return;
   }
@@ -2555,7 +2554,7 @@ void SpotifyDJApp::pollBatteryIfDue() {
   renderNow();
 }
 
-void SpotifyDJApp::pollPlaybackIfDue() {
+void DJConnectApp::pollPlaybackIfDue() {
   if (millis() - lastPlaybackPollAt_ <= Config::PlaybackPollIntervalMs) {
     return;
   }
@@ -2585,7 +2584,7 @@ void SpotifyDJApp::pollPlaybackIfDue() {
   renderNow();
 }
 
-void SpotifyDJApp::openAlbumArtScreen() {
+void DJConnectApp::openAlbumArtScreen() {
   if (!playback_.hasPlayback) {
     showNotice(I18n::text("no_current_song"), 1800);
     renderNow();
@@ -2600,7 +2599,7 @@ void SpotifyDJApp::openAlbumArtScreen() {
   renderNow();
 }
 
-void SpotifyDJApp::openQueueScreen() {
+void DJConnectApp::openQueueScreen() {
   activeScreen_ = UiScreen::Queue;
   menuStackSize_ = 0;
   showNotice(I18n::text("loading_queue"), 1200);
@@ -2614,7 +2613,7 @@ void SpotifyDJApp::openQueueScreen() {
   renderNow();
 }
 
-void SpotifyDJApp::openSoundOutputsScreen() {
+void DJConnectApp::openSoundOutputsScreen() {
   activeScreen_ = UiScreen::SoundOutputs;
   menuStackSize_ = 0;
   soundOutputSelection_ = 0;
@@ -2629,11 +2628,11 @@ void SpotifyDJApp::openSoundOutputsScreen() {
   renderNow();
 }
 
-bool SpotifyDJApp::playbackProxyReady() const {
+bool DJConnectApp::playbackProxyReady() const {
   return homeAssistantPaired_ && spotify_.isAuthorized();
 }
 
-PlaybackConnectionState SpotifyDJApp::playbackConnectionState() const {
+PlaybackConnectionState DJConnectApp::playbackConnectionState() const {
   if (!playbackProxyReady()) {
     return PlaybackConnectionState::Error;
   }
@@ -2646,7 +2645,7 @@ PlaybackConnectionState SpotifyDJApp::playbackConnectionState() const {
   return PlaybackConnectionState::Ok;
 }
 
-void SpotifyDJApp::transferToSelectedOutput() {
+void DJConnectApp::transferToSelectedOutput() {
   if (!playbackProxyReady()) {
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
@@ -2674,7 +2673,7 @@ void SpotifyDJApp::transferToSelectedOutput() {
     return;
   }
 
-  const size_t deviceIndex = soundOutputSelection_ - SpotifyDJMenuModel::FixedSoundOutputCount;
+  const size_t deviceIndex = soundOutputSelection_ - DJConnectMenuModel::FixedSoundOutputCount;
   if (!deviceList_.available || deviceList_.count == 0 || deviceIndex >= deviceList_.count) {
     showNotice(I18n::text("no_outputs"), 2000);
     renderNow();
@@ -2694,7 +2693,7 @@ void SpotifyDJApp::transferToSelectedOutput() {
   renderNow();
 }
 
-void SpotifyDJApp::renderNow() {
+void DJConnectApp::renderNow() {
   if (lowBatteryGuardActive_ || criticalBatteryGuardActive_) {
     renderLowBatteryGuard();
     if (djResponseOverlayVisible_) {
@@ -2748,7 +2747,7 @@ void SpotifyDJApp::renderNow() {
   visualState_.ledOn = ledRing_.isOn();
 }
 
-bool SpotifyDJApp::dismissDjResponseOverlay() {
+bool DJConnectApp::dismissDjResponseOverlay() {
   if (!djResponseOverlayVisible_) {
     return false;
   }
@@ -2758,15 +2757,15 @@ bool SpotifyDJApp::dismissDjResponseOverlay() {
   return true;
 }
 
-bool SpotifyDJApp::chargerConnected() const {
+bool DJConnectApp::chargerConnected() const {
   return power_.chargerConnected(battery_);
 }
 
-bool SpotifyDJApp::shouldReturnToSleepAfterTimerWake() const {
+bool DJConnectApp::shouldReturnToSleepAfterTimerWake() const {
   return power_.shouldReturnToSleepAfterTimerWake(battery_);
 }
 
-void SpotifyDJApp::evaluateBatteryTransition() {
+void DJConnectApp::evaluateBatteryTransition() {
   if (!battery_.available || battery_.percent < 0) {
     return;
   }
@@ -2785,7 +2784,7 @@ void SpotifyDJApp::evaluateBatteryTransition() {
   lastBatteryPercent_ = battery_.percent;
 }
 
-bool SpotifyDJApp::updateLowBatteryGuard() {
+bool DJConnectApp::updateLowBatteryGuard() {
   if (!battery_.available || battery_.percent < 0) {
     return false;
   }
@@ -2843,7 +2842,7 @@ bool SpotifyDJApp::updateLowBatteryGuard() {
   return true;
 }
 
-void SpotifyDJApp::renderLowBatteryGuard() {
+void DJConnectApp::renderLowBatteryGuard() {
   const uint8_t brightness = criticalBatteryGuardActive_ ? 25 : 50;
   const String message = chargingBatteryGuardActive_ ? I18n::text("charging") : I18n::text("boot_please_charge");
   display_.forceBacklightPercent(brightness);
@@ -2862,13 +2861,13 @@ void SpotifyDJApp::renderLowBatteryGuard() {
   visualState_.ledOn = ledRing_.isOn();
 }
 
-bool SpotifyDJApp::connectionHealthy() {
+bool DJConnectApp::connectionHealthy() {
   const bool homeAssistantOk = homeAssistantPaired_;
   const bool playbackOkOrIdle = playbackConnectionState() != PlaybackConnectionState::Error;
   return homeAssistantOk && playbackOkOrIdle;
 }
 
-AboutStatus SpotifyDJApp::aboutStatus() {
+AboutStatus DJConnectApp::aboutStatus() {
   AboutStatus status;
   status.wifiConnected = WiFi.status() == WL_CONNECTED;
   status.ipAddress = status.wifiConnected ? WiFi.localIP().toString() : "";
@@ -2878,7 +2877,7 @@ AboutStatus SpotifyDJApp::aboutStatus() {
   return status;
 }
 
-void SpotifyDJApp::updateVisualPower() {
+void DJConnectApp::updateVisualPower() {
   display_.updateIdleBrightness();
   const uint8_t currentBacklightPercent = display_.backlightPercent();
   ledRing_.setPowerPercent(currentBacklightPercent);
@@ -2887,15 +2886,15 @@ void SpotifyDJApp::updateVisualPower() {
   visualState_.ledOn = ledRing_.isOn();
 }
 
-void SpotifyDJApp::configureWatchdog() {
+void DJConnectApp::configureWatchdog() {
   power_.configureWatchdog();
 }
 
-void SpotifyDJApp::serviceWatchdog() {
+void DJConnectApp::serviceWatchdog() {
   power_.serviceWatchdog();
 }
 
-void SpotifyDJApp::responsiveDelay(uint32_t durationMs) {
+void DJConnectApp::responsiveDelay(uint32_t durationMs) {
   if (durationMs == 0) {
     serviceWatchdog();
     yield();
@@ -2911,7 +2910,7 @@ void SpotifyDJApp::responsiveDelay(uint32_t durationMs) {
   }
 }
 
-void SpotifyDJApp::logHeapIfDue() {
+void DJConnectApp::logHeapIfDue() {
   const uint32_t now = millis();
   if (lastHeapLogAt_ != 0 && now - lastHeapLogAt_ < Config::HeapLogIntervalMs) {
     return;
@@ -2967,7 +2966,7 @@ void SpotifyDJApp::logHeapIfDue() {
   heapTrendPreviousLargestBlock_ = largestBlock;
 }
 
-void SpotifyDJApp::enterDeepSleep() {
+void DJConnectApp::enterDeepSleep() {
   deepSleepStarted_ = true;
   AppLog.println("Entering deep sleep");
   sound_.playTurnOff();
@@ -2989,7 +2988,7 @@ void SpotifyDJApp::enterDeepSleep() {
   esp_deep_sleep_start();
 }
 
-void SpotifyDJApp::enterDeepSleepWithoutDisplay() {
+void DJConnectApp::enterDeepSleepWithoutDisplay() {
   deepSleepStarted_ = true;
   sound_.playTurnOff();
   responsiveDelay(220);
@@ -3000,7 +2999,7 @@ void SpotifyDJApp::enterDeepSleepWithoutDisplay() {
   esp_deep_sleep_start();
 }
 
-void SpotifyDJApp::recordLoopMetrics(uint32_t loopStartedAt) {
+void DJConnectApp::recordLoopMetrics(uint32_t loopStartedAt) {
   const uint32_t now = millis();
   const uint32_t busyMs = now - loopStartedAt;
 
@@ -3031,7 +3030,7 @@ void SpotifyDJApp::recordLoopMetrics(uint32_t loopStartedAt) {
   }
 }
 
-void SpotifyDJApp::applyWebSettings(
+void DJConnectApp::applyWebSettings(
     uint8_t brightnessPercent,
     uint32_t offTimeoutMs,
     uint32_t sleepTimeoutMs,
@@ -3088,8 +3087,8 @@ void SpotifyDJApp::applyWebSettings(
   ESP.restart();
 }
 
-void SpotifyDJApp::applyProvisionedLanguage(const String &languageCode) {
-  const String normalized = SpotifyDJDevice::normalizedLanguageCode(languageCode);
+void DJConnectApp::applyProvisionedLanguage(const String &languageCode) {
+  const String normalized = DJConnectDevice::normalizedLanguageCode(languageCode);
   if (normalized.isEmpty()) {
     return;
   }
@@ -3102,13 +3101,7 @@ void SpotifyDJApp::applyProvisionedLanguage(const String &languageCode) {
   renderNow();
 }
 
-void SpotifyDJApp::applyProvisionedSpotifyCredentials() {
-  spotify_.reloadCredentials();
-  AppLog.println("Playback proxy refreshed after HA provisioning");
-  lastPlaybackPollAt_ = millis();
-}
-
-bool SpotifyDJApp::checkBootstrapFirmwareUpdate() {
+bool DJConnectApp::checkBootstrapFirmwareUpdate() {
   const char *currentVersion = Logic::otaComparableFirmwareVersion(Config::AppVersionNumber, Config::AppVersion);
   if (strcmp(currentVersion, "0.0.0") == 0) {
     AppLog.println("Bootstrap OTA skipped: dev firmware");
@@ -3132,7 +3125,7 @@ bool SpotifyDJApp::checkBootstrapFirmwareUpdate() {
     releaseActivity.finishError("begin failed");
     return false;
   }
-  releaseHttp.addHeader("User-Agent", "SpotifyDJ");
+  releaseHttp.addHeader("User-Agent", "DJConnect");
   const int releaseCode = releaseHttp.GET();
   if (releaseCode != HTTP_CODE_OK) {
     AppLog.print("Bootstrap OTA release API HTTP ");
@@ -3176,7 +3169,7 @@ bool SpotifyDJApp::checkBootstrapFirmwareUpdate() {
     manifestActivity.finishError("begin failed");
     return false;
   }
-  manifestHttp.addHeader("User-Agent", "SpotifyDJ");
+  manifestHttp.addHeader("User-Agent", "DJConnect");
   const int manifestCode = manifestHttp.GET();
   if (manifestCode != HTTP_CODE_OK) {
     AppLog.print("Bootstrap OTA manifest HTTP ");
@@ -3197,7 +3190,7 @@ bool SpotifyDJApp::checkBootstrapFirmwareUpdate() {
   }
   manifestActivity.finish(manifestCode);
 
-  SpotifyDJOTARequest request;
+  DJConnectOTARequest request;
   request.version = manifestDoc["version"] | "";
   request.device = manifestDoc["device"] | "";
   request.url = manifestDoc["url"] | "";
@@ -3229,7 +3222,7 @@ bool SpotifyDJApp::checkBootstrapFirmwareUpdate() {
   return false;
 }
 
-void SpotifyDJApp::requestWebWifiSettings(const String &ssid, const String &password) {
+void DJConnectApp::requestWebWifiSettings(const String &ssid, const String &password) {
   pendingWifiSsid_ = ssid;
   pendingWifiSsid_.trim();
   pendingWifiPassword_ = password;
@@ -3240,7 +3233,7 @@ void SpotifyDJApp::requestWebWifiSettings(const String &ssid, const String &pass
   renderNow();
 }
 
-void SpotifyDJApp::processPendingWifiSettings() {
+void DJConnectApp::processPendingWifiSettings() {
   if (!pendingWifiSettings_) {
     return;
   }
@@ -3293,7 +3286,7 @@ void SpotifyDJApp::processPendingWifiSettings() {
   renderNow();
 }
 
-void SpotifyDJApp::setupHomeAssistantLayer() {
+void DJConnectApp::setupHomeAssistantLayer() {
   if (WiFi.status() != WL_CONNECTED || !webPortal_.isRunning()) {
     return;
   }
@@ -3326,7 +3319,7 @@ void SpotifyDJApp::setupHomeAssistantLayer() {
   }
 }
 
-void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
+void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
   if (!haDevice_.isPaired() || WiFi.status() != WL_CONNECTED) {
     return;
   }
@@ -3336,8 +3329,8 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
   }
   lastHaStatusAt_ = now;
   const bool playbackProxyUsable =
-      Logic::spotifyConfiguredForHomeAssistantStatus(haDevice_.isSpotifyConfigured(), spotify_.needsCredentialRefresh());
-  if (haDevice_.isSpotifyConfigured() && !playbackProxyUsable) {
+      Logic::playbackProxyUsableForHomeAssistantStatus(haDevice_.isPlaybackConfigured(), spotify_.needsCredentialRefresh());
+  if (haDevice_.isPlaybackConfigured() && !playbackProxyUsable) {
     AppLog.println("Playback proxy marked stale; requesting HA status refresh");
   }
   DeviceSettingsStatus settings;
@@ -3348,12 +3341,12 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
   settings.language = languageCode_;
   settings.theme = themeCode_;
   settings.logLevel = logLevel_;
-  const SpotifyDJPairing::StatusResult result =
+  const DJConnectPairing::StatusResult result =
       haPairing_.sendStatusToHA(battery_, playbackProxyUsable, settings, visualState_);
-  if (result == SpotifyDJPairing::StatusResult::Ok) {
+  if (result == DJConnectPairing::StatusResult::Ok) {
     homeAssistantPaired_ = true;
     haPairingPendingValidation_ = false;
-  } else if (result == SpotifyDJPairing::StatusResult::PairingInvalid) {
+  } else if (result == DJConnectPairing::StatusResult::PairingInvalid) {
     if (haPairingPendingValidation_) {
       AppLog.println("Home Assistant: pending pairing rejected by status endpoint");
       haDevice_.clearHomeAssistantPairing();
@@ -3368,7 +3361,7 @@ void SpotifyDJApp::sendHomeAssistantStatusIfDue(bool force) {
   }
 }
 
-void SpotifyDJApp::markHomeAssistantPairingInvalid(const String &message) {
+void DJConnectApp::markHomeAssistantPairingInvalid(const String &message) {
   if (homeAssistantPaired_) {
     AppLog.println("Home Assistant: pairing invalid or stale");
   }
@@ -3378,7 +3371,7 @@ void SpotifyDJApp::markHomeAssistantPairingInvalid(const String &message) {
   renderNow();
 }
 
-bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
+bool DJConnectApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   if (haDevice_.isPaired()) {
     if (haPairingScreenActive_) {
       homeAssistantPaired_ = true;
@@ -3460,7 +3453,7 @@ bool SpotifyDJApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   return true;
 }
 
-void SpotifyDJApp::applyWebSettingsCallback(
+void DJConnectApp::applyWebSettingsCallback(
     void *context,
     uint8_t brightnessPercent,
     uint32_t offTimeoutMs,
@@ -3469,7 +3462,7 @@ void SpotifyDJApp::applyWebSettingsCallback(
     const String &languageCode,
     const String &themeCode,
     const String &logLevel) {
-  static_cast<SpotifyDJApp *>(context)->applyWebSettings(
+  static_cast<DJConnectApp *>(context)->applyWebSettings(
       brightnessPercent,
       offTimeoutMs,
       sleepTimeoutMs,
@@ -3479,16 +3472,16 @@ void SpotifyDJApp::applyWebSettingsCallback(
       logLevel);
 }
 
-void SpotifyDJApp::applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password) {
-  static_cast<SpotifyDJApp *>(context)->requestWebWifiSettings(ssid, password);
+void DJConnectApp::applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password) {
+  static_cast<DJConnectApp *>(context)->requestWebWifiSettings(ssid, password);
 }
 
-bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl) {
+bool DJConnectApp::sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl) {
   if (context == nullptr) {
     message = "App unavailable";
     return false;
   }
-  SpotifyDJApp *app = static_cast<SpotifyDJApp *>(context);
+  DJConnectApp *app = static_cast<DJConnectApp *>(context);
   AppLog.print("Web voice: sending text chars=");
   AppLog.println(text.length());
   app->voiceState_ = VoiceState::SendingCommand;
@@ -3516,11 +3509,11 @@ bool SpotifyDJApp::sendWebVoiceTextCallback(void *context, const String &text, S
   return ok;
 }
 
-void SpotifyDJApp::wakeWordDetectedCallback(void *context) {
+void DJConnectApp::wakeWordDetectedCallback(void *context) {
   if (context == nullptr) {
     return;
   }
-  SpotifyDJApp *app = static_cast<SpotifyDJApp *>(context);
+  DJConnectApp *app = static_cast<DJConnectApp *>(context);
   if (app->voiceRecording_ || app->voiceState_ != VoiceState::Idle || !app->homeAssistantPaired_) {
     return;
   }
@@ -3529,8 +3522,8 @@ void SpotifyDJApp::wakeWordDetectedCallback(void *context) {
   app->handleVoiceButton();
 }
 
-void SpotifyDJApp::softResetCueCallback(void *context) {
-  auto *app = static_cast<SpotifyDJApp *>(context);
+void DJConnectApp::softResetCueCallback(void *context) {
+  auto *app = static_cast<DJConnectApp *>(context);
   if (app == nullptr) {
     return;
   }
@@ -3546,53 +3539,47 @@ void SpotifyDJApp::softResetCueCallback(void *context) {
   delay(180);
 }
 
-void SpotifyDJApp::refreshFromWebCallback(void *context) {
-  static_cast<SpotifyDJApp *>(context)->refreshPlaybackAndBattery();
+void DJConnectApp::refreshFromWebCallback(void *context) {
+  static_cast<DJConnectApp *>(context)->refreshPlaybackAndBattery();
 }
 
-void SpotifyDJApp::resetPairingFromWebCallback(void *context) {
-  static_cast<SpotifyDJApp *>(context)->resetHomeAssistantPairing();
+void DJConnectApp::resetPairingFromWebCallback(void *context) {
+  static_cast<DJConnectApp *>(context)->resetHomeAssistantPairing();
 }
 
-void SpotifyDJApp::hardResetFromWebCallback(void *context) {
-  static_cast<SpotifyDJApp *>(context)->hardResetToProvisioning();
+void DJConnectApp::hardResetFromWebCallback(void *context) {
+  static_cast<DJConnectApp *>(context)->hardResetToProvisioning();
 }
 
-bool SpotifyDJApp::djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType) {
-  SpotifyDJApp *app = static_cast<SpotifyDJApp *>(context);
+bool DJConnectApp::djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType) {
+  DJConnectApp *app = static_cast<DJConnectApp *>(context);
   const bool displayed = app->handleDjResponseText(text, audioUrl, spoken);
   audioType = audioUrl.isEmpty() ? "none" : app->lastDjAudioType_;
   return displayed;
 }
 
-void SpotifyDJApp::languageProvisionedCallback(void *context, const String &languageCode) {
+void DJConnectApp::languageProvisionedCallback(void *context, const String &languageCode) {
   if (context != nullptr) {
-    static_cast<SpotifyDJApp *>(context)->applyProvisionedLanguage(languageCode);
+    static_cast<DJConnectApp *>(context)->applyProvisionedLanguage(languageCode);
   }
 }
 
-void SpotifyDJApp::spotifyProvisionedCallback(void *context) {
-  if (context != nullptr) {
-    static_cast<SpotifyDJApp *>(context)->applyProvisionedSpotifyCredentials();
-  }
-}
-
-bool SpotifyDJApp::deviceCommandCallback(void *context, const DeviceCommand &command, String &message) {
+bool DJConnectApp::deviceCommandCallback(void *context, const DeviceCommand &command, String &message) {
   if (context == nullptr) {
     message = "App unavailable";
     return false;
   }
-  return static_cast<SpotifyDJApp *>(context)->handleDeviceCommand(command, message);
+  return static_cast<DJConnectApp *>(context)->handleDeviceCommand(command, message);
 }
 
-void SpotifyDJApp::directPairCallback(void *context) {
+void DJConnectApp::directPairCallback(void *context) {
   if (context == nullptr) {
     return;
   }
-  static_cast<SpotifyDJApp *>(context)->noteDirectPairingReceived();
+  static_cast<DJConnectApp *>(context)->noteDirectPairingReceived();
 }
 
-void SpotifyDJApp::noteDirectPairingReceived() {
+void DJConnectApp::noteDirectPairingReceived() {
   homeAssistantPaired_ = true;
   haPairingPendingValidation_ = true;
   playback_.error = "";
@@ -3607,7 +3594,7 @@ void SpotifyDJApp::noteDirectPairingReceived() {
   renderNow();
 }
 
-bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioUrl, bool &spoken) {
+bool DJConnectApp::handleDjResponseText(const String &text, const String &audioUrl, bool &spoken) {
   if (text.isEmpty()) {
     return false;
   }
@@ -3636,7 +3623,7 @@ bool SpotifyDJApp::handleDjResponseText(const String &text, const String &audioU
   return true;
 }
 
-void SpotifyDJApp::renderMenuNow() {
+void DJConnectApp::renderMenuNow() {
   switch (activeScreen_) {
     case UiScreen::AlbumArt:
       display_.renderAlbumArtScreen(playback_, notice_, albumArt_.imagePath(), albumArt_.status());
@@ -3664,12 +3651,12 @@ void SpotifyDJApp::renderMenuNow() {
       MenuItemView items[8];
       items[0].label = I18n::text("none");
       items[1].label = "iPhone";
-      size_t itemCount = SpotifyDJMenuModel::FixedSoundOutputCount;
+      size_t itemCount = DJConnectMenuModel::FixedSoundOutputCount;
       if (deviceList_.available && deviceList_.count > 0) {
-        const size_t maxDevices = min(deviceList_.count, SpotifyDJMenuModel::MaxVisibleOutputs);
+        const size_t maxDevices = min(deviceList_.count, DJConnectMenuModel::MaxVisibleOutputs);
         for (size_t index = 0; index < maxDevices; index++) {
-          items[index + SpotifyDJMenuModel::FixedSoundOutputCount].label = deviceList_.devices[index].active ? "* " : "  ";
-          items[index + SpotifyDJMenuModel::FixedSoundOutputCount].label += deviceList_.devices[index].name;
+          items[index + DJConnectMenuModel::FixedSoundOutputCount].label = deviceList_.devices[index].active ? "* " : "  ";
+          items[index + DJConnectMenuModel::FixedSoundOutputCount].label += deviceList_.devices[index].name;
         }
         itemCount += maxDevices;
       }
@@ -3983,10 +3970,10 @@ void SpotifyDJApp::renderMenuNow() {
   }
 }
 
-void SpotifyDJApp::showNotice(const String &message, uint32_t ttlMs) {
+void DJConnectApp::showNotice(const String &message, uint32_t ttlMs) {
   notice_.show(message, ttlMs);
 }
 
-int SpotifyDJApp::displayedVolume() const {
+int DJConnectApp::displayedVolume() const {
   return pendingVolume_ >= 0 ? pendingVolume_ : playback_.volume;
 }

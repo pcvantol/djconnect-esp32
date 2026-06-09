@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Guidance for coding agents working on the SpotifyDJ LilyGO firmware.
+Guidance for coding agents working on the DJConnect LilyGO firmware.
 
 ## Project Overview
 
-SpotifyDJ is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3. It is a Home Assistant paired playback remote with:
+DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3. It is a Home Assistant paired playback remote with:
 
 - TFT now-playing UI, menus, logs, album art, queue and sound output screens.
 - Rotary encoder and top-button controls.
@@ -29,8 +29,8 @@ Legal/trademark copy must stay consistent across README, web portal, device Abou
 screen and third-party notices:
 
 - `Copyright (c) 2026 Peter van Tol. All rights reserved.`
-- `SpotifyDJ firmware is proprietary software.`
-- `Spotify is a trademark of Spotify AB. SpotifyDJ is not affiliated with,
+- `DJConnect firmware is proprietary software.`
+- `Spotify is a trademark of Spotify AB. DJConnect is not affiliated with,
   endorsed by, or sponsored by Spotify AB.`
 - Open-source dependency notices belong in `THIRD_PARTY_NOTICES.md`; dependency
   licenses remain with their respective authors.
@@ -41,11 +41,11 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 
 - `platformio.ini`: PlatformIO board/env/build flags.
 - `src/main.cpp`: tiny Arduino entrypoint; keep real behavior in classes.
-- `include/SpotifyDJApp.h`, `src/SpotifyDJApp.cpp`: top-level app orchestration.
+- `include/DJConnectApp.h`, `src/DJConnectApp.cpp`: top-level app orchestration.
 - `include/Config.h`: shared constants, version, pins and timing.
 - `include/AppState.h`: shared state structs.
 - `include/LogicHelpers.h`: pure helper functions with native unit tests.
-- `include/SpotifyDJMenuModel.h`: pure menu counts/options with native unit tests.
+- `include/DJConnectMenuModel.h`: pure menu counts/options with native unit tests.
 - `include/ProvisioningController.h`, `src/ProvisioningController.cpp`: NVS provisioning keys for WiFi, setup mode, display settings, language/theme/log-level and cue volume.
 - `include/DeviceCommandParser.h`: host-testable parser for Home Assistant native `/api/device/command` payloads.
 - `include/PowerController.h`, `src/PowerController.cpp`: charger policy, deep-sleep wake policy and watchdog setup/feed.
@@ -54,7 +54,7 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `test/native/test_release.sh`: release-script dry-run and invalid-version checks.
 - `include/Secrets.h`: optional non-secret build flags only. Do not put WiFi, Home Assistant or playback-backend credentials here.
 - `include/Secrets.example.h`: template for optional build flags.
-- `src/SpotifyDJDevice.*`, `src/SpotifyDJDiscovery.*`, `src/SpotifyDJPairing.*`, `src/SpotifyDJApiServer.*`, `src/SpotifyDJOTA.*`: Home Assistant device-layer modules.
+- `src/DJConnectDevice.*`, `src/DJConnectDiscovery.*`, `src/DJConnectPairing.*`, `src/DJConnectApiServer.*`, `src/DJConnectOTA.*`: Home Assistant device-layer modules.
 - `include/VoiceRecorder.h`, `src/VoiceRecorder.cpp`, `include/VoiceHttpClient.h`, `src/VoiceHttpClient.cpp`: push-to-talk WAV recording and upload to the Home Assistant integration.
 - Direct ESP Assist websocket code is intentionally absent; physical PTT must go through the HA integration voice endpoint.
 - `src/WebPortal.cpp`: embedded mobile web UI, diagnostics, settings, logs and HA pairing panel.
@@ -67,8 +67,8 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 Run native tests first when changing pure logic:
 
 ```sh
-c++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/native/test_logic.cpp -o /tmp/spotifydj_unit_tests
-/tmp/spotifydj_unit_tests
+c++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/native/test_logic.cpp -o /tmp/djconnect_unit_tests
+/tmp/djconnect_unit_tests
 ```
 
 Run release-script checks when touching release tooling:
@@ -86,7 +86,7 @@ Build firmware:
 Build with an explicit release version:
 
 ```sh
-SPOTIFYDJ_BUILD_FLAGS='-DSPOTIFYDJ_VERSION=X.Y.Z -DSPOTIFYDJ_VERSION_TAG=vX.Y.Z' \
+DJCONNECT_BUILD_FLAGS='-DDJCONNECT_VERSION=X.Y.Z -DDJCONNECT_VERSION_TAG=vX.Y.Z' \
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
@@ -105,7 +105,7 @@ Use dry-run before release work:
 To also publish assets into the public firmware repo:
 
 ```sh
-./release.sh X.Y.Z --publish-firmware-repo ../spotify-dj-firmware
+./release.sh X.Y.Z --publish-firmware-repo ../djconnect-firmware
 ```
 
 The release script keeps local dev defaults as `dev` / `vdev` and injects the
@@ -122,21 +122,21 @@ This warning comes from the Arduino ESP32 framework package and is not normally 
 
 Keep concerns separated:
 
-- `SpotifyDJApp` orchestrates modules and owns the main loop flow.
+- `DJConnectApp` orchestrates modules and owns the main loop flow.
 - `SpotifyClient` owns backend-agnostic playback proxy calls to Home Assistant.
 - `DisplayManager` owns drawing only. Do not put network or NVS logic in it.
 - `WebPortal` owns the existing mobile dashboard and shared port-80 `WebServer`.
-- Home Assistant device-layer code belongs in the `SpotifyDJ*` modules under `src/`.
+- Home Assistant device-layer code belongs in the `DJConnect*` modules under `src/`.
 - `LogicHelpers.h` is for pure, host-testable calculations.
-- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, setup-mode, display-setting, language/theme/log-level or cue-volume NVS reads/writes directly in `SpotifyDJApp`.
-- `PowerController` owns charger/wake/watchdog policy. Keep low-battery rendering in the app/display layer, but keep wake masks, timer-wake decisions and watchdog setup/feed out of `SpotifyDJApp`.
-- `SpotifyDJMenuModel` is the host-testable source for menu counts and option values. Keep display labels in `SpotifyDJMenu`/i18n and pure counts/options in the model.
+- `ProvisioningController` owns provisioning/NVS storage details. Do not add new WiFi, setup-mode, display-setting, language/theme/log-level or cue-volume NVS reads/writes directly in `DJConnectApp`.
+- `PowerController` owns charger/wake/watchdog policy. Keep low-battery rendering in the app/display layer, but keep wake masks, timer-wake decisions and watchdog setup/feed out of `DJConnectApp`.
+- `DJConnectMenuModel` is the host-testable source for menu counts and option values. Keep display labels in `DJConnectMenu`/i18n and pure counts/options in the model.
 - `NetworkActivityLogic` is the host-testable timeout/reuse helper for long HTTP flows.
 - Long/blocking HTTP flows should use `NetworkActivity` or a documented equivalent guard with explicit connect/read timeouts, progress logging where useful, and loop/watchdog yielding for large transfers.
 - `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
 - `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
 - User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated. Loglevel UI labels still need translated strings.
-- App logs are centrally formatted as `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`. Do not manually add timestamps, severity labels, or `[SpotifyDJ]` to new log messages; the central logger strips that prefix when it appears at the start of older callsites.
+- App logs are centrally formatted as `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`. Do not manually add timestamps, severity labels, or `[DJConnect]` to new log messages; the central logger strips that prefix when it appears at the start of older callsites.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.
 
@@ -144,16 +144,16 @@ Prefer extending existing modules over introducing new global state. Keep `src/m
 
 The HA custom integration uses:
 
-- Domain: `spotify_dj`
-- HA pairing endpoint: `POST /api/spotify_dj/pair`
-- HA status endpoint: `POST /api/spotify_dj/status`
-- HA voice endpoint: `POST /api/spotify_dj/voice`
+- Domain: `djconnect`
+- HA pairing endpoint: `POST /api/djconnect/pair`
+- HA status endpoint: `POST /api/djconnect/status`
+- HA voice endpoint: `POST /api/djconnect/voice`
 - ESP OTA endpoint: `POST /api/device/ota`
 - ESP DJ response endpoint: `POST /api/device/dj_response`
 
 Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state and LED state. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `ha_pairing_status`, `local_url`, `ha_local_url`, `ha_remote_url`, `ha_active_url`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
 
-For `/api/spotify_dj/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404 means stale pairing. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
+For `/api/djconnect/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404 means stale pairing. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
 
 Local ESP endpoints currently include:
 
@@ -183,9 +183,9 @@ Do not store Spotify OAuth credentials, Sonos credentials or any playback-backen
 
 mDNS:
 
-- Hostname: `spotifydj-lilygo-XXXXXXXXXXXX`
-- Service: `_spotifydj._tcp`
-- URL: `http://spotifydj-lilygo-XXXXXXXXXXXX.local`
+- Hostname: `djconnect-lilygo-XXXXXXXXXXXX`
+- Service: `_djconnect._tcp`
+- URL: `http://djconnect-lilygo-XXXXXXXXXXXX.local`
 - TXT records include `name`, `device_id`, `version`, `paired`, `api`, and `model`.
 
 ## Secrets And Credential Policy
@@ -217,9 +217,9 @@ migration project rather than a small OTA firmware patch.
 NVS namespaces:
 
 - `provision`: existing device provisioning/settings, including display timeouts/brightness, speaker cue volume and WiFi.
-- `spotifydj`: Home Assistant device-layer storage.
+- `djconnect`: Home Assistant device-layer storage.
 
-`spotifydj` keys:
+`djconnect` keys:
 
 - `ha_local_url`
 - `ha_remote_url`
@@ -230,13 +230,13 @@ NVS namespaces:
 
 Keep ESP32 Preferences keys at 15 characters or less. External Home Assistant JSON payload field names may remain longer, but playback-backend secret fields must not be accepted or persisted on the ESP.
 
-The public ESP API Postman collection lives at `postman/SpotifyDJ ESP API.postman_collection.json`. Keep all credentials as variables/placeholders; never commit real device tokens, playback-backend refresh tokens or Home Assistant URLs that identify a private instance.
+The public ESP API Postman collection lives at `postman/DJConnect ESP API.postman_collection.json`. Keep all credentials as variables/placeholders; never commit real device tokens, playback-backend refresh tokens or Home Assistant URLs that identify a private instance.
 
 ## Architecture Decisions
 
 - Treat Home Assistant as the trusted backend for pairing, generic playback command interpretation, backend credentials, Assist STT/TTS, OTA offer handling and native entity commands.
 - Keep the ESP focused on local edge behavior: display, buttons/encoder, LED ring, battery/power policy, speaker cues, microphone capture and playback of HA-provided DJ response audio.
-- Keep PTT on the integration-backed WAV-upload route: ESP records WAV, uploads it to `/api/spotify_dj/voice`, then displays/plays the returned DJ response. Do not add direct ESP Assist websocket auth, direct OpenAI calls or browser microphone uploads.
+- Keep PTT on the integration-backed WAV-upload route: ESP records WAV, uploads it to `/api/djconnect/voice`, then displays/plays the returned DJ response. Do not add direct ESP Assist websocket auth, direct OpenAI calls or browser microphone uploads.
 - Pairing validity is runtime state. On HA 401/403/404, mark Home Assistant as stale/red and disable PTT, but do not erase NVS pairing automatically.
 - Keep external JSON payload names compatible with HA, but keep internal ESP32 Preferences keys at 15 characters or less.
 - Route slow network operations through explicit timeout/backoff policy and avoid making input/display responsiveness depend on an unbounded HTTP call.
@@ -259,23 +259,23 @@ Do not introduce playback-backend secrets on the ESP. OAuth/PKCE, Sonos or futur
 Physical push-to-talk from Now Playing uses the Home Assistant integration as the backend boundary:
 
 - The ESP records mono 16 kHz PCM WAV to LittleFS while the encoder button is held on Now Playing.
-- On release, the ESP uploads the WAV as raw request body to `/api/spotify_dj/voice` with `Content-Type: audio/wav`, `Authorization: Bearer <device_token>` and `X-SpotifyDJ-Device-ID`.
+- On release, the ESP uploads the WAV as raw request body to `/api/djconnect/voice` with `Content-Type: audio/wav`, `Authorization: Bearer <device_token>` and `X-DJConnect-Device-ID`.
 - The Home Assistant integration/backend owns any Home Assistant core auth needed for Assist, STT or TTS. If Assist requires `/api/websocket`, that websocket connection belongs in the HA integration, not on the ESP.
-- `/api/spotify_dj/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
-- Do not add direct ESP Assist websocket auth; the SpotifyDJ device token is for the integration API, not Home Assistant core.
+- `/api/djconnect/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
+- Do not add direct ESP Assist websocket auth; the DJConnect device token is for the integration API, not Home Assistant core.
 - Do not start physical PTT from Current Song/AlbumArt. Current Song is a read-only detail screen and uses the same top-button back behavior as menu screens.
 - The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
-- If `/api/spotify_dj/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
+- If `/api/djconnect/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
 - Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
-- Optional wake-word support must remain inert without a linked model hook. A trained model may expose `extern "C" bool spotifydj_micro_wake_word_detect(const int16_t *samples, size_t sampleCount);`; the detector must be fast, local-only, and must not perform network I/O from the audio poll path.
+- Optional wake-word support must remain inert without a linked model hook. A trained model may expose `extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t sampleCount);`; the detector must be fast, local-only, and must not perform network I/O from the audio poll path.
 - Do not call OpenAI directly from ESP firmware.
-- Keep `SPOTIFYDJ_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.
+- Keep `DJCONNECT_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.
 
 ## Pairing Mode Rules
 
 When WiFi is configured but Home Assistant is not paired:
 
-- Show pairing code on the display with SpotifyDJ logo/name, battery indicator, instruction text, and a large readable code.
+- Show pairing code on the display with DJConnect logo/name, battery indicator, instruction text, and a large readable code.
 - Keep display brightness at 100%.
 - Keep the blue Home Assistant pairing LED-ring breath active so the device visibly waits for pairing.
 - Keep pairing mode active for 10 minutes.
@@ -286,14 +286,14 @@ When WiFi is configured but Home Assistant is not paired:
 - Consume top-button press/hold/long-click UI events in pairing mode so holding the top button for the 10-second soft reset never flashes the normal menu first.
 - Soft reset and hard reset must remain available through the reset monitor.
 - The pairing code should also be available in Serial logging and the web pairing panel.
-- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token. `/api/device/pair` may receive a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/spotify_dj/status`; playback proxy commands must stay disabled until that authenticated status call succeeds.
+- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token. `/api/device/pair` may receive a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/djconnect/status`; playback proxy commands must stay disabled until that authenticated status call succeeds.
 - HA calls from ESP use a local-first/cloud-fallback resolver: probe `ha_local_url`, then use `ha_remote_url` when local HA is not reachable. This is for ESP→HA outbound requests only; do not assume Nabu Casa can reach ESP local endpoints directly.
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
 
 If configured WiFi cannot connect during boot, keep the screen at 100% and show the WiFi-failure menu. Rotary selects between retry connect, restart device, turn off, and factory reset. Factory reset must stay at the bottom and require an explicit confirmation screen before wiping setup. Center press executes the selected action. Do not start normal playback/menu handling while this recovery menu is active.
 
-BLE advertising is active while setup/AP mode is active and while Home Assistant pairing mode is active. iOS cannot automatically expose the currently connected WiFi password to the ESP32; BLE provisioning requires an app/flow to write JSON WiFi credentials to the SpotifyDJ BLE characteristic. Home Assistant Bluetooth Proxy flows should write WiFi JSON to `7f705001-9f8f-4f1a-9b5f-570071fd0001` during setup/AP mode and read/subscribe to status characteristic `7f705002-9f8f-4f1a-9b5f-570071fd0001` for setup or pairing status. Keep BLE provisioning WiFi-only; playback credentials stay in Home Assistant. Do not claim automatic iPhone credential extraction is possible.
+BLE advertising is active while setup/AP mode is active and while Home Assistant pairing mode is active. iOS cannot automatically expose the currently connected WiFi password to the ESP32; BLE provisioning requires an app/flow to write JSON WiFi credentials to the DJConnect BLE characteristic. Home Assistant Bluetooth Proxy flows should write WiFi JSON to `7f705001-9f8f-4f1a-9b5f-570071fd0001` during setup/AP mode and read/subscribe to status characteristic `7f705002-9f8f-4f1a-9b5f-570071fd0001` for setup or pairing status. Keep BLE provisioning WiFi-only; playback credentials stay in Home Assistant. Do not claim automatic iPhone credential extraction is possible.
 
 ## Display And UI Rules
 
@@ -303,7 +303,7 @@ Display is 320x170 landscape. Before changing text placement, consider the physi
 
 Important current UI details:
 
-- App name is `SpotifyDJ`.
+- App name is `DJConnect`.
 - Default device/web theme is `dark`. `Light` uses TFT inversion/high contrast on the device. `Auto` is mainly useful for the web portal, where it follows browser/device preference.
 - Changing the theme from the device or web settings intentionally saves and restarts the device so the display theme is applied cleanly from boot.
 - Now-playing title color is bright yellow.
@@ -321,7 +321,7 @@ Green means OK; red means not OK.
 
 Brightness/power behavior is intentionally nuanced:
 
-- Normal idle dim/off policy is handled by `DisplayManager` and `SpotifyDJApp::updateVisualPower()`.
+- Normal idle dim/off policy is handled by `DisplayManager` and `DJConnectApp::updateVisualPower()`.
 - Default idle policy: dim after 10 seconds, reach 50% after 20 seconds, screen off after selected timeout.
 - Setup/AP and HA pairing modes force their own brightness behavior.
 - Low-battery and charging guards override normal UI behavior.
@@ -350,10 +350,10 @@ Local development builds may display `vdev`, but Home Assistant/device API versi
 Pre-pairing bootstrap OTA:
 
 - Runs only after WiFi connects and before Home Assistant pairing setup when the device is not paired yet.
-- Checks the latest public firmware release through the GitHub Releases API for `pcvantol/spotify-dj-firmware`.
+- Checks the latest public firmware release through the GitHub Releases API for `pcvantol/djconnect-firmware`.
 - Must never auto-update local `dev` / `vdev` firmware. Dev builds are intentionally local and should only be replaced by explicit serial/web/HA update actions.
 - Must use TLS verification for the GitHub release/manifest check. Do not use `setInsecure()` for deciding whether an update exists.
-- Reuse `SpotifyDJOTA::performUpdate()` for the actual firmware write so display text, 100% brightness, purple LED-ring animation, speaker cues, SHA256 validation and reboot behavior remain consistent.
+- Reuse `DJConnectOTA::performUpdate()` for the actual firmware write so display text, 100% brightness, purple LED-ring animation, speaker cues, SHA256 validation and reboot behavior remain consistent.
 - If the bootstrap check fails, log the reason and continue gracefully into normal pairing/setup flow without notifying or blocking the user.
 
 ## Home Assistant Native Command Rules
@@ -380,7 +380,7 @@ Current native command scope includes:
 - theme;
 - log level.
 
-Do not perform unbounded blocking Spotify HTTPS work inside the HTTP route itself. Parse and validate in `SpotifyDJApiServer`, then route through `SpotifyDJApp::handleDeviceCommand()` with existing timeout-aware Spotify helpers.
+Do not perform unbounded blocking Spotify HTTPS work inside the HTTP route itself. Parse and validate in `DJConnectApiServer`, then route through `DJConnectApp::handleDeviceCommand()` with existing timeout-aware Spotify helpers.
 
 HA/Spotify status indicators:
 
@@ -404,13 +404,13 @@ Shuffle and repeat are separate controls:
 - Device menu and web portal expose separate Shuffle and Repeat controls.
 - Home Assistant should use `set_shuffle` with boolean `value`.
 - Home Assistant should use `set_repeat` with `value` `off`, `track` or `context`.
-- Do not reintroduce a combined `set_play_mode` command or Smart Shuffle; regular shuffle is the only supported shuffle command today.
+- Do not merge shuffle and repeat into one command and do not reintroduce Smart Shuffle; regular shuffle is the only supported shuffle command today.
 - Keep device menu, web labels and HA command names aligned when changing these modes.
 
 Local games are intentionally local-only:
 
 - `Games` in the root menu opens Pong, Asteroids and Flyer.
-- Game input/rendering belongs in `SpotifyDJApp` and `DisplayManager`; do not route game state through Home Assistant.
+- Game input/rendering belongs in `DJConnectApp` and `DisplayManager`; do not route game state through Home Assistant.
 
 Built-in speaker cue volume is separate from Spotify volume:
 
@@ -497,7 +497,7 @@ README should document:
 - Home Assistant owned playback backend provisioning.
 - Web portal capabilities.
 - Home Assistant command/status behavior.
-- OTA release flow through the GitHub repo `pcvantol/spotify-dj-firmware` using a git tag.
+- OTA release flow through the GitHub repo `pcvantol/djconnect-firmware` using a git tag.
 - Current build/upload/test commands.
 - Legal/trademark notice and reference to `THIRD_PARTY_NOTICES.md`.
 

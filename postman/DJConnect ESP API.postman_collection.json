@@ -1,14 +1,14 @@
 {
   "info": {
-    "_postman_id": "1bfe1a4a-bf33-4a86-9dc5-spotifydj-esp-api",
-    "name": "SpotifyDJ ESP API",
-    "description": "Public/local ESP API for a SpotifyDJ device. Import this collection into Postman and set base_url to the device IP or mDNS URL, for example http://spotifydj-lilygo-XXXXXXXXXXXX.local. Protected endpoints require device_token from Home Assistant pairing.",
+    "_postman_id": "1bfe1a4a-bf33-4a86-9dc5-djconnect-esp-api",
+    "name": "DJConnect ESP API",
+    "description": "Public/local ESP API for a DJConnect device. Import this collection into Postman and set base_url to the device IP or mDNS URL, for example http://djconnect-lilygo-XXXXXXXXXXXX.local. Protected endpoints require device_token from Home Assistant pairing.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "base_url",
-      "value": "http://spotifydj-lilygo-XXXXXXXXXXXX.local",
+      "value": "http://djconnect-lilygo-XXXXXXXXXXXX.local",
       "type": "string"
     },
     {
@@ -28,7 +28,7 @@
     },
     {
       "key": "firmware_url",
-      "value": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/v2.5.0/spotifydj-device-v2.5.0.bin",
+      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v2.5.0/djconnect-device-v2.5.0.bin",
       "type": "string"
     },
     {
@@ -175,7 +175,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"text\": \"Daar gaan we. SpotifyDJ is klaar voor je volgende plaat.\",\n  \"audio_url\": \"\"\n}"
+              "raw": "{\n  \"text\": \"Daar gaan we. DJConnect is klaar voor je volgende plaat.\",\n  \"audio_url\": \"\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/device/dj_response",

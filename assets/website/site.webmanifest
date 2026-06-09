@@ -1,6 +1,6 @@
 {
-  "name": "SpotifyDJ",
-  "short_name": "SpotifyDJ",
+  "name": "DJConnect",
+  "short_name": "DJConnect",
   "description": "AI radio-DJ remote for Home Assistant and Spotify.",
   "start_url": "/",
   "display": "standalone",

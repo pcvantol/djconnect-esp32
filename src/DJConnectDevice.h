@@ -1,4 +1,4 @@
-// Home Assistant-facing SpotifyDJ device identity, pairing state, and NVS storage.
+// Home Assistant-facing DJConnect device identity, pairing state, and NVS storage.
 #pragma once
 
 #include <Arduino.h>
@@ -8,12 +8,12 @@
 #include "Config.h"
 #include "DisplayManager.h"
 
-class SpotifyDJDevice {
+class DJConnectDevice {
 public:
   void begin(const BatteryState *battery, DisplayManager *display);
 
   bool isPaired() const;
-  bool isSpotifyConfigured() const;
+  bool isPlaybackConfigured() const;
   String getDeviceId() const;
   String getDeviceName() const;
   String getDeviceToken() const;
@@ -40,7 +40,7 @@ public:
   void saveAssistPipelineId(const String &pipelineId);
   void clearHomeAssistantPairing();
   void clearPairing();
-  void clearSpotifyCredentials();
+  void clearLegacyPlaybackCredentials();
 
   const BatteryState *battery() const;
 

@@ -12,7 +12,7 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "TextHelpers.h"
-#include "assets/SpotifyDJIcon160.h"
+#include "assets/DJConnectIcon160.h"
 
 static constexpr uint16_t BrightYellow = 0xFFE0;
 static constexpr uint16_t NeutralLightGrey = 0xC618;
@@ -65,7 +65,7 @@ static uint8_t jpegScaleFor(uint16_t width, uint16_t height) {
 }
 
 static String localizedStatusText(const String &text) {
-  if (text == "Refresh token missing" || text == "Playback credentials unavailable") {
+  if (text == "Playback credentials unavailable") {
     return I18n::text("playback_credentials_unavailable");
   }
   if (text == "Spotify not connected" || text == "Playback not connected" || text == "Not connected") {
@@ -602,10 +602,10 @@ void DisplayManager::renderBoot(Canvas &canvas, const String &message, const Bat
   if (battery != nullptr) {
     drawBatteryIndicator(canvas, *battery, 228, 5);
   }
-  drawSpotifyDJIcon(canvas, 14, 12, 78);
+  drawDJConnectIcon(canvas, 14, 12, 78);
 
   canvas.setTextColor(TFT_GREEN, TFT_BLACK);
-  canvas.drawString("SpotifyDJ", 98, 34, 4);
+  canvas.drawString("DJConnect", 98, 34, 4);
 
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   canvas.drawString(Config::AppVersion, 102, 70, 2);
@@ -633,9 +633,9 @@ void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, c
     drawBatteryIndicator(canvas, *battery, 228, 5);
   }
 
-  drawSpotifyDJIcon(canvas, 14, 10, 38);
+  drawDJConnectIcon(canvas, 14, 10, 38);
   canvas.setTextColor(TFT_GREEN, TFT_BLACK);
-  canvas.drawString("SpotifyDJ", 60, 18, 4);
+  canvas.drawString("DJConnect", 60, 18, 4);
 
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   canvas.drawString(I18n::text("pairing_code"), 14, 62, 2);
@@ -788,10 +788,10 @@ template <typename Canvas>
 void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, const AboutStatus &status, size_t selectedIndex) {
   canvas.setTextDatum(TL_DATUM);
   drawMenuTitle(canvas, I18n::text("about"));
-  drawSpotifyDJIcon(canvas, 14, 34, 44);
+  drawDJConnectIcon(canvas, 14, 34, 44);
 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
-  canvas.drawString("SpotifyDJ", 66, 38, 4);
+  canvas.drawString("DJConnect", 66, 38, 4);
 
   canvas.setTextColor(NeutralLightGrey, TFT_BLACK);
   canvas.drawString(Config::AppVersion, 70, 70, 2);
@@ -1077,15 +1077,15 @@ void DisplayManager::drawSpotifyLogo(Canvas &canvas, int x, int y) {
 }
 
 template <typename Canvas>
-void DisplayManager::drawSpotifyDJIcon(Canvas &canvas, int x, int y, int size) {
-  const int sourceSize = SPOTIFYDJ_ICON_160_WIDTH;
+void DisplayManager::drawDJConnectIcon(Canvas &canvas, int x, int y, int size) {
+  const int sourceSize = DJCONNECT_ICON_160_WIDTH;
   for (int dy = 0; dy < size; dy++) {
     const int sy = (dy * sourceSize) / size;
     for (int dx = 0; dx < size; dx++) {
       const int sx = (dx * sourceSize) / size;
       const uint32_t byteIndex = (static_cast<uint32_t>(sy) * sourceSize + sx) * 2;
-      const uint16_t color = (static_cast<uint16_t>(pgm_read_byte(&SPOTIFYDJ_ICON_160_RGB565[byteIndex])) << 8) |
-                             pgm_read_byte(&SPOTIFYDJ_ICON_160_RGB565[byteIndex + 1]);
+      const uint16_t color = (static_cast<uint16_t>(pgm_read_byte(&DJCONNECT_ICON_160_RGB565[byteIndex])) << 8) |
+                             pgm_read_byte(&DJCONNECT_ICON_160_RGB565[byteIndex + 1]);
       if (color != TFT_BLACK) {
         canvas.drawPixel(x + dx, y + dy, color);
       }

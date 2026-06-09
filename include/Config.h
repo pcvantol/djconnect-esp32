@@ -2,24 +2,24 @@
 // Keeping these in one namespace makes board or UX tuning changes easy to find.
 #pragma once
 
-#ifndef SPOTIFYDJ_VERSION
-#define SPOTIFYDJ_VERSION dev
+#ifndef DJCONNECT_VERSION
+#define DJCONNECT_VERSION dev
 #endif
 
-#ifndef SPOTIFYDJ_VERSION_TAG
-#define SPOTIFYDJ_VERSION_TAG vdev
+#ifndef DJCONNECT_VERSION_TAG
+#define DJCONNECT_VERSION_TAG vdev
 #endif
 
 #include <Arduino.h>
 
-#define SPOTIFYDJ_STRINGIFY_VALUE(value) #value
-#define SPOTIFYDJ_STRINGIFY(value) SPOTIFYDJ_STRINGIFY_VALUE(value)
+#define DJCONNECT_STRINGIFY_VALUE(value) #value
+#define DJCONNECT_STRINGIFY(value) DJCONNECT_STRINGIFY_VALUE(value)
 
 namespace Config {
-static const char *const AppVersion = SPOTIFYDJ_STRINGIFY(SPOTIFYDJ_VERSION_TAG);
-static const char *const AppVersionNumber = SPOTIFYDJ_STRINGIFY(SPOTIFYDJ_VERSION);
+static const char *const AppVersion = DJCONNECT_STRINGIFY(DJCONNECT_VERSION_TAG);
+static const char *const AppVersionNumber = DJCONNECT_STRINGIFY(DJCONNECT_VERSION);
 static const char *const BuildMarker =
-    "SpotifyDJ " SPOTIFYDJ_STRINGIFY(SPOTIFYDJ_VERSION_TAG) " / " SPOTIFYDJ_STRINGIFY(SPOTIFYDJ_VERSION) " booting";
+    "DJConnect " DJCONNECT_STRINGIFY(DJCONNECT_VERSION_TAG) " / " DJCONNECT_STRINGIFY(DJCONNECT_VERSION) " booting";
 
 // Board power, storage, radio, display, I2C, encoder, and WS2812 pin mapping.
 static constexpr uint8_t BoardUserKeyPin = 6;
@@ -102,12 +102,12 @@ static constexpr int BatteryChargeCurrentThresholdMa = 5;
 static constexpr int DisplayDimBrightnessPercent = 50;
 
 // Captive portal setup mode.
-static const char *const ProvisioningApSsid = "SpotifyDJ Setup";
+static const char *const ProvisioningApSsid = "DJConnect Setup";
 
 // Playback backend credentials and API endpoints live in Home Assistant, not on the ESP.
-static const char *const LikedProxyPlaylistName = "SpotifyDJ Liked Proxy";
+static const char *const LikedProxyPlaylistName = "DJConnect Liked Proxy";
 static const char *const BootstrapFirmwareReleaseApiUrl =
-    "https://api.github.com/repos/pcvantol/spotify-dj-firmware/releases/latest";
+    "https://api.github.com/repos/pcvantol/djconnect-firmware/releases/latest";
 static const char *const BootstrapFirmwareManifestAsset = "firmware_manifest.json";
 
 // POSIX timezone rule for Europe/Amsterdam, including CET/CEST daylight saving changes.

@@ -8,18 +8,18 @@
 #include "LedRing.h"
 #include "SoundManager.h"
 
-struct SpotifyDJOTARequest {
+struct DJConnectOTARequest {
   String url;
   String sha256;
   String version;
   String device;
 };
 
-class SpotifyDJOTA {
+class DJConnectOTA {
 public:
   bool canUpdate(const BatteryState *battery, String &message) const;
   bool performUpdate(
-      const SpotifyDJOTARequest &request,
+      const DJConnectOTARequest &request,
       const BatteryState *battery,
       DisplayManager *display,
       LedRing *ledRing,

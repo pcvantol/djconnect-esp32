@@ -90,7 +90,7 @@ bool SoftResetMonitor::batteryAllowsHardReset() {
 void SoftResetMonitor::hardResetToSetupPortal() {
   // Keep this self-contained so recovery still works when the app loop or Spotify client is wedged.
   Preferences spotifyDj;
-  spotifyDj.begin("spotifydj", false);
+  spotifyDj.begin("djconnect", false);
   spotifyDj.clear();
   spotifyDj.end();
 

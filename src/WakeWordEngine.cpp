@@ -1,15 +1,15 @@
-// Optional wake-word front-end for "Spotify DJ".
+// Optional wake-word front-end for "DJConnect".
 #include "WakeWordEngine.h"
 
 #include "AppLog.h"
 #include "Config.h"
 
-extern "C" bool spotifydj_micro_wake_word_detect(const int16_t *samples, size_t sampleCount) __attribute__((weak));
+extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t sampleCount) __attribute__((weak));
 
 void WakeWordEngine::begin() {
-  available_ = spotifydj_micro_wake_word_detect != nullptr;
+  available_ = djconnect_micro_wake_word_detect != nullptr;
   AppLog.print("Wake word: ");
-  AppLog.println(available_ ? "Spotify DJ model hook available" : "model hook not installed");
+  AppLog.println(available_ ? "DJConnect model hook available" : "model hook not installed");
 }
 
 void WakeWordEngine::setCallback(Callback callback, void *context) {
@@ -35,8 +35,8 @@ void WakeWordEngine::loop(VoiceRecorder &recorder) {
   }
 
   const size_t sampleCount = bytesRead / sizeof(int16_t);
-  if (spotifydj_micro_wake_word_detect(reinterpret_cast<const int16_t *>(audio), sampleCount)) {
-    AppLog.println("Wake word: Spotify DJ detected");
+  if (djconnect_micro_wake_word_detect(reinterpret_cast<const int16_t *>(audio), sampleCount)) {
+    AppLog.println("Wake word: DJConnect detected");
     callback_(callbackContext_);
   }
 }

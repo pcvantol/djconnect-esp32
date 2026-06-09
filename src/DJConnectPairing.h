@@ -1,14 +1,14 @@
-// Home Assistant pairing and periodic status posting for SpotifyDJ.
+// Home Assistant pairing and periodic status posting for DJConnect.
 #pragma once
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
 #include "AppState.h"
-#include "SpotifyDJDevice.h"
-#include "SpotifyDJDiscovery.h"
+#include "DJConnectDevice.h"
+#include "DJConnectDiscovery.h"
 
-class SpotifyDJPairing {
+class DJConnectPairing {
 public:
   enum class StatusResult {
     Skipped,
@@ -17,24 +17,20 @@ public:
     PairingInvalid,
   };
 
-  void begin(SpotifyDJDevice &device, SpotifyDJDiscovery *discovery = nullptr);
+  void begin(DJConnectDevice &device, DJConnectDiscovery *discovery = nullptr);
   void setLanguageProvisionedCallback(void (*callback)(void *context, const String &languageCode), void *context);
-  void setSpotifyProvisionedCallback(void (*callback)(void *context), void *context);
   bool pairWithHomeAssistant(const String &haUrl);
   StatusResult sendStatusToHA(
       const BatteryState &battery,
-      bool spotifyConfigured,
+      bool playbackConfigured,
       const DeviceSettingsStatus &settings,
       const VisualState &visualState);
 
 private:
   void applyProvisionedLanguage(JsonVariantConst payload);
-  void applyProvisionedSpotifyCredentials(JsonVariantConst payload);
 
-  SpotifyDJDevice *device_ = nullptr;
-  SpotifyDJDiscovery *discovery_ = nullptr;
+  DJConnectDevice *device_ = nullptr;
+  DJConnectDiscovery *discovery_ = nullptr;
   void (*languageProvisionedCallback_)(void *context, const String &languageCode) = nullptr;
   void *languageProvisionedContext_ = nullptr;
-  void (*spotifyProvisionedCallback_)(void *context) = nullptr;
-  void *spotifyProvisionedContext_ = nullptr;
 };

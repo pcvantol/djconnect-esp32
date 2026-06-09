@@ -1,9 +1,9 @@
-#include "SpotifyDJMenu.h"
+#include "DJConnectMenu.h"
 
-namespace SpotifyDJMenu {
+namespace DJConnectMenu {
 
 bool isMenuScreen(UiScreen screen) {
-  return SpotifyDJMenuModel::isMenuScreen(screen);
+  return DJConnectMenuModel::isMenuScreen(screen);
 }
 
 size_t itemCount(UiScreen screen, const PlaylistListState &playlists, const DeviceListState &devices) {
@@ -12,19 +12,19 @@ size_t itemCount(UiScreen screen, const PlaylistListState &playlists, const Devi
   input.playlistCount = playlists.count;
   input.devicesAvailable = devices.available;
   input.deviceCount = devices.count;
-  return SpotifyDJMenuModel::itemCount(screen, input);
+  return DJConnectMenuModel::itemCount(screen, input);
 }
 
 uint32_t dimTimeoutValueMs(size_t index) {
-  return SpotifyDJMenuModel::dimTimeoutValueMs(index);
+  return DJConnectMenuModel::dimTimeoutValueMs(index);
 }
 
 uint8_t brightnessValuePercent(size_t index) {
-  return SpotifyDJMenuModel::brightnessValuePercent(index);
+  return DJConnectMenuModel::brightnessValuePercent(index);
 }
 
 uint8_t speakerVolumeValuePercent(size_t index) {
-  return SpotifyDJMenuModel::speakerVolumeValuePercent(index);
+  return DJConnectMenuModel::speakerVolumeValuePercent(index);
 }
 
 uint32_t sleepTimeoutValueMs(size_t index) {
@@ -36,7 +36,7 @@ String languageLabel(Language language) {
 }
 
 String themeValue(size_t index) {
-  return SpotifyDJMenuModel::themeValue(index);
+  return DJConnectMenuModel::themeValue(index);
 }
 
 String themeLabel(const String &theme) {
@@ -50,7 +50,7 @@ String themeLabel(const String &theme) {
 }
 
 String logLevelValue(size_t index) {
-  return SpotifyDJMenuModel::logLevelValue(index);
+  return DJConnectMenuModel::logLevelValue(index);
 }
 
 String logLevelLabel(const String &level) {
@@ -67,7 +67,7 @@ String logLevelLabel(const String &level) {
 }
 
 bool shuffleValue(size_t index) {
-  return SpotifyDJMenuModel::shuffleValue(index);
+  return DJConnectMenuModel::shuffleValue(index);
 }
 
 String shuffleLabel(bool enabled) {
@@ -75,7 +75,7 @@ String shuffleLabel(bool enabled) {
 }
 
 String repeatValue(size_t index) {
-  return SpotifyDJMenuModel::repeatValue(index);
+  return DJConnectMenuModel::repeatValue(index);
 }
 
 String repeatLabel(const String &repeatState) {
@@ -88,4 +88,4 @@ String repeatLabel(const String &repeatState) {
   return I18n::text("repeat_off");
 }
 
-}  // namespace SpotifyDJMenu
+}  // namespace DJConnectMenu

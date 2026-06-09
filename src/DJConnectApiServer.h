@@ -1,4 +1,4 @@
-// Local ESP HTTP API used by the Home Assistant spotify_dj integration.
+// Local ESP HTTP API used by the Home Assistant djconnect integration.
 #pragma once
 
 #include <Arduino.h>
@@ -9,12 +9,12 @@
 #include "LedRing.h"
 #include "SoundManager.h"
 #include "SpotifyClient.h"
-#include "SpotifyDJDevice.h"
-#include "SpotifyDJDiscovery.h"
-#include "SpotifyDJOTA.h"
-#include "SpotifyDJPairing.h"
+#include "DJConnectDevice.h"
+#include "DJConnectDiscovery.h"
+#include "DJConnectOTA.h"
+#include "DJConnectPairing.h"
 
-class SpotifyDJApiServer {
+class DJConnectApiServer {
 public:
   using DjResponseCallback = bool (*)(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType);
   using LanguageProvisionedCallback = void (*)(void *context, const String &languageCode);
@@ -23,10 +23,10 @@ public:
 
   void begin(
       WebServer &server,
-      SpotifyDJDevice &device,
-      SpotifyDJPairing &pairing,
-      SpotifyDJDiscovery &discovery,
-      SpotifyDJOTA &ota,
+      DJConnectDevice &device,
+      DJConnectPairing &pairing,
+      DJConnectDiscovery &discovery,
+      DJConnectOTA &ota,
       SpotifyClient &spotify,
       DisplayManager &display,
       LedRing &ledRing,
@@ -54,10 +54,10 @@ private:
   void handleForget();
 
   WebServer *server_ = nullptr;
-  SpotifyDJDevice *device_ = nullptr;
-  SpotifyDJPairing *pairing_ = nullptr;
-  SpotifyDJDiscovery *discovery_ = nullptr;
-  SpotifyDJOTA *ota_ = nullptr;
+  DJConnectDevice *device_ = nullptr;
+  DJConnectPairing *pairing_ = nullptr;
+  DJConnectDiscovery *discovery_ = nullptr;
+  DJConnectOTA *ota_ = nullptr;
   SpotifyClient *spotify_ = nullptr;
   DisplayManager *display_ = nullptr;
   LedRing *ledRing_ = nullptr;

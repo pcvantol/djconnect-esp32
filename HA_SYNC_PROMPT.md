@@ -1,9 +1,9 @@
-# Codex Prompt: Synchronize Home Assistant Integration With SpotifyDJ ESP Firmware
+# Codex Prompt: Synchronize Home Assistant Integration With DJConnect ESP Firmware
 
-Werk in de bestaande Home Assistant custom integration repo voor `spotify_dj`.
+Werk in de bestaande Home Assistant custom integration repo voor `djconnect`.
 
 Doel:
-Synchroniseer de Home Assistant integration met de actuele SpotifyDJ ESP firmware release `v2.9.28`.
+Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmware release `v3.0.0`.
 
 Belangrijke architectuur:
 
@@ -19,9 +19,9 @@ Belangrijke architectuur:
 
 Controleer pairing flow:
 
-- Integration domain: `spotify_dj`.
-- ESP device id format: `spotifydj-lilygo-XXXXXXXXXXXX`.
-- ESP mDNS service: `_spotifydj._tcp`.
+- Integration domain: `djconnect`.
+- ESP device id format: `djconnect-lilygo-XXXXXXXXXXXX`.
+- ESP mDNS service: `_djconnect._tcp`.
 - ESP local pairing/info endpoints:
   - `GET /api/device/info`
   - `GET /api/device/pairing-info`
@@ -42,19 +42,19 @@ Belangrijk:
 
 ESP post periodiek en bij boot:
 
-`POST /api/spotify_dj/status`
+`POST /api/djconnect/status`
 
 Headers:
 
 - `Authorization: Bearer <device_token>`
-- `X-SpotifyDJ-Device-ID: <device_id>`
+- `X-DJConnect-Device-ID: <device_id>`
 - `Content-Type: application/json`
 
 Payload bevat onder andere:
 
 ```json
 {
-  "device_id": "spotifydj-lilygo-XXXXXXXXXXXX",
+  "device_id": "djconnect-lilygo-XXXXXXXXXXXX",
   "state": "online",
   "status": "online",
   "ota_state": "idle",
@@ -63,13 +63,13 @@ Payload bevat onder andere:
   "battery_mv": 4120,
   "charging": false,
   "wifi_rssi": -55,
-  "firmware": "2.9.28",
+  "firmware": "3.0.0",
   "language": "nl",
   "device_language": "nl",
   "theme": "dark",
   "log_level": "info",
   "ha_pairing_status": "paired",
-  "local_url": "http://spotifydj-lilygo-XXXXXXXXXXXX.local",
+  "local_url": "http://djconnect-lilygo-XXXXXXXXXXXX.local",
   "brightness": 100,
   "screen_brightness": 100,
   "screen_brightness_percent": 100,
@@ -129,31 +129,31 @@ Taken:
 
 ESP stuurt playback commands naar:
 
-`POST /api/spotify_dj/command`
+`POST /api/djconnect/command`
 
 Headers:
 
 - `Authorization: Bearer <device_token>`
-- `X-SpotifyDJ-Device-ID: <device_id>`
+- `X-DJConnect-Device-ID: <device_id>`
 - `Content-Type: application/json`
 
 Payload examples:
 
 ```json
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"status"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"devices"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"queue"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"playlists"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"pause"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"play"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"next"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"previous"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"set_volume","value":35}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"set_output","value":"iPhone","play":true}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"start_liked_proxy"}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"start_playlist","value":"spotify:playlist:..."}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"set_shuffle","value":true}
-{"device_id":"spotifydj-lilygo-XXXXXXXXXXXX","command":"set_repeat","value":"track"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"status"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"devices"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"queue"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"playlists"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"pause"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"play"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"next"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"previous"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_volume","value":35}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_output","value":"iPhone","play":true}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"start_liked_proxy"}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"start_playlist","value":"spotify:playlist:..."}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_shuffle","value":true}
+{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_repeat","value":"track"}
 ```
 
 Response contract:
@@ -207,10 +207,10 @@ Taken:
 - Never return HTTP 503 for normal playback backend unavailable during command/status, because ESP interprets HTTP 5xx as playback connection error/cooldown.
 - Keep backend unavailable as JSON failure on 200.
 - Keep 401/403/404 only for actual auth/pairing invalid cases.
-- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v2.9.28 forceert direct een playback status poll na HA setup.
+- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v3.0.0 forceert direct een playback status poll na HA setup.
 - Queue/devices/playlists should return `success:true` with empty arrays if backend is reachable but no data is available.
 - Avoid spamming `/api/device/pair` callbacks while normal playback commands are running; use a debounced settings sync path if needed.
-- Do not call ESP `POST /api/device/pair` as a generic status/settings synchronization endpoint after the device is already paired. Use it only for initial config-flow pairing, explicit re-pair/token rotation, or recovery. Use `POST /api/device/command` for settings changes and `/api/spotify_dj/status` responses for state acknowledgement.
+- Do not call ESP `POST /api/device/pair` as a generic status/settings synchronization endpoint after the device is already paired. Use it only for initial config-flow pairing, explicit re-pair/token rotation, or recovery. Use `POST /api/device/command` for settings changes and `/api/djconnect/status` responses for state acknowledgement.
 
 ## 4. Local ESP Device Command API
 
@@ -234,13 +234,13 @@ Canonical commands:
 {"command":"language","value":"nl"}
 {"command":"theme","value":"dark"}
 {"command":"log_level","value":"info"}
-{"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/spotify_dj/tts/example.mp3"}
+{"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/djconnect/tts/example.mp3"}
 ```
 
 Taken:
 
 - HA native entities should call `/api/device/command` for device-local settings.
-- After command success, update HA entity state from command response if present, otherwise refresh from next `/api/spotify_dj/status`.
+- After command success, update HA entity state from command response if present, otherwise refresh from next `/api/djconnect/status`.
 - Handle ESP 401/403/404 as stale pairing.
 - Do not send Spotify OAuth, MQTT or backend secrets to ESP.
 
@@ -249,7 +249,7 @@ Taken:
 Physical PTT flow:
 
 ESP records WAV
-→ `POST /api/spotify_dj/voice` raw `audio/wav`
+→ `POST /api/djconnect/voice` raw `audio/wav`
 → HA does STT/backend/TTS
 → HA returns or posts DJ text plus optional audio URL
 → ESP displays text and plays WAV/MP3 locally.
@@ -266,7 +266,7 @@ Rules:
 
 If implementing a `media_player`:
 
-- It represents backend playback state controlled by SpotifyDJ, not the ESP speaker as a music sink.
+- It represents backend playback state controlled by DJConnect, not the ESP speaker as a music sink.
 - State: playing/paused/idle/unavailable from HA backend playback state.
 - Attributes: title, artist, album art, output/source, volume, supported features.
 - Commands:
@@ -285,7 +285,7 @@ Add or update tests for:
 - Pairing remains pending until ESP confirms token storage.
 - 401/403/404 marks pairing stale.
 - HTTP 200 with `success:false, backend_available:false` does not mark pairing stale.
-- `/api/spotify_dj/status` parses nested/top-level settings and updates HA entities away from min/default.
+- `/api/djconnect/status` parses nested/top-level settings and updates HA entities away from min/default.
 - `command=status` after ESP boot returns promptly.
 - OTA status clears from updating after ESP posts `ota_state/update_state=idle` plus firmware.
 - No Spotify/MQTT credentials are sent to or stored on ESP.
@@ -295,7 +295,7 @@ Add or update tests for:
 
 ## 8. Acceptance Criteria
 
-- ESP v2.9.28 can pair with HA integration without repeated stale-pairing loops.
+- ESP v3.0.0 can pair with HA integration without repeated stale-pairing loops.
 - After ESP reboot, HA status and playback command flow make the ESP `S` indicator green/grey/red correctly before any physical control action.
 - HA brightness/speaker volume/timeouts/language/theme/log-level entities reflect ESP state after reboot/status post.
 - Playback backend unavailable shows playback/S error but keeps HA pairing intact.

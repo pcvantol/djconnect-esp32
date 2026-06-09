@@ -1,5 +1,5 @@
 // Firmware OTA download/install helper for Home Assistant-triggered updates.
-#include "SpotifyDJOTA.h"
+#include "DJConnectOTA.h"
 
 #include <HTTPClient.h>
 #include <Update.h>
@@ -50,7 +50,7 @@ void serviceOtaLoop(LedRing *ledRing) {
 }
 }
 
-bool SpotifyDJOTA::canUpdate(const BatteryState *battery, String &message) const {
+bool DJConnectOTA::canUpdate(const BatteryState *battery, String &message) const {
   if (battery == nullptr || !battery->available || battery->percent < 0) {
     message = "Battery state unknown, allowing OTA";
     return true;
@@ -62,8 +62,8 @@ bool SpotifyDJOTA::canUpdate(const BatteryState *battery, String &message) const
   return false;
 }
 
-bool SpotifyDJOTA::performUpdate(
-    const SpotifyDJOTARequest &request,
+bool DJConnectOTA::performUpdate(
+    const DJConnectOTARequest &request,
     const BatteryState *battery,
     DisplayManager *display,
     LedRing *ledRing,

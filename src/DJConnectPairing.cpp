@@ -1,5 +1,5 @@
-// Home Assistant pairing and periodic status posting for SpotifyDJ.
-#include "SpotifyDJPairing.h"
+// Home Assistant pairing and periodic status posting for DJConnect.
+#include "DJConnectPairing.h"
 
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
@@ -28,26 +28,19 @@ String jsonString(JsonVariantConst payload, const char *primary, const char *fal
 }
 }  // namespace
 
-void SpotifyDJPairing::begin(SpotifyDJDevice &device, SpotifyDJDiscovery *discovery) {
+void DJConnectPairing::begin(DJConnectDevice &device, DJConnectDiscovery *discovery) {
   device_ = &device;
   discovery_ = discovery;
 }
 
-void SpotifyDJPairing::setLanguageProvisionedCallback(
+void DJConnectPairing::setLanguageProvisionedCallback(
     void (*callback)(void *context, const String &languageCode),
     void *context) {
   languageProvisionedCallback_ = callback;
   languageProvisionedContext_ = context;
 }
 
-void SpotifyDJPairing::setSpotifyProvisionedCallback(
-    void (*callback)(void *context),
-    void *context) {
-  spotifyProvisionedCallback_ = callback;
-  spotifyProvisionedContext_ = context;
-}
-
-void SpotifyDJPairing::applyProvisionedLanguage(JsonVariantConst payload) {
+void DJConnectPairing::applyProvisionedLanguage(JsonVariantConst payload) {
   if (!payload.is<JsonObjectConst>()) {
     return;
   }
@@ -55,27 +48,20 @@ void SpotifyDJPairing::applyProvisionedLanguage(JsonVariantConst payload) {
   if (language.isEmpty()) {
     language = payload["language"] | "";
   }
-  const String normalized = SpotifyDJDevice::normalizedLanguageCode(language);
+  const String normalized = DJConnectDevice::normalizedLanguageCode(language);
   if (normalized.isEmpty()) {
     return;
   }
   if (normalized == I18n::languageCode()) {
     return;
   }
-  if (SpotifyDJDevice::saveProvisionedLanguage(normalized) &&
+  if (DJConnectDevice::saveProvisionedLanguage(normalized) &&
       languageProvisionedCallback_ != nullptr) {
     languageProvisionedCallback_(languageProvisionedContext_, normalized);
   }
 }
 
-void SpotifyDJPairing::applyProvisionedSpotifyCredentials(JsonVariantConst payload) {
-  (void)payload;
-  if (spotifyProvisionedCallback_ != nullptr) {
-    spotifyProvisionedCallback_(spotifyProvisionedContext_);
-  }
-}
-
-bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
+bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
   if (device_ == nullptr || haUrl.isEmpty()) {
     return false;
   }
@@ -96,7 +82,7 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   HTTPClient http;
   NetworkActivity activity("ha_pair", Config::HttpLongIoTimeoutMs);
   NetworkActivity::configureLongHttp(http);
-  const String url = joinUrl(haUrl, "/api/spotify_dj/pair");
+  const String url = joinUrl(haUrl, "/api/djconnect/pair");
   if (!http.begin(url)) {
     AppLog.println("HA pair HTTP begin failed");
     activity.finishError("begin failed");
@@ -134,7 +120,6 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
     device_->saveAssistPipelineId(assistPipelineId);
   }
   applyProvisionedLanguage(response.as<JsonVariantConst>());
-  applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());
   if (discovery_ != nullptr) {
     discovery_->updateTxtRecords();
   }
@@ -142,9 +127,9 @@ bool SpotifyDJPairing::pairWithHomeAssistant(const String &haUrl) {
   return true;
 }
 
-SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
+DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
     const BatteryState &battery,
-    bool spotifyConfigured,
+    bool playbackConfigured,
     const DeviceSettingsStatus &settings,
     const VisualState &visualState) {
   if (device_ == nullptr || !device_->isPaired()) {
@@ -206,7 +191,7 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
   screenObject["brightness_level"] = visualState.screenBrightnessLevel;
   JsonObject ledObject = request["led"].to<JsonObject>();
   ledObject["state"] = visualState.ledOn ? "on" : "off";
-  request["spotify_configured"] = spotifyConfigured;
+  request["playback_configured"] = playbackConfigured;
   request["free_heap"] = ESP.getFreeHeap();
   request["uptime"] = millis();
   request["uptime_ms"] = millis();
@@ -217,7 +202,7 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
   HTTPClient http;
   NetworkActivity activity("ha_status", Config::HttpLongIoTimeoutMs);
   NetworkActivity::configureLongHttp(http);
-  const String url = joinUrl(haUrl, "/api/spotify_dj/status");
+  const String url = joinUrl(haUrl, "/api/djconnect/status");
   if (!http.begin(url)) {
     AppLog.println("HA status HTTP begin failed");
     activity.finishError("begin failed");
@@ -225,7 +210,7 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
   }
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
   const int code = http.POST(body);
   const String payload = http.getString();
   http.end();
@@ -241,9 +226,6 @@ SpotifyDJPairing::StatusResult SpotifyDJPairing::sendStatusToHA(
     JsonDocument response;
     if (!deserializeJson(response, payload)) {
       applyProvisionedLanguage(response.as<JsonVariantConst>());
-      if (!spotifyConfigured) {
-        applyProvisionedSpotifyCredentials(response.as<JsonVariantConst>());
-      }
     }
   }
   return code >= 200 && code < 300 ? StatusResult::Ok : StatusResult::Failed;

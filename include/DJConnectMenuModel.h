@@ -39,7 +39,7 @@ struct MenuCountInput {
   size_t deviceCount = 0;
 };
 
-namespace SpotifyDJMenuModel {
+namespace DJConnectMenuModel {
 
 constexpr size_t MenuStackCapacity = 5;
 constexpr size_t DimTimeoutOptionCount = 4;
@@ -154,4 +154,4 @@ inline const char *repeatValue(size_t index) {
   return values[index < RepeatOptionCount ? index : 0];
 }
 
-}  // namespace SpotifyDJMenuModel
+}  // namespace DJConnectMenuModel

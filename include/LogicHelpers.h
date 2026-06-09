@@ -96,9 +96,9 @@ inline uint32_t forceImmediatePollTimestamp() {
   return 0;
 }
 
-// Home Assistant pairing/backends are usable while the runtime proxy is not marked stale.
-inline bool spotifyConfiguredForHomeAssistantStatus(bool credentialsStored, bool tokenInvalidGrant) {
-  return credentialsStored && !tokenInvalidGrant;
+// Home Assistant playback proxy is usable while pairing exists and the backend is not marked stale.
+inline bool playbackProxyUsableForHomeAssistantStatus(bool paired, bool backendMarkedUnavailable) {
+  return paired && !backendMarkedUnavailable;
 }
 
 // Computes one LED's brightness for the volume ring, independent of the final UI color.
@@ -282,7 +282,7 @@ inline bool shouldAutoStopVoiceRecording(uint32_t elapsedMs, uint32_t maxRecordM
   return maxRecordMs > 0 && elapsedMs >= maxRecordMs;
 }
 
-// Prevents empty STT results from reaching the SpotifyDJ integration endpoint.
+// Prevents empty STT results from reaching the DJConnect integration endpoint.
 inline bool shouldSendRecognizedVoiceText(size_t textLength) {
   return textLength > 0;
 }
@@ -294,7 +294,7 @@ inline bool isHomeAssistantPairingInvalidStatus(int statusCode) {
 
 inline const char *voiceHttpFailureMessage(int statusCode) {
   if (statusCode == 404) {
-    return "HA voice endpoint not found. Reset pairing and set up the SpotifyDJ integration again.";
+    return "HA voice endpoint not found. Reset pairing and set up the DJConnect integration again.";
   }
   if (statusCode == 401 || statusCode == 403) {
     return "HA authorization failed. Reset pairing and pair again.";

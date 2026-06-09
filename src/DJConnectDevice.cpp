@@ -1,5 +1,5 @@
-// Home Assistant-facing SpotifyDJ device identity, pairing state, and NVS storage.
-#include "SpotifyDJDevice.h"
+// Home Assistant-facing DJConnect device identity, pairing state, and NVS storage.
+#include "DJConnectDevice.h"
 
 #include <Arduino.h>
 #include <HTTPClient.h>
@@ -11,8 +11,8 @@
 #include "LogicHelpers.h"
 
 namespace {
-const char *Namespace = "spotifydj";
-const char *DefaultDeviceName = "SpotifyDJ";
+const char *Namespace = "djconnect";
+const char *DefaultDeviceName = "DJConnect";
 const char *Model = "lilygo-t-embed-s3";
 const char *AssistPipelineKey = "assist_pipe";
 const uint32_t ActiveHaUrlCacheMs = 30000;
@@ -24,14 +24,14 @@ String sixDigitCode(uint32_t value) {
 }
 }  // namespace
 
-void SpotifyDJDevice::begin(const BatteryState *battery, DisplayManager *display) {
+void DJConnectDevice::begin(const BatteryState *battery, DisplayManager *display) {
   battery_ = battery;
   display_ = display;
-  deviceId_ = "spotifydj-" + macSuffix();
+  deviceId_ = "djconnect-lilygo-" + macSuffix();
   if (readString("device_name").isEmpty()) {
     writeString("device_name", DefaultDeviceName);
   }
-  clearSpotifyCredentials();
+  clearLegacyPlaybackCredentials();
 
   AppLog.print("Device ID: ");
   AppLog.println(deviceId_);
@@ -39,35 +39,35 @@ void SpotifyDJDevice::begin(const BatteryState *battery, DisplayManager *display
   AppLog.println(isPaired() ? "paired" : "unpaired");
 }
 
-bool SpotifyDJDevice::isPaired() const {
+bool DJConnectDevice::isPaired() const {
   return !getDeviceToken().isEmpty();
 }
 
-bool SpotifyDJDevice::isSpotifyConfigured() const {
+bool DJConnectDevice::isPlaybackConfigured() const {
   return isPaired();
 }
 
-String SpotifyDJDevice::getDeviceId() const {
+String DJConnectDevice::getDeviceId() const {
   return deviceId_;
 }
 
-String SpotifyDJDevice::getDeviceName() const {
+String DJConnectDevice::getDeviceName() const {
   return readString("device_name", DefaultDeviceName);
 }
 
-String SpotifyDJDevice::getDeviceToken() const {
+String DJConnectDevice::getDeviceToken() const {
   return readString("device_token");
 }
 
-String SpotifyDJDevice::getHaLocalUrl() const {
+String DJConnectDevice::getHaLocalUrl() const {
   return readString("ha_local_url");
 }
 
-String SpotifyDJDevice::getHaRemoteUrl() const {
+String DJConnectDevice::getHaRemoteUrl() const {
   return readString("ha_remote_url");
 }
 
-String SpotifyDJDevice::getActiveHaUrl() const {
+String DJConnectDevice::getActiveHaUrl() const {
   const String localUrl = getHaLocalUrl();
   const String remoteUrl = getHaRemoteUrl();
   const uint32_t now = millis();
@@ -105,34 +105,34 @@ String SpotifyDJDevice::getActiveHaUrl() const {
   return activeHaUrl_;
 }
 
-String SpotifyDJDevice::getFirmwareVersion() const {
+String DJConnectDevice::getFirmwareVersion() const {
   return Logic::otaComparableFirmwareVersion(Config::AppVersionNumber, Config::AppVersion);
 }
 
-String SpotifyDJDevice::getModel() const {
+String DJConnectDevice::getModel() const {
   return Model;
 }
 
-String SpotifyDJDevice::getPairCode() const {
+String DJConnectDevice::getPairCode() const {
   return pairCode_;
 }
 
-String SpotifyDJDevice::getLocalUrl() const {
+String DJConnectDevice::getLocalUrl() const {
   return "http://" + deviceId_ + ".local";
 }
 
-String SpotifyDJDevice::getAssistPipelineId() const {
+String DJConnectDevice::getAssistPipelineId() const {
   return readString(AssistPipelineKey);
 }
 
-String SpotifyDJDevice::normalizedLanguageCode(const String &languageCode) {
+String DJConnectDevice::normalizedLanguageCode(const String &languageCode) {
   String normalized = languageCode;
   normalized.trim();
   normalized.toLowerCase();
   return normalized == "nl" || normalized == "en" ? normalized : "";
 }
 
-bool SpotifyDJDevice::saveProvisionedLanguage(const String &languageCode) {
+bool DJConnectDevice::saveProvisionedLanguage(const String &languageCode) {
   const String normalized = normalizedLanguageCode(languageCode);
   if (normalized.isEmpty()) {
     return false;
@@ -146,7 +146,7 @@ bool SpotifyDJDevice::saveProvisionedLanguage(const String &languageCode) {
   return true;
 }
 
-void SpotifyDJDevice::ensurePairingCode() {
+void DJConnectDevice::ensurePairingCode() {
   if (!pairCode_.isEmpty()) {
     return;
   }
@@ -157,7 +157,7 @@ void SpotifyDJDevice::ensurePairingCode() {
   AppLog.println(deviceId_);
 }
 
-void SpotifyDJDevice::displayPairingCode() {
+void DJConnectDevice::displayPairingCode() {
   ensurePairingCode();
   if (display_ == nullptr) {
     AppLog.println("Pairing code display unavailable");
@@ -171,7 +171,7 @@ void SpotifyDJDevice::displayPairingCode() {
   }
 }
 
-void SpotifyDJDevice::displayPaired() {
+void DJConnectDevice::displayPaired() {
   if (display_ != nullptr) {
     if (battery_ != nullptr) {
       display_->showBootMessage(I18n::text("boot_paired"), *battery_);
@@ -181,7 +181,7 @@ void SpotifyDJDevice::displayPaired() {
   }
 }
 
-void SpotifyDJDevice::savePairing(
+void DJConnectDevice::savePairing(
     const String &deviceToken,
     const String &haLocalUrl,
     const String &haRemoteUrl) {
@@ -198,7 +198,7 @@ void SpotifyDJDevice::savePairing(
   AppLog.println("Home Assistant pairing stored");
 }
 
-void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
+void DJConnectDevice::saveAssistPipelineId(const String &pipelineId) {
   if (pipelineId.isEmpty()) {
     removeKey(AssistPipelineKey);
   } else {
@@ -207,12 +207,12 @@ void SpotifyDJDevice::saveAssistPipelineId(const String &pipelineId) {
   AppLog.println("Assist pipeline setting saved");
 }
 
-void SpotifyDJDevice::clearPairing() {
+void DJConnectDevice::clearPairing() {
   clearHomeAssistantPairing();
-  clearSpotifyCredentials();
+  clearLegacyPlaybackCredentials();
 }
 
-void SpotifyDJDevice::clearHomeAssistantPairing() {
+void DJConnectDevice::clearHomeAssistantPairing() {
   removeKey("ha_local_url");
   removeKey("ha_remote_url");
   removeKey("device_token");
@@ -223,15 +223,15 @@ void SpotifyDJDevice::clearHomeAssistantPairing() {
   AppLog.println("Home Assistant pairing cleared");
 }
 
-void SpotifyDJDevice::clearSpotifyCredentials() {
+void DJConnectDevice::clearLegacyPlaybackCredentials() {
   AppLog.println("Playback credentials are managed by Home Assistant");
 }
 
-const BatteryState *SpotifyDJDevice::battery() const {
+const BatteryState *DJConnectDevice::battery() const {
   return battery_;
 }
 
-String SpotifyDJDevice::readString(const char *key, const String &fallback) const {
+String DJConnectDevice::readString(const char *key, const String &fallback) const {
   Preferences preferences;
   preferences.begin(Namespace, true);
   const String value = preferences.getString(key, fallback);
@@ -239,7 +239,7 @@ String SpotifyDJDevice::readString(const char *key, const String &fallback) cons
   return value;
 }
 
-bool SpotifyDJDevice::writeString(const char *key, const String &value) {
+bool DJConnectDevice::writeString(const char *key, const String &value) {
   Preferences preferences;
   if (!preferences.begin(Namespace, false)) {
     return false;
@@ -249,14 +249,14 @@ bool SpotifyDJDevice::writeString(const char *key, const String &value) {
   return saved;
 }
 
-void SpotifyDJDevice::removeKey(const char *key) {
+void DJConnectDevice::removeKey(const char *key) {
   Preferences preferences;
   preferences.begin(Namespace, false);
   preferences.remove(key);
   preferences.end();
 }
 
-bool SpotifyDJDevice::isUrlReachable(const String &url) const {
+bool DJConnectDevice::isUrlReachable(const String &url) const {
   if (url.isEmpty()) {
     return false;
   }
@@ -271,7 +271,7 @@ bool SpotifyDJDevice::isUrlReachable(const String &url) const {
   return code > 0;
 }
 
-String SpotifyDJDevice::macSuffix() {
+String DJConnectDevice::macSuffix() {
   char buffer[13] = {};
   snprintf(buffer, sizeof(buffer), "%012llX", static_cast<unsigned long long>(ESP.getEfuseMac()));
   return String(buffer);

@@ -11,7 +11,7 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
-#include "SpotifyDJDevice.h"
+#include "DJConnectDevice.h"
 #include "TextHelpers.h"
 
 #ifndef SPOTIFY_ALLOW_INSECURE_TLS
@@ -38,7 +38,7 @@ bool SpotifyClient::RequestGuard::isLocked() const {
   return locked_;
 }
 
-void SpotifyClient::setHomeAssistantDevice(SpotifyDJDevice &device) {
+void SpotifyClient::setHomeAssistantDevice(DJConnectDevice &device) {
   device_ = &device;
 }
 
@@ -91,7 +91,7 @@ String SpotifyClient::proxyEndpoint() const {
   if (haUrl.isEmpty()) {
     return "";
   }
-  return haUrl + "/api/spotify_dj/command";
+  return haUrl + "/api/djconnect/command";
 }
 
 bool SpotifyClient::proxyCommand(const String &command, JsonDocument *response) {
@@ -156,7 +156,7 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   }
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
 
   const String command = doc["command"] | "";
   AppLog.print("HA playback command: ");

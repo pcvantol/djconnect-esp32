@@ -40,7 +40,7 @@ void BleWifiProvisioning::begin(const String &deviceId) {
   }
   activeProvisioning = this;
   const int suffixStart = deviceId.length() > 4 ? static_cast<int>(deviceId.length()) - 4 : 0;
-  const String name = deviceId.isEmpty() ? "SpotifyDJ Setup" : "SpotifyDJ " + deviceId.substring(suffixStart);
+  const String name = deviceId.isEmpty() ? "DJConnect Setup" : "DJConnect " + deviceId.substring(suffixStart);
   BLEDevice::init(name.c_str());
   BLEServer *server = BLEDevice::createServer();
   BLEService *service = server->createService(ServiceUuid);

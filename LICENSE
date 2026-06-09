@@ -1,22 +1,22 @@
-SpotifyDJ Firmware Proprietary License
+DJConnect Firmware Proprietary License
 
-Copyright (c) 2026 pcvantol. All rights reserved.
+Copyright (c) 2026 Peter van Tol. All rights reserved.
 
-This license applies to the SpotifyDJ ESP firmware source code, firmware
+This license applies to the DJConnect ESP firmware source code, firmware
 binaries, embedded assets, build scripts, and documentation in this repository,
 unless a file explicitly states a different license.
 
 1. Ownership
 
-The SpotifyDJ firmware is proprietary software. All intellectual property
+The DJConnect firmware is proprietary software. All intellectual property
 rights in the firmware remain owned by the copyright holder.
 
 2. Permitted Use
 
 The copyright holder may build, install, distribute, sell, lease, or otherwise
-commercialize physical SpotifyDJ devices that include this firmware.
+commercialize physical DJConnect devices that include this firmware.
 
-End users who purchase or receive a SpotifyDJ device receive a limited,
+End users who purchase or receive a DJConnect device receive a limited,
 non-exclusive, non-transferable right to use the firmware only as installed on
 that physical device.
 
@@ -39,11 +39,11 @@ entity may:
 
 This license does not restrict the purchase, resale, branding, or whitelabeling
 of hardware by the copyright holder. Hardware may be sourced from third-party
-manufacturers and sold with SpotifyDJ firmware preinstalled.
+manufacturers and sold with DJConnect firmware preinstalled.
 
 5. Home Assistant Integration
 
-The SpotifyDJ Home Assistant integration may be offered to customers free of
+The DJConnect Home Assistant integration may be offered to customers free of
 charge. That integration is separate from this firmware and is governed by its
 own license, if any. Free use of the Home Assistant integration does not grant
 rights to copy, modify, or redistribute this firmware.

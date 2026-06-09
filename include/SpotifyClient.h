@@ -7,7 +7,7 @@
 
 #include "AppState.h"
 
-class SpotifyDJDevice;
+class DJConnectDevice;
 
 class SpotifyClient {
 public:
@@ -17,7 +17,7 @@ public:
   void begin();
 
   // Attaches the paired Home Assistant device identity used for proxy commands.
-  void setHomeAssistantDevice(SpotifyDJDevice &device);
+  void setHomeAssistantDevice(DJConnectDevice &device);
 
   // Checks whether Home Assistant can currently proxy playback commands.
   bool authorize();
@@ -107,7 +107,7 @@ private:
   String spotifyErrorFromPayload(int code, const String &payload) const;
 
   SpotifyState &state_;
-  SpotifyDJDevice *device_ = nullptr;
+  DJConnectDevice *device_ = nullptr;
   QueueHandle_t volumeCommandQueue_ = nullptr;
   QueueHandle_t volumeResultQueue_ = nullptr;
   SemaphoreHandle_t requestMutex_ = nullptr;

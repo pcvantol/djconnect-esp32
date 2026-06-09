@@ -183,9 +183,9 @@ String AppLogger::linePrefix(const String &severity) const {
 String AppLogger::normalizedLine(const String &line) const {
   String value = line;
   value.trim();
-  if (value.startsWith("[SpotifyDJ] ")) {
+  if (value.startsWith("[DJConnect] ")) {
     value.remove(0, 12);
-  } else if (value.startsWith("[SpotifyDJ]")) {
+  } else if (value.startsWith("[DJConnect]")) {
     value.remove(0, 11);
     value.trim();
   }

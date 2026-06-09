@@ -10,7 +10,7 @@ Usage:
 Environment:
   PIO_BIN                 PlatformIO executable override.
   PIO_JOBS                PlatformIO build jobs for release builds, default 1.
-  FIRMWARE_RELEASE_REPO   GitHub release repo, default pcvantol/spotify-dj-firmware.
+  FIRMWARE_RELEASE_REPO   GitHub release repo, default pcvantol/djconnect-firmware.
 EOF
 }
 
@@ -166,22 +166,22 @@ if [[ "$VERSION_ARG" == *-beta ]]; then
   CHANNEL="beta"
 fi
 TAG="v$VERSION"
-ASSET="spotifydj-device-$TAG.bin"
+ASSET="djconnect-device-$TAG.bin"
 MANIFEST="firmware_manifest.json"
 if [[ "$CHANNEL" == "beta" ]]; then
   TAG="v$VERSION-beta"
-  ASSET="spotifydj-device-beta-v$VERSION.bin"
+  ASSET="djconnect-device-beta-v$VERSION.bin"
   MANIFEST="firmware_manifest_beta.json"
 fi
 RELEASE_DIR="release"
-FIRMWARE_RELEASE_REPO="${FIRMWARE_RELEASE_REPO:-pcvantol/spotify-dj-firmware}"
+FIRMWARE_RELEASE_REPO="${FIRMWARE_RELEASE_REPO:-pcvantol/djconnect-firmware}"
 PIO_BIN="${PIO_BIN:-/Users/pcvantol/.platformio/penv/bin/pio}"
 PIO_JOBS="${PIO_JOBS:-1}"
 [[ -x "$PIO_BIN" ]] || PIO_BIN="pio"
 
-[[ -f platformio.ini && -d src && -d include && -d .git ]] || fail "run this script from the spotify-dj-app repo root"
+[[ -f platformio.ini && -d src && -d include && -d .git ]] || fail "run this script from the djconnect-app repo root"
 
-echo "SpotifyDJ firmware release"
+echo "DJConnect firmware release"
 echo "  version: $VERSION"
 echo "  tag:     $TAG"
 echo "  channel: $CHANNEL"
@@ -200,7 +200,7 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would update release examples/version references in platformio.ini, version files, README, CHANGELOG and AGENTS if present."
-  echo "Would build with SPOTIFYDJ_VERSION=$VERSION and SPOTIFYDJ_VERSION_TAG=$TAG."
+  echo "Would build with DJCONNECT_VERSION=$VERSION and DJCONNECT_VERSION_TAG=$TAG."
   echo "Would copy firmware to $RELEASE_DIR/$ASSET and write $RELEASE_DIR/$MANIFEST."
   echo "Would commit, tag and push source repo."
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
@@ -215,7 +215,7 @@ fi
 
 replace_version_examples "$VERSION" "$TAG"
 
-export SPOTIFYDJ_BUILD_FLAGS="-DSPOTIFYDJ_VERSION=$VERSION -DSPOTIFYDJ_VERSION_TAG=$TAG"
+export DJCONNECT_BUILD_FLAGS="-DDJCONNECT_VERSION=$VERSION -DDJCONNECT_VERSION_TAG=$TAG"
 run "$PIO_BIN" run -e t_embed_cc1101 -j "$PIO_JOBS"
 
 FIRMWARE_BIN="$(find .pio/build -path '*/firmware.bin' -type f | sort | head -n 1)"
@@ -228,7 +228,7 @@ SIZE="$(file_size "$RELEASE_DIR/$ASSET")"
 write_manifest "$RELEASE_DIR/$MANIFEST" "$VERSION" "$TAG" "$ASSET" "$SHA256" "$SIZE"
 
 run git add .
-run git commit -m "Release SpotifyDJ firmware $TAG"
+run git commit -m "Release DJConnect firmware $TAG"
 run git tag "$TAG"
 run git push origin main
 run git push origin "$TAG"
@@ -239,7 +239,7 @@ if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
   run cp "$RELEASE_DIR/$ASSET" "$PUBLISH_FIRMWARE_REPO/$ASSET"
   run cp "$RELEASE_DIR/$MANIFEST" "$PUBLISH_FIRMWARE_REPO/$MANIFEST"
   run_in_dir "$PUBLISH_FIRMWARE_REPO" git add "$ASSET" "$MANIFEST"
-  run_in_dir "$PUBLISH_FIRMWARE_REPO" git commit -m "Release SpotifyDJ firmware $TAG"
+  run_in_dir "$PUBLISH_FIRMWARE_REPO" git commit -m "Release DJConnect firmware $TAG"
   if ! (cd "$PUBLISH_FIRMWARE_REPO" && git rev-parse "$TAG" >/dev/null 2>&1); then
     run_in_dir "$PUBLISH_FIRMWARE_REPO" git tag "$TAG"
   fi
@@ -251,7 +251,7 @@ if [[ "$GH_RELEASE" == "true" ]]; then
   if command -v gh >/dev/null 2>&1; then
     run gh release create "$TAG" \
       --repo "$FIRMWARE_RELEASE_REPO" \
-      --title "SpotifyDJ firmware $TAG" \
+      --title "DJConnect firmware $TAG" \
       "$RELEASE_DIR/$ASSET" "$RELEASE_DIR/$MANIFEST"
   else
     echo "gh not found; skipping GitHub release creation"

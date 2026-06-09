@@ -1,4 +1,4 @@
-// DJ response audio dispatcher. Keeps HTTP type detection out of SpotifyDJApp.
+// DJ response audio dispatcher. Keeps HTTP type detection out of DJConnectApp.
 #include "DjResponseAudioPlayer.h"
 
 #include <HTTPClient.h>

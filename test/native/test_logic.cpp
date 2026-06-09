@@ -10,7 +10,7 @@
 #include "DeviceCommandParser.h"
 #include "LogicHelpers.h"
 #include "NetworkActivityLogic.h"
-#include "SpotifyDJMenuModel.h"
+#include "DJConnectMenuModel.h"
 
 struct FakeHttpClient {
   uint32_t connectTimeout = 0;
@@ -57,16 +57,16 @@ static void testOtaComparableFirmwareVersion() {
 
 static void testSemverComparison() {
   int parts[3] = {};
-  assert(Logic::parseSemver("2.9.11", parts));
-  assert(parts[0] == 2 && parts[1] == 9 && parts[2] == 11);
-  assert(Logic::parseSemver("v2.9.11", parts));
-  assert(Logic::compareSemver("2.9.12", "2.9.11") > 0);
-  assert(Logic::compareSemver("2.10.0", "2.9.99") > 0);
-  assert(Logic::compareSemver("2.9.11", "2.9.11") == 0);
-  assert(Logic::compareSemver("2.9.10", "2.9.11") < 0);
-  assert(Logic::compareSemver("dev", "2.9.11") < 0);
-  assert(!Logic::parseSemver("2.9", parts));
-  assert(!Logic::parseSemver("2.9.x", parts));
+  assert(Logic::parseSemver("3.0.11", parts));
+  assert(parts[0] == 3 && parts[1] == 0 && parts[2] == 11);
+  assert(Logic::parseSemver("v3.0.11", parts));
+  assert(Logic::compareSemver("3.0.12", "3.0.11") > 0);
+  assert(Logic::compareSemver("3.1.0", "3.0.99") > 0);
+  assert(Logic::compareSemver("3.0.11", "3.0.11") == 0);
+  assert(Logic::compareSemver("3.0.10", "3.0.11") < 0);
+  assert(Logic::compareSemver("dev", "3.0.11") < 0);
+  assert(!Logic::parseSemver("3.0", parts));
+  assert(!Logic::parseSemver("3.0.x", parts));
 }
 
 static void testHaPlaybackConnectionErrorClassification() {
@@ -133,10 +133,10 @@ static void testImmediatePollTimestampConvention() {
 }
 
 static void testSpotifyConfiguredForHomeAssistantStatus() {
-  assert(!Logic::spotifyConfiguredForHomeAssistantStatus(false, false));
-  assert(!Logic::spotifyConfiguredForHomeAssistantStatus(false, true));
-  assert(Logic::spotifyConfiguredForHomeAssistantStatus(true, false));
-  assert(!Logic::spotifyConfiguredForHomeAssistantStatus(true, true));
+  assert(!Logic::playbackProxyUsableForHomeAssistantStatus(false, false));
+  assert(!Logic::playbackProxyUsableForHomeAssistantStatus(false, true));
+  assert(Logic::playbackProxyUsableForHomeAssistantStatus(true, false));
+  assert(!Logic::playbackProxyUsableForHomeAssistantStatus(true, true));
 }
 
 static void testProgressEstimation() {
@@ -377,13 +377,11 @@ static void testVoiceChunkHelpers() {
   assert(!Logic::isHomeAssistantPairingInvalidStatus(500));
   assert(std::strcmp(
              Logic::voiceHttpFailureMessage(404),
-             "HA voice endpoint not found. Reset pairing and set up the SpotifyDJ integration again.") == 0);
+             "HA voice endpoint not found. Reset pairing and set up the DJConnect integration again.") == 0);
   assert(std::strcmp(Logic::voiceHttpFailureMessage(401), "HA authorization failed. Reset pairing and pair again.") == 0);
   assert(std::strcmp(Logic::voiceHttpFailureMessage(403), "HA authorization failed. Reset pairing and pair again.") == 0);
   assert(Logic::voiceHttpFailureMessage(500) == nullptr);
 
-  assert(!Logic::preferencesKeyFits("spotify_client_id"));
-  assert(!Logic::preferencesKeyFits("spotify_refresh_token"));
 
   assert(Logic::isBackendPlaylistContextUri("spotify:playlist:abc123"));
   assert(!Logic::isBackendPlaylistContextUri("spotify:album:abc123"));
@@ -592,70 +590,70 @@ static void testSpotifyPlaylistPagingDecision() {
   assert(!Logic::shouldFetchNextBackendPlaylistPage(50, 120, 0, 0));
 }
 
-static void testSpotifyDJMenuItemCounts() {
+static void testDJConnectMenuItemCounts() {
   MenuCountInput input;
-  assert(!SpotifyDJMenuModel::isMenuScreen(UiScreen::NowPlaying));
-  assert(SpotifyDJMenuModel::isMenuScreen(UiScreen::Settings));
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::NowPlaying, input) == 0);
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::RootMenu, input) == SpotifyDJMenuModel::RootMenuItemCount);
-  assert(SpotifyDJMenuModel::RootMenuItemCount == 11);
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::Help, input) == SpotifyDJMenuModel::HelpItemCount);
-  assert(SpotifyDJMenuModel::HelpItemCount == 8);
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::Settings, input) == SpotifyDJMenuModel::SettingsItemCount);
-  assert(SpotifyDJMenuModel::SettingsItemCount == 14);
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::About, input) == SpotifyDJMenuModel::AboutItemCount);
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::Playlists, input) == 1);
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 2);
+  assert(!DJConnectMenuModel::isMenuScreen(UiScreen::NowPlaying));
+  assert(DJConnectMenuModel::isMenuScreen(UiScreen::Settings));
+  assert(DJConnectMenuModel::itemCount(UiScreen::NowPlaying, input) == 0);
+  assert(DJConnectMenuModel::itemCount(UiScreen::RootMenu, input) == DJConnectMenuModel::RootMenuItemCount);
+  assert(DJConnectMenuModel::RootMenuItemCount == 11);
+  assert(DJConnectMenuModel::itemCount(UiScreen::Help, input) == DJConnectMenuModel::HelpItemCount);
+  assert(DJConnectMenuModel::HelpItemCount == 8);
+  assert(DJConnectMenuModel::itemCount(UiScreen::Settings, input) == DJConnectMenuModel::SettingsItemCount);
+  assert(DJConnectMenuModel::SettingsItemCount == 14);
+  assert(DJConnectMenuModel::itemCount(UiScreen::About, input) == DJConnectMenuModel::AboutItemCount);
+  assert(DJConnectMenuModel::itemCount(UiScreen::Playlists, input) == 1);
+  assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == 2);
 
   input.playlistsAvailable = true;
   input.playlistCount = 3;
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::Playlists, input) == 3);
+  assert(DJConnectMenuModel::itemCount(UiScreen::Playlists, input) == 3);
 
   input.devicesAvailable = true;
   input.deviceCount = 3;
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == 5);
+  assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == 5);
 
   input.deviceCount = 99;
-  assert(SpotifyDJMenuModel::itemCount(UiScreen::SoundOutputs, input) == SpotifyDJMenuModel::MaxVisibleOutputs + SpotifyDJMenuModel::FixedSoundOutputCount);
+  assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == DJConnectMenuModel::MaxVisibleOutputs + DJConnectMenuModel::FixedSoundOutputCount);
 }
 
-static void testSpotifyDJMenuOptionValues() {
-  assert(SpotifyDJMenuModel::dimTimeoutValueMs(0) == 30000UL);
-  assert(SpotifyDJMenuModel::dimTimeoutValueMs(1) == 60000UL);
-  assert(SpotifyDJMenuModel::dimTimeoutValueMs(2) == 120000UL);
-  assert(SpotifyDJMenuModel::dimTimeoutValueMs(3) == 240000UL);
-  assert(SpotifyDJMenuModel::dimTimeoutValueMs(99) == 60000UL);
+static void testDJConnectMenuOptionValues() {
+  assert(DJConnectMenuModel::dimTimeoutValueMs(0) == 30000UL);
+  assert(DJConnectMenuModel::dimTimeoutValueMs(1) == 60000UL);
+  assert(DJConnectMenuModel::dimTimeoutValueMs(2) == 120000UL);
+  assert(DJConnectMenuModel::dimTimeoutValueMs(3) == 240000UL);
+  assert(DJConnectMenuModel::dimTimeoutValueMs(99) == 60000UL);
 
-  assert(SpotifyDJMenuModel::brightnessValuePercent(0) == 25);
-  assert(SpotifyDJMenuModel::brightnessValuePercent(3) == 100);
-  assert(SpotifyDJMenuModel::brightnessValuePercent(99) == 100);
+  assert(DJConnectMenuModel::brightnessValuePercent(0) == 25);
+  assert(DJConnectMenuModel::brightnessValuePercent(3) == 100);
+  assert(DJConnectMenuModel::brightnessValuePercent(99) == 100);
 
-  assert(SpotifyDJMenuModel::speakerVolumeValuePercent(0) == 25);
-  assert(SpotifyDJMenuModel::speakerVolumeValuePercent(3) == 100);
-  assert(SpotifyDJMenuModel::speakerVolumeValuePercent(99) == 100);
+  assert(DJConnectMenuModel::speakerVolumeValuePercent(0) == 25);
+  assert(DJConnectMenuModel::speakerVolumeValuePercent(3) == 100);
+  assert(DJConnectMenuModel::speakerVolumeValuePercent(99) == 100);
 
-  assert(std::strcmp(SpotifyDJMenuModel::themeValue(0), "dark") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::themeValue(1), "light") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::themeValue(2), "auto") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::themeValue(99), "dark") == 0);
+  assert(std::strcmp(DJConnectMenuModel::themeValue(0), "dark") == 0);
+  assert(std::strcmp(DJConnectMenuModel::themeValue(1), "light") == 0);
+  assert(std::strcmp(DJConnectMenuModel::themeValue(2), "auto") == 0);
+  assert(std::strcmp(DJConnectMenuModel::themeValue(99), "dark") == 0);
 
-  assert(SpotifyDJMenuModel::LogLevelOptionCount == 4);
-  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(0), "debug") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(1), "info") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(2), "warning") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(3), "error") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::logLevelValue(99), "info") == 0);
+  assert(DJConnectMenuModel::LogLevelOptionCount == 4);
+  assert(std::strcmp(DJConnectMenuModel::logLevelValue(0), "debug") == 0);
+  assert(std::strcmp(DJConnectMenuModel::logLevelValue(1), "info") == 0);
+  assert(std::strcmp(DJConnectMenuModel::logLevelValue(2), "warning") == 0);
+  assert(std::strcmp(DJConnectMenuModel::logLevelValue(3), "error") == 0);
+  assert(std::strcmp(DJConnectMenuModel::logLevelValue(99), "info") == 0);
 
-  assert(SpotifyDJMenuModel::ShuffleOptionCount == 2);
-  assert(!SpotifyDJMenuModel::shuffleValue(0));
-  assert(SpotifyDJMenuModel::shuffleValue(1));
-  assert(!SpotifyDJMenuModel::shuffleValue(99));
+  assert(DJConnectMenuModel::ShuffleOptionCount == 2);
+  assert(!DJConnectMenuModel::shuffleValue(0));
+  assert(DJConnectMenuModel::shuffleValue(1));
+  assert(!DJConnectMenuModel::shuffleValue(99));
 
-  assert(SpotifyDJMenuModel::RepeatOptionCount == 3);
-  assert(std::strcmp(SpotifyDJMenuModel::repeatValue(0), "off") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::repeatValue(1), "track") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::repeatValue(2), "context") == 0);
-  assert(std::strcmp(SpotifyDJMenuModel::repeatValue(99), "off") == 0);
+  assert(DJConnectMenuModel::RepeatOptionCount == 3);
+  assert(std::strcmp(DJConnectMenuModel::repeatValue(0), "off") == 0);
+  assert(std::strcmp(DJConnectMenuModel::repeatValue(1), "track") == 0);
+  assert(std::strcmp(DJConnectMenuModel::repeatValue(2), "context") == 0);
+  assert(std::strcmp(DJConnectMenuModel::repeatValue(99), "off") == 0);
 }
 
 static void testNetworkActivityLogicWithFakeHttp() {
@@ -696,8 +694,8 @@ int main() {
   testDeviceCommandParserSettings();
   testDeviceCommandParserDjResponseAndUnknown();
   testSpotifyPlaylistPagingDecision();
-  testSpotifyDJMenuItemCounts();
-  testSpotifyDJMenuOptionValues();
+  testDJConnectMenuItemCounts();
+  testDJConnectMenuOptionValues();
   testNetworkActivityLogicWithFakeHttp();
   return 0;
 }

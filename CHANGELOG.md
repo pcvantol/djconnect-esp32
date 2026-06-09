@@ -1,8 +1,8 @@
 # Changelog
 
-## v2.9.30
+## v3.0.0
 
-Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
+Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
 ### Added
 
@@ -35,14 +35,14 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Built-in speaker cue volume setting: 25%, 50%, 75% or 100%.
 - Battery/charging guard screens, low-battery turn-off sleep and charger-aware wake behavior.
 - WiFi-failure boot menu with encoder selection for retry connect, restart device, turn off and confirmed factory reset.
-- Optional local micro wake word hook for a trained `Spotify DJ` detector.
+- Optional local micro wake word hook for a trained `DJConnect` detector.
 - Watchdog, slow-loop diagnostics and periodic heap diagnostics for long-running device stability.
 - Timestamped log severity classification with `[inf]`, `[wrn]`, `[err]` and `[dbg]` markers for serial and web logs.
 - Compact serial/web log prefix format: `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`.
 - Device Logs screen is scrollable with the encoder, keeping the newest tail as the default live position.
 - Settings now includes a confirmed Change WiFi action that opens the setup/captive portal without clearing the Home Assistant pairing.
 - Log level setting on the device, web portal and Home Assistant command API with translated UI labels and `info` as the default.
-- `ProvisioningController` for centralized NVS provisioning storage and reduced `SpotifyDJApp` responsibility.
+- `ProvisioningController` for centralized NVS provisioning storage and reduced `DJConnectApp` responsibility.
 - `PowerController` for charger/wake/watchdog policy.
 - Host-testable menu and network helper models plus release-script shell tests.
 - `release.sh` helper for local firmware release preparation, dry-run validation, manifest generation, tagging and optional public firmware repo publishing.
@@ -51,9 +51,9 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 
 ### Changed
 
-- Application name and technical branding are now `SpotifyDJ`.
-- Release builds use `2.9.30` / `v2.9.30`; local builds without release flags remain `dev` / `vdev`.
-- Boot logs now include the SpotifyDJ app name and active firmware version.
+- Application name and technical branding are now `DJConnect`.
+- Release builds use `3.0.0` / `v3.0.0`; local builds without release flags remain `dev` / `vdev`.
+- Boot logs now include the DJConnect app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.
 - WiFi, playback-backend and Home Assistant secrets are no longer hardcoded in firmware.
@@ -63,7 +63,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Battery percentage is always voltage-estimated and displayed without a tilde.
 - Playback volume is limited to `0-60`; the LED ring treats `60` as full scale and uses orange segments.
 - Now Playing shows `H` and `S` status indicators for Home Assistant and playback.
-- Pairing mode shows the SpotifyDJ logo/name, battery state, instruction text and a large pairing code.
+- Pairing mode shows the DJConnect logo/name, battery state, instruction text and a large pairing code.
 - Pairing code is also visible in serial logs and the web interface.
 - Setup/AP mode and Home Assistant pairing mode keep the screen at 100% brightness for 10 minutes, then turn off. Pairing mode also keeps BLE advertising active, shows a center-button turn-off hint and uses a deeply fading blue LED-ring breath.
 - `/api/device/pair` now accepts the direct Home Assistant callback with `device_token`, `ha_local_url` and/or `ha_remote_url`, Assist pipeline id and device language, while keeping the handler lightweight to avoid watchdog stalls during pairing.
@@ -75,7 +75,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Home Assistant playback proxy calls use shorter request waits and a transient-failure cooldown so repeated HA 5xx/-1 responses do not stack blocking commands or trip the watchdog.
 - The `S` playback status indicator is now tri-state: green for active usable playback, grey for a reachable backend with no active playback, and red for playback proxy errors such as HA 5xx/-1 responses.
 - Reset Home Assistant pairing from the device now shows a clear reset screen, plays the soft-reset cue and flashes the LED ring before restarting into pairing mode.
-- Direct Home Assistant pairing callbacks are now treated as pending until `/api/spotify_dj/status` accepts the token. If HA returns 401/403/404, the ESP clears that pending token and stays on the pairing-code screen.
+- Direct Home Assistant pairing callbacks are now treated as pending until `/api/djconnect/status` accepts the token. If HA returns 401/403/404, the ESP clears that pending token and stays on the pairing-code screen.
 - OTA firmware write shows `Firmware update in progress..` on the display for both Home Assistant OTA and manual web upload, runs a fast purple LED-ring animation, and plays start/progress/complete/failure speaker cues.
 - OTA download and manual firmware upload now explicitly service the ESP task watchdog while hashing and writing firmware chunks.
 - OTA streaming is more tolerant of slow GitHub/CDN bursts, with a longer idle window and larger write chunks before treating the stream as stalled.
@@ -94,14 +94,14 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Liked Proxy lookup now searches multiple pages of the user's own playlists before falling back to public playlist search.
 - Up Next falls back to the current playlist tracks when Spotify's queue endpoint returns no upcoming tracks for playlist playback.
 - The Home Assistant pairing banner setup link opens in a new browser tab.
-- Firmware manifests now target `lilygo-t-embed-s3` while keeping the distributable binary asset name `spotifydj-device-vX.Y.Z.bin`, matching the ESP OTA endpoint validation.
-- GitHub Actions now injects the release version into the PlatformIO build, verifies the compiled firmware contains `vX.Y.Z`, and publishes the single OTA asset `spotifydj-device-vX.Y.Z.bin`.
+- Firmware manifests now target `lilygo-t-embed-s3` while keeping the distributable binary asset name `djconnect-device-vX.Y.Z.bin`, matching the ESP OTA endpoint validation.
+- GitHub Actions now injects the release version into the PlatformIO build, verifies the compiled firmware contains `vX.Y.Z`, and publishes the single OTA asset `djconnect-device-vX.Y.Z.bin`.
 - The embedded web portal no longer contains a static `vdev` app-version placeholder in release binaries, and the release workflow rejects firmware assets that still contain that dev marker.
 - `release.sh` now lets GitHub Actions publish the public firmware release by default; local GitHub release creation is an explicit `--gh-release` fallback.
 - Web portal firmware upload no longer shows a temporary `Uploading firmware...` / `Firmware uploaden...` status label before the final upload response.
 - Web interface logs can be paused and selected/copied.
 - `Restart device` and `Turn off device` are available from settings.
-- Push-to-talk now records a WAV file on the ESP and uploads it as raw `audio/wav` to the Home Assistant integration endpoint `/api/spotify_dj/voice`.
+- Push-to-talk now records a WAV file on the ESP and uploads it as raw `audio/wav` to the Home Assistant integration endpoint `/api/djconnect/voice`.
 - The PTT flow is documented: ESP WAV upload to the HA integration, backend Assist/STT/TTS in Home Assistant, then DJ text plus optional WAV/MP3 URL back to the ESP device.
 - Direct Home Assistant Assist WebSocket authentication has been removed from the physical PTT path; the websocket, if required, belongs on the Home Assistant integration backend.
 - Encoder short press performs pause/resume and long press starts push-to-talk until release from Now Playing.
@@ -109,7 +109,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Turn-off sleep periodically probes for USB-C charger attach; with a charger detected the device continues booting, otherwise it returns to sleep.
 - Push-to-talk logs listening steps to serial and the web logs screen.
 - LED-ring animations are yellow on PTT start, blue on PTT stop/processing, and green on accepted voice command response.
-- The old recognized-text-only physical PTT path was replaced by raw WAV upload to `/api/spotify_dj/voice`; the web portal still keeps a compact text-based DJ-response simulation path.
+- The old recognized-text-only physical PTT path was replaced by raw WAV upload to `/api/djconnect/voice`; the web portal still keeps a compact text-based DJ-response simulation path.
 - Voice status messages use `recording`, `sending_command` and `error`.
 - DJ responses are displayed locally, optionally played and published as `last_dj_text` in runtime state.
 - DJ response audio now supports MP3 streams in addition to PCM WAV, with content-type and magic-byte detection plus text-only fallback for unsupported audio.
@@ -119,7 +119,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Home Assistant voice endpoint stale-pairing messages are translated through the firmware language setting.
 - The web portal no longer exposes backend credential repair because backend credentials live in Home Assistant.
 - Architecture decisions are documented explicitly for Home Assistant, ESP edge behavior, integration-backed PTT, runtime pairing validity, NVS key limits, network timeout policy and release separation.
-- When no music is playing, the device and web portal offer an action to start the `SpotifyDJ Liked Proxy` playlist.
+- When no music is playing, the device and web portal offer an action to start the `DJConnect Liked Proxy` playlist.
 - Volume control is disabled when there is no active playback.
 - WiFi boot label is `Connecting to WiFi...`.
 - WiFi boot connection timeout is 30 seconds and the LED ring shows a green connecting animation while the device attempts to join WiFi.
@@ -153,7 +153,7 @@ Consolidated SpotifyDJ firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Sound output types are no longer appended to output names.
 - Improved JPEG album art rendering and Current Song text scrolling.
 - OTA now requires HTTPS plus a valid manifest SHA256 and verifies the streamed firmware before rebooting.
-- DJ response audio playback is split into a focused WAV/MP3 dispatcher, reducing `SpotifyDJApp` complexity.
+- DJ response audio playback is split into a focused WAV/MP3 dispatcher, reducing `DJConnectApp` complexity.
 - Speaker audio uses guarded I2S ownership so UI cues do not collide with streamed DJ response audio.
 - Captive portal no longer contains playback-backend credential fields.
 - Pairing mode blocks normal playback/menu input while keeping reset controls and the local API available.

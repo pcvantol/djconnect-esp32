@@ -189,7 +189,7 @@ private:
   void drawSpotifyLogo(Canvas &canvas, int x, int y);
 
   template <typename Canvas>
-  void drawSpotifyDJIcon(Canvas &canvas, int x, int y, int size);
+  void drawDJConnectIcon(Canvas &canvas, int x, int y, int size);
 
   template <typename Canvas>
   void drawMarqueeText(

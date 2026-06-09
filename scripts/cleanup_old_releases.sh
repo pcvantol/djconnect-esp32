@@ -10,7 +10,7 @@ Deletes old GitHub releases, matching git tags and old workflow runs, keeping
 the newest semantic version releases and newest workflow runs by default.
 
 Options:
-  --repo OWNER/REPO       GitHub repository, for example pcvantol/spotify-dj-firmware.
+  --repo OWNER/REPO       GitHub repository, for example pcvantol/djconnect-firmware.
   --keep N                Number of newest semver releases/tags to keep. Default: 1.
                           Use 0 to delete all semver releases/tags.
   --keep-runs N           Number of newest workflow runs to keep. Defaults to --keep.
@@ -21,9 +21,9 @@ Options:
   -h, --help              Show this help.
 
 Examples:
-  scripts/cleanup_old_releases.sh --repo pcvantol/spotify-dj-firmware --dry-run
-  scripts/cleanup_old_releases.sh --repo pcvantol/spotify-dj-firmware --keep 2 --execute
-  scripts/cleanup_old_releases.sh --repo pcvantol/spotify-dj-firmware --keep 1 --keep-runs 5 --execute
+  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --dry-run
+  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 2 --execute
+  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --keep-runs 5 --execute
 
 Notes:
   - Requires GitHub CLI: gh auth login

@@ -1,11 +1,11 @@
 # Third-Party Notices
 
-SpotifyDJ firmware is proprietary software. This file lists third-party software
+DJConnect firmware is proprietary software. This file lists third-party software
 components used by the firmware build. Their licenses and copyrights remain with
 their respective authors.
 
 This notice is provided for attribution and license-awareness purposes. It does
-not grant additional rights to the SpotifyDJ firmware itself.
+not grant additional rights to the DJConnect firmware itself.
 
 ## Firmware Frameworks And Libraries
 
@@ -44,7 +44,7 @@ not grant additional rights to the SpotifyDJ firmware itself.
 
 ## Spotify Trademark Notice
 
-Spotify is a trademark of Spotify AB. SpotifyDJ is not affiliated with,
+Spotify is a trademark of Spotify AB. DJConnect is not affiliated with,
 endorsed by, or sponsored by Spotify AB.
 
 Spotify Web API usage does not imply endorsement, sponsorship or certification
@@ -52,9 +52,9 @@ by Spotify AB.
 
 ## Home Assistant Notice
 
-SpotifyDJ can integrate with Home Assistant through a custom integration and
+DJConnect can integrate with Home Assistant through a custom integration and
 local device APIs. Home Assistant and related trademarks/projects belong to
-their respective owners. SpotifyDJ is not affiliated with or endorsed by Home
+their respective owners. DJConnect is not affiliated with or endorsed by Home
 Assistant unless explicitly stated by those owners.
 
 ## Maintenance

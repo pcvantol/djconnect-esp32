@@ -12,9 +12,9 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "TextHelpers.h"
-#include "assets/spotifydj_favicon_ico.h"
-#include "assets/spotifydj_icon_192_png.h"
-#include "assets/spotifydj_site_webmanifest.h"
+#include "assets/djconnect_favicon_ico.h"
+#include "assets/djconnect_icon_192_png.h"
+#include "assets/djconnect_site_webmanifest.h"
 
 #ifndef WEB_SHOW_WIFI_PASSWORD
 #define WEB_SHOW_WIFI_PASSWORD 0
@@ -145,9 +145,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
   <meta name="theme-color" content="#080b0c">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="SpotifyDJ">
+  <meta name="apple-mobile-web-app-title" content="DJConnect">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="application-name" content="SpotifyDJ">
+  <meta name="application-name" content="DJConnect">
   <link rel="shortcut icon" href="/favicon.ico?v=2" sizes="any">
   <link rel="icon" href="/favicon.ico?v=2" sizes="any">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">
@@ -156,7 +156,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon-precomposed.png">
   <link rel="apple-touch-icon-precomposed" sizes="192x192" href="/apple-touch-icon-precomposed.png?v=2">
   <link rel="manifest" href="/site.webmanifest?v=2">
-  <title>SpotifyDJ</title>
+  <title>DJConnect</title>
   <style>
     :root { color-scheme: light dark; --bg:#080b0c; --panel:#111718; --muted:#8a969a; --line:#233033; --green:#1ed760; --yellow:#caa42b; --orange:#ff9f1a; --red:#ff735d; --text:#f3f7f5; --header:rgba(8,11,12,.94); --field:#0c1112; --bar-bg:#0b1112; --art-bg:#050707; --row-line:rgba(255,255,255,.06); --log-bg:#050707; --log-text:#c7d2cf; }
     html[data-theme="light"] { --bg:#f5f7f2; --panel:#ffffff; --muted:#65716d; --line:#d9e0dc; --green:#148a3c; --yellow:#8f710f; --orange:#c86f00; --red:#b23a31; --text:#13201a; --header:rgba(245,247,242,.96); --field:#ffffff; --bar-bg:#e8eee9; --art-bg:#eef3ef; --row-line:rgba(19,32,26,.09); --log-bg:#f1f4f1; --log-text:#21302a; }
@@ -269,12 +269,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <header>
-    <h1><img class="brand-icon" src="/icon-192.png" alt="">SpotifyDJ <span id="appVersion" class="sub">-</span></h1>
+    <h1><img class="brand-icon" src="/icon-192.png" alt="">DJConnect <span id="appVersion" class="sub">-</span></h1>
     <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Spotify">S</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">
     <strong data-i18n="deviceNotPaired">Device not paired with Home Assistant</strong>
-    <a data-i18n="setup" href="https://my.home-assistant.io/redirect/config_flow_start?domain=spotify_dj" target="_blank" rel="noopener noreferrer">Click here to setup</a>
+    <a data-i18n="setup" href="https://my.home-assistant.io/redirect/config_flow_start?domain=djconnect" target="_blank" rel="noopener noreferrer">Click here to setup</a>
     <span data-i18n="providePair">and provide pairing code:</span>
     <span id="haPairBannerCode" class="pair-code">------</span>
   </div>
@@ -311,7 +311,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       </div>
       <div id="shuffleStatus" class="status"></div>
       <div id="repeatStatus" class="status"></div>
-      <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start SpotifyDJ Liked Proxy</button>
+      <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start DJConnect Liked Proxy</button>
       <div id="playbackCommandStatus" class="status"></div>
       <div class="row"><span class="key" data-i18n="output">Sound output</span><span id="device" class="value">-</span></div>
       <select id="soundOutputSelect" aria-label="Sound output"><option value="" data-i18n="loadingOutputs">Loading outputs...</option></select>
@@ -410,7 +410,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <div class="row"><span class="key" data-i18n="pairCode">Pair code</span><span id="haPairCode" class="value mono">-</span></div>
         <div class="row"><span class="key">Device ID</span><span id="haDeviceId" class="value mono">-</span></div>
         <div class="row"><span class="key">mDNS URL</span><span id="haMdnsUrl" class="value mono">-</span></div>
-        <div class="row"><span class="key">mDNS service</span><span id="haMdnsService" class="value mono">_spotifydj._tcp</span></div>
+        <div class="row"><span class="key">mDNS service</span><span id="haMdnsService" class="value mono">_djconnect._tcp</span></div>
         <div class="row"><span class="key" data-i18n="firmware">Firmware</span><span id="haFirmware" class="value">-</span></div>
         <div class="row"><span class="key" data-i18n="model">Model</span><span id="haModel" class="value">-</span></div>
         <div class="row"><span class="key">URL</span><span id="haUrl" class="value mono">-</span></div>
@@ -459,15 +459,15 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         <input id="firmware" name="firmware" type="file" accept=".bin" required>
         <button data-i18n="uploadFirmware" class="firmware" type="submit">Upload firmware</button>
       </form>
-      <div class="fine" data-i18n="firmwareFine">Firmware updates run automatically when SpotifyDJ is paired with Home Assistant.</div>
+      <div class="fine" data-i18n="firmwareFine">Firmware updates run automatically when DJConnect is paired with Home Assistant.</div>
       <div id="otaStatus" class="status"></div>
       <button id="hardResetButton" data-i18n="factoryReset" class="danger" type="button">Factory reset</button>
     </section>
 
     <section class="panel">
       <h2 data-i18n="legal">Legal</h2>
-      <div class="fine" data-i18n="copyrightNotice">Copyright (c) 2026 Peter van Tol. All rights reserved. SpotifyDJ firmware is proprietary software.</div>
-      <div class="fine" data-i18n="trademarkNotice">Spotify is a trademark of Spotify AB. SpotifyDJ is not affiliated with, endorsed by, or sponsored by Spotify AB.</div>
+      <div class="fine" data-i18n="copyrightNotice">Copyright (c) 2026 Peter van Tol. All rights reserved. DJConnect firmware is proprietary software.</div>
+      <div class="fine" data-i18n="trademarkNotice">Spotify is a trademark of Spotify AB. DJConnect is not affiliated with, endorsed by, or sponsored by Spotify AB.</div>
       <div class="fine" data-i18n="ossNotice">This firmware includes open-source software components. Their licenses remain with their respective authors.</div>
     </section>
   </main>
@@ -513,9 +513,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     const translations = {
       en: {
         deviceNotPaired:"Device not paired with Home Assistant", setup:"Click here to setup", providePair:"and provide pairing code:",
-        nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start SpotifyDJ Liked Proxy",
+        nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start DJConnect Liked Proxy",
         webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
-        webPttFailed:"Voice command failed", webPttTestCommand:"Test the SpotifyDJ response flow", spotifyUnavailable:"Playback not connected",
+        webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect response flow", spotifyUnavailable:"Playback not connected",
         output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", loadingQueue:"Loading queue...",
         playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", settings:"Settings",
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
@@ -530,7 +530,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         username:"Username", discovery:"HA discovery", lastPublished:"Last published", diagnostics:"Diagnostics", screen:"Screen",
         ledRing:"LED ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Storage", sketch:"Sketch", restart:"Restart device",
         logs:"Logs", pauseLogs:"Pause logs", selectAll:"Select all", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
-        firmwareFine:"Firmware updates run automatically when SpotifyDJ is paired with Home Assistant.", factoryReset:"Factory reset",
+        firmwareFine:"Firmware updates run automatically when DJConnect is paired with Home Assistant.", factoryReset:"Factory reset",
         loading:"Loading", playing:"Playing", paused:"Paused", noPlayback:"No playback", connected:"Connected", disconnected:"Disconnected",
         authorized:"Authorized", notAuthorized:"Not authorized", tokenSecondsLeft:"s left", disabled:"Disabled", charging:"charging", full:"full",
         discharging:"discharging", paired:"Paired", pairingMode:"Pairing mode", pairingUnavailable:"Pairing info unavailable",
@@ -539,18 +539,18 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         goingBack:"Going back...", startingLiked:"Starting Liked Proxy...", selectPlaylist:"Select a playlist",
         startingPlaylist:"Starting playlist...", resumeLogs:"Resume logs", logsPaused:"Logs paused", logsLive:"Logs live",
         logsPausedSelected:"Logs paused and selected", saving:"Saving...", testWifiConfirm:"Test these WiFi credentials? The web page may disconnect during the test.",
-        startingWifiTest:"Starting WiFi test...", refreshing:"Refreshing...", restartConfirm:"Restart SpotifyDJ?",
-        resetPairingConfirm:"Reset Home Assistant pairing and restart to the pairing screen?", factoryResetConfirm:"Factory reset SpotifyDJ and open setup mode?",
+        startingWifiTest:"Starting WiFi test...", refreshing:"Refreshing...", restartConfirm:"Restart DJConnect?",
+        resetPairingConfirm:"Reset Home Assistant pairing and restart to the pairing screen?", factoryResetConfirm:"Factory reset DJConnect and open setup mode?",
         noIp:"No IP", wifiSignal:"WiFi signal", wifiDisconnected:"WiFi disconnected", ago:"ago",
-        legal:"Legal", copyrightNotice:"Copyright (c) 2026 Peter van Tol. All rights reserved. SpotifyDJ firmware is proprietary software.",
-        trademarkNotice:"Spotify is a trademark of Spotify AB. SpotifyDJ is not affiliated with, endorsed by, or sponsored by Spotify AB.",
+        legal:"Legal", copyrightNotice:"Copyright (c) 2026 Peter van Tol. All rights reserved. DJConnect firmware is proprietary software.",
+        trademarkNotice:"Spotify is a trademark of Spotify AB. DJConnect is not affiliated with, endorsed by, or sponsored by Spotify AB.",
         ossNotice:"This firmware includes open-source software components. Their licenses remain with their respective authors."
       },
       nl: {
         deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om te koppelen", providePair:"en vul koppelcode in:",
-        nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start SpotifyDJ Liked Proxy",
+        nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start DJConnect Liked Proxy",
         webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
-        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de SpotifyDJ response flow", spotifyUnavailable:"Afspelen niet verbonden",
+        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect response flow", spotifyUnavailable:"Afspelen niet verbonden",
         output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummer", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
@@ -565,7 +565,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         username:"Gebruikersnaam", discovery:"HA discovery", lastPublished:"Laatst gepubliceerd", diagnostics:"Diagnostiek", screen:"Scherm",
         ledRing:"LED-ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Opslag", sketch:"Sketch", restart:"Device herstarten",
         logs:"Logs", pauseLogs:"Pauzeer logs", selectAll:"Selecteer alles", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
-        firmwareFine:"Firmware update wordt automatisch uitgevoerd indien SpotifyDJ is gekoppeld aan Home Assistant.", factoryReset:"Fabrieksreset",
+        firmwareFine:"Firmware update wordt automatisch uitgevoerd indien DJConnect is gekoppeld aan Home Assistant.", factoryReset:"Fabrieksreset",
         loading:"Laden", playing:"Speelt", paused:"Gepauzeerd", noPlayback:"Geen playback", connected:"Verbonden", disconnected:"Niet verbonden",
         authorized:"Geautoriseerd", notAuthorized:"Niet geautoriseerd", tokenSecondsLeft:"s over", disabled:"Uitgeschakeld", charging:"laden", full:"vol",
         discharging:"ontladen", paired:"Gekoppeld", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformatie niet beschikbaar",
@@ -574,11 +574,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         goingBack:"Teruggaan...", startingLiked:"Liked Proxy starten...", selectPlaylist:"Selecteer een afspeellijst",
         startingPlaylist:"Afspeellijst starten...", resumeLogs:"Logs hervatten", logsPaused:"Logs gepauzeerd", logsLive:"Logs live",
         logsPausedSelected:"Logs gepauzeerd en geselecteerd", saving:"Opslaan...", testWifiConfirm:"Deze WiFi-gegevens testen? De webpagina kan tijdens de test loskoppelen.",
-        startingWifiTest:"WiFi-test starten...", refreshing:"Verversen...", restartConfirm:"SpotifyDJ herstarten?",
+        startingWifiTest:"WiFi-test starten...", refreshing:"Verversen...", restartConfirm:"DJConnect herstarten?",
         resetPairingConfirm:"Home Assistant koppeling resetten en herstarten naar het koppelscherm?", factoryResetConfirm:"Device resetten naar fabrieksinstellingen?",
         noIp:"Geen IP", wifiSignal:"WiFi signaal", wifiDisconnected:"WiFi niet verbonden", ago:"geleden",
-        legal:"Juridisch", copyrightNotice:"Copyright (c) 2026 Peter van Tol. Alle rechten voorbehouden. SpotifyDJ firmware is proprietary software.",
-        trademarkNotice:"Spotify is een handelsmerk van Spotify AB. SpotifyDJ is niet verbonden aan, goedgekeurd door of gesponsord door Spotify AB.",
+        legal:"Juridisch", copyrightNotice:"Copyright (c) 2026 Peter van Tol. Alle rechten voorbehouden. DJConnect firmware is proprietary software.",
+        trademarkNotice:"Spotify is een handelsmerk van Spotify AB. DJConnect is niet verbonden aan, goedgekeurd door of gesponsord door Spotify AB.",
         ossNotice:"Deze firmware bevat open-source softwarecomponenten. De licenties daarvan blijven bij de respectievelijke auteurs."
       }
     };
@@ -1151,37 +1151,37 @@ WebServer &WebPortal::server() {
 void WebPortal::configureRoutes() {
   server_.on("/", HTTP_GET, [this]() { handleRoot(); });
   server_.on("/favicon.ico", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/x-icon", SPOTIFYDJ_FAVICON_ICO, SPOTIFYDJ_FAVICON_ICO_LEN);
+    sendProgmemAsset(server_, "image/x-icon", DJCONNECT_FAVICON_ICO, DJCONNECT_FAVICON_ICO_LEN);
   });
   server_.on("/icon-192.png", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", DJCONNECT_ICON_192_PNG, DJCONNECT_ICON_192_PNG_LEN);
   });
   server_.on("/apple-touch-icon.png", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", DJCONNECT_ICON_192_PNG, DJCONNECT_ICON_192_PNG_LEN);
   });
   server_.on("/apple-touch-icon-precomposed.png", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", DJCONNECT_ICON_192_PNG, DJCONNECT_ICON_192_PNG_LEN);
   });
   server_.on("/icons/favicon.ico", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/x-icon", SPOTIFYDJ_FAVICON_ICO, SPOTIFYDJ_FAVICON_ICO_LEN);
+    sendProgmemAsset(server_, "image/x-icon", DJCONNECT_FAVICON_ICO, DJCONNECT_FAVICON_ICO_LEN);
   });
   server_.on("/icons/icon-192.png", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", DJCONNECT_ICON_192_PNG, DJCONNECT_ICON_192_PNG_LEN);
   });
   server_.on("/icons/icon-512.png", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", DJCONNECT_ICON_192_PNG, DJCONNECT_ICON_192_PNG_LEN);
   });
   server_.on("/icons/maskable-icon-192.png", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", DJCONNECT_ICON_192_PNG, DJCONNECT_ICON_192_PNG_LEN);
   });
   server_.on("/icons/maskable-icon-512.png", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "image/png", SPOTIFYDJ_ICON_192_PNG, SPOTIFYDJ_ICON_192_PNG_LEN);
+    sendProgmemAsset(server_, "image/png", DJCONNECT_ICON_192_PNG, DJCONNECT_ICON_192_PNG_LEN);
   });
   server_.on("/site.webmanifest", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "application/manifest+json", SPOTIFYDJ_SITE_WEBMANIFEST, SPOTIFYDJ_SITE_WEBMANIFEST_LEN, 86400UL);
+    sendProgmemAsset(server_, "application/manifest+json", DJCONNECT_SITE_WEBMANIFEST, DJCONNECT_SITE_WEBMANIFEST_LEN, 86400UL);
   });
   server_.on("/icons/site.webmanifest", HTTP_GET, [this]() {
-    sendProgmemAsset(server_, "application/manifest+json", SPOTIFYDJ_SITE_WEBMANIFEST, SPOTIFYDJ_SITE_WEBMANIFEST_LEN, 86400UL);
+    sendProgmemAsset(server_, "application/manifest+json", DJCONNECT_SITE_WEBMANIFEST, DJCONNECT_SITE_WEBMANIFEST_LEN, 86400UL);
   });
   server_.on("/api/status", HTTP_GET, [this]() { handleStatusJson(); });
   server_.on("/api/logs", HTTP_GET, [this]() { handleLogsText(); });
@@ -1222,7 +1222,7 @@ void WebPortal::handleStatusJson() {
 
   JsonDocument doc;
   JsonObject app = doc["app"].to<JsonObject>();
-  app["name"] = "SpotifyDJ";
+  app["name"] = "DJConnect";
   app["version"] = appVersionLabel();
   app["uptimeMs"] = millis();
 

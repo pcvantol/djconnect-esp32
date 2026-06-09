@@ -11,9 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      FIRMWARE_REPO: pcvantol/spotify-dj-firmware
+      FIRMWARE_REPO: pcvantol/djconnect-firmware
       DEVICE: lilygo-t-embed-s3
-      PROJECT: spotifydj
+      PROJECT: djconnect
 
     steps:
       - name: Checkout source
@@ -28,12 +28,12 @@ jobs:
             CHANNEL="beta"
             VERSION="${RAW%-beta}"
             VERSION_TAG="v${VERSION}-beta"
-            BIN="spotifydj-device-beta-v${VERSION}.bin"
+            BIN="djconnect-device-beta-v${VERSION}.bin"
             MANIFEST="firmware_manifest_beta.json"
           else
             VERSION="${RAW}"
             VERSION_TAG="v${VERSION}"
-            BIN="spotifydj-device-v${VERSION}.bin"
+            BIN="djconnect-device-v${VERSION}.bin"
             MANIFEST="firmware_manifest.json"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -54,18 +54,18 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_TAG="${{ steps.version.outputs.version_tag }}"
-          export SPOTIFYDJ_BUILD_FLAGS="-DSPOTIFYDJ_VERSION=${VERSION} -DSPOTIFYDJ_VERSION_TAG=${VERSION_TAG}"
+          export DJCONNECT_BUILD_FLAGS="-DDJCONNECT_VERSION=${VERSION} -DDJCONNECT_VERSION_TAG=${VERSION_TAG}"
           pio run -e t_embed_cc1101
 
       - name: Verify embedded firmware version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_TAG="${{ steps.version.outputs.version_tag }}"
-          if ! strings .pio/build/t_embed_cc1101/firmware.elf | grep -q "SpotifyDJ ${VERSION_TAG} / ${VERSION} booting"; then
+          if ! strings .pio/build/t_embed_cc1101/firmware.elf | grep -q "DJConnect ${VERSION_TAG} / ${VERSION} booting"; then
             echo "Firmware boot marker does not contain expected release version ${VERSION_TAG} / ${VERSION}" >&2
             exit 1
           fi
-          if strings .pio/build/t_embed_cc1101/firmware.bin | grep -Eq "(^|[^[:alnum:]])vdev([^[:alnum:]]|$)|SpotifyDJ dev / dev booting"; then
+          if strings .pio/build/t_embed_cc1101/firmware.bin | grep -Eq "(^|[^[:alnum:]])vdev([^[:alnum:]]|$)|DJConnect dev / dev booting"; then
             echo "Firmware binary still contains a dev version placeholder" >&2
             exit 1
           fi
@@ -92,11 +92,11 @@ jobs:
             "device": "lilygo-t-embed-s3",
             "channel": "${CHANNEL}",
             "asset": "${BIN}",
-            "url": "https://github.com/pcvantol/spotify-dj-firmware/releases/download/${VERSION_TAG}/${BIN}",
+            "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/${VERSION_TAG}/${BIN}",
             "sha256": "${SHA256}",
             "size": ${SIZE},
             "min_ha_integration": "1.0.0",
-            "release_notes": "https://github.com/pcvantol/spotify-dj-firmware/releases/tag/${VERSION_TAG}"
+            "release_notes": "https://github.com/pcvantol/djconnect-firmware/releases/tag/${VERSION_TAG}"
           }
           EOF
 
@@ -105,12 +105,12 @@ jobs:
       - name: Publish GitHub Release to public firmware repo
         uses: softprops/action-gh-release@v2
         with:
-          repository: pcvantol/spotify-dj-firmware
+          repository: pcvantol/djconnect-firmware
           token: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
           tag_name: ${{ steps.version.outputs.version_tag }}
-          name: SpotifyDJ Firmware ${{ steps.version.outputs.version_tag }}
+          name: DJConnect Firmware ${{ steps.version.outputs.version_tag }}
           body: |
-            SpotifyDJ firmware ${{ steps.version.outputs.version_tag }}
+            DJConnect firmware ${{ steps.version.outputs.version_tag }}
 
             Device: `lilygo-t-embed-s3`
             Channel: `${{ steps.version.outputs.channel }}`

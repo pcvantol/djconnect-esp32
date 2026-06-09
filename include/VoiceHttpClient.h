@@ -3,11 +3,11 @@
 
 #include <Arduino.h>
 
-#include "SpotifyDJDevice.h"
+#include "DJConnectDevice.h"
 
 class VoiceHttpClient {
 public:
-  void begin(SpotifyDJDevice &device);
+  void begin(DJConnectDevice &device);
 
   bool sendStatus(bool recording, const String &state, const String &lastError = "");
   bool sendRecognizedText(const String &recognizedText, String &message, String *audioUrl = nullptr);
@@ -18,7 +18,7 @@ private:
   String endpoint(const char *path) const;
   bool updatePairingInvalidationForStatus(int statusCode);
 
-  SpotifyDJDevice *device_ = nullptr;
+  DJConnectDevice *device_ = nullptr;
   bool pairingInvalidated_ = false;
   uint8_t consecutiveHaNotFoundCount_ = 0;
   uint32_t firstHaNotFoundAt_ = 0;

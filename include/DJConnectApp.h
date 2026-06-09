@@ -16,20 +16,20 @@
 #include "ProvisioningController.h"
 #include "SoundManager.h"
 #include "SoftResetMonitor.h"
-#include "SpotifyDJMenu.h"
+#include "DJConnectMenu.h"
 #include "SpotifyClient.h"
-#include "../src/SpotifyDJApiServer.h"
-#include "../src/SpotifyDJDevice.h"
-#include "../src/SpotifyDJDiscovery.h"
-#include "../src/SpotifyDJOTA.h"
-#include "../src/SpotifyDJPairing.h"
+#include "../src/DJConnectApiServer.h"
+#include "../src/DJConnectDevice.h"
+#include "../src/DJConnectDiscovery.h"
+#include "../src/DJConnectOTA.h"
+#include "../src/DJConnectPairing.h"
 #include "VoiceHttpClient.h"
 #include "VoiceRecorder.h"
 #include "VoiceState.h"
 #include "WakeWordEngine.h"
 #include "WebPortal.h"
 
-class SpotifyDJApp {
+class DJConnectApp {
 public:
   // Initializes hardware, connects WiFi, links the HA playback proxy, and draws the first screen.
   void begin();
@@ -181,7 +181,6 @@ private:
 
   // Applies credentials and language pushed by Home Assistant without touching local fallbacks.
   void applyProvisionedLanguage(const String &languageCode);
-  void applyProvisionedSpotifyCredentials();
   bool checkBootstrapFirmwareUpdate();
   void setupHomeAssistantLayer();
   void sendHomeAssistantStatusIfDue(bool force = false);
@@ -205,7 +204,6 @@ private:
   static void hardResetFromWebCallback(void *context);
   static bool djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType);
   static void languageProvisionedCallback(void *context, const String &languageCode);
-  static void spotifyProvisionedCallback(void *context);
   static bool deviceCommandCallback(void *context, const DeviceCommand &command, String &message);
   static void directPairCallback(void *context);
   void noteDirectPairingReceived();
@@ -232,11 +230,11 @@ private:
   SoftResetMonitor softResetMonitor_;
   SpotifyClient spotify_{playback_};
   WebPortal webPortal_;
-  SpotifyDJDevice haDevice_;
-  SpotifyDJDiscovery haDiscovery_;
-  SpotifyDJPairing haPairing_;
-  SpotifyDJApiServer haApiServer_;
-  SpotifyDJOTA haOta_;
+  DJConnectDevice haDevice_;
+  DJConnectDiscovery haDiscovery_;
+  DJConnectPairing haPairing_;
+  DJConnectApiServer haApiServer_;
+  DJConnectOTA haOta_;
   PowerController power_;
   ProvisioningController provisioning_;
   RuntimeDiagnostics diagnostics_;
@@ -244,7 +242,7 @@ private:
   String lastDjAudioType_ = "none";
 
   UiScreen activeScreen_ = UiScreen::NowPlaying;
-  UiScreen menuStack_[SpotifyDJMenu::MenuStackCapacity] = {};
+  UiScreen menuStack_[DJConnectMenu::MenuStackCapacity] = {};
   size_t menuStackSize_ = 0;
   size_t rootMenuSelection_ = 0;
   size_t settingsSelection_ = 0;

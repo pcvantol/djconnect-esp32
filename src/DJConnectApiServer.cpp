@@ -1,5 +1,5 @@
-// Local ESP HTTP API used by the Home Assistant spotify_dj integration.
-#include "SpotifyDJApiServer.h"
+// Local ESP HTTP API used by the Home Assistant djconnect integration.
+#include "DJConnectApiServer.h"
 
 #include <ArduinoJson.h>
 #include <Arduino.h>
@@ -8,12 +8,12 @@
 #include "AppLog.h"
 #include "DeviceCommandParser.h"
 #include "I18n.h"
-void SpotifyDJApiServer::begin(
+void DJConnectApiServer::begin(
     WebServer &server,
-    SpotifyDJDevice &device,
-    SpotifyDJPairing &pairing,
-    SpotifyDJDiscovery &discovery,
-    SpotifyDJOTA &ota,
+    DJConnectDevice &device,
+    DJConnectPairing &pairing,
+    DJConnectDiscovery &discovery,
+    DJConnectOTA &ota,
     SpotifyClient &spotify,
     DisplayManager &display,
     LedRing &ledRing,
@@ -60,15 +60,15 @@ void SpotifyDJApiServer::begin(
   AppLog.println("Device API routes registered");
 }
 
-void SpotifyDJApiServer::loop() {
+void DJConnectApiServer::loop() {
   // Routes are served by the shared WebPortal WebServer instance.
 }
 
-bool SpotifyDJApiServer::isRunning() const {
+bool DJConnectApiServer::isRunning() const {
   return running_;
 }
 
-bool SpotifyDJApiServer::validateBearerToken(bool sendError) {
+bool DJConnectApiServer::validateBearerToken(bool sendError) {
   if (server_ == nullptr || device_ == nullptr || !device_->isPaired()) {
     if (sendError && server_ != nullptr) {
       server_->send(401, "application/json", "{\"error\":\"not paired\"}");
@@ -84,18 +84,18 @@ bool SpotifyDJApiServer::validateBearerToken(bool sendError) {
   return ok;
 }
 
-void SpotifyDJApiServer::sendJson(int code, const String &payload) {
+void DJConnectApiServer::sendJson(int code, const String &payload) {
   server_->send(code, "application/json", payload);
 }
 
-void SpotifyDJApiServer::handleInfo() {
+void DJConnectApiServer::handleInfo() {
   JsonDocument doc;
   doc["device_id"] = device_->getDeviceId();
   doc["device_name"] = device_->getDeviceName();
   doc["firmware"] = device_->getFirmwareVersion();
   doc["model"] = device_->getModel();
   doc["paired"] = device_->isPaired();
-  doc["spotify_configured"] = device_->isSpotifyConfigured();
+  doc["playback_configured"] = device_->isPlaybackConfigured();
   doc["assist_pipeline_id"] = device_->getAssistPipelineId();
   doc["battery_percent"] = battery_ == nullptr ? -1 : battery_->percent;
   doc["battery_mv"] = battery_ == nullptr ? 0 : battery_->voltageMv;
@@ -109,7 +109,7 @@ void SpotifyDJApiServer::handleInfo() {
   sendJson(200, payload);
 }
 
-void SpotifyDJApiServer::handlePairingInfo() {
+void DJConnectApiServer::handlePairingInfo() {
   device_->ensurePairingCode();
   JsonDocument doc;
   doc["device_id"] = device_->getDeviceId();
@@ -122,7 +122,7 @@ void SpotifyDJApiServer::handlePairingInfo() {
   sendJson(200, payload);
 }
 
-void SpotifyDJApiServer::handlePair() {
+void DJConnectApiServer::handlePair() {
   JsonDocument doc;
   if (deserializeJson(doc, server_->arg("plain"))) {
     sendJson(400, "{\"error\":\"invalid json\"}");
@@ -159,9 +159,9 @@ void SpotifyDJApiServer::handlePair() {
       device_->saveAssistPipelineId(assistPipelineId);
     }
   }
-  const String normalizedLanguage = SpotifyDJDevice::normalizedLanguageCode(provisionedLanguage);
+  const String normalizedLanguage = DJConnectDevice::normalizedLanguageCode(provisionedLanguage);
   if (!normalizedLanguage.isEmpty() && normalizedLanguage != I18n::languageCode()) {
-    SpotifyDJDevice::saveProvisionedLanguage(normalizedLanguage);
+    DJConnectDevice::saveProvisionedLanguage(normalizedLanguage);
     if (languageProvisionedCallback_ != nullptr) {
       languageProvisionedCallback_(callbackContext_, normalizedLanguage);
     }
@@ -177,7 +177,7 @@ void SpotifyDJApiServer::handlePair() {
   sendJson(200, "{\"success\":true,\"paired\":true}");
 }
 
-void SpotifyDJApiServer::handleOta() {
+void DJConnectApiServer::handleOta() {
   if (!validateBearerToken()) {
     return;
   }
@@ -187,7 +187,7 @@ void SpotifyDJApiServer::handleOta() {
     return;
   }
 
-  SpotifyDJOTARequest request;
+  DJConnectOTARequest request;
   request.url = doc["url"] | "";
   request.sha256 = doc["sha256"] | "";
   request.version = doc["version"] | "";
@@ -221,7 +221,7 @@ void SpotifyDJApiServer::handleOta() {
   AppLog.println(message);
 }
 
-void SpotifyDJApiServer::handleDjResponse() {
+void DJConnectApiServer::handleDjResponse() {
   if (!validateBearerToken()) {
     return;
   }
@@ -267,7 +267,7 @@ void SpotifyDJApiServer::handleDjResponse() {
   sendJson(spoken ? 200 : 202, payload);
 }
 
-void SpotifyDJApiServer::handleCommand() {
+void DJConnectApiServer::handleCommand() {
   if (!validateBearerToken()) {
     return;
   }
@@ -295,7 +295,7 @@ void SpotifyDJApiServer::handleCommand() {
   sendJson(ok ? 200 : 502, payload);
 }
 
-void SpotifyDJApiServer::handleReboot() {
+void DJConnectApiServer::handleReboot() {
   if (!validateBearerToken()) {
     return;
   }
@@ -304,7 +304,7 @@ void SpotifyDJApiServer::handleReboot() {
   ESP.restart();
 }
 
-void SpotifyDJApiServer::handleForget() {
+void DJConnectApiServer::handleForget() {
   if (!validateBearerToken()) {
     return;
   }

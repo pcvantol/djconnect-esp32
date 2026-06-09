@@ -1,13 +1,13 @@
 #pragma once
 #include <stdint.h>
 
-// SpotifyDJ spotifydj_splash_170x320
+// DJConnect djconnect_splash_170x320
 // Format: RGB565 big-endian, 170x320, 2 bytes per pixel.
-static constexpr uint16_t SPOTIFYDJ_SPLASH_170X320_WIDTH = 170;
-static constexpr uint16_t SPOTIFYDJ_SPLASH_170X320_HEIGHT = 320;
-static constexpr uint32_t SPOTIFYDJ_SPLASH_170X320_BYTES = 108800;
+static constexpr uint16_t DJCONNECT_SPLASH_170X320_WIDTH = 170;
+static constexpr uint16_t DJCONNECT_SPLASH_170X320_HEIGHT = 320;
+static constexpr uint32_t DJCONNECT_SPLASH_170X320_BYTES = 108800;
 
-static const uint8_t SPOTIFYDJ_SPLASH_170X320_RGB565[] PROGMEM = {
+static const uint8_t DJCONNECT_SPLASH_170X320_RGB565[] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

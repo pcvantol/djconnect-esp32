@@ -1,4 +1,4 @@
-// Sends recognized push-to-talk text to the SpotifyDJ Home Assistant integration.
+// Sends recognized push-to-talk text to the DJConnect Home Assistant integration.
 #include "VoiceHttpClient.h"
 
 #include <ArduinoJson.h>
@@ -115,7 +115,7 @@ static constexpr uint8_t HaNotFoundInvalidationThreshold = 3;
 static constexpr uint32_t HaNotFoundInvalidationWindowMs = 60000;
 }  // namespace
 
-void VoiceHttpClient::begin(SpotifyDJDevice &device) {
+void VoiceHttpClient::begin(DJConnectDevice &device) {
   device_ = &device;
 }
 
@@ -125,7 +125,7 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
     return false;
   }
   const String token = device_->getDeviceToken();
-  const String url = endpoint("/api/spotify_dj/status");
+  const String url = endpoint("/api/djconnect/status");
   if (token.isEmpty() || url.isEmpty()) {
     return false;
   }
@@ -149,7 +149,7 @@ bool VoiceHttpClient::sendStatus(bool recording, const String &state, const Stri
   }
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
   const int code = http.POST(body);
   http.end();
   activity.finish(code);
@@ -170,7 +170,7 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
     return false;
   }
   const String token = device_->getDeviceToken();
-  const String url = endpoint("/api/spotify_dj/voice");
+  const String url = endpoint("/api/djconnect/voice");
   if (token.isEmpty()) {
     message = "No device token";
     return false;
@@ -199,8 +199,8 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   }
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
-  http.addHeader("X-SpotifyDJ-Text", recognizedText);
+  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Text", recognizedText);
 
   AppLog.print("Voice text command chars=");
   AppLog.println(recognizedText.length());
@@ -257,7 +257,7 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
     return false;
   }
   const String token = device_->getDeviceToken();
-  const String url = endpoint("/api/spotify_dj/voice");
+  const String url = endpoint("/api/djconnect/voice");
   if (token.isEmpty()) {
     message = "No device token";
     return false;
@@ -290,7 +290,7 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   }
   http.addHeader("Content-Type", "audio/wav");
   http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("X-SpotifyDJ-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
   AppLog.print("Voice WAV upload bytes=");
   AppLog.println(fileSize);
 

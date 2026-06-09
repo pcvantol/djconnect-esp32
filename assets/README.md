@@ -1,9 +1,9 @@
-# SpotifyDJ asset pack
+# DJConnect asset pack
 
-Generated assets for the SpotifyDJ Home Assistant integration, ESP32-S3/LILYGO display firmware, and responsive retina website/PWA.
+Generated assets for the DJConnect Home Assistant integration, ESP32-S3/LILYGO display firmware, and responsive retina website/PWA.
 
 ## Home Assistant integration
-Use files from `ha_integration/` in or beside `custom_components/spotify_dj/` as needed:
+Use files from `ha_integration/` in or beside `custom_components/djconnect/` as needed:
 
 - `icon.png` — 256x256
 - `icon@2x.png` — 512x512
@@ -15,8 +15,8 @@ Use `website/` as your `/icons/` folder. Include the contents of `html-head-snip
 ## ESP display
 For LILYGO T-Embed style displays:
 
-- `spotifydj_icon_170x170.png` — full-width square icon
-- `spotifydj_splash_170x320.png` — portrait splash for 170x320 display
+- `djconnect_icon_170x170.png` — full-width square icon
+- `djconnect_splash_170x320.png` — portrait splash for 170x320 display
 - `embedded/*.h` — C/C++ PROGMEM RGB565 big-endian byte arrays
 - `embedded/*.rgb565` — raw RGB565 big-endian binaries
 

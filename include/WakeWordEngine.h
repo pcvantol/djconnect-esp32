@@ -1,4 +1,4 @@
-// Optional wake-word front-end for "Spotify DJ".
+// Optional wake-word front-end for "DJConnect".
 #pragma once
 
 #include <Arduino.h>

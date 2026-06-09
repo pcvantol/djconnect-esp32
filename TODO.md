@@ -1,4 +1,4 @@
-# SpotifyDJ Firmware Backlog
+# DJConnect Firmware Backlog
 
 Concrete backlog for follow-up implementation and validation.
 
@@ -30,7 +30,7 @@ Concrete backlog for follow-up implementation and validation.
   - factory reset last.
 - [ ] Add host tests for WiFi-failure factory-reset confirmation.
 - [ ] Add host tests for setup/AP timeout text and center-button turn-off state.
-- [ ] Consider moving captive portal, BLE provisioning and setup/AP loop out of `SpotifyDJApp` into a dedicated `SetupController`.
+- [ ] Consider moving captive portal, BLE provisioning and setup/AP loop out of `DJConnectApp` into a dedicated `SetupController`.
 - [ ] Verify on-device that WiFi connect timeout is actually 30 seconds.
 - [ ] Verify green LED-ring animation during WiFi connect.
 - [ ] Verify setup/AP screen shows portal active for 10 minutes.
@@ -45,18 +45,18 @@ Concrete backlog for follow-up implementation and validation.
 - [ ] Validate OTA status clearing after successful update and reboot.
 - [ ] Validate runtime stale-pairing behavior for HA 401, 403 and 404.
 - [ ] Confirm HA reports pairing as pending until ESP confirms token storage through `/api/device/pair`.
-- [ ] Confirm playback commands stay disabled until `/api/spotify_dj/status` accepts the stored device token.
+- [ ] Confirm playback commands stay disabled until `/api/djconnect/status` accepts the stored device token.
 - [ ] Confirm HA integration owns backend OAuth/credential refresh without sending backend tokens to the ESP.
 - [ ] Confirm HA integration can return DJ response text plus WAV URL.
 - [ ] Confirm HA integration can return DJ response text plus MP3 URL.
 - [ ] Confirm Home Assistant status payload includes firmware version after OTA boot.
-- [ ] Add integration-side test prompt/checklist for `/api/spotify_dj/voice` STT/TTS provider configuration.
+- [ ] Add integration-side test prompt/checklist for `/api/djconnect/voice` STT/TTS provider configuration.
 
 ## Playback Backend
 
 - [ ] Re-test playlist fallback for Up Next when the backend queue endpoint returns empty.
 - [ ] Confirm required backend playlist scopes/configuration are handled in the HA integration.
-- [ ] Validate `SpotifyDJ Liked Proxy` lookup against:
+- [ ] Validate `DJConnect Liked Proxy` lookup against:
   - private playlist;
   - public playlist;
   - larger library with multiple playlist pages.
@@ -130,7 +130,7 @@ Concrete backlog for follow-up implementation and validation.
 
 ## Refactor
 
-- [ ] Extract setup/AP/captive/BLE flow from `SpotifyDJApp` into `SetupController`.
+- [ ] Extract setup/AP/captive/BLE flow from `DJConnectApp` into `SetupController`.
 - [ ] Continue reducing blocking paths in Spotify/HA/audio code using `NetworkActivity`.
 - [ ] Consider isolating DJ response overlay state into a small UI state object.
 - [ ] Consider splitting web route registration into smaller route groups.

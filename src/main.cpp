@@ -1,7 +1,7 @@
-// Arduino entrypoints stay intentionally tiny; all real behavior lives in SpotifyDJApp.
-#include "SpotifyDJApp.h"
+// Arduino entrypoints stay intentionally tiny; all real behavior lives in DJConnectApp.
+#include "DJConnectApp.h"
 
-SpotifyDJApp app;
+DJConnectApp app;
 
 void setup() {
   app.begin();
