@@ -929,10 +929,16 @@ void DJConnectApp::handlePlaybackInputEvents(const InputEvents &events) {
   }
 
   if (events.topButtonClick) {
+    if (volumeFeedbackEnabled_) {
+      sound_.playMenuTick(1);
+    }
     goToNextTrack();
   }
 
   if (events.topButtonDoubleClick) {
+    if (volumeFeedbackEnabled_) {
+      sound_.playMenuTick(-1);
+    }
     goToPreviousTrack();
   }
 

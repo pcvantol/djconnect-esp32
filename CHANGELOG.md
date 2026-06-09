@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.0.17
+
+Patch release for HA integration contract synchronization, playback control feedback and logging polish.
+
+### Added
+
+- Device top-button next/previous track actions now play local audio feedback when feedback is enabled.
+
+### Changed
+
+- Playback command payloads are now identity-only and no longer include partial device-status snapshots; `/api/djconnect/status` remains the authoritative source for HA sensor values.
+- Postman pairing callback examples now include the canonical LilyGO `device_id`, pairing code and `client_type:"esp32"`.
+- Volume up/down logs now use the same `Playback: ... requested/accepted/failed` style as play/pause and next/previous.
+- HA playback command response logs are emitted as single atomic lines to avoid interleaved serial/web log fragments during async volume worker activity.
+
 ## v3.0.12
 
 Patch release for DJ-response, Home Assistant status stability, playback logging and device/web polish.

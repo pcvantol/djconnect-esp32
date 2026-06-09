@@ -1,4 +1,4 @@
-from SCons.Script import COMMAND_LINE_TARGETS
+from SCons.Script import COMMAND_LINE_TARGETS, SetOption
 
 Import("env")
 
@@ -37,4 +37,5 @@ def wait_for_monitor_port(source, target, env):
 
 targets = set(COMMAND_LINE_TARGETS)
 if "upload" in targets and "monitor" in targets:
+    SetOption("num_jobs", 1)
     env.AddPreAction("monitor", wait_for_monitor_port)

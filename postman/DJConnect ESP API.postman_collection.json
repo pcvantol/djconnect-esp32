@@ -101,7 +101,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"device_token\": \"{{device_token}}\",\n  \"ha_local_url\": \"{{ha_local_url}}\",\n  \"ha_remote_url\": \"{{ha_remote_url}}\",\n  \"device_language\": \"nl\"\n}"
+              "raw": "{\n  \"pair_code\": \"123456\",\n  \"device_id\": \"djconnect-lilygo-XXXXXXXXXXXX\",\n  \"device_name\": \"DJConnect\",\n  \"client_type\": \"esp32\",\n  \"device_token\": \"{{device_token}}\",\n  \"ha_local_url\": \"{{ha_local_url}}\",\n  \"ha_remote_url\": \"{{ha_remote_url}}\",\n  \"device_language\": \"nl\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/device/pair",
@@ -114,7 +114,7 @@
                 "pair"
               ]
             },
-            "description": "Direct Home Assistant pairing callback. Stores the device token plus local/cloud HA URLs on the ESP."
+            "description": "Direct Home Assistant pairing callback. Stores the device token plus local/cloud HA URLs on the ESP. The device_id must match the LilyGO device and client_type must be esp32."
           },
           "response": []
         },

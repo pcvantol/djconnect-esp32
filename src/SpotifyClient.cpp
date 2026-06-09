@@ -138,7 +138,7 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   }
 
   String body;
-  addDeviceStatusFields(doc);
+  addCommandIdentityFields(doc);
   serializeJson(doc, body);
 
   RequestGuard guard(requestMutex_, 1000);
@@ -158,8 +158,7 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
       code = postProxyRequest(retryUrl, token, body, command, payload);
     }
   }
-  AppLog.print("HA playback command response: ");
-  AppLog.println(code);
+  AppLog.println("HA playback command response: " + String(code));
 
   if (code < 200 || code >= 300) {
     if (!payload.isEmpty()) {
@@ -220,7 +219,7 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   return true;
 }
 
-void SpotifyClient::addDeviceStatusFields(JsonDocument &request) const {
+void SpotifyClient::addCommandIdentityFields(JsonDocument &request) const {
   if (device_ == nullptr) {
     return;
   }
@@ -228,25 +227,7 @@ void SpotifyClient::addDeviceStatusFields(JsonDocument &request) const {
   request["device_id"] = device_->getDeviceId();
   request["client_type"] = device_->getClientType();
   request["payload_type"] = "command";
-  request["ha_pairing_status"] = device_->isPaired() ? "paired" : "pending";
   request["firmware"] = device_->getFirmwareVersion();
-  request["model"] = device_->getModel();
-  request["local_url"] = device_->getLocalUrl();
-  request["ha_local_url"] = device_->getHaLocalUrl();
-  request["ha_remote_url"] = device_->getHaRemoteUrl();
-  request["ha_active_url"] = device_->getActiveHaUrl();
-  request["status"] = "online";
-  request["state"] = "online";
-  request["playback_configured"] = device_->isPlaybackConfigured();
-  request["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
-  request["sound_output"] = state_.deviceName;
-
-  const BatteryState *battery = device_->battery();
-  if (battery != nullptr) {
-    request["battery_percent"] = battery->percent;
-    request["battery_mv"] = battery->voltageMv;
-    request["charging"] = battery->charging || battery->full;
-  }
 }
 
 int SpotifyClient::postProxyRequest(
@@ -307,7 +288,7 @@ void SpotifyClient::applyPlayback(JsonVariantConst playback) {
   } else {
     state_.deviceId = source["device_id"] | state_.deviceId;
     state_.deviceName = source["device_name"] | state_.deviceName;
-    state_.deviceType = source["device_type"] | "";
+    state_.deviceType = "";
     state_.supportsVolume = source["supports_volume"] | state_.supportsVolume;
     if (!source["volume"].isNull()) {
       state_.volume = constrain(source["volume"] | state_.volume, 0, Config::MaxSpotifyVolumePercent);
@@ -617,7 +598,7 @@ bool SpotifyClient::queueVolume(int volume) {
   VolumeCommand queuedVolume;
   queuedVolume.volume = volume;
   xQueueOverwrite(volumeCommandQueue_, &queuedVolume);
-  AppLog.println("Queued volume " + String(volume));
+  AppLog.println("Playback: volume queued " + String(volume));
   return true;
 }
 
@@ -632,20 +613,19 @@ VolumeResult SpotifyClient::sendVolumeToSpotify(const VolumeCommand &command) {
   VolumeResult result;
   result.volume = command.volume;
 
-  AppLog.println("Volume worker: sending " + String(command.volume));
+  AppLog.println("Playback: volume requested " + String(command.volume));
 
   if (proxyCommand("set_volume", command.volume)) {
     result.ok = true;
     copyToBuffer(result.message, sizeof(result.message), "Volume " + String(command.volume) + "%");
-    AppLog.println("Volume worker: OK");
+    AppLog.println("Playback: volume accepted " + String(command.volume));
     return result;
   }
 
   const String message = state_.error.isEmpty() ? "Volume failed" : state_.error;
   result.ok = false;
   copyToBuffer(result.message, sizeof(result.message), message);
-  AppLog.print("Volume worker: failed ");
-  AppLog.println(message);
+  AppLog.println("Playback: volume failed: " + message);
   return result;
 }
 
