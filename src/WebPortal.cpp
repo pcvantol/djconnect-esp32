@@ -264,7 +264,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .pair-banner a { color:#fff; font-weight:800; text-decoration:none; }
     .pair-banner .pair-code { display:inline-block; margin-left:4px; padding:2px 7px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.22); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.08em; }
     .game-shell { display:grid; gap:10px; }
-    .game-tabs { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+    .game-tabs { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
     .game-tab { min-height:38px; padding:6px; background:var(--field); border-color:var(--line); color:var(--text); }
     .game-tab.active { border-color:var(--green); color:#dfffea; box-shadow:0 0 0 1px rgba(30,215,96,.25) inset; }
     .game-hud { display:flex; justify-content:space-between; gap:10px; color:var(--muted); font-size:13px; }
@@ -362,13 +362,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <h2 data-i18n="games">Games</h2>
       <div class="game-shell">
         <div class="game-tabs" role="tablist" aria-label="Games">
-          <button class="game-tab active" type="button" data-game="pong">Pong</button>
+          <button class="game-tab active" type="button" data-game="none" data-i18n="none">None</button>
+          <button class="game-tab" type="button" data-game="pong">Pong</button>
           <button class="game-tab" type="button" data-game="asteroids">Asteroids</button>
           <button class="game-tab" type="button" data-game="fly">Fly</button>
         </div>
-        <div class="game-hud"><span id="gameScore">Score 0</span><span id="gameHighScore">High 0</span></div>
+        <div id="gameHud" class="game-hud"><span id="gameScore">Score 0</span><span id="gameHighScore">High 0</span></div>
         <canvas id="gameCanvas" class="game-canvas" width="320" height="170"></canvas>
-        <div class="game-controls">
+        <div id="gameControls" class="game-controls">
           <button id="gameUpButton" class="icon-button" type="button" aria-label="Up" title="Up"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 8H5z"></path></svg></button>
           <button id="gameDownButton" class="icon-button" type="button" aria-label="Down" title="Down"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l-7-8h14z"></path></svg></button>
           <button id="gameFireButton" class="icon-button" type="button" aria-label="Fire" title="Fire"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6z"></path></svg></button>
@@ -766,7 +767,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       });
     }
     const game = {
-      mode:"pong", visible:true, score:0, high:{ pong:0, asteroids:0, fly:0 },
+      mode:"none", visible:true, score:0, high:{ pong:0, asteroids:0, fly:0 },
       paddleY:86, ballX:160, ballY:86, ballVX:3, ballVY:2,
       shipX:160, asteroidX:180, asteroidY:48, asteroidVX:2, asteroidVY:2, bullet:false, bulletY:0,
       planeY:86, obstacleX:300, obstacleY:86, shot:false, shotX:0, flashUntil:0, last:0
@@ -785,6 +786,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${svgPath}"></path></svg>`;
     }
     function updateGameControls() {
+      const active = game.mode !== "none";
+      $("gameHud").style.display = active ? "" : "none";
+      $("gameCanvas").style.display = active ? "" : "none";
+      $("gameControls").style.display = active ? "grid" : "none";
+      if (!active) return;
       const horizontal = game.mode === "asteroids";
       setGameButton($("gameUpButton"), horizontal ? "Left" : "Up", horizontal ? "M5 12l8-7v14z" : "M12 5l7 8H5z");
       setGameButton($("gameDownButton"), horizontal ? "Right" : "Down", horizontal ? "M19 12l-8 7V5z" : "M12 19l-7-8h14z");
@@ -805,7 +811,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         game.paddleY = 86; game.ballX = 160; game.ballY = 86; game.ballVX = 3; game.ballVY = 2;
       } else if (game.mode === "asteroids") {
         game.shipX = 160; game.asteroidX = 40 + Math.random() * 240; game.asteroidY = 48; game.asteroidVX = Math.random() > .5 ? 2 : -2; game.asteroidVY = 2; game.bullet = false;
-      } else {
+      } else if (game.mode === "fly") {
         game.planeY = 86; game.obstacleX = 300; game.obstacleY = 52 + Math.random() * 92; game.shot = false;
       }
       updateGameHud();
@@ -826,6 +832,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       if (game.mode === "fly" && !game.shot) { game.shot = true; game.shotX = 58; }
     }
     function drawGame() {
+      if (game.mode === "none") return;
       const canvas = $("gameCanvas");
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, 320, 170);
@@ -852,7 +859,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     function stepGame(ts) {
       if (!game.last) game.last = ts;
-      if (game.visible && ts - game.last > 32) {
+      if (game.mode !== "none" && game.visible && ts - game.last > 32) {
         game.last = ts;
         if (game.mode === "pong") {
           game.ballX += game.ballVX; game.ballY += game.ballVY;
@@ -873,7 +880,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
             }
           }
           if (game.asteroidY > 150) { game.flashUntil = Date.now() + 350; game.asteroidX = 30 + Math.random() * 260; game.asteroidY = 46; setGameScore(0); }
-        } else {
+        } else if (game.mode === "fly") {
           game.obstacleX -= 4 + Math.min(Math.floor(game.score / 6), 4);
           if (game.shot) {
             game.shotX += 9;
@@ -898,7 +905,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("gameResetButton").addEventListener("click", resetGame);
       $("gameCanvas").addEventListener("pointerdown", event => { event.preventDefault(); fireGame(); });
       window.addEventListener("keydown", event => {
-        if (!game.visible || ["INPUT","SELECT","TEXTAREA","BUTTON"].includes(document.activeElement?.tagName || "")) return;
+        if (game.mode === "none" || !game.visible || ["INPUT","SELECT","TEXTAREA","BUTTON"].includes(document.activeElement?.tagName || "")) return;
         const movementKeys = game.mode === "asteroids" ? ["ArrowLeft","ArrowRight"] : ["ArrowUp","ArrowDown"];
         if (![...movementKeys, " ", "Enter"].includes(event.key)) return;
         event.preventDefault();
