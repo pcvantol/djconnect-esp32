@@ -14,6 +14,7 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
+#include "ScopedWatchdogPause.h"
 
 namespace {
 const char *ExpectedModel = "lilygo-t-embed-s3";
@@ -43,7 +44,7 @@ bool equalsIgnoreCase(const String &left, const String &right) {
 }
 
 void serviceOtaLoop(LedRing *ledRing) {
-  esp_task_wdt_reset();
+  ScopedWatchdogPause::resetIfAttached();
   if (ledRing != nullptr) {
     ledRing->showFirmwareUpdateAnimation();
   }

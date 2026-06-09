@@ -169,7 +169,7 @@ bool VoiceRecorder::update() {
   }
   int16_t buffer[256];
   size_t bytesRead = 0;
-  const esp_err_t result = i2s_read(MicI2sPort, buffer, sizeof(buffer), &bytesRead, 0);
+  const esp_err_t result = i2s_read(MicI2sPort, buffer, sizeof(buffer), &bytesRead, pdMS_TO_TICKS(10));
   if (result != ESP_OK) {
     error_ = "Mic read failed";
     return false;
@@ -200,11 +200,11 @@ bool VoiceRecorder::stop() {
   if (!recording_) {
     return false;
   }
-  recording_ = false;
   for (uint8_t index = 0; index < 8; index++) {
     update();
     delay(2);
   }
+  recording_ = false;
   if (dataBytes_ == 0) {
     error_ = "No audio recorded";
     return false;

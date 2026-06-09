@@ -195,6 +195,9 @@ void DJConnectApp::loop() {
     djResponseOverlayVisible_ = false;
     display_.resetDjResponseOverlayCache();
     renderNow();
+  } else if (djResponseOverlayVisible_) {
+    ledRing_.showDjResponseAnimation();
+    visualState_.ledOn = ledRing_.isOn();
   }
   if (webVoiceTextOnlyActive_ && static_cast<int32_t>(millis() - webVoiceTextOnlyUntil_) >= 0) {
     webVoiceTextOnlyActive_ = false;
@@ -915,10 +918,6 @@ void DJConnectApp::handleInputEvents(const InputEvents &events) {
 void DJConnectApp::handlePlaybackInputEvents(const InputEvents &events) {
   if (events.encoderSteps != 0) {
     handleEncoderTurn(events.encoderSteps);
-  }
-
-  if (homeAssistantPaired_ && events.encoderRelease && !voiceRecording_ && voiceState_ == VoiceState::Idle) {
-    AppLog.println("Voice: encoder released without active PTT");
   }
 
   if (events.encoderClick) {
@@ -2223,6 +2222,7 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
 
 void DJConnectApp::pauseOrResume() {
   if (!playbackProxyReady()) {
+    AppLog.println("Playback: play/pause ignored, proxy unavailable");
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
     return;
@@ -2230,27 +2230,36 @@ void DJConnectApp::pauseOrResume() {
 
   const uint32_t now = millis();
   if (now - lastPauseToggleAt_ < 900) {
+    AppLog.println("Playback: play/pause ignored, debounce");
     return;
   }
   lastPauseToggleAt_ = now;
 
   if (playback_.isPlaying) {
+    AppLog.println("Playback: pause requested");
     if (spotify_.pausePlayback()) {
       playback_.isPlaying = false;
+      AppLog.println("Playback: pause accepted");
       showNotice(I18n::text("paused"));
       lastPlaybackPollAt_ = 0;
     } else {
+      AppLog.print("Playback: pause failed: ");
+      AppLog.println(playback_.error);
       showNotice(playback_.error, 3500);
     }
   } else {
+    AppLog.println("Playback: play requested");
     if (spotify_.resumePlayback()) {
       playback_.isPlaying = true;
       playback_.progressSyncedAt = millis();
       display_.restartTitleScroll();
       display_.restartArtistScroll();
+      AppLog.println("Playback: play accepted");
       showNotice(I18n::text("playing"));
       lastPlaybackPollAt_ = 0;
     } else {
+      AppLog.print("Playback: play failed: ");
+      AppLog.println(playback_.error);
       showNotice(playback_.error, 3500);
     }
   }
@@ -2422,12 +2431,15 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
 
 void DJConnectApp::goToNextTrack() {
   if (!playbackProxyReady()) {
+    AppLog.println("Playback: next track ignored, proxy unavailable");
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
     return;
   }
 
+  AppLog.println("Playback: next track requested");
   if (spotify_.nextTrack()) {
+    AppLog.println("Playback: next track accepted");
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
     playback_.trackName = I18n::text("loading_next_track");
     playback_.artistName = "";
@@ -2437,6 +2449,7 @@ void DJConnectApp::goToNextTrack() {
     showNotice(I18n::text("next_track"));
 
     if (!playback_.isPlaying && spotify_.resumePlayback()) {
+      AppLog.println("Playback: resume after next accepted");
       playback_.isPlaying = true;
       display_.restartTitleScroll();
       display_.restartArtistScroll();
@@ -2445,6 +2458,8 @@ void DJConnectApp::goToNextTrack() {
 
     lastPlaybackPollAt_ = 0;
   } else {
+    AppLog.print("Playback: next track failed: ");
+    AppLog.println(playback_.error);
     showNotice(playback_.error, 3500);
   }
   renderNow();
@@ -2452,12 +2467,15 @@ void DJConnectApp::goToNextTrack() {
 
 void DJConnectApp::goToPreviousTrack() {
   if (!playbackProxyReady()) {
+    AppLog.println("Playback: previous track ignored, proxy unavailable");
     showNotice(I18n::text("ha_pairing_invalid"), 3000);
     renderNow();
     return;
   }
 
+  AppLog.println("Playback: previous track requested");
   if (spotify_.previousTrack()) {
+    AppLog.println("Playback: previous track accepted");
     // Optimistic UI while Spotify switches tracks; the next poll replaces this with real metadata.
     playback_.trackName = I18n::text("loading_previous_track");
     playback_.artistName = "";
@@ -2467,6 +2485,8 @@ void DJConnectApp::goToPreviousTrack() {
     showNotice(I18n::text("previous_track"));
     lastPlaybackPollAt_ = 0;
   } else {
+    AppLog.print("Playback: previous track failed: ");
+    AppLog.println(playback_.error);
     showNotice(playback_.error, 3500);
   }
   renderNow();
@@ -2800,6 +2820,7 @@ void DJConnectApp::renderNow() {
 
   if (djResponseOverlayVisible_) {
     display_.renderDjResponseOverlay(djResponseOverlayTitle_, diagnostics_.lastDjText);
+    ledRing_.showDjResponseAnimation();
     visualState_.screenOn = display_.isOn();
     visualState_.screenBrightnessLevel = display_.backlightPercent();
     visualState_.ledOn = ledRing_.isOn();

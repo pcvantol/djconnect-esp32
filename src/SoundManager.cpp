@@ -13,6 +13,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "ScopedWatchdogPause.h"
 
 // Speaker/DAC output uses I2S1 so it does not collide with the PDM microphone.
 static constexpr i2s_port_t SpeakerI2sPort = I2S_NUM_1;
@@ -20,21 +21,22 @@ static constexpr uint32_t MinVolumeTickIntervalMs = 90;
 
 namespace {
 void serviceAudioWatchdog() {
-  if (esp_task_wdt_status(nullptr) == ESP_OK) {
-    esp_task_wdt_reset();
-  }
+  ScopedWatchdogPause::resetIfAttached();
 }
 
 class ScopedLoopWatchdogPause {
 public:
   ScopedLoopWatchdogPause() {
-    active_ = esp_task_wdt_delete(nullptr) == ESP_OK;
+    if (esp_task_wdt_status(nullptr) == ESP_OK) {
+      active_ = esp_task_wdt_delete(nullptr) == ESP_OK;
+    }
   }
 
   ~ScopedLoopWatchdogPause() {
     if (active_) {
-      esp_task_wdt_add(nullptr);
-      serviceAudioWatchdog();
+      if (esp_task_wdt_add(nullptr) == ESP_OK) {
+        serviceAudioWatchdog();
+      }
     }
   }
 

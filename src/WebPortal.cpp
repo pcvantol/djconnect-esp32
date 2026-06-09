@@ -11,6 +11,7 @@
 #include "Config.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
+#include "ScopedWatchdogPause.h"
 #include "TextHelpers.h"
 #include "assets/djconnect_favicon_ico.h"
 #include "assets/djconnect_icon_192_png.h"
@@ -58,7 +59,7 @@ String decodeFormValue(const String &value) {
 }
 
 void serviceWebOtaLoop(LedRing *ledRing) {
-  esp_task_wdt_reset();
+  ScopedWatchdogPause::resetIfAttached();
   if (ledRing != nullptr) {
     ledRing->showFirmwareUpdateAnimation();
   }
@@ -571,7 +572,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       en: {
         deviceNotPaired:"Device not paired with Home Assistant", setup:"Click here to setup", providePair:"and provide pairing code:",
         nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start DJConnect Liked Proxy",
-        webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
+        webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttSent:"DJ response test sent", webPttTimeout:"DJ response test is still running on the device.",
+        webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
         webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect response flow", webPttFlowInfo:"Tests: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ response text on the device.",
         spotifyUnavailable:"Playback not connected",
         output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", refreshUpNext:"Refresh Up Next", loadingQueue:"Loading queue...",
@@ -607,10 +609,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       nl: {
         deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om te koppelen", providePair:"en vul koppelcode in:",
         nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start DJConnect Liked Proxy",
-        webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
+        webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttSent:"DJ-response test verstuurd", webPttTimeout:"DJ-response test loopt nog op het device.",
+        webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
         webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect response flow", webPttFlowInfo:"Test: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ-response tekst op het device.",
         spotifyUnavailable:"Afspelen niet verbonden",
-        output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummer", refreshUpNext:"Volgende verversen", loadingQueue:"Wachtrij laden...",
+        output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummers", refreshUpNext:"Volgende verversen", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", games:"Games", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
         language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout",
@@ -954,15 +957,20 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("webPttButton").textContent = tr("webPttListening");
       $("webPttButton").classList.add("recording");
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000);
+      const timeout = setTimeout(() => controller.abort(), 65000);
       try {
         const body = new URLSearchParams({ text: tr("webPttTestCommand") });
         const response = await fetch("/api/voice-text", { method:"POST", body, signal:controller.signal });
-        const payload = await response.json();
-        $("webPttStatus").textContent = payload.message || (payload.success ? "OK" : tr("webPttFailed"));
+        let payload = {};
+        try { payload = await response.json(); } catch (_) {}
+        if (response.ok && payload.success !== false) {
+          $("webPttStatus").textContent = payload.message && payload.message !== "Voice command sent" ? payload.message : tr("webPttSent");
+        } else {
+          $("webPttStatus").textContent = payload.message || tr("webPttFailed");
+        }
         refresh();
       } catch (error) {
-        $("webPttStatus").textContent = tr("webPttFailed");
+        $("webPttStatus").textContent = error && error.name === "AbortError" ? tr("webPttTimeout") : tr("webPttFailed");
       } finally {
         clearTimeout(timeout);
         webPttRunning = false;

@@ -10,6 +10,7 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
+#include "ScopedWatchdogPause.h"
 namespace {
 String joinUrl(const String &base, const char *path) {
   if (base.endsWith("/")) {
@@ -90,8 +91,14 @@ bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
     return false;
   }
   http.addHeader("Content-Type", "application/json");
-  const int code = http.POST(body);
-  const String payload = http.getString();
+  int code = 0;
+  String payload;
+  {
+    ScopedWatchdogPause watchdogPause;
+    code = http.POST(body);
+    payload = http.getString();
+  }
+  ScopedWatchdogPause::resetIfAttached();
   http.end();
   activity.finish(code);
 
@@ -221,8 +228,14 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
   http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
-  const int code = http.POST(body);
-  const String payload = http.getString();
+  int code = 0;
+  String payload;
+  {
+    ScopedWatchdogPause watchdogPause;
+    code = http.POST(body);
+    payload = http.getString();
+  }
+  ScopedWatchdogPause::resetIfAttached();
   http.end();
   activity.finish(code);
 

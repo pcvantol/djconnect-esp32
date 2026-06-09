@@ -1,5 +1,30 @@
 # Changelog
 
+## v3.0.12
+
+Patch release for DJ-response, Home Assistant status stability, playback logging and device/web polish.
+
+### Added
+
+- Device LED-ring now shows a purple chase while the DJ-response screen is visible.
+- Device logs now include play/pause, next-track and previous-track requests, accepted responses and failures.
+
+### Changed
+
+- Dutch Up Next label changed from `Volgende nummer` to `Volgende nummers` on device and web.
+- Playback command payloads now include device identity/status fields defensively so partial command payload handling cannot easily clear Home Assistant sensor values.
+- PlatformIO upload+monitor helper now waits on the monitor target and probes the USB CDC port before opening the monitor.
+
+### Fixed
+
+- Fixed Home Assistant sensor resets caused by voice-only status posts to `/api/djconnect/status`; voice status no longer posts partial device-status payloads.
+- Fixed task-watchdog `task not found` noise during volume/network/audio/OTA paths by guarding watchdog pause/reset calls.
+- Fixed web DJ-response test reporting failure despite successful ESP/HA flow by making the browser response handling more tolerant and explicit.
+- Fixed DJ-response web/device flow crash risk after skipped web-test audio by guarding long HA HTTP calls.
+- Fixed PTT recording sometimes ending with `No audio recorded` by flushing microphone chunks before stopping the recorder and giving mic reads a short timeout.
+- Fixed interleaved volume log lines from the UI task and volume worker.
+- Removed misleading `Voice: encoder released without active PTT` logs during normal play/pause clicks.
+
 ## v3.0.11
 
 Hygiene release for the ESP-IDF 5.3 / Arduino ESP32 3.x migration, web portal polish and DJ-response stability.

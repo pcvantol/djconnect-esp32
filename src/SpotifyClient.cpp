@@ -11,6 +11,7 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
+#include "ScopedWatchdogPause.h"
 #include "DJConnectDevice.h"
 #include "TextHelpers.h"
 
@@ -96,16 +97,12 @@ String SpotifyClient::proxyEndpoint() const {
 
 bool SpotifyClient::proxyCommand(const String &command, JsonDocument *response) {
   JsonDocument request;
-  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
-  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   request["command"] = command;
   return proxyRequest(request, response);
 }
 
 bool SpotifyClient::proxyCommand(const String &command, const String &value, JsonDocument *response) {
   JsonDocument request;
-  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
-  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   request["command"] = command;
   request["value"] = value;
   return proxyRequest(request, response);
@@ -113,8 +110,6 @@ bool SpotifyClient::proxyCommand(const String &command, const String &value, Jso
 
 bool SpotifyClient::proxyCommand(const String &command, int value, JsonDocument *response) {
   JsonDocument request;
-  request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
-  request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   request["command"] = command;
   request["value"] = value;
   return proxyRequest(request, response);
@@ -143,9 +138,7 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   }
 
   String body;
-  if (doc["client_type"].isNull() && device_ != nullptr) {
-    doc["client_type"] = device_->getClientType();
-  }
+  addDeviceStatusFields(doc);
   serializeJson(doc, body);
 
   RequestGuard guard(requestMutex_, 1000);
@@ -227,6 +220,35 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   return true;
 }
 
+void SpotifyClient::addDeviceStatusFields(JsonDocument &request) const {
+  if (device_ == nullptr) {
+    return;
+  }
+
+  request["device_id"] = device_->getDeviceId();
+  request["client_type"] = device_->getClientType();
+  request["payload_type"] = "command";
+  request["ha_pairing_status"] = device_->isPaired() ? "paired" : "pending";
+  request["firmware"] = device_->getFirmwareVersion();
+  request["model"] = device_->getModel();
+  request["local_url"] = device_->getLocalUrl();
+  request["ha_local_url"] = device_->getHaLocalUrl();
+  request["ha_remote_url"] = device_->getHaRemoteUrl();
+  request["ha_active_url"] = device_->getActiveHaUrl();
+  request["status"] = "online";
+  request["state"] = "online";
+  request["playback_configured"] = device_->isPlaybackConfigured();
+  request["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  request["sound_output"] = state_.deviceName;
+
+  const BatteryState *battery = device_->battery();
+  if (battery != nullptr) {
+    request["battery_percent"] = battery->percent;
+    request["battery_mv"] = battery->voltageMv;
+    request["charging"] = battery->charging || battery->full;
+  }
+}
+
 int SpotifyClient::postProxyRequest(
     const String &url,
     const String &token,
@@ -246,8 +268,13 @@ int SpotifyClient::postProxyRequest(
 
   AppLog.print("HA playback command: ");
   AppLog.println(command);
-  const int code = http.POST(body);
-  payload = http.getString();
+  int code = 0;
+  {
+    ScopedWatchdogPause watchdogPause;
+    code = http.POST(body);
+    payload = http.getString();
+  }
+  ScopedWatchdogPause::resetIfAttached();
   http.end();
   activity.finish(code);
   return code;
@@ -590,8 +617,7 @@ bool SpotifyClient::queueVolume(int volume) {
   VolumeCommand queuedVolume;
   queuedVolume.volume = volume;
   xQueueOverwrite(volumeCommandQueue_, &queuedVolume);
-  AppLog.print("Queued volume ");
-  AppLog.println(volume);
+  AppLog.println("Queued volume " + String(volume));
   return true;
 }
 
@@ -606,8 +632,7 @@ VolumeResult SpotifyClient::sendVolumeToSpotify(const VolumeCommand &command) {
   VolumeResult result;
   result.volume = command.volume;
 
-  AppLog.print("Volume worker: sending ");
-  AppLog.println(command.volume);
+  AppLog.println("Volume worker: sending " + String(command.volume));
 
   if (proxyCommand("set_volume", command.volume)) {
     result.ok = true;

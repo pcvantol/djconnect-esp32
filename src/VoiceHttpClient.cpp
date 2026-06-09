@@ -12,25 +12,9 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
+#include "ScopedWatchdogPause.h"
 
 namespace {
-class ScopedWatchdogPause {
-public:
-  ScopedWatchdogPause() {
-    active_ = esp_task_wdt_delete(nullptr) == ESP_OK;
-  }
-
-  ~ScopedWatchdogPause() {
-    if (active_) {
-      esp_task_wdt_add(nullptr);
-      esp_task_wdt_reset();
-    }
-  }
-
-private:
-  bool active_ = false;
-};
-
 String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs) {
   String body;
   WiFiClient *stream = http.getStreamPtr();
@@ -46,7 +30,7 @@ String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs) {
   uint32_t lastDataAt = millis();
   int remaining = contentLength;
   while (remaining != 0 && millis() - lastDataAt < timeoutMs) {
-    esp_task_wdt_reset();
+    ScopedWatchdogPause::resetIfAttached();
     const int available = stream->available();
     if (available <= 0) {
       delay(1);
@@ -71,7 +55,7 @@ String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs) {
       remaining -= got;
     }
   }
-  esp_task_wdt_reset();
+  ScopedWatchdogPause::resetIfAttached();
   return body;
 }
 
@@ -121,56 +105,10 @@ void VoiceHttpClient::begin(DJConnectDevice &device) {
 
 bool VoiceHttpClient::sendStatus(bool recording, const String &state, const String &lastError) {
   pairingInvalidated_ = false;
-  if (device_ == nullptr || !device_->isPaired()) {
-    return false;
-  }
-  const String token = device_->getDeviceToken();
-  const String url = endpoint("/api/djconnect/status");
-  if (token.isEmpty() || url.isEmpty()) {
-    return false;
-  }
-
-  JsonDocument doc;
-  doc["device_id"] = device_->getDeviceId();
-  doc["client_type"] = device_->getClientType();
-  doc["recording"] = recording;
-  doc["state"] = state;
-  if (!lastError.isEmpty()) {
-    doc["last_error"] = lastError;
-  }
-  String body;
-  serializeJson(doc, body);
-
-  HTTPClient http;
-  NetworkActivity activity("voice_status", Config::HttpLongIoTimeoutMs);
-  NetworkActivity::configureLongHttp(http);
-  if (!http.begin(url)) {
-    activity.finishError("begin failed");
-    return false;
-  }
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
-  const int code = http.POST(body);
-  const String payload = http.getString();
-  http.end();
-  activity.finish(code);
-  AppLog.print("Voice status response: ");
-  AppLog.println(code);
-  if (!payload.isEmpty()) {
-    JsonDocument errorDoc;
-    const DeserializationError jsonError = deserializeJson(errorDoc, payload);
-    const char *errorKey = jsonError ? "" : (errorDoc["error"] | "");
-    if (Logic::isDjConnectInvalidClientType(errorKey)) {
-      AppLog.println("HA rejected payload: missing client_type=esp32");
-      return false;
-    }
-    if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
-      AppLog.println("Voice status blocked by DJConnect version mismatch");
-    }
-  }
-  updatePairingInvalidationForStatus(code);
-  return code >= 200 && code < 300;
+  (void)recording;
+  (void)state;
+  (void)lastError;
+  return device_ != nullptr && device_->isPaired();
 }
 
 bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &message, String *audioUrl) {
@@ -220,13 +158,13 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
 
   AppLog.print("Voice text command chars=");
   AppLog.println(recognizedText.length());
-  esp_task_wdt_reset();
+  ScopedWatchdogPause::resetIfAttached();
   int code = 0;
   {
     ScopedWatchdogPause watchdogPause;
     code = http.POST(body);
   }
-  esp_task_wdt_reset();
+  ScopedWatchdogPause::resetIfAttached();
   AppLog.print("Voice command response: ");
   AppLog.println(code);
   logVoiceHttpClientError("Voice command client error", code);
@@ -328,7 +266,7 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
     code = http.sendRequest("POST", &file, fileSize);
   }
   file.close();
-  esp_task_wdt_reset();
+  ScopedWatchdogPause::resetIfAttached();
   AppLog.print("Voice WAV response: ");
   AppLog.println(code);
   logVoiceHttpClientError("Voice WAV client error", code);

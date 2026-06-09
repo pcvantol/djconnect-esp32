@@ -53,7 +53,7 @@ public:
   // Advances a fast purple chase used while OTA firmware is being written.
   void showFirmwareUpdateAnimation();
 
-  // Advances a green chase while a Home Assistant DJ response is being played.
+  // Advances a purple chase while a Home Assistant DJ response is visible or being played.
   void showDjResponseAnimation();
 
   // Matches the ring brightness to the display power state; 0 fully hides the ring.

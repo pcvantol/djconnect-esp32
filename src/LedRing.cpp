@@ -336,9 +336,9 @@ void LedRing::showDjResponseAnimation() {
 
   fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
   const uint8_t head = djResponseFrame_++ % Config::Ws2812LedCount;
-  leds_[head] = scaledSpotifyGreen(255);
-  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = scaledSpotifyGreen(110);
-  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = scaledSpotifyGreen(40);
+  leds_[head] = CRGB(168, 72, 255);
+  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = CRGB(82, 24, 150);
+  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = CRGB(28, 0, 64);
   FastLED.show();
 }
 
