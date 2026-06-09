@@ -228,7 +228,11 @@ SIZE="$(file_size "$RELEASE_DIR/$ASSET")"
 write_manifest "$RELEASE_DIR/$MANIFEST" "$VERSION" "$TAG" "$ASSET" "$SHA256" "$SIZE"
 
 run git add .
-run git commit -m "Release DJConnect firmware $TAG"
+if git diff --cached --quiet; then
+  echo "No source changes to commit for $TAG; continuing with tag creation."
+else
+  run git commit -m "Release DJConnect firmware $TAG"
+fi
 run git tag "$TAG"
 run git push origin main
 run git push origin "$TAG"
