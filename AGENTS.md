@@ -358,7 +358,7 @@ Pre-pairing bootstrap OTA:
 
 ## Home Assistant Native Command Rules
 
-Device status and commands use the Home Assistant integration HTTP boundary. Do not add broker-based control paths.
+Device status and commands use the Home Assistant integration HTTP boundary. Keep control paths on the authenticated DJConnect HTTP API.
 
 Protected local ESP routes require `Authorization: Bearer <device_token>`.
 

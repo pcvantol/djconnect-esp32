@@ -28,7 +28,7 @@
     },
     {
       "key": "firmware_url",
-      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.0.0/djconnect-device-v3.0.0.bin",
+      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.0.3/djconnect-device-v3.0.3.bin",
       "type": "string"
     },
     {

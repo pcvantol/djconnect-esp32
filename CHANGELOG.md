@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.0.0
+## v3.0.3
 
 Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3.
 
@@ -52,7 +52,7 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 ### Changed
 
 - Application name and technical branding are now `DJConnect`.
-- Release builds use `3.0.0` / `v3.0.0`; local builds without release flags remain `dev` / `vdev`.
+- Release builds use `3.0.3` / `v3.0.3`; local builds without release flags remain `dev` / `vdev`.
 - Boot logs now include the DJConnect app name and active firmware version.
 - Local `dev` / `vdev` firmware reports OTA-comparable version `0.0.0` to Home Assistant/device API so any published `X.Y.Z` firmware is treated as an upgrade.
 - Local `dev` / `vdev` firmware is excluded from automatic pre-pairing bootstrap updates so development flashes stay local until explicitly updated.

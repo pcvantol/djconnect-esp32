@@ -3,7 +3,7 @@
 Werk in de bestaande Home Assistant custom integration repo voor `djconnect`.
 
 Doel:
-Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmware release `v3.0.0`.
+Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmware release `v3.0.3`.
 
 
 ## 0. Repository/Release Hygiene
@@ -11,12 +11,12 @@ Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmwar
 - ESP source repo is `pcvantol/djconnect-esp32`.
 - Public OTA firmware repo is `pcvantol/djconnect-firmware`.
 - Firmware binaries/manifests must be consumed from `djconnect-firmware`; the ESP source repo should not be treated as the OTA asset host.
-- Current firmware release/tag baseline is `v3.0.0`; do not reference old 2.x firmware assets or tags.
+- Current firmware release/tag baseline is `v3.0.3`; do not reference old 2.x firmware assets or tags.
 
 Belangrijke architectuur:
 
 - ESP is geen Spotify Connect speaker/player.
-- ESP bewaart geen backend OAuth/client_id/refresh_token of playback credentials.
+- ESP bewaart geen backend OAuth of playback credentials.
 - ESP doet geen directe Spotify Web API calls.
 - ESP stuurt generieke playback commands naar Home Assistant.
 - Home Assistant is trusted backend voor playback, credentials, Assist/STT/TTS, OTA, native entities en optionele `media_player`.
@@ -70,7 +70,7 @@ Payload bevat onder andere:
   "battery_mv": 4120,
   "charging": false,
   "wifi_rssi": -55,
-  "firmware": "3.0.0",
+  "firmware": "3.0.3",
   "language": "nl",
   "device_language": "nl",
   "theme": "dark",
@@ -214,7 +214,7 @@ Taken:
 - Never return HTTP 503 for normal playback backend unavailable during command/status, because ESP interprets HTTP 5xx as playback connection error/cooldown.
 - Keep backend unavailable as JSON failure on 200.
 - Keep 401/403/404 only for actual auth/pairing invalid cases.
-- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v3.0.0 forceert direct een playback status poll na HA setup.
+- `command=status` moet zo snel mogelijk na ESP boot kunnen antwoorden, want ESP v3.0.3 forceert direct een playback status poll na HA setup.
 - Queue/devices/playlists should return `success:true` with empty arrays if backend is reachable but no data is available.
 - Avoid spamming `/api/device/pair` callbacks while normal playback commands are running; use a debounced settings sync path if needed.
 - Do not call ESP `POST /api/device/pair` as a generic status/settings synchronization endpoint after the device is already paired. Use it only for initial config-flow pairing, explicit re-pair/token rotation, or recovery. Use `POST /api/device/command` for settings changes and `/api/djconnect/status` responses for state acknowledgement.
@@ -302,7 +302,7 @@ Add or update tests for:
 
 ## 8. Acceptance Criteria
 
-- ESP v3.0.0 can pair with HA integration without repeated stale-pairing loops.
+- ESP v3.0.3 can pair with HA integration without repeated stale-pairing loops.
 - After ESP reboot, HA status and playback command flow make the ESP `S` indicator green/grey/red correctly before any physical control action.
 - HA brightness/speaker volume/timeouts/language/theme/log-level entities reflect ESP state after reboot/status post.
 - Playback backend unavailable shows playback/S error but keeps HA pairing intact.

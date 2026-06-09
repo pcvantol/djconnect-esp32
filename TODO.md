@@ -108,7 +108,6 @@ Concrete backlog for follow-up implementation and validation.
   - screen timeout;
   - turn-off timeout.
 - [ ] Confirm HA entity changes use bearer-token auth and handle 401/403/404 as stale pairing.
-- [ ] Confirm removed broker configuration does not appear in setup, diagnostics or options flows.
 
 ## Power / Battery
 

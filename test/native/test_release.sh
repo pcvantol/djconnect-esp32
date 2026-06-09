@@ -14,15 +14,23 @@ if git ls-files --error-unmatch release/firmware_manifest.json >/dev/null 2>&1; 
   exit 1
 fi
 
+# Asset snapshots catch stale branding in the embedded display and web portal resources.
+echo "eaae29c674786f958dac9951dd7ce4af0024936a9320eb01e39083a174cf35e3  assets/esp_display/embedded/djconnect_icon_160x160.rgb565" | shasum -a 256 -c -
+echo "81d33661c3211e5ecc24547e983005ad35dbb933a811df44ff771ad1b74c1d11  assets/esp_display/embedded/djconnect_icon_170x170.rgb565" | shasum -a 256 -c -
+echo "8932b3c70311dd91d72d3ede49b441fbc902ab8a712469152d839041c3efafb5  assets/esp_display/embedded/djconnect_splash_170x320.rgb565" | shasum -a 256 -c -
+echo "04017a322314225531fc501a6b6ea20a58821115cf0a2f35e895764c3b0fe9d5  assets/website/site.webmanifest" | shasum -a 256 -c -
+echo "1c45881b98c73e15693d7eb48bae16eca43b3c9e3170051171f95b1cf0131534  assets/website/icon-192.png" | shasum -a 256 -c -
+echo "dd3c38075de260a67f30e66f48e34294e5f1986c0b1034394d875faf299243fd  assets/website/favicon-32.png" | shasum -a 256 -c -
+
 # The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
 if rg -n --glob "!test/native/test_release.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
-  README.md CHANGELOG.md AGENTS.md HANDOFF.md HA_SYNC_PROMPT.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  README.md CHANGELOG.md AGENTS.md HANDOFF.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old product/endpoint reference found" >&2
   exit 1
 fi
 
 if rg -n --glob "!test/native/test_release.sh" "spotifydj-device|releases/download/v2\.[0-9]+\.[0-9]+|tag/v2\.[0-9]+\.[0-9]+|Release .*v2\.[0-9]+\.[0-9]+|firmware v2\.[0-9]+\.[0-9]+" \
-  README.md CHANGELOG.md AGENTS.md HANDOFF.md HA_SYNC_PROMPT.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  README.md CHANGELOG.md AGENTS.md HANDOFF.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old 2.x firmware release reference found" >&2
   exit 1
 fi

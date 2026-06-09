@@ -6,7 +6,7 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release published from this repo: `v3.0.0`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` now keep `v3.0.0` as the only semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
+- Latest firmware release published from this repo: `v3.0.3`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` now keep `v3.0.3` as the only semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
@@ -39,7 +39,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-All passed after the DJConnect v3.0.0 rebrand and Home Assistant contract sync. The v3.0.0 GitHub Actions release workflow also completed successfully and published `djconnect-device-v3.0.0.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
+All passed after the DJConnect v3.0.3 rebrand and Home Assistant contract sync. The v3.0.3 GitHub Actions release workflow also completed successfully and published `djconnect-device-v3.0.3.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
 
 ## Architecture
 

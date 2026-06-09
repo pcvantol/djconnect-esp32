@@ -218,7 +218,7 @@ The firmware feeds idle mono PCM16 microphone chunks to that hook. Without a lin
 
 ## Home Assistant Native Commands
 
-Home Assistant controls the device through the local authenticated ESP API instead of a broker. Protected routes require:
+Home Assistant controls the device through the local authenticated ESP API. Protected routes require:
 
 ```text
 Authorization: Bearer <device_token>
@@ -347,7 +347,7 @@ Create the public GitHub release locally instead of waiting for GitHub Actions o
 ./release.sh X.Y.Z --gh-release
 ```
 
-For example, `./release.sh 3.0.0 --dry-run` validates the release plan without touching files. Both `3.0.0` and `v3.0.0` are accepted; the script normalizes tags to `vX.Y.Z`.
+For example, `./release.sh 3.0.3 --dry-run` validates the release plan without touching files. Both `3.0.3` and `v3.0.3` are accepted; the script normalizes tags to `vX.Y.Z`.
 
 Local development builds intentionally remain:
 
