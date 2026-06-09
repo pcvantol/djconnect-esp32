@@ -7,6 +7,26 @@ cd "$ROOT"
 bash -n release.sh
 bash -n scripts/cleanup_old_releases.sh
 
+# Repository hygiene: generated release assets must stay out of source control.
+git check-ignore -q release/djconnect-device-v3.0.0.bin
+if git ls-files --error-unmatch release/firmware_manifest.json >/dev/null 2>&1; then
+  echo "release artifacts must not be tracked in the source repo" >&2
+  exit 1
+fi
+
+# The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
+if rg -n --glob "!test/native/test_release.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
+  README.md CHANGELOG.md AGENTS.md HANDOFF.md HA_SYNC_PROMPT.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  echo "old product/endpoint reference found" >&2
+  exit 1
+fi
+
+if rg -n --glob "!test/native/test_release.sh" "spotifydj-device|releases/download/v2\.[0-9]+\.[0-9]+|tag/v2\.[0-9]+\.[0-9]+|Release .*v2\.[0-9]+\.[0-9]+|firmware v2\.[0-9]+\.[0-9]+" \
+  README.md CHANGELOG.md AGENTS.md HANDOFF.md HA_SYNC_PROMPT.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  echo "old 2.x firmware release reference found" >&2
+  exit 1
+fi
+
 dry_run_output="$(./release.sh 98.76.54 --dry-run)"
 echo "$dry_run_output" | grep -q "version: 98.76.54"
 echo "$dry_run_output" | grep -q "tag:     v98.76.54"

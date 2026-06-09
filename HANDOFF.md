@@ -6,7 +6,7 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release published from this repo: `v3.0.0`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` now keep `v3.0.0` as the only semver release/tag after 2.x cleanup.
+- Latest firmware release published from this repo: `v3.0.0`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` now keep `v3.0.0` as the only semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
@@ -76,7 +76,7 @@ Core data/security boundaries:
 - Web PTT is a compact DJ-response simulation path. It requires HA pairing but not playback-backend credentials on the ESP, active playback or browser microphone permission.
 - Smart Shuffle was removed because Spotify does not expose a useful public Web API control for it.
 - Current Song is a menu screen and uses top-button back; it does not start PTT.
-- Release binaries/manifests are published separately from the closed-source firmware source repo.
+- Release binaries/manifests are generated locally under `release/` but ignored by git; published OTA assets live only in `pcvantol/djconnect-firmware`, not in the closed-source source repo.
 - Local `dev` / `vdev` builds report OTA-comparable version `0.0.0` to Home Assistant/device API so published releases are seen as upgrades.
 - Bootstrap OTA is separate from normal HA OTA: it only runs before pairing, checks the public firmware release API, skips dev firmware, and reuses the normal OTA write/display/LED/sound path when a newer release is found.
 - True NVS Encryption is not active in the current Arduino/PlatformIO build. It requires an ESP-IDF or Arduino-as-component build with `CONFIG_NVS_ENCRYPTION=y` plus an `nvs_keys` partition and factory/serial flashing. OTA alone cannot safely enable it.

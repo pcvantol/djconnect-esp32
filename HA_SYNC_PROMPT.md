@@ -5,6 +5,14 @@ Werk in de bestaande Home Assistant custom integration repo voor `djconnect`.
 Doel:
 Synchroniseer de Home Assistant integration met de actuele DJConnect ESP firmware release `v3.0.0`.
 
+
+## 0. Repository/Release Hygiene
+
+- ESP source repo is `pcvantol/djconnect-esp32`.
+- Public OTA firmware repo is `pcvantol/djconnect-firmware`.
+- Firmware binaries/manifests must be consumed from `djconnect-firmware`; the ESP source repo should not be treated as the OTA asset host.
+- Current firmware release/tag baseline is `v3.0.0`; do not reference old 2.x firmware assets or tags.
+
 Belangrijke architectuur:
 
 - ESP is geen Spotify Connect speaker/player.

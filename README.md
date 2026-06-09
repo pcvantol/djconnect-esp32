@@ -316,7 +316,7 @@ During normal boot, the LED ring plays one calm rainbow startup lap before WiFi,
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates `release/djconnect-device-vX.Y.Z.bin`, writes `release/firmware_manifest.json`, commits, tags and pushes. The pushed git tag then triggers the GitHub Action, which builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that the compiled firmware contains the expected `vX.Y.Z` version tag before publishing the single OTA asset `djconnect-device-vX.Y.Z.bin`.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates ignored local `release/djconnect-device-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. The pushed git tag then triggers the GitHub Action, which builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that the compiled firmware contains the expected `vX.Y.Z` version tag before publishing the single OTA asset `djconnect-device-vX.Y.Z.bin`.
 
 Old public firmware releases can be reviewed and pruned with the separate dry-run first cleanup helper:
 

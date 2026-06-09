@@ -24,3 +24,6 @@ wifi_config.h
 # Python
 __pycache__/
 *.pyc
+
+# Generated release assets live in pcvantol/djconnect-firmware, not in source
+release/
