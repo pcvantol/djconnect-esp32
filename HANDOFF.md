@@ -6,7 +6,7 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release prepared from this repo: `v3.0.10`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
+- Latest firmware release prepared from this repo: `v3.0.17`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
@@ -25,8 +25,9 @@ Current repo state includes:
 - HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/status` plus an immediate playback status poll.
 - The ESP resolves Home Assistant local-first/cloud-fallback: it briefly probes `ha_local_url` and falls back to `ha_remote_url` when local HA is unreachable. This supports Nabu Casa remote access for ESP→HA calls without exposing ESP local endpoints through the cloud.
 - After WiFi/Home Assistant setup, the ESP forces an immediate `/api/djconnect/command` status poll so the device playback music-note indicator does not remain grey until the first physical control action.
-- `/api/djconnect/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow.
-- Periodic `/api/djconnect/status` now mirrors device settings/entities: `ha_pairing_status`, `local_url`, screen brightness aliases, screen timeout aliases, turn-off timeout, speaker/cue volume aliases, language, theme, log level, OTA/update state, screen state and LED state.
+- `/api/djconnect/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow. Command payloads are identity-only (`device_id`, `client_type:"esp32"`, `payload_type:"command"` and `firmware`) and must not be treated as authoritative device-status snapshots.
+- Periodic `/api/djconnect/status` is the authoritative source for Home Assistant ESP sensors and mirrors device settings/entities: `ha_pairing_status`, `local_url`, screen brightness aliases, screen timeout aliases, turn-off timeout, speaker/cue volume aliases, language, theme, log level, OTA/update state, screen state and LED state.
+- HA integration and firmware must share the same major/minor protocol version. `3.0.z` firmware should talk to `3.0.z` HA integration; patch versions may differ. HTTP 426 `version_mismatch` is an update-required protocol block, not a pairing-token failure.
 - Backend credentials are never accepted by ESP firmware.
 - Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Freshly provisioned unpaired release firmware performs a graceful pre-pairing bootstrap update check after WiFi connects. It skips local `dev`/`vdev` builds and continues to pairing silently if the check fails.
@@ -39,7 +40,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-All passed after the v3.0.10 UI/playback/web portal consolidation. The v3.0.10 release should publish `djconnect-device-v3.0.10.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
+All passed after the v3.0.17 HA-contract and playback/logging synchronization. The v3.0.17 release should publish `djconnect-device-v3.0.17.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
 
 ## Architecture
 
@@ -62,6 +63,7 @@ Core data/security boundaries:
 - Device API uses `Authorization: Bearer <device_token>` for protected endpoints.
 - Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase stored pairing automatically. Playback proxy commands are disabled until a successful authenticated HA status post confirms the stored token.
 - Playback proxy backend availability is separate from pairing validity. A command response with `success:false` and `backend_available:false` marks the playback music-note indicator red but must not clear pairing or rotate tokens.
+- Device status belongs on `/api/djconnect/status`. Do not reintroduce battery, firmware, RSSI, pairing, screen, LED, settings or sound-output fields onto playback command payloads as partial snapshots.
 - Playback-backend refresh tokens are never stored on the ESP and therefore are never logged or shown back to users.
 - The ESP is not a Spotify Connect speaker/player and should not be modeled as the actual music sink. It mirrors and controls the playback state supplied by Home Assistant.
 - Internal ESP32 Preferences keys must be 15 chars or less.

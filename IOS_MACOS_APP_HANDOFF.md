@@ -59,8 +59,8 @@ Recommended fields:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "device_name": "DJConnect iPhone",
   "client_type": "ios",
-  "firmware": "3.0.9",
-  "app_version": "3.0.9",
+  "firmware": "3.0.17",
+  "app_version": "3.0.17",
   "platform": "ios"
 }
 ```
@@ -72,8 +72,8 @@ For macOS:
   "device_id": "djconnect-macos-8F3A2C91B45D",
   "device_name": "DJConnect Mac",
   "client_type": "macos",
-  "firmware": "3.0.9",
-  "app_version": "3.0.9",
+  "firmware": "3.0.17",
+  "app_version": "3.0.17",
   "platform": "macos"
 }
 ```
@@ -170,8 +170,8 @@ Minimum payload:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "client_type": "ios",
   "ha_pairing_status": "paired",
-  "firmware": "3.0.9",
-  "app_version": "3.0.9",
+  "firmware": "3.0.17",
+  "app_version": "3.0.17",
   "state": "online",
   "status": "online",
   "battery_percent": 85,
@@ -220,6 +220,10 @@ POST /api/djconnect/command
 ```
 
 All command payloads must include `device_id` and `client_type`.
+Keep command payloads focused on playback commands and client identity. Do not
+send partial device-status snapshots in `/api/djconnect/command`; use
+`/api/djconnect/status` as the authoritative source for client status and
+settings mirrored into Home Assistant entities.
 
 Examples:
 
