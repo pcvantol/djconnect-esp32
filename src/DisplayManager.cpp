@@ -15,6 +15,7 @@
 #include "assets/DJConnectIcon160.h"
 
 static constexpr uint16_t BrightYellow = 0xFFE0;
+static constexpr uint16_t BrightPurple = 0xB81F;
 static constexpr uint16_t NeutralLightGrey = 0xC618;
 static constexpr uint16_t SpotifyGreen = 0x1DCB;
 static constexpr uint16_t VolumeOrange = 0xFD20;
@@ -343,7 +344,7 @@ void DisplayManager::renderAlbumArtScreen(
   drawMarqueeText(tft_, artistMarquee_, artistText(playback), AlbumTextX, AlbumArtistY, AlbumTextWidth, 4, AlbumArtistHeight);
 
   if (notice.isVisible()) {
-    tft_.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft_.setTextColor(BrightPurple, TFT_BLACK);
     tft_.drawString(clippedText(tft_, notice.message, AlbumTextWidth, 2), AlbumTextX, 140, 2);
   }
 
@@ -604,7 +605,7 @@ void DisplayManager::renderBoot(Canvas &canvas, const String &message, const Bat
   }
   drawDJConnectIcon(canvas, 14, 12, 78);
 
-  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.setTextColor(BrightPurple, TFT_BLACK);
   canvas.drawString("DJConnect", 98, 34, 4);
 
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
@@ -634,7 +635,7 @@ void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, c
   }
 
   drawDJConnectIcon(canvas, 14, 10, 38);
-  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.setTextColor(BrightPurple, TFT_BLACK);
   canvas.drawString("DJConnect", 60, 18, 4);
 
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
@@ -644,7 +645,7 @@ void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, c
   canvas.drawFastHLine(14, 106, 292, TFT_DARKGREY);
 
   canvas.setTextDatum(MC_DATUM);
-  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.setTextColor(BrightPurple, TFT_BLACK);
   canvas.drawString(pairCode, 160, 132, 4);
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   canvas.drawString(I18n::text("setup_turn_off_hint"), 160, 160, 1);
@@ -717,7 +718,7 @@ void DisplayManager::renderPlayback(
     canvas.setTextColor(TFT_RED, TFT_BLACK);
   } else if (notice.isVisible()) {
     footer = localizedStatusText(notice.message);
-    canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+    canvas.setTextColor(BrightPurple, TFT_BLACK);
   } else if (!playback.hasPlayback) {
     footer = I18n::text("center_liked_proxy");
     canvas.setTextColor(VolumeOrange, TFT_BLACK);
@@ -1042,7 +1043,7 @@ void DisplayManager::drawWifiIndicator(Canvas &canvas, int x, int y) {
 
 template <typename Canvas>
 void DisplayManager::drawMenuTitle(Canvas &canvas, const String &title) {
-  canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+  canvas.setTextColor(BrightPurple, TFT_BLACK);
   canvas.drawString(clippedText(canvas, title, 260, 2), 8, 5, 2);
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString(I18n::text("menu"), 270, 5, 2);
@@ -1052,7 +1053,7 @@ void DisplayManager::drawMenuTitle(Canvas &canvas, const String &title) {
 template <typename Canvas>
 void DisplayManager::drawMenuFooter(Canvas &canvas, const StatusNotice &notice) {
   if (notice.isVisible()) {
-    canvas.setTextColor(TFT_GREEN, TFT_BLACK);
+    canvas.setTextColor(BrightPurple, TFT_BLACK);
     canvas.drawString(clippedText(canvas, notice.message, 304, 2), 8, 151, 2);
     return;
   }
