@@ -200,6 +200,8 @@ Physical PTT, from the Now Playing screen:
 7. The ESP displays the DJ text briefly, detects the audio type from `Content-Type` or magic bytes, and plays compatible WAV/MP3 audio through the built-in speaker.
 8. The UI returns to Now Playing.
 
+While the device is processing the PTT request or showing the DJ response screen, pressing the middle encoder button cancels the rest of the PTT/DJ-response flow as soon as possible. If an HA HTTP request is already in flight, the firmware ignores the result when it returns; response audio playback receives a stop request and exits on the next stream loop.
+
 The Current song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
 Games are local mini-games in the device menu and web portal. Pong shows score and high score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Asteroids uses the encoder to move horizontally and shoots on encoder press. Fly uses the encoder to move vertically and shoots on encoder press while flying left-to-right. Device game highscores are stored in the `provision` NVS namespace and are cleared by factory reset; web game highscores are stored locally in the browser.
@@ -215,8 +217,8 @@ under `third_party/micro_wake_word/` and linked into the firmware as
 flash-resident model data. The firmware runs it locally with TensorFlow Lite
 Micro and the TensorFlow micro_speech frontend: idle mono PCM16 microphone
 chunks are converted into 40-bin features every 10 ms, three feature frames are
-fed into the streaming model, and detection is accepted when the 5-frame sliding
-average reaches the configured `0.97` cutoff.
+fed into the streaming model, and detection is accepted when the 3-frame sliding
+window reaches the configured `0.90` cutoff.
 
 Wake-word monitoring is enabled only while the device is in normal mode, not
 already recording voice, and Home Assistant pairing is confirmed. It does not
@@ -227,6 +229,11 @@ pairing heap pressure has dropped. On detection, the device starts the same
 local PTT WAV upload flow as an encoder-button voice request; no wake-word audio
 leaves the device until the wake phrase has been detected and the normal PTT
 recording starts.
+
+Wake-word-started recordings stop automatically after the minimum listen window
+when microphone RMS stays below the silence threshold for 1.2 seconds, and all
+voice recordings remain capped at 15 seconds. This keeps hands-free requests from
+waiting indefinitely in a quiet room.
 
 The older `DJConnect` hook remains supported for compatibility:
 
@@ -291,7 +298,7 @@ The web portal includes Safari/iOS home-screen metadata and an Apple touch icon.
 
 To reduce unnecessary ESP HTTP work, the portal only polls heavier panels when they are visible: logs poll only while the logs panel is visible and not paused, and queue, playlist and sound-output list refreshes run only when their related UI is on screen. Dynamic API and root page responses use `no-store` cache headers, while embedded static assets such as icons and the web manifest use browser cache headers.
 
-Queue, playlist and output data are supplied by the Home Assistant integration. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
+Queue, playlist and output data are supplied by the Home Assistant integration. The firmware de-duplicates returned queue items by URI, or by title/subtitle when no URI is supplied, so a one-track queue is not rendered repeatedly on the device or web portal. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
 
 ## Firmware Architecture
 

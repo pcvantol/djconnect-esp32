@@ -3,7 +3,7 @@
 Use this prompt in the DJConnect Home Assistant integration repo when syncing with the ESP firmware.
 
 ```md
-# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.0.18
+# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.0.21
 
 Werk in de bestaande Home Assistant custom integration repo voor DJConnect.
 
@@ -75,10 +75,39 @@ Houd auth en backend availability gescheiden:
 - `invalid_client_type` is een firmware/contractfout, geen stale pairing.
 - Firmware major.minor moet matchen met integratie major.minor, behalve firmware `0.0.0` dev builds.
 
+### Queue / Up Next
+
+Voor `POST /api/djconnect/command` met `command:"queue"`:
+
+```json
+{
+  "success": true,
+  "context_uri": "spotify:playlist:...",
+  "queue": [
+    {
+      "title": "Black",
+      "subtitle": "Pearl Jam",
+      "uri": "spotify:track:...",
+      "album_image_url": "https://..."
+    }
+  ]
+}
+```
+
+Regels:
+
+- Retourneer de echte backend queue/context, niet dezelfde current track als padding.
+- Als er maar 1 queue-item is, retourneer 1 item.
+- `context_uri` blijft nodig voor ESP/web per-item play.
+- Album art URLs mogen pass-through zijn; de ESP downloadt queue thumbnails niet, de browser lazy-loadt ze wanneer de web queue zichtbaar is.
+- Firmware v3.0.21 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
+
 ### Voice
 
 ESP physical PTT uploadt WAV naar `/api/djconnect/voice` met bearer token en `X-DJConnect-Device-ID`.
 HA doet Assist/STT/TTS en retourneert DJ tekst plus optionele `audio_url`.
+
+Firmware v3.0.21 kan de lokale PTT/DJ-response flow annuleren met de middelste encoderknop tijdens processing of het DJ-response scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
 
 ## Acceptatiecriteria
 
@@ -97,6 +126,7 @@ url=http://192.168.1.x:8123/api/djconnect/command
 
 - Geen HA sensor valt enkele seconden na update terug naar `unknown`.
 - `sensor.djconnect_ha_pairing_status` wordt `paired` zodra ESP `ha_pairing_status:"paired"` meldt.
+- `queue` response bevat geen padding met herhaalde current-track entries.
 - Geen payload gebruikt `device_type`.
 - Geen pairing/token reset bij `invalid_client_type` of backend unavailable.
 ```

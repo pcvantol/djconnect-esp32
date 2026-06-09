@@ -2,12 +2,13 @@
 
 ## v3.0.21
 
-Patch release for HA local-route pairing, wake-word startup stability, playback control feedback and About-screen copy.
+Patch release for HA local-route pairing, wake-word/PTT stability, queue rendering, playback control feedback and About-screen copy.
 
 ### Added
 
 - Device top-button next/previous track actions now play simple directional local audio feedback when feedback is enabled.
 - Okay Nabu wake-word detection now runs locally through TensorFlow Lite Micro and the TensorFlow micro_speech frontend when the device is in normal paired playback mode.
+- Middle encoder press now cancels the active PTT/DJ-response flow while the device is processing or showing a DJ response.
 
 ### Changed
 
@@ -15,10 +16,12 @@ Patch release for HA local-route pairing, wake-word startup stability, playback 
 - App logs now support atomic complete-line writes for async playback/volume worker messages so volume changes no longer interleave into broken serial/web log fragments.
 - Home Assistant startup state is now logged once when the local device API starts instead of repeating paired/URL lines during boot setup.
 - Wake-word listening now remains enabled when playback is idle or paused after Home Assistant is paired.
+- Wake-word recordings now stop on silence after the minimum listening window and remain capped by the maximum recording duration.
 - Postman pairing callback examples now include the canonical LilyGO `device_id`, pairing code and `client_type:"esp32"`.
 - Volume up/down logs now use the same `Playback: ... requested/accepted/failed` style as play/pause and next/previous.
 - HA playback command response logs are emitted as single atomic lines to avoid interleaved serial/web log fragments during async volume worker activity.
 - The device About screen now labels the playback/backend status as `Music` / `Muziek` instead of `Spotify`.
+- Up Next queue parsing now removes duplicate items by track URI, or by title/artist fallback when no URI is available, so single-item queues no longer render the same track repeatedly.
 
 ### Fixed
 
@@ -27,6 +30,7 @@ Patch release for HA local-route pairing, wake-word startup stability, playback 
 - Wake-word runtime allocation no longer starts during the pairing/BLE transition; direct pairing now exits pairing mode first so BLE can shut down before wake-word inference starts.
 - HA status and playback transport-error paths no longer read HTTP response bodies after a negative transport code, reducing watchdog risk after `HTTP -1`.
 - Startup logs now show the stored Home Assistant local and remote URLs for pairing diagnostics.
+- Stopping wake-word recordings now pauses the watchdog around the blocking recorder join path, reducing watchdog resets after maximum-duration auto-stop.
 
 ## v3.0.12
 

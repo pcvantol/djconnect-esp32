@@ -2,7 +2,7 @@
 Werk in de bestaande proprietary ESP firmware repo pcvantol/djconnect-esp32.
 
 Doel
-Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.0.10.
+Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.0.21.
 
 De HA integration is de trusted backend voor:
 
@@ -29,6 +29,8 @@ ESP bewaart geen playback-backend credentials.
 ESP stuurt generieke playback commands naar HA.
 HA vertaalt playback commands naar Spotify of toekomstige backends.
 ESP speaker is alleen voor local cues en DJ/voice response audio.
+Okay Nabu wake-word support draait lokaal via TensorFlow Lite Micro en mag geen netwerk-I/O doen in het audio poll pad.
+De middelste encoderknop moet een actieve PTT processing/DJ-response flow kunnen annuleren.
 Oude backend-credential provisioning endpoints mogen niet bestaan of gebruikt worden.
 Pairing/status/voice/command auth gebruikt alleen het device bearer token.
 Device ID format voor actuele firmware is djconnect-lilygo-XXXXXXXXXXXX.
@@ -227,6 +229,28 @@ Belangrijk:
 Dit is geen pairing failure.
 Toon een backend/playback fout in UI.
 Wis pairing niet.
+
+Queue response handling:
+
+{
+  "success": true,
+  "context_uri": "spotify:playlist:...",
+  "queue": [
+    {
+      "title": "Black",
+      "subtitle": "Pearl Jam",
+      "uri": "spotify:track:...",
+      "album_image_url": "https://..."
+    }
+  ]
+}
+
+Regels:
+
+ESP bewaart `context_uri` voor per-item playback.
+ESP deduplicates queue-items defensief op `uri`, of op `title` + `subtitle` wanneer geen URI beschikbaar is.
+Als HA maar 1 item teruggeeft, mogen device en web maar 1 item tonen.
+Queue thumbnail URLs zijn pass-through voor web lazy-loading; de ESP downloadt deze thumbnails niet alleen omdat de queue wordt opgehaald.
 4. Device command API vanaf HA
 Controleer POST /api/device/command voor device-instellingen:
 
@@ -276,6 +300,14 @@ ESP uploadt alleen raw WAV.
 ESP speelt WAV of MP3 audio URL af indien ondersteund.
 Onbekend audioformaat: text-only tonen, niet crashen.
 Geen tijdelijke audio URL tokens loggen.
+
+PTT/wake-word runtime gedrag:
+
+Encoder PTT start pas met opnemen na de start cue/settle delay; stop cue speelt pas nadat de WAV is afgesloten.
+Wake-word detection start dezelfde lokale PTT WAV-upload flow als encoder PTT.
+Wake-word tuning: Okay Nabu model, 10 ms feature step, 3-frame sliding window, cutoff 0.90.
+Wake-word-started recording stopt automatisch na stilte en blijft altijd begrensd door de maximale opname-duur.
+Tijdens processing of het DJ-response scherm annuleert een middelste encoderdruk de rest van de PTT flow zo snel mogelijk; lopende HA HTTP responses mogen lokaal genegeerd worden en response audio moet een stop request krijgen.
 6. OAuth / Spotify secrets verwijderen
 Controleer dat ESP:
 
@@ -343,6 +375,8 @@ ESP gebruikt alleen de HA-native lokale API.
 ESP bewaart geen Spotify credentials.
 ESP stuurt generic playback commands naar HA.
 ESP PTT uploadt raw WAV naar HA en speelt HA DJ response lokaal af.
+ESP annuleert PTT/DJ-response flow op middelste encoderdruk tijdens processing/response.
+ESP deduplicates Up Next queue display so one real queue item is not shown repeatedly.
 OTA blijft werken met djconnect-device-vX.Y.Z.bin en target lilygo-t-embed-s3.
 Het device gebruikt de echte DJConnect icon assets uit pcvantol/djconnect in plaats van een opnieuw getekende benadering.
 Logs bevatten geen secrets.

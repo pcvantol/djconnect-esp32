@@ -6,12 +6,12 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release being prepared from this repo: `v3.0.18`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
+- Latest firmware release prepared from this repo: `v3.0.21`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
-- Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL.
-- Web portal includes Now Playing, DJ-response simulation, outputs, playlists, Up Next with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
+- Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL. Middle encoder press cancels the active processing/DJ-response flow and requests response-audio stream stop as soon as possible.
+- Web portal includes Now Playing, DJ-response simulation, outputs, playlists, Up Next with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. Up Next is de-duplicated by URI or title/subtitle fallback so single-item queues do not render repeated tracks. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
 - Playback proxy control requests use short waits and transient-failure cooldown; OTA writes tolerate slow GitHub/CDN stream bursts while continuing to feed the watchdog and firmware-update LED animation.
 - Device main menu includes a local Games submenu with Pong, Asteroids and Fly. Games are local-only, use encoder movement/center-button fire where applicable, persist highscores in NVS and are not exposed through Home Assistant.
 - Device Help screen lists top button, encoder button and rotary actions. It appears once after initial Home Assistant pairing, then remains available from the main menu.
@@ -25,6 +25,7 @@ Current repo state includes:
 - HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/status` plus an immediate playback status poll.
 - The ESP requires a real LAN `ha_local_url` for playback proxy commands. If Home Assistant sends a Nabu Casa `.ui.nabu.casa` URL as `ha_local_url`, firmware normalizes it into `ha_remote_url` and clears the local NVS key on the next pairing save. Playback fails clearly with `HA playback command unavailable: local HA URL missing` when local is absent instead of silently using cloud.
 - Direct pairing during the pairing screen leaves pairing mode first so BLE can shut down before the Okay Nabu TensorFlow runtime allocates its arena.
+- Okay Nabu wake word runs locally through TensorFlow Lite Micro plus the TensorFlow micro_speech frontend. Current tuning uses a 10 ms feature step, 3-frame sliding window and `0.90` cutoff. Wake-word recordings auto-stop after 1.2 seconds of silence and are hard-capped at 15 seconds.
 - After WiFi/Home Assistant setup, the ESP forces an immediate `/api/djconnect/command` status poll so the device playback music-note indicator does not remain grey until the first physical control action.
 - `/api/djconnect/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow. Command payloads are identity-only (`device_id`, `client_type:"esp32"`, `payload_type:"command"` and `firmware`) and must not be treated as authoritative device-status snapshots.
 - Periodic `/api/djconnect/status` is the authoritative source for Home Assistant ESP sensors and mirrors device settings/entities: `ha_pairing_status`, `local_url`, screen brightness aliases, screen timeout aliases, turn-off timeout, speaker/cue volume aliases, language, theme, log level, OTA/update state, screen state and LED state.
@@ -41,7 +42,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-All passed after the v3.0.18 HA local-route, wake-word startup and playback-feedback synchronization. The v3.0.18 release should publish `djconnect-device-v3.0.18.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
+All passed after the v3.0.21 queue de-duplication release. The v3.0.21 release should publish `djconnect-device-v3.0.21.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
 
 ## Architecture
 
@@ -75,11 +76,11 @@ Core data/security boundaries:
 - The ESP stays focused on local edge behavior: display, controls, LED ring, battery/power policy, mic capture and playback of HA-provided DJ response audio.
 - A Home Assistant `media_player` entity may be implemented in the integration for the playback proxy. HA `media_player.pause`, `media_player.play_media`, `media_player.volume_set`, source selection and next/previous should be translated by the integration into backend playback actions and/or ESP `/api/device/command` updates. Do not make this entity imply that Spotify/Sonos music audio is played by the ESP.
 - The ESP speaker remains reserved for local cues and DJ/voice response audio. Treat that as device-local feedback, separate from the backend music `media_player`.
-- Physical PTT must stay on the WAV-upload route to `/api/djconnect/voice`; do not reintroduce direct ESP Home Assistant Assist WebSocket authentication.
+- Physical PTT must stay on the WAV-upload route to `/api/djconnect/voice`; do not reintroduce direct ESP Home Assistant Assist WebSocket authentication. Keep the processing/DJ-response cancel path responsive from the middle encoder button.
 - Web PTT is a compact DJ-response simulation path. It requires HA pairing but not playback-backend credentials on the ESP, active playback or browser microphone permission.
 - Smart Shuffle was removed because Spotify does not expose a useful public Web API control for it.
 - Current song is a menu screen and uses top-button back; it does not start PTT.
-- Up Next item playback requires a valid context URI. The ESP preserves queue `context_uri` from Home Assistant and uses it as a fallback when the latest playback snapshot has no context.
+- Up Next item playback requires a valid context URI. The ESP preserves queue `context_uri` from Home Assistant and uses it as a fallback when the latest playback snapshot has no context. Queue display state is de-duplicated on the ESP before device/web rendering.
 - Web Up Next album art is URL pass-through only. The ESP does not download queue thumbnails; the browser lazy-loads them when the queue panel is visible.
 - Release binaries/manifests are generated locally under `release/` but ignored by git; published OTA assets live only in `pcvantol/djconnect-firmware`, not in the closed-source source repo.
 - Local `dev` / `vdev` builds report OTA-comparable version `0.0.0` to Home Assistant/device API so published releases are seen as upgrades.
@@ -94,6 +95,7 @@ Core data/security boundaries:
 - If HA reposts direct pairing/settings callbacks too often during normal playback commands, debounce or route those updates so they do not spam `/api/device/pair`. The ESP now treats identical direct-pair callbacks as idempotent, but the integration should still reserve `/api/device/pair` for initial pairing, explicit re-pair/token rotation or recovery.
 - Keep the Home Assistant integration and firmware contract synchronized around native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payloads.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
+- If Home Assistant returns duplicate queue entries for single-track queues, firmware de-duplicates them for display; the integration should still prefer returning the actual backend queue shape rather than padding with the current item.
 - The Home Assistant integration must send a real LAN `ha_local_url` during pairing. Sending Nabu Casa as local leaves playback local URL missing by design.
 - MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
 - Home Assistant STT/TTS failures are backend/integration dependent. Firmware surfaces error bodies but cannot fix missing HA STT provider configuration.

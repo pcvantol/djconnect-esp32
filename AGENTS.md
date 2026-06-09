@@ -279,6 +279,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - On release, the ESP uploads the WAV as raw request body to `/api/djconnect/voice` with `Content-Type: audio/wav`, `Authorization: Bearer <device_token>` and `X-DJConnect-Device-ID`.
 - The Home Assistant integration/backend owns any Home Assistant core auth needed for Assist, STT or TTS. If Assist requires `/api/websocket`, that websocket connection belongs in the HA integration, not on the ESP.
 - `/api/djconnect/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
+- During PTT processing or the DJ-response screen, a middle encoder press must cancel the remaining PTT/DJ-response flow as quickly as possible. In-flight HA HTTP calls may finish later, but their result should be ignored locally after cancellation; response audio streams should receive a stop request.
 - Do not add direct ESP Assist websocket auth; the DJConnect device token is for the integration API, not Home Assistant core.
 - Do not start physical PTT from Current song/AlbumArt. Current song is a read-only detail screen and uses the same top-button back behavior as menu screens.
 - The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It displays returned DJ text on the device and must return the voice/PTT state to idle after completion. It intentionally must not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block physical encoder PTT. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
@@ -470,6 +471,7 @@ Current web expectations:
 - Sound output selection uses a combobox/list without device type suffixes. Keep `None`/`Geen` and `iPhone` as fixed first entries before live Spotify Connect devices on both device and web UI.
 - Logs support pause/resume and copy/select-all behavior. Logs should poll only while the logs panel is visible and not paused.
 - Queue, playlist and sound-output list requests should be visibility-aware so hidden panels do not keep polling.
+- Queue rendering must de-duplicate repeated items by URI, or by title/subtitle fallback when no URI is available, so one-track queues are not shown repeatedly on device or web.
 - Highlight error-like web status messages with the alert/error status styling so long HA pairing/voice endpoint failures are obvious.
 - Root/status/log API responses should stay uncached; embedded static icon and manifest assets should keep explicit browser cache headers.
 - WiFi credentials can be updated from the web UI without hard reset.
