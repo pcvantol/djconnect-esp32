@@ -18,6 +18,7 @@ public:
   bool isRecording() const;
   bool isReady() const;
   uint32_t elapsedMs() const;
+  uint16_t currentRms() const;
   size_t wavSize() const;
   String wavPath() const;
   String error() const;
@@ -36,6 +37,7 @@ private:
   bool taskFailed_ = false;
   TaskHandle_t recordTask_ = nullptr;
   uint32_t startedAt_ = 0;
+  volatile uint16_t currentRms_ = 0;
   size_t dataBytes_ = 0;
   String error_;
 };

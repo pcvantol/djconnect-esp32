@@ -58,6 +58,11 @@ void DjResponseAudioPlayer::begin(SoundManager &sound, LedRing *ledRing) {
   ledRing_ = ledRing;
 }
 
+void DjResponseAudioPlayer::setActivityCallback(ActivityCallback callback, void *context) {
+  activityCallback_ = callback;
+  activityContext_ = context;
+}
+
 void showDjResponseLedFrame(void *context) {
   auto *ring = static_cast<LedRing *>(context);
   if (ring != nullptr) {
@@ -131,8 +136,12 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
 
   result.audioType = Logic::djAudioTypeName(audioType);
   bool ok = false;
-  if (ledRing_ != nullptr) {
+  if (activityCallback_ != nullptr) {
+    sound_->setStreamActivityCallback(activityCallback_, activityContext_);
+  } else if (ledRing_ != nullptr) {
     sound_->setStreamActivityCallback(showDjResponseLedFrame, ledRing_);
+  }
+  if (ledRing_ != nullptr) {
     ledRing_->showDjResponseAnimation();
   }
   if (stream != nullptr && audioType == Logic::DjAudioType::Wav) {

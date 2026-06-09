@@ -3,9 +3,11 @@
 
 #include <ESP_I2S.h>
 #include <LittleFS.h>
+#include <cmath>
 
 #include "AppLog.h"
 #include "Config.h"
+#include "ScopedWatchdogPause.h"
 
 namespace {
 // The PDM microphone is isolated on I2S0 so speaker playback can use I2S1.
@@ -53,6 +55,7 @@ bool VoiceRecorder::startRaw() {
     return false;
   }
   dataBytes_ = 0;
+  currentRms_ = 0;
   startedAt_ = millis();
   recording_ = true;
   error_ = "";
@@ -194,6 +197,10 @@ uint32_t VoiceRecorder::elapsedMs() const {
   return recording_ ? millis() - startedAt_ : 0;
 }
 
+uint16_t VoiceRecorder::currentRms() const {
+  return currentRms_;
+}
+
 size_t VoiceRecorder::wavSize() const {
   return WavHeaderBytes + dataBytes_;
 }
@@ -239,6 +246,18 @@ void VoiceRecorder::recordLoop() {
       taskFailed_ = true;
       break;
     }
+    const int16_t *samples = reinterpret_cast<const int16_t *>(buffer);
+    const size_t sampleCount = bytesRead / sizeof(int16_t);
+    uint64_t sumSquares = 0;
+    for (size_t index = 0; index < sampleCount; ++index) {
+      const int32_t sample = samples[index];
+      sumSquares += static_cast<uint64_t>(sample * sample);
+    }
+    if (sampleCount > 0) {
+      currentRms_ = static_cast<uint16_t>(min<uint32_t>(
+          65535,
+          static_cast<uint32_t>(sqrt(static_cast<double>(sumSquares) / static_cast<double>(sampleCount)))));
+    }
     const size_t written = file.write(buffer, bytesRead);
     if (written != bytesRead) {
       error_ = "Voice write failed";
@@ -258,6 +277,7 @@ void VoiceRecorder::recordLoop() {
 bool VoiceRecorder::waitForRecordTask(uint32_t timeoutMs) {
   const uint32_t startedAt = millis();
   while (taskRunning_ && millis() - startedAt < timeoutMs) {
+    ScopedWatchdogPause::resetIfAttached();
     delay(5);
     yield();
   }

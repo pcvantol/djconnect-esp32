@@ -86,6 +86,9 @@ public:
   // Plays an already opened MP3 HTTP stream. Used after content-type/header sniffing.
   bool playMp3Stream(Stream &stream, const uint8_t *prefix, size_t prefixLength, int contentLength);
 
+  // Requests currently streaming WAV/MP3 playback to stop at the next activity tick.
+  void requestStopStreaming();
+
   // Optional callback invoked from blocking WAV/MP3 playback loops for visual activity frames.
   void setStreamActivityCallback(StreamActivityCallback callback, void *context);
 
@@ -142,6 +145,7 @@ private:
   bool ready_ = false;
   AudioState audioState_ = AudioState::Idle;
   uint8_t volumePercent_ = 100;
+  volatile bool streamStopRequested_ = false;
   uint32_t lastVolumeTickAt_ = 0;
   StreamActivityCallback streamActivityCallback_ = nullptr;
   void *streamActivityContext_ = nullptr;

@@ -42,6 +42,9 @@ struct OkayNabuRuntime {
   size_t probabilityCount = 0;
   size_t probabilityIndex = 0;
   uint32_t lastDetectionAt = 0;
+  uint32_t lastScoreLogAt = 0;
+  float bestProbabilitySinceLog = 0.0f;
+  size_t outputElementCount = 0;
 };
 
 OkayNabuRuntime *gRuntime = nullptr;
@@ -119,6 +122,12 @@ bool setupInterpreter(OkayNabuRuntime &runtime) {
 
   TfLiteTensor *input = runtime.interpreter->input(0);
   TfLiteTensor *output = runtime.interpreter->output(0);
+  size_t outputElementCount = 1;
+  if (output != nullptr && output->dims != nullptr) {
+    for (int index = 0; index < output->dims->size; ++index) {
+      outputElementCount *= static_cast<size_t>(max(1, output->dims->data[index]));
+    }
+  }
   if (input == nullptr || output == nullptr ||
       input->type != kTfLiteInt8 ||
       output->type != kTfLiteUInt8 ||
@@ -130,6 +139,7 @@ bool setupInterpreter(OkayNabuRuntime &runtime) {
     return false;
   }
 
+  runtime.outputElementCount = outputElementCount;
   runtime.tensorsReady = true;
   return true;
 }
@@ -165,6 +175,8 @@ bool ensureRuntime() {
   }
   AppLog.print("Wake word: Okay Nabu runtime ready, arena=");
   AppLog.println(static_cast<int>(kTensorArenaBytes));
+  AppLog.print("Wake word: output elements=");
+  AppLog.println(static_cast<int>(runtime.outputElementCount));
   return true;
 }
 
@@ -186,7 +198,9 @@ bool invokeModel(OkayNabuRuntime &runtime) {
   if (outputData == nullptr) {
     return false;
   }
-  const float probability = static_cast<float>(outputData[0]) * 0.00390625f;
+  const size_t outputIndex = runtime.outputElementCount > 1 ? runtime.outputElementCount - 1 : 0;
+  const float probability = static_cast<float>(outputData[outputIndex]) * 0.00390625f;
+  runtime.bestProbabilitySinceLog = max(runtime.bestProbabilitySinceLog, probability);
   runtime.probabilities[runtime.probabilityIndex] = probability;
   runtime.probabilityIndex = (runtime.probabilityIndex + 1) % kOkayNabuWakeWordSlidingWindowSize;
   if (runtime.probabilityCount < kOkayNabuWakeWordSlidingWindowSize) {
@@ -199,6 +213,18 @@ bool invokeModel(OkayNabuRuntime &runtime) {
   }
   const float average = sum / static_cast<float>(runtime.probabilityCount);
   const uint32_t now = millis();
+  if (now - runtime.lastScoreLogAt >= 3000) {
+    AppLog.print("Wake word: score current=");
+    AppLog.print(probability, 3);
+    AppLog.print(" avg=");
+    AppLog.print(average, 3);
+    AppLog.print(" best=");
+    AppLog.print(runtime.bestProbabilitySinceLog, 3);
+    AppLog.print(" cutoff=");
+    AppLog.println(kOkayNabuWakeWordProbabilityCutoff, 2);
+    runtime.bestProbabilitySinceLog = 0.0f;
+    runtime.lastScoreLogAt = now;
+  }
   if (runtime.probabilityCount >= kOkayNabuWakeWordSlidingWindowSize &&
       average >= kOkayNabuWakeWordProbabilityCutoff &&
       now - runtime.lastDetectionAt >= kDetectionCooldownMs) {

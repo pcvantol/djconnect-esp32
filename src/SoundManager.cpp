@@ -343,6 +343,10 @@ void SoundManager::setStreamActivityCallback(StreamActivityCallback callback, vo
   streamActivityContext_ = context;
 }
 
+void SoundManager::requestStopStreaming() {
+  streamStopRequested_ = true;
+}
+
 void SoundManager::notifyStreamActivity() {
   if (streamActivityCallback_ != nullptr) {
     streamActivityCallback_(streamActivityContext_);
@@ -467,6 +471,10 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
   while (remaining > 0) {
     serviceAudioWatchdog();
     notifyStreamActivity();
+    if (streamStopRequested_) {
+      AppLog.println("Voice WAV playback cancelled");
+      break;
+    }
     const size_t want = min(static_cast<uint32_t>(sizeof(buffer)), remaining);
     const size_t got = stream.readBytes(buffer, want);
     if (got == 0) {
@@ -519,6 +527,10 @@ bool SoundManager::playMp3Stream(const String &url) {
   while (mp3.isRunning()) {
     serviceAudioWatchdog();
     notifyStreamActivity();
+    if (streamStopRequested_) {
+      AppLog.println("DJ response MP3 playback cancelled");
+      break;
+    }
     if (!mp3.loop()) {
       break;
     }
@@ -587,6 +599,10 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   while (mp3.isRunning()) {
     serviceAudioWatchdog();
     notifyStreamActivity();
+    if (streamStopRequested_) {
+      AppLog.println("DJ response MP3 playback cancelled");
+      break;
+    }
     if (!mp3.loop()) {
       break;
     }
@@ -768,6 +784,9 @@ bool SoundManager::beginAudioState(AudioState state, uint32_t timeoutMs) {
     return false;
   }
   audioState_ = state;
+  if (state == AudioState::StreamingWav || state == AudioState::StreamingMp3) {
+    streamStopRequested_ = false;
+  }
   return true;
 }
 

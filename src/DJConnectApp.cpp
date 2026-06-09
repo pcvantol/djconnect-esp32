@@ -20,6 +20,7 @@
 #include "Config.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
+#include "ScopedWatchdogPause.h"
 #include "assets/djconnect_favicon_ico.h"
 #include "assets/djconnect_icon_192_png.h"
 
@@ -71,12 +72,6 @@ String minuteLabel(uint32_t valueMs) {
   return String(minutes) + (minutes == 1 ? " minute" : " minutes");
 }
 
-void showVoiceActivityLedFrame(void *context) {
-  auto *ring = static_cast<LedRing *>(context);
-  if (ring != nullptr) {
-    ring->showDjResponseAnimation();
-  }
-}
 }  // namespace
 
 using namespace DJConnectMenu;
@@ -111,11 +106,12 @@ void DJConnectApp::begin() {
   ledRing_.begin();
   sound_.begin();
   djAudio_.begin(sound_, &ledRing_);
+  djAudio_.setActivityCallback(voiceActivityCallback, this);
   voiceRecorder_.begin();
   wakeWord_.begin();
   wakeWord_.setCallback(wakeWordDetectedCallback, this);
   voiceClient_.begin(haDevice_);
-  voiceClient_.setActivityCallback(showVoiceActivityLedFrame, &ledRing_);
+  voiceClient_.setActivityCallback(voiceActivityCallback, this);
   homeAssistantPaired_ = false;
   loadProvisioning();
   sound_.playStartup();
@@ -221,15 +217,32 @@ void DJConnectApp::loop() {
       const String error = voiceRecorder_.error();
       voiceRecorder_.abort();
       voiceRecording_ = false;
+      voiceStartedByWakeWord_ = false;
+      nextVoiceStartFromWakeWord_ = false;
+      voiceSilenceStartedAt_ = 0;
       voiceState_ = VoiceState::Error;
       voiceClient_.sendStatus(false, "error", error);
       showNotice(error, 3000);
       renderNow();
+    } else if (Logic::shouldAutoStopVoiceRecording(voiceRecorder_.elapsedMs(), Config::VoiceMaxRecordMs)) {
+      AppLog.println("Voice: maximum recording duration reached, stopping");
+      stopVoiceRecordingAndSendText();
     } else if (voiceStopPending_ && voiceRecorder_.elapsedMs() >= Config::VoiceMinRecordMs) {
       AppLog.println("Voice: minimum recording duration reached, stopping");
       stopVoiceRecordingAndSendText();
-    } else if (Logic::shouldAutoStopVoiceRecording(voiceRecorder_.elapsedMs(), Config::VoiceMaxRecordMs)) {
-      stopVoiceRecordingAndSendText();
+    } else if (voiceStartedByWakeWord_ && voiceRecorder_.elapsedMs() >= Config::VoiceMinRecordMs) {
+      const uint16_t rms = voiceRecorder_.currentRms();
+      if (rms <= Config::VoiceSilenceRmsThreshold) {
+        if (voiceSilenceStartedAt_ == 0) {
+          voiceSilenceStartedAt_ = millis();
+        } else if (millis() - voiceSilenceStartedAt_ >= Config::VoiceSilenceStopMs) {
+          AppLog.print("Voice: silence detected after wake word, stopping rms=");
+          AppLog.println(rms);
+          stopVoiceRecordingAndSendText();
+        }
+      } else {
+        voiceSilenceStartedAt_ = 0;
+      }
     }
   }
   if (!voiceRecording_ && voiceState_ == VoiceState::Idle && homeAssistantPaired_) {
@@ -895,6 +908,16 @@ void DJConnectApp::handleInputEvents(const InputEvents &events) {
       return;
     }
     display_.wakeForUserActivity();
+  }
+
+  const bool voiceBusy =
+      voiceState_ == VoiceState::WaitingForResult ||
+      voiceState_ == VoiceState::SendingCommand ||
+      djResponseOverlayVisible_;
+  if ((events.encoderPress || events.encoderClick) && voiceBusy) {
+    input_.clearPendingButtonActions();
+    cancelVoiceFlow("encoder");
+    return;
   }
 
   if (events.encoderClick && dismissDjResponseOverlay()) {
@@ -2397,6 +2420,7 @@ void DJConnectApp::handleVoiceButton() {
 #endif
 
   String message;
+  voiceCancelRequested_ = false;
   voiceState_ = VoiceState::Connecting;
   AppLog.println("Voice: starting WAV recording");
   showNotice(I18n::text("voice_connecting"), 3000);
@@ -2408,6 +2432,9 @@ void DJConnectApp::handleVoiceButton() {
     const String error = voiceRecorder_.error();
     AppLog.print("Voice: mic start failed: ");
     AppLog.println(error);
+    nextVoiceStartFromWakeWord_ = false;
+    voiceStartedByWakeWord_ = false;
+    voiceSilenceStartedAt_ = 0;
     voiceState_ = VoiceState::Error;
     voiceClient_.sendStatus(false, "error", error);
     showNotice(error, 3000);
@@ -2416,6 +2443,9 @@ void DJConnectApp::handleVoiceButton() {
   }
   voiceRecording_ = true;
   voiceStopPending_ = false;
+  voiceStartedByWakeWord_ = nextVoiceStartFromWakeWord_;
+  nextVoiceStartFromWakeWord_ = false;
+  voiceSilenceStartedAt_ = 0;
   voiceState_ = VoiceState::Listening;
   AppLog.println("Voice: listening");
   ledRing_.playPulse(CRGB::Yellow);
@@ -2435,6 +2465,9 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
   }
   voiceRecording_ = false;
   voiceStopPending_ = false;
+  voiceStartedByWakeWord_ = false;
+  nextVoiceStartFromWakeWord_ = false;
+  voiceSilenceStartedAt_ = 0;
   voiceState_ = VoiceState::WaitingForResult;
   AppLog.print("Voice: recording stopped, elapsed_ms=");
   AppLog.println(voiceRecorder_.elapsedMs());
@@ -2445,7 +2478,11 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
   djResponseOverlayUntil_ = millis() + 3000;
   showNotice(I18n::text("voice_processing"), 3000);
   renderNow();
-  const bool stopped = voiceRecorder_.stop();
+  bool stopped = false;
+  {
+    ScopedWatchdogPause watchdogPause;
+    stopped = voiceRecorder_.stop();
+  }
   if (volumeFeedbackEnabled_) {
     sound_.playPttStop();
   }
@@ -2468,6 +2505,14 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
   renderNow();
   String audioUrl;
   if (voiceClient_.uploadWav(voiceRecorder_.wavPath(), message, &audioUrl)) {
+    if (voiceCancelRequested_) {
+      AppLog.println("Voice: cancelled after HA response");
+      voiceClient_.sendStatus(false, "idle");
+      voiceCancelRequested_ = false;
+      voiceState_ = VoiceState::Idle;
+      renderNow();
+      return;
+    }
     voiceState_ = VoiceState::Done;
     AppLog.println("Voice: command accepted");
     ledRing_.playPulse(CRGB::Green);
@@ -2499,6 +2544,33 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
   if (voiceState_ == VoiceState::Done || voiceState_ == VoiceState::Error) {
     voiceState_ = VoiceState::Idle;
   }
+  renderNow();
+}
+
+void DJConnectApp::cancelVoiceFlow(const char *reason) {
+  AppLog.print("Voice: cancel requested");
+  if (reason != nullptr && strlen(reason) > 0) {
+    AppLog.print(" by ");
+    AppLog.print(reason);
+  }
+  AppLog.println();
+  voiceCancelRequested_ = true;
+  if (voiceRecording_) {
+    voiceRecorder_.abort();
+    voiceRecording_ = false;
+  }
+  voiceStopPending_ = false;
+  voiceStartedByWakeWord_ = false;
+  nextVoiceStartFromWakeWord_ = false;
+  voiceSilenceStartedAt_ = 0;
+  voiceState_ = VoiceState::Idle;
+  webVoiceTextOnlyActive_ = false;
+  webVoiceTextOnlyConsumeNext_ = false;
+  djResponseOverlayVisible_ = false;
+  display_.resetDjResponseOverlayCache();
+  sound_.requestStopStreaming();
+  ledRing_.clear();
+  showNotice("Cancelled", 1200);
   renderNow();
 }
 
@@ -3783,7 +3855,21 @@ void DJConnectApp::wakeWordDetectedCallback(void *context) {
   }
   AppLog.println("Wake word: starting push-to-talk flow");
   app->display_.wakeForUserActivity();
+  app->nextVoiceStartFromWakeWord_ = true;
   app->handleVoiceButton();
+}
+
+void DJConnectApp::voiceActivityCallback(void *context) {
+  auto *app = static_cast<DJConnectApp *>(context);
+  if (app == nullptr) {
+    return;
+  }
+  app->ledRing_.showDjResponseAnimation();
+  const InputEvents events = app->input_.poll();
+  if (events.encoderPress || events.encoderClick) {
+    app->input_.clearPendingButtonActions();
+    app->cancelVoiceFlow("encoder");
+  }
 }
 
 void DJConnectApp::softResetCueCallback(void *context) {
@@ -3903,6 +3989,13 @@ bool DJConnectApp::handleDjResponseText(const String &text, const String &audioU
       }
     }
     const DjResponseAudioResult audioResult = djAudio_.play(resolvedAudioUrl);
+    if (voiceCancelRequested_) {
+      voiceCancelRequested_ = false;
+      spoken = false;
+      voiceState_ = VoiceState::Idle;
+      renderNow();
+      return true;
+    }
     spoken = audioResult.spoken;
     lastDjAudioType_ = audioResult.audioType;
     if (djResponseOverlayVisible_) {

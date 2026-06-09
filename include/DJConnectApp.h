@@ -131,6 +131,7 @@ private:
   void startLikedProxyPlaylist();
   void handleVoiceButton();
   void stopVoiceRecordingAndSendText();
+  void cancelVoiceFlow(const char *reason);
   void goToNextTrack();
   void goToPreviousTrack();
   void refreshPlaybackAndBattery();
@@ -201,6 +202,7 @@ private:
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
   static void wakeWordDetectedCallback(void *context);
+  static void voiceActivityCallback(void *context);
   static void softResetCueCallback(void *context);
   static void refreshFromWebCallback(void *context);
   static void resetPairingFromWebCallback(void *context);
@@ -325,6 +327,9 @@ private:
   bool stressTestActive_ = false;
   bool voiceRecording_ = false;
   bool voiceStopPending_ = false;
+  bool voiceStartedByWakeWord_ = false;
+  bool nextVoiceStartFromWakeWord_ = false;
+  volatile bool voiceCancelRequested_ = false;
   VoiceState voiceState_ = VoiceState::Idle;
   bool webVoiceTextOnlyActive_ = false;
   bool webVoiceTextOnlyConsumeNext_ = false;
@@ -335,6 +340,7 @@ private:
   bool haPairingPendingValidation_ = false;
   bool playbackRefreshAfterPairing_ = false;
   uint32_t pendingWifiSettingsRequestedAt_ = 0;
+  uint32_t voiceSilenceStartedAt_ = 0;
   uint32_t menuTopHoldStartedAt_ = 0;
   uint32_t wifiConnectFailedAt_ = 0;
   uint32_t lowBatteryGuardStartedAt_ = 0;

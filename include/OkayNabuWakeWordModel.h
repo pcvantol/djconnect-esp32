@@ -7,8 +7,8 @@ extern const uint8_t kOkayNabuWakeWordModel[];
 extern const size_t kOkayNabuWakeWordModelLen;
 
 static constexpr const char *kOkayNabuWakeWordName = "Okay Nabu";
-static constexpr float kOkayNabuWakeWordProbabilityCutoff = 0.97f;
-static constexpr uint8_t kOkayNabuWakeWordSlidingWindowSize = 5;
+static constexpr float kOkayNabuWakeWordProbabilityCutoff = 0.90f;
+static constexpr uint8_t kOkayNabuWakeWordSlidingWindowSize = 3;
 static constexpr uint16_t kOkayNabuWakeWordFeatureStepMs = 10;
 static constexpr size_t kOkayNabuWakeWordTensorArenaBytes = 26080;
 static constexpr const char *kOkayNabuWakeWordModelSha256 =
