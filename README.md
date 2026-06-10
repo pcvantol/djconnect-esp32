@@ -342,7 +342,7 @@ The device Settings menu includes a `Stress test` toggle. This is a local render
 
 ## OTA Firmware Updates
 
-Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries are board-specific: `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` for LilyGO and `djconnect-esp32-s3-box-3-vX.Y.Z.bin` for ESP32-S3-BOX-3. The manifest uses a `firmwares` array with each board profile, target device, asset, SHA256 and size; Home Assistant must select the entry that matches the paired device model.
+Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries are board-specific: `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` for LilyGO and `djconnect-esp32-s3-box-3-vX.Y.Z.bin` for ESP32-S3-BOX-3. The manifest uses a `firmwares` array with each board profile, target device, asset, SHA256 and size; Home Assistant must select the entry that matches the paired device model. `min_ha_integration` is derived from the firmware major/minor version, so firmware `X.Y.Z` publishes `X.Y.0`.
 
 Local development builds still show `vdev` on the device, but the Home Assistant/device API reports dev firmware as OTA-comparable version `0.0.0`. This keeps local flashes clearly recognizable while ensuring every published `X.Y.Z` firmware release is seen as an upgrade from a dev build.
 

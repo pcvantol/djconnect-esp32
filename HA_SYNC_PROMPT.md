@@ -88,7 +88,7 @@ Manifestvorm:
   "version": "3.0.x",
   "version_tag": "v3.0.x",
   "channel": "stable",
-  "min_ha_integration": "1.0.0",
+  "min_ha_integration": "3.0.0",
   "firmwares": [
     {
       "board": "t_embed_cc1101",
@@ -126,6 +126,7 @@ Regels:
 
 - LilyGO gebruikt `device:"lilygo-t-embed-s3"` en asset `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`.
 - ESP32-S3-BOX-3 gebruikt `device:"esp32-s3-box-3"` en asset `djconnect-esp32-s3-box-3-vX.Y.Z.bin`.
+- `min_ha_integration` volgt de firmware major.minor lijn: firmware `X.Y.Z` publiceert standaard `X.Y.0`. HA moet dus major.minor matchen, behalve dev firmware `0.0.0`.
 - Als er geen matching `firmwares[]` entry is, rapporteer duidelijk dat er geen firmware voor dit device type beschikbaar is.
 - Versievergelijking blijft op manifest `version`/`version_tag`; de assetselectie is device-type specifiek.
 

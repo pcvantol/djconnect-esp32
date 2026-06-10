@@ -11,6 +11,7 @@ Environment:
   PIO_BIN                 PlatformIO executable override.
   PIO_JOBS                PlatformIO build jobs per firmware environment, default 1.
   FIRMWARE_RELEASE_REPO   GitHub release repo, default pcvantol/djconnect-firmware.
+  --min-ha-integration    Override default X.Y.0 integration requirement derived from the release version.
 EOF
 }
 
@@ -142,7 +143,7 @@ VERSION_ARG=""
 DRY_RUN=false
 GH_RELEASE=false
 PUBLISH_FIRMWARE_REPO=""
-MIN_HA_INTEGRATION="1.0.0"
+MIN_HA_INTEGRATION=""
 CHANNEL="stable"
 
 while [[ $# -gt 0 ]]; do
@@ -198,6 +199,9 @@ VERSION="${VERSION%-beta}"
 if [[ "$VERSION_ARG" == *-beta ]]; then
   CHANNEL="beta"
 fi
+if [[ -z "$MIN_HA_INTEGRATION" ]]; then
+  MIN_HA_INTEGRATION="${VERSION%.*}.0"
+fi
 TAG="v$VERSION"
 MANIFEST="firmware_manifest.json"
 if [[ "$CHANNEL" == "beta" ]]; then
@@ -219,6 +223,7 @@ echo "DJConnect firmware release"
 echo "  version: $VERSION"
 echo "  tag:     $TAG"
 echo "  channel: $CHANNEL"
+echo "  min HA:  $MIN_HA_INTEGRATION"
 echo "  assets:  $ASSET, $BOX3_ASSET"
 echo "  dry-run: $DRY_RUN"
 

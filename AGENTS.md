@@ -122,7 +122,9 @@ into `include/Config.h`. Release builds publish both supported firmware assets:
 `esp32_s3_box3` as `djconnect-esp32-s3-box-3-vX.Y.Z.bin`; beta releases use the
 same board split with `beta-vX.Y.Z` asset names. The manifest uses a
 `firmwares` array for board-specific OTA selection and does not keep top-level
-single-device asset fields.
+single-device asset fields. `min_ha_integration` is derived from the firmware
+major/minor version, so firmware `X.Y.Z` publishes `X.Y.0` unless the release
+command explicitly overrides it.
 
 Expected recurring third-party warnings:
 
