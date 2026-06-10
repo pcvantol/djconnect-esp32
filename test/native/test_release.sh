@@ -53,6 +53,13 @@ echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 and esp32_s3_box3 i
 echo "$dry_run_output" | grep -q "DJCONNECT_VERSION=98.76.54 / DJCONNECT_VERSION_TAG=v98.76.54"
 echo "$dry_run_output" | grep -q "Would commit, tag and push source repo"
 echo "$dry_run_output" | grep -q "GitHub Actions will build/publish"
+grep -q '"$RELEASE_DIR/$LILYGO_ASSET"' release.sh
+grep -q '"$RELEASE_DIR/$BOX3_ASSET"' release.sh
+grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
+if grep -q 'GH_RELEASE_ARGS+=(.*"$RELEASE_DIR"/\\*)' release.sh; then
+  echo "GitHub release upload must not glob every local release artifact" >&2
+  exit 1
+fi
 
 set +e
 invalid_output="$(./release.sh 98.76 --dry-run 2>&1)"

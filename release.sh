@@ -398,7 +398,13 @@ if [[ "$GH_RELEASE" == "true" ]]; then
     if [[ "$CHANNEL" == "beta" ]]; then
       GH_RELEASE_ARGS+=(--prerelease)
     fi
-    GH_RELEASE_ARGS+=("$RELEASE_DIR"/*)
+    GH_RELEASE_ARGS+=(
+      "$RELEASE_DIR/$LILYGO_ASSET"
+      "$RELEASE_DIR/$LILYGO_ASSET.sha256"
+      "$RELEASE_DIR/$BOX3_ASSET"
+      "$RELEASE_DIR/$BOX3_ASSET.sha256"
+      "$RELEASE_DIR/$MANIFEST"
+    )
     run gh "${GH_RELEASE_ARGS[@]}"
   else
     echo "gh not found; skipping GitHub release creation"
