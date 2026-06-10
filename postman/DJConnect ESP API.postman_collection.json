@@ -28,7 +28,7 @@
     },
     {
       "key": "firmware_url",
-      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.0.3/djconnect-device-v3.0.3.bin",
+      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.0.24/djconnect-lilygo-t-embed-s3-v3.0.24.bin",
       "type": "string"
     },
     {
@@ -575,7 +575,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{firmware_url}}\",\n  \"sha256\": \"{{firmware_sha256}}\",\n  \"version\": \"2.5.0\",\n  \"device\": \"lilygo-t-embed-s3\"\n}"
+              "raw": "{\n  \"url\": \"{{firmware_url}}\",\n  \"sha256\": \"{{firmware_sha256}}\",\n  \"version\": \"3.0.24\",\n  \"device\": \"lilygo-t-embed-s3\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/device/ota",
@@ -588,7 +588,7 @@
                 "ota"
               ]
             },
-            "description": "Starts OTA firmware update after bearer validation and battery/charging checks. The ESP responds before rebooting."
+            "description": "Starts OTA firmware update after bearer validation and battery/charging checks. Use the firmware URL that matches the active device model: lilygo-t-embed-s3 or esp32-s3-box-3. The ESP responds before rebooting."
           },
           "response": []
         },

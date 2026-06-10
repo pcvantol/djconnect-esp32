@@ -6,7 +6,11 @@
 
 - OTA firmware downloads now follow GitHub release redirects explicitly and log the download host/final URL on failures, making CDN/transport failures visible instead of a bare `HTTP -1`.
 
-## v3.0.24
+### Changed
+
+- Refreshed handoff, sync prompts, backlog, Postman OTA examples and release hygiene tests for the v3.0.25 dual-firmware release contract.
+
+## v3.0.25
 
 Patch release for board abstraction and dual firmware publishing.
 

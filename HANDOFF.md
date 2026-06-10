@@ -6,13 +6,14 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release prepared from this repo: `v3.0.21`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
+- Latest firmware release prepared and published from this repo: `v3.0.24`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` currently keep only the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
-- Home Assistant device layer with pairing, mDNS discovery, device-token auth, OTA, DJ response and status updates.
+- Home Assistant device layer with pairing, mDNS discovery, device-token auth, board-specific OTA, DJ response and status updates.
+- Board profiles are split through `BoardProfile.h`. The production LilyGO build is `t_embed_cc1101` / `lilygo-t-embed-s3`; ESP32-S3-BOX-3 bring-up is `esp32_s3_box3` / `esp32-s3-box-3`.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
 - Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL. Middle encoder press cancels the active processing/DJ-response flow and requests response-audio stream stop as soon as possible.
 - Web portal includes Now Playing, DJ-response simulation, outputs, playlists, Up Next with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. Up Next is de-duplicated by URI or title/subtitle fallback so single-item queues do not render repeated tracks. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
-- Playback proxy control requests use short waits and transient-failure cooldown; OTA writes tolerate slow GitHub/CDN stream bursts while continuing to feed the watchdog and firmware-update LED animation.
+- Playback proxy control requests use short waits and transient-failure cooldown; OTA writes tolerate slow GitHub/CDN stream bursts, manually follow GitHub release redirects, log the download host/final URL on transport failures and continue to feed the watchdog and firmware-update LED animation.
 - Device main menu includes a local Games submenu with Pong, Asteroids and Fly. Games are local-only, use encoder movement/center-button fire where applicable, persist highscores in NVS and are not exposed through Home Assistant.
 - Device Help screen lists top button, encoder button and rotary actions. It appears once after initial Home Assistant pairing, then remains available from the main menu.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
@@ -40,9 +41,10 @@ Latest validated commands:
 clang++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/native/test_logic.cpp -o /tmp/djconnect_logic_test && /tmp/djconnect_logic_test
 bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
+/Users/pcvantol/.platformio/penv/bin/pio run -e esp32_s3_box3
 ```
 
-All passed after the v3.0.21 queue de-duplication release. The v3.0.21 release should publish `djconnect-device-v3.0.21.bin` plus manifest assets to `pcvantol/djconnect-firmware`.
+All passed during the v3.0.24 release/hygiene pass. The public v3.0.24 release publishes both `djconnect-lilygo-t-embed-s3-v3.0.24.bin` and `djconnect-esp32-s3-box-3-v3.0.24.bin`, both `.sha256` files and `firmware_manifest.json` to `pcvantol/djconnect-firmware`.
 
 ## Architecture
 
@@ -59,6 +61,7 @@ Main module boundaries:
 - `VoiceRecorder` and `VoiceHttpClient`: physical PTT WAV capture/upload.
 - `DjResponseAudioPlayer` and `SoundManager`: DJ response audio dispatch/playback and generated speaker cues.
 - `LogicHelpers`, `DJConnectMenuModel`, `NetworkActivityLogic`: host-testable pure logic.
+- `BoardProfile`: compile-time board identity, pinout and hardware capability abstraction for LilyGO and ESP32-S3-BOX-3 builds.
 
 Core data/security boundaries:
 
@@ -83,6 +86,7 @@ Core data/security boundaries:
 - Up Next item playback requires a valid context URI. The ESP preserves queue `context_uri` from Home Assistant and uses it as a fallback when the latest playback snapshot has no context. Queue display state is de-duplicated on the ESP before device/web rendering.
 - Web Up Next album art is URL pass-through only. The ESP does not download queue thumbnails; the browser lazy-loads them when the queue panel is visible.
 - Release binaries/manifests are generated locally under `release/` but ignored by git; published OTA assets live only in `pcvantol/djconnect-firmware`, not in the closed-source source repo.
+- Release manifests use a `firmwares` array only. There is no legacy single-device asset compatibility: LilyGO uses `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-vX.Y.Z.bin`, and `min_ha_integration` is derived as `X.Y.0` from firmware version `X.Y.Z`.
 - Local `dev` / `vdev` builds report OTA-comparable version `0.0.0` to Home Assistant/device API so published releases are seen as upgrades.
 - Bootstrap OTA is separate from normal HA OTA: it only runs before pairing, checks the public firmware release API, skips dev firmware, and reuses the normal OTA write/display/LED/sound path when a newer release is found.
 - True NVS Encryption is not active in the current Arduino/PlatformIO build. It requires an ESP-IDF or Arduino-as-component build with `CONFIG_NVS_ENCRYPTION=y` plus an `nvs_keys` partition and factory/serial flashing. OTA alone cannot safely enable it.
@@ -94,6 +98,7 @@ Core data/security boundaries:
 - HA native entities for brightness, speaker volume, timeouts, language, theme and log level should read the mirrored `/api/djconnect/status` settings fields; otherwise they may show minimum/default values until changed from HA.
 - If HA reposts direct pairing/settings callbacks too often during normal playback commands, debounce or route those updates so they do not spam `/api/device/pair`. The ESP now treats identical direct-pair callbacks as idempotent, but the integration should still reserve `/api/device/pair` for initial pairing, explicit re-pair/token rotation or recovery.
 - Keep the Home Assistant integration and firmware contract synchronized around native device entities, optional playback `media_player`, OTA status clearing, stale pairing behavior and command/status payloads.
+- Home Assistant OTA selection must use the matching `firmwares[]` entry for the paired device model. Do not fall back to the removed generic firmware asset naming or top-level single-device manifest fields.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
 - If Home Assistant returns duplicate queue entries for single-track queues, firmware de-duplicates them for display; the integration should still prefer returning the actual backend queue shape rather than padding with the current item.
 - The Home Assistant integration must send a real LAN `ha_local_url` during pairing. Sending Nabu Casa as local leaves playback local URL missing by design.
@@ -121,7 +126,7 @@ Recommended next work:
    - keep actual backend credentials and playback API calls in Home Assistant.
 7. Stress-test DJ-response MP3 playback with several short and long files.
 8. Continue reducing `DJConnectApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
-9. Add release checklist item for confirming public GitHub Action firmware contains the expected `vX.Y.Z` marker.
+9. Keep the GitHub Actions Node runtime warning on the release workflow backlog; current actions still pass, but GitHub is deprecating Node.js 20 runner action support.
 10. Add product security review for local HTTP device API, bearer-token lifetime, replay behavior and factory reset behavior.
 
 ## Home Assistant Sync Prompt

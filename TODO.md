@@ -120,12 +120,19 @@ Concrete backlog for follow-up implementation and validation.
 ## OTA / Release
 
 - [ ] Confirm GitHub Action release binary contains expected `vX.Y.Z` marker.
-- [ ] Confirm only one public OTA binary asset is published for the target device.
-- [ ] Confirm manifest `device` value matches ESP OTA validation: `lilygo-t-embed-s3`.
+- [ ] Confirm both public OTA binary assets are published:
+  - `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`;
+  - `djconnect-esp32-s3-box-3-vX.Y.Z.bin`.
+- [ ] Confirm manifest uses only the `firmwares` array and no legacy top-level single-device OTA fields.
+- [ ] Confirm manifest `device` values match ESP OTA validation:
+  - `lilygo-t-embed-s3`;
+  - `esp32-s3-box-3`.
+- [ ] Confirm `min_ha_integration` is derived from the firmware major/minor version (`X.Y.Z` -> `X.Y.0`).
 - [ ] Confirm OTA update screen shows target version.
 - [ ] Confirm OTA start/progress/complete/failure beeps are simple and not stuttery.
 - [ ] Confirm purple LED-ring animation is visible during OTA.
 - [ ] Add CI check for `release.sh --dry-run` and invalid version if not already wired.
+- [ ] Update GitHub Actions to Node.js 24-compatible action versions or opt in once the runner default changes.
 
 ## Refactor
 

@@ -35,6 +35,12 @@ if rg -n --glob "!test/native/test_release.sh" "spotifydj-device|releases/downlo
   exit 1
 fi
 
+if rg -n --glob "!test/native/test_release.sh" "djconnect-device-v|djconnect-device-esp32-s3-box-3|\"asset\": \"djconnect-device|\"url\": \"https://github.com/pcvantol/djconnect-firmware/releases/download/.*/djconnect-device" \
+  README.md CHANGELOG.md AGENTS.md HANDOFF.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  echo "old single-device firmware asset reference found" >&2
+  exit 1
+fi
+
 dry_run_output="$(./release.sh 98.76.54 --dry-run)"
 echo "$dry_run_output" | grep -q "version: 98.76.54"
 echo "$dry_run_output" | grep -q "tag:     v98.76.54"

@@ -1,11 +1,16 @@
-# DJConnect iOS/macOS App Handoff
+# DJConnect iOS/macOS App Sync Prompt / Handoff
 
 This handoff is for building a new native iOS/macOS DJConnect client that uses
 the same Home Assistant custom integration backend as the ESP32 firmware.
 
-The app should be functionally comparable to the ESP device at the integration
-contract level, but it is not an ESP emulator. Use `client_type` to identify the
-client family:
+Use this as the sync prompt for a new Apple-client repo. The current ESP
+firmware contract line is `v3.0.25`; Apple clients should follow the same
+`3.0.x` Home Assistant integration protocol unless that backend contract is
+changed deliberately.
+
+The app should be functionally comparable to the ESP device at the Home
+Assistant integration contract level, but it is not an ESP emulator. Use
+`client_type` to identify the client family:
 
 - iOS app: `ios`
 - macOS app: `macos`
@@ -59,8 +64,8 @@ Recommended fields:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "device_name": "DJConnect iPhone",
   "client_type": "ios",
-  "firmware": "3.0.17",
-  "app_version": "3.0.17",
+  "firmware": "3.0.25",
+  "app_version": "3.0.25",
   "platform": "ios"
 }
 ```
@@ -72,8 +77,8 @@ For macOS:
   "device_id": "djconnect-macos-8F3A2C91B45D",
   "device_name": "DJConnect Mac",
   "client_type": "macos",
-  "firmware": "3.0.17",
-  "app_version": "3.0.17",
+  "firmware": "3.0.25",
+  "app_version": "3.0.25",
   "platform": "macos"
 }
 ```
@@ -95,6 +100,11 @@ protocol version:
 If HA returns HTTP `426` with `error: "version_mismatch"`, the app must not
 reset pairing or discard the token. Show an update-required state and pause
 command/voice retries until the user updates the app or integration.
+
+The public ESP firmware manifest uses `min_ha_integration` derived from the
+firmware major/minor line (`X.Y.Z` -> `X.Y.0`). Apple clients should apply the
+same major/minor compatibility rule locally even though they do not consume ESP
+OTA firmware assets.
 
 Expected response:
 
@@ -170,8 +180,8 @@ Minimum payload:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "client_type": "ios",
   "ha_pairing_status": "paired",
-  "firmware": "3.0.17",
-  "app_version": "3.0.17",
+  "firmware": "3.0.25",
+  "app_version": "3.0.25",
   "state": "online",
   "status": "online",
   "battery_percent": 85,
@@ -210,6 +220,9 @@ Status responses may include:
 
 Use `device_language`/`language` to update app UI language only if the app
 supports remote language sync. Otherwise keep it as informational state.
+
+Status is authoritative for Home Assistant entities that represent the app
+client. Command payloads must not be used as partial status snapshots.
 
 ## Playback Commands
 
@@ -340,6 +353,25 @@ Rules:
 - Do not call OpenAI or Spotify directly from the app for DJConnect commands.
 - Do not log temporary `audio_url` tokens.
 - If returned audio cannot be played, show text-only response.
+- If a user cancels the PTT/DJ-response flow locally, the app may ignore any
+  late HA response from the in-flight request.
+- If implementing wake-word support on Apple platforms, keep detection local to
+  the app/device where Apple platform policy permits it, then start the same
+  `/api/djconnect/voice` WAV upload flow. HA should not need a separate
+  wake-word endpoint.
+
+## OTA And Device Updates
+
+ESP OTA is board-specific and uses the public firmware manifest `firmwares[]`
+entries for:
+
+- `lilygo-t-embed-s3`
+- `esp32-s3-box-3`
+
+Apple clients must not request or install ESP firmware assets. If the Home
+Assistant integration exposes update information to Apple clients, it should be
+app-store/TestFlight/direct-download metadata, not `/api/device/ota` with ESP
+firmware binaries.
 
 ## App Settings
 
@@ -448,10 +480,12 @@ Do not put SwiftUI view logic into the HTTP client.
 - App pairs with the existing `djconnect` HA integration.
 - App status posts include `client_type` as `ios` or `macos`.
 - App command posts include `client_type` as `ios` or `macos`.
+- App does not send `device_type` for identity.
 - HA backend playback commands work without any Spotify credentials in the app.
 - Backend unavailable does not reset pairing.
 - HTTP 426 version mismatch shows update-required UI and keeps pairing.
 - 401/403/404 show stale pairing/setup recovery and keep token until user reset.
 - Voice/PTT, if implemented, uploads raw WAV to `/api/djconnect/voice`.
+- Apple clients do not consume ESP OTA firmware manifest assets.
 - No secrets appear in logs or diagnostics.
 - iOS and macOS clients can coexist with ESP32 clients in the same HA backend.

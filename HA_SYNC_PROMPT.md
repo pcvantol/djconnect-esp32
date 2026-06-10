@@ -3,13 +3,13 @@
 Use this prompt in the DJConnect Home Assistant integration repo when syncing with the ESP firmware.
 
 ```md
-# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.0.21
+# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.0.24
 
 Werk in de bestaande Home Assistant custom integration repo voor DJConnect.
 
 ## Doel
 
-Synchroniseer de HA integratie met de ESP firmware contracten rond pairing, status, playback commands, sensoren en voice.
+Synchroniseer de HA integratie met de ESP firmware contracten rond pairing, status, playback commands, sensoren, voice en multi-device OTA.
 
 ## Belangrijkste Contracten
 
@@ -155,14 +155,25 @@ Regels:
 - Als er maar 1 queue-item is, retourneer 1 item.
 - `context_uri` blijft nodig voor ESP/web per-item play.
 - Album art URLs mogen pass-through zijn; de ESP downloadt queue thumbnails niet, de browser lazy-loadt ze wanneer de web queue zichtbaar is.
-- Firmware v3.0.21 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
+- Firmware v3.0.24 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
 
 ### Voice
 
 ESP physical PTT uploadt WAV naar `/api/djconnect/voice` met bearer token en `X-DJConnect-Device-ID`.
 HA doet Assist/STT/TTS en retourneert DJ tekst plus optionele `audio_url`.
 
-Firmware v3.0.21 kan de lokale PTT/DJ-response flow annuleren met de middelste encoderknop tijdens processing of het DJ-response scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
+Firmware v3.0.24 kan de lokale PTT/DJ-response flow annuleren met de middelste encoderknop tijdens processing of het DJ-response scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
+
+### Wake Word
+
+Okay Nabu wake-word detectie draait lokaal op de ESP. HA hoeft geen wake-word audio te verwerken. Na detectie start de ESP dezelfde fysieke PTT flow en uploadt daarna een WAV naar `/api/djconnect/voice`.
+
+Regels:
+
+- HA moet dezelfde `/api/djconnect/voice` response blijven gebruiken voor PTT en wake-word activatie.
+- STT/TTS fouten moeten als duidelijke JSON body terugkomen met `success:false`, `error` en `message`.
+- Een optionele `audio_url` mag WAV of MP3 zijn.
+- De ESP mag een late voice response negeren als de gebruiker de lokale flow heeft geannuleerd.
 
 ## Acceptatiecriteria
 
