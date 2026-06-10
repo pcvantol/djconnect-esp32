@@ -113,6 +113,8 @@ void DJConnectApp::begin() {
     return;
   }
 
+  display_.showBootMessage(I18n::text("boot_booting"), battery_);
+  responsiveDelay(3000);
   ledRing_.playStartupRainbow();
   display_.showBootMessage(I18n::text("boot_booting"), battery_);
   connectWiFi(Config::WifiConnectTimeoutMs, true);

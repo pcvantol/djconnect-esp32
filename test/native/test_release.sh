@@ -18,7 +18,7 @@ fi
 echo "8b3f3962f3a842893cabad2f4903f9a76bdced467f1dc66ed7398db9b527308a  assets/esp_display/embedded/djconnect_icon_160x160.rgb565" | shasum -a 256 -c -
 echo "d10eb3ed736e2c704e998bdc8fde2e34852e684822139553f68fe91bcc45860b  assets/esp_display/embedded/djconnect_icon_170x170.rgb565" | shasum -a 256 -c -
 echo "c990edc52a6957ae399411a809819c394a1d829c13745f871ec2444a92c017e5  assets/esp_display/embedded/djconnect_splash_170x320.rgb565" | shasum -a 256 -c -
-echo "04017a322314225531fc501a6b6ea20a58821115cf0a2f35e895764c3b0fe9d5  assets/website/site.webmanifest" | shasum -a 256 -c -
+echo "8193cf530b67fa2a0880170a0705d657f89f5e1bb9f7df2f8b173368c569dc8d  assets/website/site.webmanifest" | shasum -a 256 -c -
 echo "97d1a6567cc3c61d8cdb4c2ca05ed37adfd6bdc112efeb90177c4bba7095f476  assets/website/icon-192.png" | shasum -a 256 -c -
 echo "34e667173f5fe834f9282d11ab5a1f4f5fa2225010388f50a6f5bf7d72e2d460  assets/website/favicon-32.png" | shasum -a 256 -c -
 

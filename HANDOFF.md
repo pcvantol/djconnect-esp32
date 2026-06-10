@@ -12,14 +12,14 @@ Current repo state includes:
 - Board profiles are split through `BoardProfile.h`. The production LilyGO build is `t_embed_cc1101` / `lilygo-t-embed-s3`; ESP32-S3-BOX-3 bring-up is `esp32_s3_box3` / `esp32-s3-box-3`.
 - The ESP32-S3-BOX-3 PlatformIO env uses the `esp32s3box` board definition with PSRAM enabled. The LilyGO env remains on the existing no-PSRAM `esp32-s3-devkitc-1` definition until a specific PSRAM-equipped T-Embed-CC1101 variant is verified.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
-- Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL. Middle encoder press cancels the active processing/DJ-response flow and requests response-audio stream stop as soon as possible.
-- Web portal includes Now Playing, DJ-response simulation, outputs, playlists, Up Next with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. It uses the DJConnect blue/purple brand styling, shows firmware version plus board device model in the title bar, and hides the battery icon on boards without a battery gauge such as ESP32-S3-BOX-3. Up Next is de-duplicated by URI or title/subtitle fallback so single-item queues do not render repeated tracks. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
+- Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL. Middle encoder press cancels the active processing/DJ-announcement flow and requests response-audio stream stop as soon as possible.
+- Web portal includes Now Playing, DJ-announcement simulation, outputs, playlists, Up Next with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. It uses the DJConnect blue/purple brand styling, shows `Jouw persoonlijke muziek DJ`, firmware version plus board device model in the title bar, and hides the battery icon on boards without a battery gauge such as ESP32-S3-BOX-3. Up Next is de-duplicated by URI or title/subtitle fallback so single-item queues do not render repeated tracks. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
 - Playback proxy control requests use short waits and transient-failure cooldown; OTA writes release wake-word/TFLite and active voice/audio resources before GitHub TLS, tolerate slow GitHub/CDN stream bursts, manually follow GitHub release redirects, log the download host/final URL on transport failures and continue to feed the watchdog and firmware-update LED animation.
 - Device main menu includes a local Games submenu with Pong, Asteroids and Fly. Games are local-only, use encoder movement/center-button fire where applicable, persist highscores in NVS and are not exposed through Home Assistant.
 - Device Help screen lists top button, encoder button and rotary actions. It appears once after initial Home Assistant pairing, then remains available from the main menu.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
 - Home Assistant should expose the proxied playback as a native `media_player` entity if user-facing HA media controls are desired. That entity represents the backend playback session, not the ESP speaker.
-- WiFi boot connection timeout is 15 seconds. During WiFi connect, the LED ring shows a green chase animation.
+- The boot screen shows `Jouw persoonlijke muziek DJ` for at least three seconds. WiFi boot connection timeout is 15 seconds. During WiFi connect, the LED ring shows a green chase animation.
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed. The captive portal mirrors the blue/purple DJConnect web style and includes the board device model in browser title/header.
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
@@ -82,8 +82,8 @@ Core data/security boundaries:
 - The ESP stays focused on local edge behavior: display, controls, LED ring, battery/power policy, mic capture and playback of HA-provided DJ response audio.
 - A Home Assistant `media_player` entity may be implemented in the integration for the playback proxy. HA `media_player.pause`, `media_player.play_media`, `media_player.volume_set`, source selection and next/previous should be translated by the integration into backend playback actions and/or ESP `/api/device/command` updates. Do not make this entity imply that Spotify/Sonos music audio is played by the ESP.
 - The ESP speaker remains reserved for local cues and DJ/voice response audio. Treat that as device-local feedback, separate from the backend music `media_player`.
-- Physical PTT must stay on the WAV-upload route to `/api/djconnect/voice`; do not reintroduce direct ESP Home Assistant Assist WebSocket authentication. Keep the processing/DJ-response cancel path responsive from the middle encoder button.
-- Web PTT is a compact DJ-response simulation path. It requires HA pairing but not playback-backend credentials on the ESP, active playback or browser microphone permission.
+- Physical PTT must stay on the WAV-upload route to `/api/djconnect/voice`; do not reintroduce direct ESP Home Assistant Assist WebSocket authentication. Keep the processing/DJ-announcement cancel path responsive from the middle encoder button.
+- Web PTT is a compact DJ-announcement simulation path. It requires HA pairing but not playback-backend credentials on the ESP, active playback or browser microphone permission.
 - Smart Shuffle was removed because Spotify does not expose a useful public Web API control for it.
 - Current song is a menu screen and uses top-button back; it does not start PTT.
 - Up Next item playback requires a valid context URI. The ESP preserves queue `context_uri` from Home Assistant and uses it as a fallback when the latest playback snapshot has no context. Queue display state is de-duplicated on the ESP before device/web rendering.
@@ -105,7 +105,7 @@ Core data/security boundaries:
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration.
 - If Home Assistant returns duplicate queue entries for single-track queues, firmware de-duplicates them for display; the integration should still prefer returning the actual backend queue shape rather than padding with the current item.
 - The Home Assistant integration must send a real LAN `ha_local_url` during pairing. Sending Nabu Casa as local is rejected by firmware; sending a stale token gives a local `/api/djconnect/status` 401 and keeps H red.
-- MP3 DJ-response playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
+- MP3 DJ-announcement playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
 - Home Assistant STT/TTS failures are backend/integration dependent. Firmware surfaces error bodies but cannot fix missing HA STT provider configuration.
 - Web portal performance depends heavily on local WiFi quality. Polling has been reduced/visibility-aware, but poor WiFi can still make the UI feel slow.
 - Flash Encryption and NVS Encryption are not production-enabled yet.
@@ -127,7 +127,7 @@ Recommended next work:
    - attributes: title, artist, album art, output/source, volume and supported features;
    - commands: play/pause, next/previous, volume, source/output selection and playlist/media start;
    - keep actual backend credentials and playback API calls in Home Assistant.
-7. Stress-test DJ-response MP3 playback with several short and long files.
+7. Stress-test DJ-announcement MP3 playback with several short and long files.
 8. Continue reducing `DJConnectApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
 9. Keep the GitHub Actions Node runtime warning on the release workflow backlog; current actions still pass, but GitHub is deprecating Node.js 20 runner action support.
 10. Add product security review for local HTTP device API, bearer-token lifetime, replay behavior and factory reset behavior.

@@ -290,7 +290,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - On release, the ESP uploads the WAV as raw request body to `/api/djconnect/voice` with `Content-Type: audio/wav`, `Authorization: Bearer <device_token>` and `X-DJConnect-Device-ID`.
 - The Home Assistant integration/backend owns any Home Assistant core auth needed for Assist, STT or TTS. If Assist requires `/api/websocket`, that websocket connection belongs in the HA integration, not on the ESP.
 - `/api/djconnect/voice` returns DJ text plus optional `audio_url`; the ESP displays the text and plays WAV/MP3 response audio when possible.
-- During PTT processing or the DJ-response screen, a middle encoder press must cancel the remaining PTT/DJ-response flow as quickly as possible. In-flight HA HTTP calls may finish later, but their result should be ignored locally after cancellation; response audio streams should receive a stop request.
+- During PTT processing or the DJ-announcement screen, a middle encoder press must cancel the remaining PTT/DJ-announcement flow as quickly as possible. In-flight HA HTTP calls may finish later, but their result should be ignored locally after cancellation; response audio streams should receive a stop request.
 - Do not add direct ESP Assist websocket auth; the DJConnect device token is for the integration API, not Home Assistant core.
 - Do not start physical PTT from Current song/AlbumArt. Current song is a read-only detail screen and uses the same top-button back behavior as menu screens.
 - The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It displays returned DJ text on the device and must return the voice/PTT state to idle after completion. It intentionally must not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block physical encoder PTT. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
@@ -416,7 +416,7 @@ HA/Spotify status indicators:
 - Device statusbar: `H`, playback music-note icon.
 - Web header mirrors the same indicators.
 - LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup/pairing animations.
-- Boot uses a calm startup rainbow lap. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
+- Boot shows the DJConnect tagline `Jouw persoonlijke muziek DJ` for at least three seconds, then uses a calm startup rainbow lap. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
 
 ## Volume Rules
 
@@ -473,7 +473,7 @@ Current web expectations:
 - Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and local HA URL/status.
 - The Home Assistant pairing banner setup link must open in a new tab/window so the local ESP web portal remains loaded.
 - The web portal and captive/setup portal should keep the current DJConnect blue/purple brand styling from the icon/logo. Use blue/purple for headers, panels, primary buttons and pairing surfaces while keeping status colors semantically green/yellow/red.
-- The top web title bar shows firmware version and board device model. The status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Hide the battery icon when `battery.available` is false, such as ESP32-S3-BOX-3. Keep the IP address in the WiFi block, not in the top status bar.
+- The top web title bar shows `Jouw persoonlijke muziek DJ`, firmware version and board device model. The status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Hide the battery icon when `battery.available` is false, such as ESP32-S3-BOX-3. Keep the IP address in the WiFi block, not in the top status bar.
 - The Home Assistant URL label in the web portal is `URL`, not `HA URL`.
 - Album art is shown when available.
 - Volume slider range is `0-60`.

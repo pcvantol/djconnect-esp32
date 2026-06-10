@@ -1,7 +1,7 @@
 {
   "name": "DJConnect",
   "short_name": "DJConnect",
-  "description": "Your personal AI DJ for Home Assistant.",
+  "description": "DJConnect. Jouw persoonlijke muziek DJ.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#070812",

@@ -1,5 +1,7 @@
 # DJConnect Firmware
 
+DJConnect. Jouw persoonlijke muziek DJ.
+
 DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101, with an early ESP32-S3-BOX-3 bring-up environment. The device is a Home Assistant paired playback remote with a display, rotary encoder, top button, LED ring, web portal and Home Assistant device integration.
 
 DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotify OAuth credentials or call the Spotify Web API directly. Playback commands are sent to the Home Assistant integration as generic backend-agnostic commands, so Home Assistant can proxy them to Spotify today or another playback backend such as Sonos or `media_player` later.
@@ -26,7 +28,7 @@ DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotif
 - Top button held for 10 seconds: restart/soft reset.
 - Encoder button + top button held for 10 seconds: factory reset when battery state allows it.
 - Menus for Current song, Up Next, Playlists, Sound Outputs, Games, Help, Settings, About and Logs.
-- Mobile web portal with Now Playing, DJ-response simulation, album art, volume slider, outputs, queue, playlists, local games, logs, diagnostics, settings, WiFi update and OTA upload.
+- Mobile web portal with Now Playing, DJ announcement simulation, album art, volume slider, outputs, queue, playlists, local games, logs, diagnostics, settings, WiFi update and OTA upload.
 - Home Assistant pairing with mDNS discovery and device-token authentication.
 - BLE WiFi provisioning in setup mode for apps/flows that actively write credentials to the device.
 - Home Assistant discovery, periodic status updates and two-way commands, including selected settings such as log level.
@@ -61,7 +63,7 @@ hardware mapping is verified.
 - Playback backend requirements are handled by the Home Assistant integration. For Spotify this may still require Spotify Premium and an available Spotify Connect output.
 - Some playback outputs may not support volume or queue metadata; the ESP disables unsupported actions when Home Assistant reports they are unavailable.
 - OTA through `/api/device/ota` requires HTTPS and verifies the streamed firmware against the manifest SHA256 before rebooting.
-- Web portal DJ-response test runs through the ESP and Home Assistant pairing, displays the returned DJ text on the device and does not require browser microphone access.
+- Web portal DJ announcement test runs through the ESP and Home Assistant pairing, displays the returned DJ text on the device and does not require browser microphone access.
 
 ## License
 
@@ -209,13 +211,13 @@ Physical PTT, from the Now Playing screen:
 7. The ESP displays the DJ text briefly, detects the audio type from `Content-Type` or magic bytes, and plays compatible WAV/MP3 audio through the built-in speaker.
 8. The UI returns to Now Playing.
 
-While the device is processing the PTT request or showing the DJ response screen, pressing the middle encoder button cancels the rest of the PTT/DJ-response flow as soon as possible. If an HA HTTP request is already in flight, the firmware ignores the result when it returns; response audio playback receives a stop request and exits on the next stream loop.
+While the device is processing the PTT request or showing the DJ announcement screen, pressing the middle encoder button cancels the rest of the PTT/DJ-announcement flow as soon as possible. If an HA HTTP request is already in flight, the firmware ignores the result when it returns; response audio playback receives a stop request and exits on the next stream loop.
 
 The Current song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
 Games are local mini-games in the device menu and web portal. Pong shows score and high score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Asteroids uses the encoder to move horizontally and shoots on encoder press. Fly uses the encoder to move vertically and shoots on encoder press while flying left-to-right. Device game highscores are stored in the `provision` NVS namespace and are cleared by factory reset; web game highscores are stored locally in the browser.
 
-Web portal PTT is a simulation button for testing the DJ-response text path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant, displays the returned DJ text on the device and then returns the voice/PTT state to idle. The web simulation intentionally does not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block the physical encoder PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
+Web portal PTT is a simulation button for testing the DJ-announcement text path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant, displays the returned DJ text on the device and then returns the voice/PTT state to idle. The web simulation intentionally does not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block the physical encoder PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
 
 If the Home Assistant integration has been removed while the ESP still has an old pairing token, the web PTT simulation can return a Home Assistant voice endpoint 404. Reset Home Assistant pairing on the device or web portal, add the DJConnect integration again, and pair the device with the new code.
 
@@ -299,7 +301,7 @@ After boot and Home Assistant setup, the ESP forces an immediate playback status
 
 ## Web Portal
 
-The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, local games, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. The portal uses the current DJConnect icon style with blue/purple brand accents for headers, panels and primary actions while preserving green/red/yellow status colors for state. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header shows the firmware version and board device model, then right-aligns status in the same order as the device: H, playback music-note icon, WiFi signal bars and, only on boards with a battery gauge, a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The playback music-note indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
+The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-announcement flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, local games, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. The portal uses the current DJConnect icon style with blue/purple brand accents for headers, panels and primary actions while preserving green/red/yellow status colors for state. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header shows `Jouw persoonlijke muziek DJ`, firmware version and board device model, then right-aligns status in the same order as the device: H, playback music-note icon, WiFi signal bars and, only on boards with a battery gauge, a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The playback music-note indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
 
 The device Logs screen shows the newest log tail by default and can be scrolled with the encoder to inspect older buffered entries. Serial, web and device logs use the compact `HH:mm INF` severity prefix format.
 
@@ -354,7 +356,7 @@ Local development builds still show `vdev` on the device, but the Home Assistant
 
 Freshly provisioned, unpaired release firmware also performs a pre-pairing bootstrap update check after WiFi connects. It uses the GitHub Releases API for `pcvantol/djconnect-firmware`, follows the normal OTA screen/LED/sound/write flow when a newer release is available, and continues silently into pairing if the check fails. Dev builds are skipped so local development firmware is not replaced automatically.
 
-During normal boot, the LED ring plays one calm rainbow startup lap before WiFi, setup/AP, charging or playback states take over. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. Before HA-triggered or bootstrap OTA download starts, the firmware releases wake-word/TFLite and active voice/audio resources so GitHub TLS has a large enough free heap block on non-PSRAM boards. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot. OTA downloads tolerate slow GitHub/CDN bursts with a longer idle window while still aborting controlled when the stream genuinely stalls.
+During normal boot, the display shows the DJConnect tagline `Jouw persoonlijke muziek DJ` for at least three seconds before WiFi, setup/AP, charging or playback states take over. The LED ring then plays one calm rainbow startup lap. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. Before HA-triggered or bootstrap OTA download starts, the firmware releases wake-word/TFLite and active voice/audio resources so GitHub TLS has a large enough free heap block on non-PSRAM boards. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot. OTA downloads tolerate slow GitHub/CDN bursts with a longer idle window while still aborting controlled when the stream genuinely stalls.
 
 ## GitHub Firmware Release
 

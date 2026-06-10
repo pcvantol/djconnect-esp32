@@ -159,15 +159,18 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
   <link rel="manifest" href="/site.webmanifest?v=2">
   <title>DJConnect</title>
   <style>
-    :root { color-scheme: light dark; --bg:#070a14; --panel:#101522; --muted:#9aa5bd; --line:#27304a; --green:#1ed760; --yellow:#d6b84a; --orange:#ff9f1a; --blue:#2f8cff; --purple:#9b72ff; --purple-soft:#c9b8ff; --red:#ff735d; --text:#f5f7ff; --header:rgba(7,10,20,.95); --field:#0b1020; --bar-bg:#0a0f1c; --art-bg:#050816; --row-line:rgba(159,183,255,.10); --log-bg:#050816; --log-text:#cad3ea; }
+    :root { color-scheme: light dark; --bg:#070a14; --panel:#101522; --muted:#9aa5bd; --line:#27304a; --green:#1ed760; --yellow:#d6b84a; --orange:#ff9f1a; --blue:#2f8cff; --purple:#9b72ff; --purple-soft:#c9b8ff; --playback-lila:#d733f2; --playback-lila-deep:#9b2ee8; --red:#ff735d; --text:#f5f7ff; --header:rgba(7,10,20,.95); --field:#0b1020; --bar-bg:#0a0f1c; --art-bg:#050816; --row-line:rgba(159,183,255,.10); --log-bg:#050816; --log-text:#cad3ea; }
     html[data-theme="light"] { --bg:#f5f7ff; --panel:#ffffff; --muted:#63708e; --line:#d7ddf0; --green:#148a3c; --yellow:#8f710f; --orange:#c86f00; --blue:#1f6fd1; --purple:#7046d8; --purple-soft:#5f46a7; --red:#b23a31; --text:#12182a; --header:rgba(245,247,255,.96); --field:#ffffff; --bar-bg:#e9edf8; --art-bg:#eef2ff; --row-line:rgba(18,24,42,.09); --log-bg:#f1f3fb; --log-text:#25304a; }
     html[data-theme="dark"] { --bg:#070a14; --panel:#101522; --muted:#9aa5bd; --line:#27304a; --green:#1ed760; --yellow:#d6b84a; --orange:#ff9f1a; --blue:#2f8cff; --purple:#9b72ff; --purple-soft:#c9b8ff; --red:#ff735d; --text:#f5f7ff; --header:rgba(7,10,20,.95); --field:#0b1020; --bar-bg:#0a0f1c; --art-bg:#050816; --row-line:rgba(159,183,255,.10); --log-bg:#050816; --log-text:#cad3ea; }
     @media (prefers-color-scheme: light) { html[data-theme="auto"] { --bg:#f5f7ff; --panel:#ffffff; --muted:#63708e; --line:#d7ddf0; --green:#148a3c; --yellow:#8f710f; --orange:#c86f00; --blue:#1f6fd1; --purple:#7046d8; --purple-soft:#5f46a7; --red:#b23a31; --text:#12182a; --header:rgba(245,247,255,.96); --field:#ffffff; --bar-bg:#e9edf8; --art-bg:#eef2ff; --row-line:rgba(18,24,42,.09); --log-bg:#f1f3fb; --log-text:#25304a; } }
     * { box-sizing:border-box; }
     body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
     header { position:sticky; top:0; z-index:2; background:linear-gradient(135deg,rgba(47,140,255,.16),rgba(155,114,255,.18)),var(--header); border-bottom:1px solid var(--line); padding:16px; }
-    h1 { margin:0; font-size:22px; letter-spacing:0; display:flex; align-items:center; gap:8px; }
+    h1 { margin:0; font-size:22px; letter-spacing:0; display:flex; align-items:center; gap:8px; min-width:0; }
     .brand-icon { width:28px; height:28px; border-radius:6px; }
+    .brand-copy { display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .brand-line { display:flex; align-items:center; gap:8px; min-width:0; flex-wrap:wrap; }
+    .brand-tagline { color:var(--purple-soft); font-size:13px; line-height:1.15; font-weight:700; }
     .model-chip { color:var(--muted); font-size:12px; font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .sub { color:var(--muted); font-size:13px; margin-top:4px; }
     .header-status { display:flex; justify-content:flex-end; align-items:center; gap:8px; }
@@ -207,8 +210,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     label { display:grid; gap:5px; color:var(--muted); font-size:13px; }
     select, button, input:not([type]), input[type=text], input[type=password], input[type=file] { width:100%; min-height:42px; border-radius:8px; border:1px solid var(--line); background:var(--field); color:var(--text); padding:8px 10px; font-size:15px; }
     input[type=range] { width:100%; accent-color:var(--green); }
-    input.volume-slider { accent-color:var(--orange); }
-    .volume-value, .volume-label { color:var(--orange); }
+    input.volume-slider { accent-color:var(--playback-lila); }
+    .volume-value, .volume-label { color:var(--playback-lila); }
     button { background:linear-gradient(135deg,var(--blue),var(--purple)); border-color:rgba(201,184,255,.78); color:#fff; font-weight:700; cursor:pointer; box-shadow:inset 0 -1px 0 rgba(0,0,0,.25); }
     .compact-actions { display:grid; grid-template-columns:repeat(5, 46px); justify-content:start; gap:8px; align-items:center; }
     .playback-volume { grid-column:1 / -1; display:grid; gap:6px; margin-top:2px; }
@@ -224,7 +227,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .playback-actions button.icon-button,
     .playback-actions button.icon-button.is-off,
     .playback-actions button.icon-button.is-on,
-    .playback-actions button.icon-button.is-track { background:var(--orange); border-color:var(--orange); color:#111; }
+    .playback-actions button.icon-button.is-track { background:linear-gradient(135deg,var(--playback-lila),var(--playback-lila-deep)); border-color:rgba(231,139,255,.86); color:#fff; }
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
     button.warning { background:#a57912; border-color:#d6a329; color:#fff3c4; }
     button.firmware { background:#6f3bd8; border-color:#9b72ff; color:#f4edff; }
@@ -292,7 +295,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <header>
-    <h1><img class="brand-icon" src="/icon-192.png?v=3" alt="">DJConnect <span id="appVersion" class="sub">-</span><span id="appModel" class="model-chip">-</span></h1>
+    <h1><img class="brand-icon" src="/icon-192.png?v=3" alt=""><span class="brand-copy"><span class="brand-line">DJConnect <span id="appVersion" class="sub">-</span><span id="appModel" class="model-chip">-</span></span><span class="brand-tagline">Jouw persoonlijke muziek DJ</span></span></h1>
     <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Playback">♪</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">
@@ -351,7 +354,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <select id="soundOutputSelect" aria-label="Sound output"><option value="" data-i18n="loadingOutputs">Loading outputs...</option></select>
       <div id="soundOutputStatus" class="status"></div>
       <div id="volumeStatus" class="status"></div>
-      <button id="webPttButton" class="ptt section-action" type="button" data-i18n="webPttHold">Test DJ response</button>
+      <button id="webPttButton" class="ptt section-action" type="button" data-i18n="webPttHold">Test DJ announcement</button>
       <div class="fine" data-i18n="webPttFlowInfo"></div>
       <div id="webPttTranscript" class="fine"></div>
       <div id="webPttStatus" class="status"></div>
@@ -577,9 +580,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       en: {
         deviceNotPaired:"Device not paired with Home Assistant", setup:"Click here to setup", providePair:"and provide pairing code:",
         nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start default playlist",
-        webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttSent:"DJ response test sent", webPttTimeout:"DJ response test is still running on the device.",
+        webPttHold:"Test DJ announcement", webPttListening:"Testing DJ announcement...", webPttProcessing:"Sending test command...", webPttSent:"DJ announcement test sent", webPttTimeout:"DJ announcement test is still running on the device.",
         webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
-        webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect response flow", webPttFlowInfo:"Tests: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ response text on the device.",
+        webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect announcement flow", webPttFlowInfo:"Tests: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ announcement text on the device.",
         spotifyUnavailable:"Playback not connected",
         output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", refreshUpNext:"Refresh Up Next", loadingQueue:"Loading queue...",
         playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", games:"Games", settings:"Settings",
@@ -614,9 +617,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       nl: {
         deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om te koppelen", providePair:"en vul koppelcode in:",
         nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start standaard playlist",
-        webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttSent:"DJ-response test verstuurd", webPttTimeout:"DJ-response test loopt nog op het device.",
+        webPttHold:"Test DJ aankondiging", webPttListening:"DJ aankondiging testen...", webPttProcessing:"Testcommando versturen...", webPttSent:"DJ aankondiging test verstuurd", webPttTimeout:"DJ aankondiging test loopt nog op het device.",
         webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
-        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect response flow", webPttFlowInfo:"Test: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ-response tekst op het device.",
+        webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect aankondiging flow", webPttFlowInfo:"Test: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ aankondiging tekst op het device.",
         spotifyUnavailable:"Afspelen niet verbonden",
         output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummers", refreshUpNext:"Volgende verversen", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", games:"Games", settings:"Instellingen",

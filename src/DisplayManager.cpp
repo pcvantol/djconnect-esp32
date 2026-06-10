@@ -698,7 +698,10 @@ void DisplayManager::renderBoot(Canvas &canvas, const String &message, const Bat
   canvas.drawString("DJConnect", 98, tall ? 46 : 34, 4);
 
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  canvas.drawString(Config::AppVersion, 102, tall ? 84 : 70, 2);
+  canvas.drawString(clippedText(canvas, Config::AppTagline, w - 112, 2), 102, tall ? 78 : 58, 2);
+
+  canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  canvas.drawString(Config::AppVersion, 102, tall ? 102 : 78, 2);
 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   String remaining = message;
