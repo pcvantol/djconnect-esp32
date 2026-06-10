@@ -18,6 +18,7 @@
 
 namespace {
 constexpr size_t OtaDownloadBufferBytes = 1460;
+constexpr uint8_t OtaMaxRedirects = 5;
 
 String sha256Hex(const unsigned char digest[32]) {
   static const char *hex = "0123456789abcdef";
@@ -49,6 +50,27 @@ void serviceOtaLoop(LedRing *ledRing) {
   }
   delay(1);
   yield();
+}
+
+bool isHttpRedirect(int code) {
+  return code == HTTP_CODE_MOVED_PERMANENTLY ||
+         code == HTTP_CODE_FOUND ||
+         code == HTTP_CODE_SEE_OTHER ||
+         code == HTTP_CODE_TEMPORARY_REDIRECT ||
+         code == HTTP_CODE_PERMANENT_REDIRECT;
+}
+
+String urlHost(const String &url) {
+  const int schemeEnd = url.indexOf("://");
+  if (schemeEnd < 0) {
+    return "";
+  }
+  const int hostStart = schemeEnd + 3;
+  int hostEnd = url.indexOf('/', hostStart);
+  if (hostEnd < 0) {
+    hostEnd = url.length();
+  }
+  return url.substring(hostStart, hostEnd);
 }
 
 }
@@ -119,28 +141,61 @@ bool DJConnectOTA::performUpdate(
     }
   };
 
-  HTTPClient http;
   NetworkActivity activity("ota_download", Config::OtaIoTimeoutMs);
-  NetworkActivity::configureHttp(http, Config::OtaConnectTimeoutMs, Config::OtaIoTimeoutMs);
-  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-  http.setRedirectLimit(5);
+  HTTPClient http;
   WiFiClientSecure secureClient;
   // Firmware authenticity is enforced with the manifest SHA256 below.
   secureClient.setInsecure();
   secureClient.setTimeout(Config::OtaIoTimeoutMs);
 
-  const bool begun = http.begin(secureClient, request.url);
-  if (!begun) {
-    message = "OTA HTTP begin failed";
-    activity.finishError("begin failed");
-    failWithCue();
-    return false;
+  String downloadUrl = request.url;
+  int code = 0;
+  uint8_t redirects = 0;
+  while (true) {
+    NetworkActivity::configureHttp(http, Config::OtaConnectTimeoutMs, Config::OtaIoTimeoutMs);
+    http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
+    AppLog.print("OTA download host: ");
+    AppLog.println(urlHost(downloadUrl));
+    const bool begun = http.begin(secureClient, downloadUrl);
+    if (!begun) {
+      message = "OTA HTTP begin failed";
+      activity.finishError("begin failed");
+      failWithCue();
+      return false;
+    }
+
+    code = http.GET();
+    if (!isHttpRedirect(code)) {
+      break;
+    }
+    const String location = http.getLocation();
+    AppLog.print("OTA redirect ");
+    AppLog.print(code);
+    AppLog.print(": ");
+    AppLog.println(location);
+    http.end();
+    if (location.isEmpty() || !location.startsWith("https://")) {
+      message = "OTA redirect invalid";
+      activity.finishError("redirect invalid");
+      failWithCue();
+      return false;
+    }
+    redirects++;
+    if (redirects > OtaMaxRedirects) {
+      message = "OTA redirect limit exceeded";
+      activity.finishError("redirect limit");
+      failWithCue();
+      return false;
+    }
+    downloadUrl = location;
+    serviceOtaLoop(ledRing);
   }
 
-  const int code = http.GET();
   if (code != HTTP_CODE_OK) {
     message = "OTA download failed " + String(code);
     AppLog.println(message);
+    AppLog.print("OTA final URL: ");
+    AppLog.println(downloadUrl);
     if (code < 0) {
       AppLog.print("OTA download transport: ");
       AppLog.println(http.errorToString(code));

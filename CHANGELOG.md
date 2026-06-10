@@ -1,6 +1,12 @@
 # Changelog
 
-## v3.0.23
+## Unreleased
+
+### Fixed
+
+- OTA firmware downloads now follow GitHub release redirects explicitly and log the download host/final URL on failures, making CDN/transport failures visible instead of a bare `HTTP -1`.
+
+## v3.0.24
 
 Patch release for board abstraction and dual firmware publishing.
 
