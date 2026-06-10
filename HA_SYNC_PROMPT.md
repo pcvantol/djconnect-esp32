@@ -36,8 +36,9 @@ Regels:
 - `ha_local_url` moet een echte LAN URL zijn.
 - `ha_local_url` mag nooit `.ui.nabu.casa` bevatten.
 - `ha_remote_url` mag wel Nabu Casa/cloud zijn.
-- Als geen local URL bekend is, laat `ha_local_url` leeg of weg, maar zet cloud niet in local.
+- Als geen local URL bekend is, moet pairing pending/falen; zet cloud niet in local.
 - Bepaal local via HA network config, internal URL, source IP of fallback `http://<HA LAN IP>:8123`.
+- ESP firmware gebruikt `ha_local_url` voor `/api/djconnect/status`, `/api/djconnect/command` en `/api/djconnect/voice`. `ha_remote_url` is diagnostiek/toekomstig gebruik en mag niet nodig zijn om H groen te krijgen.
 
 ### ESP Payload Identity
 
@@ -195,6 +196,8 @@ Home Assistant remote URL: https://xxxx.ui.nabu.casa
 ```text
 url=http://192.168.1.x:8123/api/djconnect/command
 ```
+
+- De eerste ESP statuspost naar HA accepteert dezelfde `device_id`, `client_type:"esp32"` en `device_token` als de pairing callback. Een `401` op `/api/djconnect/status` terwijl HA nog ESP `/api/device/*` commands kan sturen wijst op een HA-side token/device-id mismatch in de statusroute, niet op een ESP cloud-route fallback.
 
 - Geen HA sensor valt enkele seconden na update terug naar `unknown`.
 - `sensor.djconnect_ha_pairing_status` wordt `paired` zodra ESP `ha_pairing_status:"paired"` meldt.

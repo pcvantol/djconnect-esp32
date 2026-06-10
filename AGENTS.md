@@ -316,8 +316,8 @@ When WiFi is configured but Home Assistant is not paired:
 - Consume top-button press/hold/long-click UI events in pairing mode so holding the top button for the 10-second soft reset never flashes the normal menu first.
 - Soft reset and hard reset must remain available through the reset monitor.
 - The pairing code should also be available in Serial logging and the web pairing panel.
-- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token. `/api/device/pair` may receive a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/djconnect/status`; playback proxy commands must stay disabled until that authenticated status call succeeds. During the pairing-screen transition, direct pairing must leave pairing mode and stop BLE before wake-word inference starts.
-- `ha_local_url` must be a real LAN URL and must not be a Nabu Casa `.ui.nabu.casa` URL. If cloud is received as local, the ESP normalizes it to `ha_remote_url` and clears the local NVS key on save. Playback proxy commands use `ha_local_url` only; if local is missing, fail clearly instead of falling back to cloud. Cloud URL support is stored for diagnostics/future route handling, but do not assume Nabu Casa can reach ESP local endpoints directly.
+- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token plus a real LAN `ha_local_url`. `/api/device/pair` may receive a direct HA callback with `device_token`, required `ha_local_url`, optional `ha_remote_url`, and lightweight settings; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/djconnect/status`; playback proxy commands must stay disabled until that authenticated status call succeeds. During the pairing-screen transition, direct pairing must leave pairing mode and stop BLE before wake-word inference starts.
+- `ha_local_url` must be a real LAN URL and must not be a Nabu Casa `.ui.nabu.casa` URL. If cloud is received as local, the ESP rejects pairing instead of entering a half-paired state. Status, playback proxy commands and voice calls use `ha_local_url` only; if local is missing, fail clearly instead of falling back to cloud. Cloud URL support is stored for diagnostics/future route handling, but do not assume Nabu Casa can reach ESP local endpoints directly.
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
 
@@ -473,7 +473,8 @@ Current web expectations:
 
 - Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and active HA URL/status.
 - The Home Assistant pairing banner setup link must open in a new tab/window so the local ESP web portal remains loaded.
-- The top web status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Keep the IP address in the WiFi block, not in the top status bar.
+- The web portal and captive/setup portal should keep the current DJConnect blue/purple brand styling from the icon/logo. Use blue/purple for headers, panels, primary buttons and pairing surfaces while keeping status colors semantically green/yellow/red.
+- The top web title bar shows firmware version and board device model. The status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Hide the battery icon when `battery.available` is false, such as ESP32-S3-BOX-3. Keep the IP address in the WiFi block, not in the top status bar.
 - The Home Assistant URL label in the web portal is `URL`, not `HA URL`.
 - Album art is shown when available.
 - Volume slider range is `0-60`.

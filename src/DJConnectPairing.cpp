@@ -123,8 +123,12 @@ bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
 
   const String localUrl = jsonString(response.as<JsonVariantConst>(), "ha_local_url");
   const String remoteUrl = jsonString(response.as<JsonVariantConst>(), "ha_remote_url");
-  if (localUrl.isEmpty() && remoteUrl.isEmpty()) {
-    AppLog.println("HA pair missing ha_local_url/ha_remote_url");
+  if (localUrl.isEmpty()) {
+    AppLog.println("HA pair missing required LAN ha_local_url");
+    return false;
+  }
+  if (Logic::isNabuCasaCloudUrl(localUrl.c_str())) {
+    AppLog.println("HA pair rejected: ha_local_url is a cloud URL");
     return false;
   }
   device_->savePairing(deviceToken, localUrl, remoteUrl);
@@ -148,10 +152,14 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   if (device_ == nullptr || !device_->isPaired()) {
     return StatusResult::Skipped;
   }
-  const String haUrl = device_->getActiveHaUrl();
+  const String haUrl = device_->getHaLocalUrl();
   const String token = device_->getDeviceToken();
-  if (haUrl.isEmpty() || token.isEmpty()) {
+  if (token.isEmpty()) {
     return StatusResult::Skipped;
+  }
+  if (haUrl.isEmpty()) {
+    AppLog.println("HA status unavailable: local HA URL missing");
+    return StatusResult::Failed;
   }
 
   JsonDocument request;
@@ -247,6 +255,10 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
     JsonDocument response;
     const DeserializationError error = deserializeJson(response, payload);
     const char *errorKey = error ? "" : (response["error"] | "");
+    if (code < 200 || code >= 300) {
+      AppLog.print("HA status error: ");
+      AppLog.println(errorKey[0] == '\0' ? payload : String(errorKey));
+    }
     if (Logic::isDjConnectInvalidClientType(errorKey)) {
       AppLog.println("HA rejected payload: missing client_type=esp32");
       return StatusResult::Failed;

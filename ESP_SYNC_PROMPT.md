@@ -99,8 +99,9 @@ Taken
 Controleer en fix:
 
 ESP ontvangt device_token via POST /api/device/pair.
-ESP ontvangt ha_local_url en/of ha_remote_url via POST /api/device/pair.
-ESP gebruikt ha_local_url LAN-first en ha_remote_url als cloud fallback.
+ESP ontvangt een echte LAN ha_local_url via POST /api/device/pair.
+ESP mag daarnaast ha_remote_url ontvangen voor diagnostiek/toekomstig gebruik.
+ESP gebruikt ha_local_url voor status, playback en voice; ha_remote_url is geen fallback voor pairing-ok/status.
 ESP accepteert en verwacht geen oud enkelvoudig HA-URL pairingveld meer.
 ESP accepteert als persistent device ID alleen djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.
 Een tijdelijke setup-code identiteit mag alleen tijdens captive/setup flow bestaan; na pairing moet de firmware de echte LilyGO device ID gebruiken.
@@ -133,7 +134,7 @@ Verwachte HA -> ESP pair payload:
   "ha_remote_url": "https://example.ui.nabu.casa",
   "assist_pipeline_id": "..."
 }
-Minimaal een van ha_local_url of ha_remote_url moet aanwezig zijn; stuur geen oud enkelvoudig HA-URL veld mee.
+ha_local_url is verplicht en moet een LAN URL zijn. Stuur geen oud enkelvoudig HA-URL veld mee en zet nooit Nabu Casa/cloud in ha_local_url.
 
 2. Status payload uitbreiden
 Zorg dat periodieke HA status payload actuele device settings bevat zodat HA native entities correct updaten.
@@ -305,7 +306,7 @@ PTT/wake-word runtime gedrag:
 
 Encoder PTT start pas met opnemen na de start cue/settle delay; stop cue speelt pas nadat de WAV is afgesloten.
 Wake-word detection start dezelfde lokale PTT WAV-upload flow als encoder PTT.
-Wake-word tuning: Okay Nabu model, 10 ms feature step, 3-frame sliding window, cutoff 0.90.
+Wake-word tuning: Okay Nabu model, 10 ms feature step, 3-frame sliding window. LilyGO cutoff is 0.90; ESP32-S3-BOX-3 cutoff is 0.86.
 Wake-word-started recording stopt automatisch na stilte en blijft altijd begrensd door de maximale opname-duur.
 Tijdens processing of het DJ-response scherm annuleert een middelste encoderdruk de rest van de PTT flow zo snel mogelijk; lopende HA HTTP responses mogen lokaal genegeerd worden en response audio moet een stop request krijgen.
 6. OAuth / Spotify secrets verwijderen

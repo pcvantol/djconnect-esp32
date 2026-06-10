@@ -389,6 +389,10 @@ static void testVoiceChunkHelpers() {
   assert(Logic::isDjConnectVersionMismatch(426, "version_mismatch"));
   assert(!Logic::isDjConnectVersionMismatch(426, "unauthorized"));
   assert(!Logic::isDjConnectVersionMismatch(400, "version_mismatch"));
+  assert(Logic::isNabuCasaCloudUrl("https://example.ui.nabu.casa"));
+  assert(!Logic::isNabuCasaCloudUrl("http://homeassistant.local:8123"));
+  assert(!Logic::isNabuCasaCloudUrl("http://192.168.1.10:8123"));
+  assert(!Logic::isNabuCasaCloudUrl(nullptr));
   assert(std::strcmp(
              Logic::voiceHttpFailureMessage(404),
              "HA voice endpoint not found. Reset pairing and set up the DJConnect integration again.") == 0);

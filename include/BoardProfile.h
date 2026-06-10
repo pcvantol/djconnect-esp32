@@ -21,10 +21,11 @@ static constexpr bool HasSpeaker = true;
 static constexpr bool HasMicrophone = true;
 static constexpr bool HasRotaryEncoder = false;
 static constexpr bool HasSideRotationButtons = false;
+static constexpr float WakeWordProbabilityCutoff = 0.86f;
 
 static constexpr int BoardUserKeyPin = 0;
 static constexpr int BoardPowerEnablePin = OptionalPin;
-static constexpr int DisplayBacklightPin = 47;
+static constexpr int DisplayBacklightPin = 45;
 static constexpr uint8_t DisplayRotation = 1;
 static constexpr int SdCardChipSelectPin = OptionalPin;
 static constexpr int LoraChipSelectPin = OptionalPin;
@@ -38,7 +39,7 @@ static constexpr int EncoderPinB = 2;
 static constexpr int EncoderButtonPin = 1;
 
 static constexpr int SpeakerBclkPin = 17;
-static constexpr int SpeakerLrclkPin = 45;
+static constexpr int SpeakerLrclkPin = 47;
 static constexpr int SpeakerDataPin = 15;
 static constexpr int MicrophoneDataPin = 40;
 static constexpr int MicrophoneClockPin = 41;
@@ -57,6 +58,7 @@ static constexpr bool HasSpeaker = true;
 static constexpr bool HasMicrophone = true;
 static constexpr bool HasRotaryEncoder = true;
 static constexpr bool HasSideRotationButtons = false;
+static constexpr float WakeWordProbabilityCutoff = 0.90f;
 
 static constexpr int BoardUserKeyPin = 6;
 static constexpr int BoardPowerEnablePin = 15;

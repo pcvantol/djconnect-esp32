@@ -17,7 +17,7 @@ void WakeWordEngine::begin() {
   AppLog.print(", bytes=");
   AppLog.print(kOkayNabuWakeWordModelLen);
   AppLog.print(", cutoff=");
-  AppLog.println(kOkayNabuWakeWordProbabilityCutoff, 2);
+  AppLog.println(Config::WakeWordProbabilityCutoff, 2);
   AppLog.print("Wake word: ");
   if (djconnect_oke_nabu_wake_word_detect != nullptr) {
     AppLog.println("oke nabu model hook available");

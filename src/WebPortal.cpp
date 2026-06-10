@@ -159,26 +159,27 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
   <link rel="manifest" href="/site.webmanifest?v=2">
   <title>DJConnect</title>
   <style>
-    :root { color-scheme: light dark; --bg:#080b0c; --panel:#111718; --muted:#8a969a; --line:#233033; --green:#1ed760; --yellow:#caa42b; --orange:#ff9f1a; --red:#ff735d; --text:#f3f7f5; --header:rgba(8,11,12,.94); --field:#0c1112; --bar-bg:#0b1112; --art-bg:#050707; --row-line:rgba(255,255,255,.06); --log-bg:#050707; --log-text:#c7d2cf; }
-    html[data-theme="light"] { --bg:#f5f7f2; --panel:#ffffff; --muted:#65716d; --line:#d9e0dc; --green:#148a3c; --yellow:#8f710f; --orange:#c86f00; --red:#b23a31; --text:#13201a; --header:rgba(245,247,242,.96); --field:#ffffff; --bar-bg:#e8eee9; --art-bg:#eef3ef; --row-line:rgba(19,32,26,.09); --log-bg:#f1f4f1; --log-text:#21302a; }
-    html[data-theme="dark"] { --bg:#080b0c; --panel:#111718; --muted:#8a969a; --line:#233033; --green:#1ed760; --yellow:#caa42b; --orange:#ff9f1a; --red:#ff735d; --text:#f3f7f5; --header:rgba(8,11,12,.94); --field:#0c1112; --bar-bg:#0b1112; --art-bg:#050707; --row-line:rgba(255,255,255,.06); --log-bg:#050707; --log-text:#c7d2cf; }
-    @media (prefers-color-scheme: light) { html[data-theme="auto"] { --bg:#f5f7f2; --panel:#ffffff; --muted:#65716d; --line:#d9e0dc; --green:#148a3c; --yellow:#8f710f; --orange:#c86f00; --red:#b23a31; --text:#13201a; --header:rgba(245,247,242,.96); --field:#ffffff; --bar-bg:#e8eee9; --art-bg:#eef3ef; --row-line:rgba(19,32,26,.09); --log-bg:#f1f4f1; --log-text:#21302a; } }
+    :root { color-scheme: light dark; --bg:#070a14; --panel:#101522; --muted:#9aa5bd; --line:#27304a; --green:#1ed760; --yellow:#d6b84a; --orange:#ff9f1a; --blue:#2f8cff; --purple:#9b72ff; --purple-soft:#c9b8ff; --red:#ff735d; --text:#f5f7ff; --header:rgba(7,10,20,.95); --field:#0b1020; --bar-bg:#0a0f1c; --art-bg:#050816; --row-line:rgba(159,183,255,.10); --log-bg:#050816; --log-text:#cad3ea; }
+    html[data-theme="light"] { --bg:#f5f7ff; --panel:#ffffff; --muted:#63708e; --line:#d7ddf0; --green:#148a3c; --yellow:#8f710f; --orange:#c86f00; --blue:#1f6fd1; --purple:#7046d8; --purple-soft:#5f46a7; --red:#b23a31; --text:#12182a; --header:rgba(245,247,255,.96); --field:#ffffff; --bar-bg:#e9edf8; --art-bg:#eef2ff; --row-line:rgba(18,24,42,.09); --log-bg:#f1f3fb; --log-text:#25304a; }
+    html[data-theme="dark"] { --bg:#070a14; --panel:#101522; --muted:#9aa5bd; --line:#27304a; --green:#1ed760; --yellow:#d6b84a; --orange:#ff9f1a; --blue:#2f8cff; --purple:#9b72ff; --purple-soft:#c9b8ff; --red:#ff735d; --text:#f5f7ff; --header:rgba(7,10,20,.95); --field:#0b1020; --bar-bg:#0a0f1c; --art-bg:#050816; --row-line:rgba(159,183,255,.10); --log-bg:#050816; --log-text:#cad3ea; }
+    @media (prefers-color-scheme: light) { html[data-theme="auto"] { --bg:#f5f7ff; --panel:#ffffff; --muted:#63708e; --line:#d7ddf0; --green:#148a3c; --yellow:#8f710f; --orange:#c86f00; --blue:#1f6fd1; --purple:#7046d8; --purple-soft:#5f46a7; --red:#b23a31; --text:#12182a; --header:rgba(245,247,255,.96); --field:#ffffff; --bar-bg:#e9edf8; --art-bg:#eef2ff; --row-line:rgba(18,24,42,.09); --log-bg:#f1f3fb; --log-text:#25304a; } }
     * { box-sizing:border-box; }
     body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
-    header { position:sticky; top:0; z-index:2; background:var(--header); border-bottom:1px solid var(--line); padding:16px; }
+    header { position:sticky; top:0; z-index:2; background:linear-gradient(135deg,rgba(47,140,255,.16),rgba(155,114,255,.18)),var(--header); border-bottom:1px solid var(--line); padding:16px; }
     h1 { margin:0; font-size:22px; letter-spacing:0; display:flex; align-items:center; gap:8px; }
     .brand-icon { width:28px; height:28px; border-radius:6px; }
+    .model-chip { color:var(--muted); font-size:12px; font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .sub { color:var(--muted); font-size:13px; margin-top:4px; }
     .header-status { display:flex; justify-content:flex-end; align-items:center; gap:8px; }
     main { padding:12px; display:grid; gap:12px; max-width:960px; margin:0 auto; }
-    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
-    h2 { margin:0 0 10px; font-size:15px; color:var(--yellow); font-weight:700; }
+    .panel { background:linear-gradient(180deg,rgba(47,140,255,.06),rgba(155,114,255,.04)),var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
+    h2 { margin:0 0 10px; font-size:15px; color:var(--purple-soft); font-weight:700; }
     .hero-title { font-size:26px; line-height:1.08; font-weight:750; margin:2px 0 8px; overflow-wrap:anywhere; }
     .artist { color:#d8e3df; font-size:18px; margin-bottom:12px; overflow-wrap:anywhere; }
     .now { display:grid; grid-template-columns:96px 1fr; gap:12px; align-items:start; margin-bottom:12px; }
     .now.no-art { grid-template-columns:1fr; }
     .album-art { width:96px; height:96px; border-radius:8px; border:1px solid var(--line); object-fit:cover; background:var(--art-bg); display:none; cursor:pointer; }
-    .album-art:focus-visible { outline:2px solid var(--green); outline-offset:3px; }
+    .album-art:focus-visible { outline:2px solid var(--purple); outline-offset:3px; }
     .grid { display:grid; gap:8px; grid-template-columns:1fr; }
     .row { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--row-line); padding-top:8px; font-size:14px; }
     .row:first-child { border-top:0; padding-top:0; }
@@ -197,18 +198,18 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .status-dot { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--red); color:var(--red); font-size:11px; font-weight:800; line-height:1; }
     .status-dot.ok { border-color:var(--green); color:var(--green); }
     .status-dot.idle { border-color:var(--muted); color:var(--muted); }
-    .pill { display:inline-flex; align-items:center; min-height:24px; border-radius:999px; padding:2px 10px; background:#173721; color:#9df2b9; font-size:13px; }
-    .pill.warn { background:#3b2d14; color:#f3d37b; }
+    .pill { display:inline-flex; align-items:center; min-height:24px; border-radius:999px; padding:2px 10px; background:rgba(47,140,255,.18); color:#b8d8ff; font-size:13px; }
+    .pill.warn { background:rgba(155,114,255,.20); color:var(--purple-soft); }
     .pill.bad { background:#421b17; color:#ffb4aa; }
     .bar { height:8px; border:1px solid #39484a; border-radius:999px; overflow:hidden; background:var(--bar-bg); }
-    .bar > i { display:block; height:100%; width:0; background:var(--green); }
+    .bar > i { display:block; height:100%; width:0; background:linear-gradient(90deg,var(--blue),var(--purple)); }
     .controls { display:grid; gap:10px; }
     label { display:grid; gap:5px; color:var(--muted); font-size:13px; }
     select, button, input:not([type]), input[type=text], input[type=password], input[type=file] { width:100%; min-height:42px; border-radius:8px; border:1px solid var(--line); background:var(--field); color:var(--text); padding:8px 10px; font-size:15px; }
     input[type=range] { width:100%; accent-color:var(--green); }
     input.volume-slider { accent-color:var(--orange); }
     .volume-value, .volume-label { color:var(--orange); }
-    button { background:#1f8c46; border-color:#31c36a; color:#f3fff7; font-weight:700; cursor:pointer; box-shadow:inset 0 -1px 0 rgba(0,0,0,.25); }
+    button { background:linear-gradient(135deg,var(--blue),var(--purple)); border-color:rgba(201,184,255,.78); color:#fff; font-weight:700; cursor:pointer; box-shadow:inset 0 -1px 0 rgba(0,0,0,.25); }
     .compact-actions { display:grid; grid-template-columns:repeat(5, 46px); justify-content:start; gap:8px; align-items:center; }
     .playback-volume { grid-column:1 / -1; display:grid; gap:6px; margin-top:2px; }
     .playback-volume .volume-row { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
@@ -218,8 +219,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.icon-button.is-playing .icon-play { display:none; }
     button.icon-button.is-playing .icon-pause { display:block; }
     button.icon-button.is-off { background:#243238; border-color:#3d5660; color:#a8b3af; }
-    button.icon-button.is-on { background:#176031; border-color:#31c36a; color:#caffda; }
-    button.icon-button.is-track { background:#1f6fd1; border-color:#2f8cff; color:#f2f8ff; }
+    button.icon-button.is-on { background:linear-gradient(135deg,var(--blue),var(--purple)); border-color:var(--purple-soft); color:#fff; }
+    button.icon-button.is-track { background:var(--purple); border-color:var(--purple-soft); color:#fff; }
     .playback-actions button.icon-button,
     .playback-actions button.icon-button.is-off,
     .playback-actions button.icon-button.is-on,
@@ -227,8 +228,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
     button.warning { background:#a57912; border-color:#d6a329; color:#fff3c4; }
     button.firmware { background:#6f3bd8; border-color:#9b72ff; color:#f4edff; }
-    button.ptt { width:auto; min-width:160px; min-height:40px; justify-self:start; background:#1f6fd1; border-color:#2f8cff; color:#f2f8ff; font-size:14px; }
-    button.ptt.recording { background:#1559b0; border-color:#4aa3ff; color:#eef6ff; }
+    button.ptt { width:auto; min-width:160px; min-height:40px; justify-self:start; background:linear-gradient(135deg,var(--blue),var(--purple)); border-color:var(--purple-soft); color:#fff; font-size:14px; }
+    button.ptt.recording { background:linear-gradient(135deg,#1f6fd1,#7046d8); border-color:#c9b8ff; color:#fff; }
     button:disabled, select:disabled, input:disabled { opacity:.45; cursor:not-allowed; }
     .section-action { margin-top:10px; }
     button.danger { background:#3a1714; border-color:#632b25; color:#ffd1c9; }
@@ -265,16 +266,16 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .header-battery.medium { color:var(--yellow); }
     .header-battery.high { color:var(--green); }
     @keyframes batteryPulse { 0%,100% { opacity:.45; transform:scale(.92); } 50% { opacity:1; transform:scale(1.08); } }
-    .pair-banner { display:none; grid-template-columns:30px 1fr; gap:12px; align-items:start; margin:10px; padding:14px; border:1px solid rgba(255,204,51,.45); border-radius:8px; background:linear-gradient(135deg,rgba(255,204,51,.18),rgba(29,185,84,.12)); color:var(--text); }
+    .pair-banner { display:none; grid-template-columns:30px 1fr; gap:12px; align-items:start; margin:10px; padding:14px; border:1px solid rgba(155,114,255,.50); border-radius:8px; background:linear-gradient(135deg,rgba(47,140,255,.18),rgba(155,114,255,.18)); color:var(--text); }
     .pair-banner.visible { display:grid; }
     .pair-alert-icon { width:30px; height:30px; color:#ffdf5d; flex:0 0 30px; filter:drop-shadow(0 0 8px rgba(255,223,93,.22)); }
-    .pair-banner strong { display:block; font-size:18px; margin-bottom:4px; color:#ffdf5d; }
+    .pair-banner strong { display:block; font-size:18px; margin-bottom:4px; color:var(--purple-soft); }
     .pair-banner a { color:#fff; font-weight:800; text-decoration:none; }
     .pair-banner .pair-code { display:inline-block; margin-left:4px; padding:2px 7px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.22); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.08em; }
     .game-shell { display:grid; gap:10px; }
     .game-tabs { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
     .game-tab { min-height:38px; padding:6px; background:var(--field); border-color:var(--line); color:var(--text); }
-    .game-tab.active { border-color:var(--green); color:#dfffea; box-shadow:0 0 0 1px rgba(30,215,96,.25) inset; }
+    .game-tab.active { border-color:var(--purple); color:var(--purple-soft); box-shadow:0 0 0 1px rgba(155,114,255,.25) inset; }
     .game-hud { display:flex; justify-content:space-between; gap:10px; color:var(--muted); font-size:13px; }
     canvas.game-canvas { width:100%; max-width:640px; aspect-ratio:320/170; border:1px solid var(--line); border-radius:8px; background:#020405; touch-action:none; image-rendering:pixelated; }
     .game-controls { display:grid; grid-template-columns:repeat(4, 46px); gap:8px; justify-content:start; }
@@ -291,7 +292,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <header>
-    <h1><img class="brand-icon" src="/icon-192.png?v=3" alt="">DJConnect <span id="appVersion" class="sub">-</span></h1>
+    <h1><img class="brand-icon" src="/icon-192.png?v=3" alt="">DJConnect <span id="appVersion" class="sub">-</span><span id="appModel" class="model-chip">-</span></h1>
     <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Playback">♪</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">
@@ -604,7 +605,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         startingPlaylist:"Starting playlist...", resumeLogs:"Resume logs", logsPaused:"Logs paused", logsLive:"Logs live",
         logsPausedSelected:"Logs paused and selected", saving:"Saving...", testWifiConfirm:"Test these WiFi credentials? The web page may disconnect during the test.",
         startingWifiTest:"Starting WiFi test...", refreshing:"Refreshing...", restartConfirm:"Restart DJConnect?",
-        resetPairingConfirm:"Reset Home Assistant pairing and restart to the pairing screen?", factoryResetConfirm:"Factory reset DJConnect and open setup mode?",
+        resetPairingConfirm:"Reset Home Assistant pairing and restart to the pairing screen?", factoryResetConfirm:"Do you want to factory reset DJConnect device?",
         noIp:"No IP", wifiSignal:"WiFi signal", wifiDisconnected:"WiFi disconnected", ago:"ago",
         legal:"Legal", copyrightNotice:"Copyright (c) 2026 Peter van Tol. All rights reserved. DJConnect firmware is proprietary software.",
         trademarkNotice:"Spotify is a trademark of Spotify AB. DJConnect is not affiliated with, endorsed by, or sponsored by Spotify AB.",
@@ -641,7 +642,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         startingPlaylist:"Afspeellijst starten...", resumeLogs:"Logs hervatten", logsPaused:"Logs gepauzeerd", logsLive:"Logs live",
         logsPausedSelected:"Logs gepauzeerd en geselecteerd", saving:"Opslaan...", testWifiConfirm:"Deze WiFi-gegevens testen? De webpagina kan tijdens de test loskoppelen.",
         startingWifiTest:"WiFi-test starten...", refreshing:"Verversen...", restartConfirm:"DJConnect herstarten?",
-        resetPairingConfirm:"Home Assistant koppeling resetten en herstarten naar het koppelscherm?", factoryResetConfirm:"Device resetten naar fabrieksinstellingen?",
+        resetPairingConfirm:"Home Assistant koppeling resetten en herstarten naar het koppelscherm?", factoryResetConfirm:"Wilt u het DJConnect apparaat resetten naar fabrieksinstellingen?",
         noIp:"Geen IP", wifiSignal:"WiFi signaal", wifiDisconnected:"WiFi niet verbonden", ago:"geleden",
         legal:"Juridisch", copyrightNotice:"Copyright (c) 2026 Peter van Tol. Alle rechten voorbehouden. DJConnect firmware is proprietary software.",
         trademarkNotice:"Spotify is een handelsmerk van Spotify AB. DJConnect is niet verbonden aan, goedgekeurd door of gesponsord door Spotify AB.",
@@ -732,10 +733,15 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       el.className = "status-dot" + (state === true || state === "ok" ? " ok" : state === "idle" ? " idle" : "");
     }
     function setBatteryHeader(battery) {
+      const el = $("batteryHeader");
+      if (!battery || battery.available === false) {
+        el.style.display = "none";
+        return;
+      }
+      el.style.display = "inline-flex";
       const percent = Math.max(0, Math.min(100, Number(battery.percent ?? 0)));
       const charging = !!battery.charging;
       const full = !!battery.full;
-      const el = $("batteryHeader");
       el.className = "header-battery " + (charging ? "charging " : "") + (percent < 20 ? "low" : percent < 50 ? "medium" : "high");
       el.title = `${battery.label || `${percent}%`} ${charging ? tr("charging") : full ? tr("full") : ""}`.trim();
       $("batteryHeaderFill").style.width = `${percent}%`;
@@ -1005,6 +1011,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       document.documentElement.dataset.theme = data.settings.theme || "dark";
       applyTranslations();
       text("appVersion", data.app.version);
+      text("appModel", data.app.model || "-");
       text("wifiIp", data.wifi.ip || tr("noIp"));
       text("track", data.playback.hasPlayback ? (data.playback.track || "-") : "");
       text("artist", data.playback.hasPlayback ? (data.playback.artist || data.playback.type || "-") : "");
@@ -1570,6 +1577,7 @@ void WebPortal::handleStatusJson() {
   JsonObject app = doc["app"].to<JsonObject>();
   app["name"] = "DJConnect";
   app["version"] = appVersionLabel();
+  app["model"] = Config::DeviceModel;
   app["uptimeMs"] = millis();
 
   JsonObject playback = doc["playback"].to<JsonObject>();

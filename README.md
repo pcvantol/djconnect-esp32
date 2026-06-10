@@ -104,7 +104,7 @@ Keep `SPOTIFY_ALLOW_INSECURE_TLS` at `0` for normal builds. Set it to `1` only a
 5. Enter WiFi credentials.
 6. The device tests WiFi, stores the credentials in NVS and restarts. Playback-backend credentials are configured in Home Assistant.
 
-Setup/AP mode keeps the screen at 100% brightness, shows a deeply fading rainbow LED-ring breath animation, keeps battery/charging state visible, shows that the portal is active for 10 minutes, and turns off after 10 minutes without successful setup. The device screen also offers a center-button turn-off action while setup/AP mode is active.
+Setup/AP mode keeps the screen at 100% brightness, shows a deeply fading rainbow LED-ring breath animation, keeps battery/charging state visible on boards with a battery gauge, shows that the portal is active for 10 minutes, and turns off after 10 minutes without successful setup. The captive portal uses the same DJConnect icon and blue/purple visual style as the main web portal, and includes the board device model in the title/header. The device screen also offers a center-button turn-off action while setup/AP mode is active.
 
 ## BLE WiFi Provisioning
 
@@ -175,7 +175,7 @@ Protected endpoints require `Authorization: Bearer <device_token>`:
 
 Playback credentials live in Home Assistant and are never accepted or stored by the ESP.
 
-The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` accepts the Home Assistant callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`. The firmware stores only those backend URLs, Assist pipeline id and lightweight settings such as `device_language`/`language`. The main loop then confirms the pairing through `/api/djconnect/status` and schedules an immediate playback status poll. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
+The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` accepts the Home Assistant callback with `device_token`, a required LAN `ha_local_url`, optional `ha_remote_url`, Assist pipeline id and lightweight settings such as `device_language`/`language`. The main loop then confirms the pairing through `/api/djconnect/status` over the LAN URL and schedules an immediate playback status poll. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
 
 Repeated direct callbacks with the same local/remote URLs and `device_token` are treated as idempotent and do not reset pairing validation. Home Assistant should still avoid using `/api/device/pair` as a generic settings-sync endpoint after pairing; use `/api/device/command` for settings and the status response contract for state acknowledgements.
 
@@ -186,7 +186,7 @@ The ESP stores separate local and remote Home Assistant URLs:
 - `ha_local_url`: the LAN URL the ESP should use for normal control, for example `http://192.168.1.10:8123`.
 - `ha_remote_url`: the optional Nabu Casa/cloud URL, for example `https://example.ui.nabu.casa`.
 
-`ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant accidentally sends a Nabu Casa URL as `ha_local_url`, the ESP normalizes it into `ha_remote_url` and clears the local NVS key on the next pairing save. Playback proxy commands intentionally use the local URL only; if no local URL is available, playback fails clearly with `HA playback command unavailable: local HA URL missing` instead of silently trying the cloud endpoint. Status and voice flows still report both stored URLs to Home Assistant for diagnostics and future route handling. If both URLs are missing, pairing is rejected.
+`ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant sends a Nabu Casa URL as `ha_local_url`, the ESP rejects pairing instead of entering a half-paired state. Status, playback and voice calls intentionally use the local URL only; if no local URL is available, the firmware fails clearly instead of silently trying the cloud endpoint. The remote URL is still stored/reported for diagnostics and future route handling, but it is not a fallback for a green Home Assistant indicator.
 
 A Postman collection for these local ESP endpoints is available at `postman/DJConnect ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
 
@@ -225,7 +225,9 @@ flash-resident model data. The firmware runs it locally with TensorFlow Lite
 Micro and the TensorFlow micro_speech frontend: idle mono PCM16 microphone
 chunks are converted into 40-bin features every 10 ms, three feature frames are
 fed into the streaming model, and detection is accepted when the 3-frame sliding
-window reaches the configured `0.90` cutoff.
+window reaches the configured cutoff. The LilyGO T-Embed-CC1101 keeps the more
+conservative `0.90` cutoff; ESP32-S3-BOX-3 uses `0.86` to compensate for the
+different microphone/acoustic path.
 
 Wake-word monitoring is enabled only while the device is in normal mode, not
 already recording voice, and Home Assistant pairing is confirmed. It does not
@@ -295,7 +297,7 @@ After boot and Home Assistant setup, the ESP forces an immediate playback status
 
 ## Web Portal
 
-The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, local games, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header right-aligns status in the same order as the device: H, playback music-note icon, WiFi signal bars and a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The playback music-note indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
+The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-response flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, local games, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. The portal uses the current DJConnect icon style with blue/purple brand accents for headers, panels and primary actions while preserving green/red/yellow status colors for state. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header shows the firmware version and board device model, then right-aligns status in the same order as the device: H, playback music-note icon, WiFi signal bars and, only on boards with a battery gauge, a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The playback music-note indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
 
 The device Logs screen shows the newest log tail by default and can be scrolled with the encoder to inspect older buffered entries. Serial, web and device logs use the compact `HH:mm INF` severity prefix format.
 
@@ -360,11 +362,14 @@ The local release helper prepares a source release, injects the release version 
 
 Beta firmware uses the same flow with `--channel beta` or a `vX.Y.Z-beta` tag. Beta assets are named `djconnect-lilygo-t-embed-s3-beta-vX.Y.Z.bin` and `djconnect-esp32-s3-box-3-beta-vX.Y.Z.bin`, the manifest is `firmware_manifest_beta.json`, and the GitHub release is marked as a prerelease.
 
-Old public firmware releases can be reviewed and pruned with the separate dry-run first cleanup helper:
+Old public firmware releases, tags and workflow runs can be reviewed and pruned
+with the separate dry-run first cleanup helper. Use `--keep-runs` when you want
+to keep more recent GitHub Actions history than release/tag history.
 
 ```sh
 scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --dry-run
 scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --execute
+scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --keep-runs 5 --execute
 scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --channel beta --keep 1 --dry-run
 ```
 

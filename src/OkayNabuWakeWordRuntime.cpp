@@ -221,12 +221,12 @@ bool invokeModel(OkayNabuRuntime &runtime) {
     AppLog.print(" best=");
     AppLog.print(runtime.bestProbabilitySinceLog, 3);
     AppLog.print(" cutoff=");
-    AppLog.println(kOkayNabuWakeWordProbabilityCutoff, 2);
+    AppLog.println(Config::WakeWordProbabilityCutoff, 2);
     runtime.bestProbabilitySinceLog = 0.0f;
     runtime.lastScoreLogAt = now;
   }
   if (runtime.probabilityCount >= kOkayNabuWakeWordSlidingWindowSize &&
-      average >= kOkayNabuWakeWordProbabilityCutoff &&
+      average >= Config::WakeWordProbabilityCutoff &&
       now - runtime.lastDetectionAt >= kDetectionCooldownMs) {
     runtime.lastDetectionAt = now;
     runtime.probabilityCount = 0;

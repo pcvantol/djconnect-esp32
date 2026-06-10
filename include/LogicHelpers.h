@@ -306,6 +306,10 @@ inline bool isDjConnectInvalidClientType(const char *error) {
   return error != nullptr && strcmp(error, "invalid_client_type") == 0;
 }
 
+inline bool isNabuCasaCloudUrl(const char *url) {
+  return url != nullptr && strstr(url, ".ui.nabu.casa") != nullptr;
+}
+
 inline bool hasHexMacSuffix(const char *suffix) {
   if (suffix == nullptr) {
     return false;

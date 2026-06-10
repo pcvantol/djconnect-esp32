@@ -263,7 +263,7 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would update release examples/version references in platformio.ini, version files, README, CHANGELOG and AGENTS if present."
-  echo "Would build t_embed_cc1101 and esp32_s3_box3 sequentially with isolated PLATFORMIO_BUILD_DIR roots and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
+  echo "Would build t_embed_cc1101 and esp32_s3_box3 in parallel with isolated PLATFORMIO_BUILD_DIR roots and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
   echo "Would copy firmware to $RELEASE_DIR/$ASSET and $RELEASE_DIR/$BOX3_ASSET and write $RELEASE_DIR/$MANIFEST."
   echo "Would commit, tag and push source repo."
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
@@ -305,16 +305,31 @@ build_firmware_board() {
   ) >"$log_file" 2>&1
 }
 
+BUILD_PIDS=()
+BUILD_PID_BOARDS=()
 for board in "${RELEASE_BOARDS[@]}"; do
-  if build_firmware_board "$board"; then
+  build_firmware_board "$board" &
+  BUILD_PIDS+=("$!")
+  BUILD_PID_BOARDS+=("$board")
+done
+
+BUILD_FAILED=false
+for index in "${!BUILD_PIDS[@]}"; do
+  pid="${BUILD_PIDS[$index]}"
+  board="${BUILD_PID_BOARDS[$index]}"
+  if wait "$pid"; then
     echo "Build completed: $board"
   else
+    BUILD_FAILED=true
     echo "Build failed: $board" >&2
     echo "---- $RELEASE_DIR/build-$board.log tail ----" >&2
     tail -n 80 "$RELEASE_DIR/build-$board.log" >&2 || true
-    fail "firmware build failed for $board"
   fi
 done
+
+if [[ "$BUILD_FAILED" == "true" ]]; then
+  fail "one or more firmware builds failed"
+fi
 
 for board in "${RELEASE_BOARDS[@]}"; do
   asset="$(asset_name_for "$board" "$VERSION")"

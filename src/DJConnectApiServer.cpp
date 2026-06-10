@@ -158,8 +158,12 @@ void DJConnectApiServer::handlePair() {
   if (provisionedLanguage.isEmpty()) {
     provisionedLanguage = doc["language"] | "";
   }
-  if (haLocalUrl.isEmpty() && haRemoteUrl.isEmpty()) {
-    sendJson(400, "{\"error\":\"ha url missing\",\"message\":\"ha_local_url or ha_remote_url required\"}");
+  if (haLocalUrl.isEmpty()) {
+    sendJson(400, "{\"error\":\"ha local url missing\",\"message\":\"ha_local_url is required for ESP status and playback\"}");
+    return;
+  }
+  if (Logic::isNabuCasaCloudUrl(haLocalUrl.c_str())) {
+    sendJson(400, "{\"error\":\"ha local url invalid\",\"message\":\"ha_local_url must be a LAN URL, not Nabu Casa/cloud\"}");
     return;
   }
 
