@@ -327,13 +327,14 @@ Payload accepteert:
   "url": "https://...",
   "sha256": "...",
   "device": "lilygo-t-embed-s3",
-  "asset": "djconnect-device-v3.0.x.bin"
+  "asset": "djconnect-lilygo-t-embed-s3-v3.0.x.bin"
 }
 device moet matchen met het boardprofiel van de firmware:
-- LilyGO productie: `lilygo-t-embed-s3`, asset `djconnect-device-v3.0.x.bin`
-- ESP32-S3-BOX-3 bring-up: `esp32-s3-box-3`, asset `djconnect-device-esp32-s3-box-3-v3.0.x.bin`
-Het manifest houdt top-level LilyGO velden voor compatibility en bevat daarnaast
-een `firmwares` array met board, device, asset, sha256 en size per firmware.
+- LilyGO productie: `lilygo-t-embed-s3`, asset `djconnect-lilygo-t-embed-s3-v3.0.x.bin`
+- ESP32-S3-BOX-3 bring-up: `esp32-s3-box-3`, asset `djconnect-esp32-s3-box-3-v3.0.x.bin`
+Het manifest gebruikt alleen een `firmwares` array met board, device, asset,
+sha256 en size per firmware. Geen top-level single-device `device`, `asset`,
+`sha256` of `size` fallback.
 Tijdens OTA:
 duidelijke UI status;
 paarse snelle LED-ring animatie;
@@ -380,6 +381,6 @@ ESP stuurt generic playback commands naar HA.
 ESP PTT uploadt raw WAV naar HA en speelt HA DJ response lokaal af.
 ESP annuleert PTT/DJ-response flow op middelste encoderdruk tijdens processing/response.
 ESP deduplicates Up Next queue display so one real queue item is not shown repeatedly.
-OTA blijft werken met `djconnect-device-vX.Y.Z.bin` en target `lilygo-t-embed-s3`, en ondersteunt daarnaast `djconnect-device-esp32-s3-box-3-vX.Y.Z.bin` met target `esp32-s3-box-3`.
+OTA gebruikt `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` met target `lilygo-t-embed-s3`, en `djconnect-esp32-s3-box-3-vX.Y.Z.bin` met target `esp32-s3-box-3`.
 Het device gebruikt de echte DJConnect icon assets uit pcvantol/djconnect in plaats van een opnieuw getekende benadering.
 Logs bevatten geen secrets.

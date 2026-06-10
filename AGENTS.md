@@ -118,11 +118,11 @@ To also publish assets into the public firmware repo:
 The release script keeps local dev defaults as `dev` / `vdev` and injects the
 release version through PlatformIO build flags. Do not hardcode release versions
 into `include/Config.h`. Release builds publish both supported firmware assets:
-`t_embed_cc1101` as `djconnect-device-vX.Y.Z.bin` and `esp32_s3_box3` as
-`djconnect-device-esp32-s3-box-3-vX.Y.Z.bin`; beta releases use the same board
-split with `beta-vX.Y.Z` asset names. The manifest keeps top-level LilyGO fields
-for existing OTA clients and includes a `firmwares` array for board-specific OTA
-selection.
+`t_embed_cc1101` as `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and
+`esp32_s3_box3` as `djconnect-esp32-s3-box-3-vX.Y.Z.bin`; beta releases use the
+same board split with `beta-vX.Y.Z` asset names. The manifest uses a
+`firmwares` array for board-specific OTA selection and does not keep top-level
+single-device asset fields.
 
 Expected recurring third-party warnings:
 

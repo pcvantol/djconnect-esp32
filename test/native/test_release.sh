@@ -8,7 +8,7 @@ bash -n release.sh
 bash -n scripts/cleanup_old_releases.sh
 
 # Repository hygiene: generated release assets must stay out of source control.
-git check-ignore -q release/djconnect-device-v3.0.0.bin
+git check-ignore -q release/djconnect-lilygo-t-embed-s3-v3.0.0.bin
 if git ls-files --error-unmatch release/firmware_manifest.json >/dev/null 2>&1; then
   echo "release artifacts must not be tracked in the source repo" >&2
   exit 1
@@ -39,9 +39,10 @@ dry_run_output="$(./release.sh 98.76.54 --dry-run)"
 echo "$dry_run_output" | grep -q "version: 98.76.54"
 echo "$dry_run_output" | grep -q "tag:     v98.76.54"
 echo "$dry_run_output" | grep -q "channel: stable"
-echo "$dry_run_output" | grep -q "djconnect-device-v98.76.54.bin"
-echo "$dry_run_output" | grep -q "djconnect-device-esp32-s3-box-3-v98.76.54.bin"
-echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 and esp32_s3_box3 with DJCONNECT_VERSION=98.76.54"
+echo "$dry_run_output" | grep -q "djconnect-lilygo-t-embed-s3-v98.76.54.bin"
+echo "$dry_run_output" | grep -q "djconnect-esp32-s3-box-3-v98.76.54.bin"
+echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 and esp32_s3_box3 in parallel with isolated PLATFORMIO_BUILD_DIR roots"
+echo "$dry_run_output" | grep -q "DJCONNECT_VERSION=98.76.54 / DJCONNECT_VERSION_TAG=v98.76.54"
 echo "$dry_run_output" | grep -q "Would commit, tag and push source repo"
 echo "$dry_run_output" | grep -q "GitHub Actions will build/publish"
 
@@ -60,8 +61,8 @@ beta_output="$(./release.sh 98.76.55 --channel beta --dry-run)"
 echo "$beta_output" | grep -q "version: 98.76.55"
 echo "$beta_output" | grep -q "tag:     v98.76.55-beta"
 echo "$beta_output" | grep -q "channel: beta"
-echo "$beta_output" | grep -q "djconnect-device-beta-v98.76.55.bin"
-echo "$beta_output" | grep -q "djconnect-device-esp32-s3-box-3-beta-v98.76.55.bin"
+echo "$beta_output" | grep -q "djconnect-lilygo-t-embed-s3-beta-v98.76.55.bin"
+echo "$beta_output" | grep -q "djconnect-esp32-s3-box-3-beta-v98.76.55.bin"
 echo "$beta_output" | grep -q "firmware_manifest_beta.json"
 
 beta_tag_output="$(./release.sh v98.76.56-beta --dry-run)"

@@ -13,7 +13,7 @@ Patch release for board abstraction and dual firmware publishing.
 ### Changed
 
 - OTA target validation now uses the active board profile device model instead of a hardcoded LilyGO model.
-- Release manifests keep top-level LilyGO compatibility fields and add a `firmwares` array for board-specific OTA selection.
+- Release manifests now use a board-specific `firmwares` array only, with dedicated LilyGO and ESP32-S3-BOX-3 firmware asset names.
 - The ESP32-S3-BOX-3 profile disables unverified battery gauge, LED ring, speaker and microphone paths until hardware mapping is validated.
 
 ## v3.0.22
@@ -229,8 +229,8 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Liked Proxy lookup now searches multiple pages of the user's own playlists before falling back to public playlist search.
 - Up Next falls back to the current playlist tracks when Spotify's queue endpoint returns no upcoming tracks for playlist playback.
 - The Home Assistant pairing banner setup link opens in a new browser tab.
-- Firmware manifests now target `lilygo-t-embed-s3` while keeping the distributable binary asset name `djconnect-device-vX.Y.Z.bin`, matching the ESP OTA endpoint validation.
-- GitHub Actions now injects the release version into the PlatformIO build, verifies the compiled firmware contains `vX.Y.Z`, and publishes the single OTA asset `djconnect-device-vX.Y.Z.bin`.
+- Firmware manifests now target board-specific device models and use board-specific distributable binary asset names, matching the ESP OTA endpoint validation.
+- GitHub Actions now injects the release version into the PlatformIO build, verifies the compiled firmware contains `vX.Y.Z`, and publishes board-specific OTA assets.
 - The embedded web portal no longer contains a static `vdev` app-version placeholder in release binaries, and the release workflow rejects firmware assets that still contain that dev marker.
 - `release.sh` now lets GitHub Actions publish the public firmware release by default; local GitHub release creation is an explicit `--gh-release` fallback.
 - Web portal firmware upload no longer shows a temporary `Uploading firmware...` / `Firmware uploaden...` status label before the final upload response.

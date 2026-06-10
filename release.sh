@@ -9,7 +9,7 @@ Usage:
 
 Environment:
   PIO_BIN                 PlatformIO executable override.
-  PIO_JOBS                PlatformIO build jobs for release builds, default 1.
+  PIO_JOBS                PlatformIO build jobs per firmware environment, default 1.
   FIRMWARE_RELEASE_REPO   GitHub release repo, default pcvantol/djconnect-firmware.
 EOF
 }
@@ -89,14 +89,14 @@ asset_name_for() {
   local version="$2"
   if [[ "$CHANNEL" == "beta" ]]; then
     case "$board" in
-      t_embed_cc1101) echo "djconnect-device-beta-v$version.bin" ;;
-      esp32_s3_box3) echo "djconnect-device-esp32-s3-box-3-beta-v$version.bin" ;;
+      t_embed_cc1101) echo "djconnect-lilygo-t-embed-s3-beta-v$version.bin" ;;
+      esp32_s3_box3) echo "djconnect-esp32-s3-box-3-beta-v$version.bin" ;;
       *) fail "unknown release board: $board" ;;
     esac
   else
     case "$board" in
-      t_embed_cc1101) echo "djconnect-device-v$version.bin" ;;
-      esp32_s3_box3) echo "djconnect-device-esp32-s3-box-3-v$version.bin" ;;
+      t_embed_cc1101) echo "djconnect-lilygo-t-embed-s3-v$version.bin" ;;
+      esp32_s3_box3) echo "djconnect-esp32-s3-box-3-v$version.bin" ;;
       *) fail "unknown release board: $board" ;;
     esac
   fi
@@ -116,11 +116,7 @@ write_manifest() {
 {
   "version": "$version",
   "version_tag": "$tag",
-  "device": "lilygo-t-embed-s3",
   "channel": "$CHANNEL",
-  "asset": "$lilygo_asset",
-  "sha256": "$lilygo_sha",
-  "size": $lilygo_size,
   "min_ha_integration": "$MIN_HA_INTEGRATION",
   "firmwares": [
     {
@@ -238,7 +234,7 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would update release examples/version references in platformio.ini, version files, README, CHANGELOG and AGENTS if present."
-  echo "Would build t_embed_cc1101 and esp32_s3_box3 with DJCONNECT_VERSION=$VERSION and DJCONNECT_VERSION_TAG=$TAG."
+  echo "Would build t_embed_cc1101 and esp32_s3_box3 in parallel with isolated PLATFORMIO_BUILD_DIR roots and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
   echo "Would copy firmware to $RELEASE_DIR/$ASSET and $RELEASE_DIR/$BOX3_ASSET and write $RELEASE_DIR/$MANIFEST."
   echo "Would commit, tag and push source repo."
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
@@ -255,6 +251,9 @@ replace_version_examples "$VERSION" "$TAG"
 
 export DJCONNECT_BUILD_FLAGS="-DDJCONNECT_VERSION=$VERSION -DDJCONNECT_VERSION_TAG=$TAG"
 mkdir -p "$RELEASE_DIR"
+RELEASE_BUILD_ROOT=".pio/build-release/$TAG"
+rm -rf "$RELEASE_BUILD_ROOT"
+mkdir -p "$RELEASE_BUILD_ROOT"
 
 LILYGO_ASSET=""
 LILYGO_SHA256=""
@@ -263,10 +262,41 @@ BOX3_ASSET=""
 BOX3_SHA256=""
 BOX3_SIZE=""
 
+build_firmware_board() {
+  local board="$1"
+  local build_root="$RELEASE_BUILD_ROOT/$board"
+  local log_file="$RELEASE_DIR/build-$board.log"
+  echo "+ PLATFORMIO_BUILD_DIR=$build_root $PIO_BIN run -e $board -j $PIO_JOBS"
+  (
+    export PLATFORMIO_BUILD_DIR="$build_root"
+    "$PIO_BIN" run -e "$board" -j "$PIO_JOBS"
+  ) >"$log_file" 2>&1
+}
+
+BUILD_PIDS=()
+BUILD_LOGS=()
 for board in "${RELEASE_BOARDS[@]}"; do
-  run "$PIO_BIN" run -e "$board" -j "$PIO_JOBS"
+  build_firmware_board "$board" &
+  BUILD_PIDS+=("$!")
+  BUILD_LOGS+=("$RELEASE_DIR/build-$board.log")
+done
+
+BUILD_FAILED=false
+for i in "${!BUILD_PIDS[@]}"; do
+  if wait "${BUILD_PIDS[$i]}"; then
+    echo "Build completed: ${RELEASE_BOARDS[$i]}"
+  else
+    echo "Build failed: ${RELEASE_BOARDS[$i]}" >&2
+    echo "---- ${BUILD_LOGS[$i]} tail ----" >&2
+    tail -n 80 "${BUILD_LOGS[$i]}" >&2 || true
+    BUILD_FAILED=true
+  fi
+done
+[[ "$BUILD_FAILED" == "false" ]] || fail "one or more firmware builds failed"
+
+for board in "${RELEASE_BOARDS[@]}"; do
   asset="$(asset_name_for "$board" "$VERSION")"
-  firmware_bin=".pio/build/$board/firmware.bin"
+  firmware_bin="$RELEASE_BUILD_ROOT/$board/$board/firmware.bin"
   [[ -f "$firmware_bin" ]] || fail "no PlatformIO firmware.bin found for $board"
   run cp "$firmware_bin" "$RELEASE_DIR/$asset"
   asset_sha="$(sha256_file "$RELEASE_DIR/$asset")"
