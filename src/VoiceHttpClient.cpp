@@ -9,6 +9,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "DjResponseDebugLog.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
@@ -260,6 +261,9 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
     if (audioUrl != nullptr) {
       *audioUrl = responseAudioUrl;
     }
+    if (strlen(responseText) > 0 || strlen(responseAudioUrl) > 0) {
+      logDjResponseDebugText("voice_text", responseText, responseAudioUrl);
+    }
     if (strlen(responseText) > 0) {
       message = responseText;
       return true;
@@ -363,6 +367,9 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
     const char *responseAudioUrl = responseDoc["audio_url"] | "";
     if (audioUrl != nullptr) {
       *audioUrl = responseAudioUrl;
+    }
+    if (strlen(responseText) > 0 || strlen(responseAudioUrl) > 0) {
+      logDjResponseDebugText("voice_wav", responseText, responseAudioUrl);
     }
     if (strlen(responseText) > 0) {
       message = responseText;

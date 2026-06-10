@@ -6,6 +6,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "DjResponseDebugLog.h"
 #include "LedRing.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
@@ -157,6 +158,7 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
   http.end();
   activity.finish(code, ok ? "played" : "playback failed");
   result.spoken = ok;
+  logDjResponseDebugAudio("audio_download", result.audioType, contentLength, ok);
   AppLog.print("DJ response audio type=");
   AppLog.print(result.audioType);
   AppLog.print(" played=");

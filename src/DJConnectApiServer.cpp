@@ -7,6 +7,7 @@
 
 #include "AppLog.h"
 #include "DeviceCommandParser.h"
+#include "DjResponseDebugLog.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
 void DJConnectApiServer::begin(
@@ -268,6 +269,7 @@ void DJConnectApiServer::handleDjResponse() {
 
   AppLog.print("DJ response received chars=");
   AppLog.println(text.length());
+  logDjResponseDebugText("device_api", text, audioUrl);
   bool displayed = false;
   bool spoken = false;
   String audioType = audioUrl.isEmpty() ? "none" : "unknown";

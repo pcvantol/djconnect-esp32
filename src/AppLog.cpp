@@ -292,6 +292,7 @@ String AppLogger::severityForLine(const String &line) const {
       lower.startsWith("ha playback command:") ||
       lower.startsWith("spotify request:") ||
       lower.startsWith("spotify response:") ||
+      lower.startsWith("dj response debug:") ||
       lower.startsWith("battery:") ||
       lower.startsWith("responsiveness:") ||
       lower.startsWith("memory:") ||
