@@ -33,8 +33,10 @@ Okay Nabu wake-word support draait lokaal via TensorFlow Lite Micro en mag geen 
 De middelste encoderknop moet een actieve PTT processing/DJ-response flow kunnen annuleren.
 Oude backend-credential provisioning endpoints mogen niet bestaan of gebruikt worden.
 Pairing/status/voice/command auth gebruikt alleen het device bearer token.
-Device ID format voor actuele firmware is djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.
-Accepteer geen legacy djconnect-XXXXXXXXXXXX device IDs en bouw geen compatibility fallback voor dat oude formaat.
+Device ID formats voor actuele firmware zijn model-specifiek:
+- LilyGO T-Embed S3: `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`
+- ESP32-S3-BOX-3: `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`
+Accepteer geen legacy `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` of `djconnect-[6-cijferige-code]` device IDs en bouw geen compatibility fallback voor die oude/tijdelijke formaten.
 Alle user-facing tekst, filenames, namespaces, logs en provisioning labels gebruiken uitsluitend DJConnect / djconnect.
 NVS taal key blijft provision.language.
 NVS namespace is djconnect.
@@ -73,12 +75,12 @@ POST /api/djconnect/event indien gebruikt
 Headers:
 
 Authorization: Bearer <device_token>
-X-DJConnect-Device-ID: djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX
+X-DJConnect-Device-ID: djconnect-<device-model>-XXXXXXXXXXXX
 Content-Type: application/json
 Voor PTT:
 
 Authorization: Bearer <device_token>
-X-DJConnect-Device-ID: djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX
+X-DJConnect-Device-ID: djconnect-<device-model>-XXXXXXXXXXXX
 Content-Type: audio/wav
 HA -> ESP
 Protected local ESP routes:
@@ -101,10 +103,10 @@ Controleer en fix:
 ESP ontvangt device_token via POST /api/device/pair.
 ESP ontvangt een echte LAN ha_local_url via POST /api/device/pair.
 ESP mag daarnaast ha_remote_url ontvangen voor diagnostiek/toekomstig gebruik.
-ESP gebruikt ha_local_url voor status, playback en voice; ha_remote_url is geen fallback voor pairing-ok/status.
+ESP gebruikt ha_local_url als normale route voor status, playback en voice; ha_remote_url is fallback/diagnostiek en niet het normale pad.
 ESP accepteert en verwacht geen oud enkelvoudig HA-URL pairingveld meer.
-ESP accepteert als persistent device ID alleen djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.
-Een tijdelijke setup-code identiteit mag alleen tijdens captive/setup flow bestaan; na pairing moet de firmware de echte LilyGO device ID gebruiken.
+ESP accepteert als persistent device ID alleen de eigen model-specifieke ID.
+Een tijdelijke setup/pairing code mag alleen als `pair_code` bestaan; na pairing moet de firmware de echte model-specifieke device ID gebruiken.
 ESP slaat exact die token persistent op.
 Eerste call naar HA /api/djconnect/command gebruikt exact die token.
 Eerste call naar HA /api/djconnect/status gebruikt exact die token.
@@ -126,6 +128,7 @@ Verwachte HA -> ESP pair payload:
 {
   "pair_code": "123456",
   "device_id": "djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX",
+  "client_type": "esp32",
   "device_name": "DJConnect",
   "device_language": "nl",
   "language": "nl",
@@ -143,6 +146,7 @@ Stuur minimaal:
 
 {
   "device_id": "djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX",
+  "client_type": "esp32",
   "ha_pairing_status": "paired|pending|stale|unpaired",
   "local_url": "http://djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.local",
   "firmware": "3.1.x",
@@ -177,20 +181,21 @@ ESP stuurt playback commands naar:
 POST /api/djconnect/command
 Payload voorbeelden:
 
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"status"}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"devices"}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"queue"}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"playlists"}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"pause"}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"play"}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"next"}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"previous"}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"set_output","value":"iPhone","play":true}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"set_volume","value":35}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"start_liked_proxy","play":true}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"start_playlist","value":"spotify:playlist:...","play":true}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"set_shuffle","value":true}
-{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"set_repeat","value":"context"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"status"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"devices"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"queue"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"playlists"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"pause"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"play"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"next"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"previous"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"set_output","value":"iPhone","play":true}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"set_volume","value":35}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"start_liked_proxy","play":true}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"start_playlist","value":"spotify:playlist:...","play":true}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"play_context_at","value":{"context_uri":"spotify:playlist:...","offset_uri":"spotify:track:..."}}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"set_shuffle","value":true}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","client_type":"esp32","command":"set_repeat","value":"context"}
 Verwachte response shapes:
 
 {
@@ -373,7 +378,7 @@ OTA payload device target matcht het boardprofiel (`lilygo-t-embed-s3` of `esp32
 DJConnect asset conversie test of snapshot/checksum zodat het firmware asset niet per ongeluk terugvalt naar een oud producticoon.
 Acceptatiecriteria
 ESP pairt met HA en blijft paired na de eerste /api/djconnect/command.
-ESP gebruikt uitsluitend djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX als echte device ID en accepteert geen legacy djconnect-XXXXXXXXXXXX.
+ESP gebruikt uitsluitend de eigen model-specifieke device ID als echte device ID en accepteert geen legacy `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` of `djconnect-[6-cijferige-code]`.
 ESP wist pairing niet door Spotify OAuth/backend failures.
 ESP status houdt HA native entities actueel.
 ESP gebruikt alleen de HA-native lokale API.

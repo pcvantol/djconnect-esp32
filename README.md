@@ -157,6 +157,7 @@ http://djconnect-<device-model>-XXXXXXXXXXXX.local
 ```
 
 The hostname is the device ID. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`. TXT records include `name`, `device_id`, `version`, `paired`, `api` and `model`.
+The firmware does not use or accept persistent legacy IDs such as `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` or `djconnect-[six-digit-code]`. The six-digit setup value is only a temporary `pair_code`.
 
 ### Local Device API
 
@@ -164,6 +165,8 @@ Open endpoints:
 
 - `GET /api/device/info`
 - `GET /api/device/pairing-info`
+
+`GET /api/device/pairing-info` returns the model-specific `device_id`, `device_name`, temporary `pair_code`, `client_type:"esp32"`, firmware and mDNS `local_url`. It does not return or accept `device_type`.
 
 Protected endpoints require `Authorization: Bearer <device_token>`:
 
@@ -186,7 +189,7 @@ The ESP stores separate local and remote Home Assistant URLs:
 - `ha_local_url`: the LAN URL the ESP should use for normal control, for example `http://192.168.1.10:8123`.
 - `ha_remote_url`: the optional Nabu Casa/cloud URL, for example `https://example.ui.nabu.casa`.
 
-`ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant sends a Nabu Casa URL as `ha_local_url`, the ESP rejects pairing instead of entering a half-paired state. Status, playback and voice calls intentionally use the local URL only; if no local URL is available, the firmware fails clearly instead of silently trying the cloud endpoint. The remote URL is still stored/reported for diagnostics and future route handling, but it is not a fallback for a green Home Assistant indicator.
+`ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant sends a Nabu Casa URL as `ha_local_url`, the ESP rejects pairing instead of entering a half-paired state. Status and playback calls intentionally use the local URL as the normal path; if no local URL is available, the firmware fails clearly instead of silently trying the cloud endpoint. The remote URL is still stored/reported for fallback diagnostics and future route handling, but it is not the normal path and must not be required for a green Home Assistant indicator.
 
 A Postman collection for these local ESP endpoints is available at `postman/DJConnect ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
 

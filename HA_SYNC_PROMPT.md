@@ -38,7 +38,7 @@ Regels:
 - `ha_remote_url` mag wel Nabu Casa/cloud zijn.
 - Als geen local URL bekend is, moet pairing pending/falen; zet cloud niet in local.
 - Bepaal local via HA network config, internal URL, source IP of fallback `http://<HA LAN IP>:8123`.
-- ESP firmware gebruikt `ha_local_url` voor `/api/djconnect/status`, `/api/djconnect/command` en `/api/djconnect/voice`. `ha_remote_url` is diagnostiek/toekomstig gebruik en mag niet nodig zijn om H groen te krijgen.
+- ESP firmware gebruikt `ha_local_url` als normale route voor `/api/djconnect/status`, `/api/djconnect/command` en `/api/djconnect/voice`. `ha_remote_url` is fallback/diagnostiek en mag niet nodig zijn om H groen te krijgen.
 
 ### ESP Payload Identity
 

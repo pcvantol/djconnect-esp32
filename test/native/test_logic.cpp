@@ -408,20 +408,24 @@ static void testVoiceChunkHelpers() {
 }
 
 static void testDjConnectDeviceIdContract() {
+  const char *genericLegacyId = "djconnect-" "001122AABBCC";
   assert(Logic::isDjConnectDeviceIdForModel("djconnect-lilygo-t-embed-s3-001122AABBCC", "lilygo-t-embed-s3"));
   assert(Logic::isDjConnectDeviceIdForModel("djconnect-lilygo-t-embed-s3-001122aabbcc", "lilygo-t-embed-s3"));
   assert(Logic::isDjConnectDeviceIdForModel("djconnect-esp32-s3-box-3-001122AABBCC", "esp32-s3-box-3"));
+  assert(!Logic::isDjConnectDeviceIdForModel(genericLegacyId, "lilygo-t-embed-s3"));
   assert(!Logic::isDjConnectDeviceIdForModel("djconnect-lilygo-001122AABBCC", "lilygo-t-embed-s3"));
+  assert(!Logic::isDjConnectDeviceIdForModel("djconnect-123456", "lilygo-t-embed-s3"));
   assert(!Logic::isDjConnectDeviceIdForModel("djconnect-esp32-s3-box-3-001122AABBCC", "lilygo-t-embed-s3"));
   assert(!Logic::isDjConnectDeviceIdForModel("djconnect-lilygo-t-embed-s3-001122AABB", "lilygo-t-embed-s3"));
   assert(!Logic::isDjConnectDeviceIdForModel("djconnect-lilygo-t-embed-s3-001122AABBCCDD", "lilygo-t-embed-s3"));
   assert(!Logic::isDjConnectDeviceIdForModel("djconnect-lilygo-t-embed-s3-001122AABBCG", "lilygo-t-embed-s3"));
   assert(!Logic::isDjConnectDeviceIdForModel(nullptr, "lilygo-t-embed-s3"));
   assert(!Logic::isDjConnectDeviceIdForModel("djconnect-lilygo-t-embed-s3-001122AABBCC", nullptr));
-  const char *legacyId = "djconnect-" "001122AABBCC";
-
-  assert(Logic::isLegacyDjConnectDeviceId(legacyId));
+  assert(Logic::isLegacyDjConnectDeviceId(genericLegacyId));
+  assert(Logic::isLegacyDjConnectDeviceId("djconnect-lilygo-001122AABBCC"));
+  assert(Logic::isLegacyDjConnectDeviceId("djconnect-123456"));
   assert(!Logic::isLegacyDjConnectDeviceId("djconnect-lilygo-t-embed-s3-001122AABBCC"));
+  assert(!Logic::isLegacyDjConnectDeviceId("djconnect-esp32-s3-box-3-001122AABBCC"));
 }
 
 static void testWebPortalFormValidation() {

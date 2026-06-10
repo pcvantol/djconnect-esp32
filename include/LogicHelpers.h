@@ -340,10 +340,25 @@ inline bool isDjConnectDeviceIdForModel(const char *deviceId, const char *device
 
 inline bool isLegacyDjConnectDeviceId(const char *deviceId) {
   static constexpr const char *prefix = "djconnect-";
+  static constexpr const char *oldLilygoPrefix = "djconnect-lilygo-";
   if (deviceId == nullptr || strncmp(deviceId, prefix, strlen(prefix)) != 0) {
     return false;
   }
-  return hasHexMacSuffix(deviceId + strlen(prefix));
+  if (strncmp(deviceId, oldLilygoPrefix, strlen(oldLilygoPrefix)) == 0) {
+    return hasHexMacSuffix(deviceId + strlen(oldLilygoPrefix));
+  }
+  const char *suffix = deviceId + strlen(prefix);
+  bool setupCode = true;
+  for (size_t index = 0; index < 6; index++) {
+    if (suffix[index] < '0' || suffix[index] > '9') {
+      setupCode = false;
+      break;
+    }
+  }
+  if (setupCode && suffix[6] == '\0') {
+    return true;
+  }
+  return hasHexMacSuffix(suffix);
 }
 
 inline const char *voiceHttpFailureMessage(int statusCode) {
