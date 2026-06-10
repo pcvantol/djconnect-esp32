@@ -211,10 +211,11 @@ Do not store Spotify OAuth credentials, Sonos credentials or any playback-backen
 
 mDNS:
 
-- Hostname: `djconnect-lilygo-XXXXXXXXXXXX`
+- Hostname: `djconnect-<device-model>-XXXXXXXXXXXX`
 - Service: `_djconnect._tcp`
-- URL: `http://djconnect-lilygo-XXXXXXXXXXXX.local`
+- URL: `http://djconnect-<device-model>-XXXXXXXXXXXX.local`
 - TXT records include `name`, `device_id`, `version`, `paired`, `api`, and `model`.
+- LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`.
 
 ## Secrets And Credential Policy
 

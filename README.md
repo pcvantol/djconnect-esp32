@@ -147,16 +147,16 @@ After WiFi connect, the device advertises `_djconnect._tcp`.
 Hostname format:
 
 ```text
-djconnect-lilygo-XXXXXXXXXXXX
+djconnect-<device-model>-XXXXXXXXXXXX
 ```
 
 Browsable URL:
 
 ```text
-http://djconnect-lilygo-XXXXXXXXXXXX.local
+http://djconnect-<device-model>-XXXXXXXXXXXX.local
 ```
 
-TXT records include `name`, `device_id`, `version`, `paired`, `api` and `model`.
+The hostname is the device ID. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`. TXT records include `name`, `device_id`, `version`, `paired`, `api` and `model`.
 
 ### Local Device API
 
@@ -318,6 +318,8 @@ Queue, playlist and output data are supplied by the Home Assistant integration. 
 
 Keep new provisioning writes in `ProvisioningController`, power/sleep/watchdog decisions in `PowerController`, pure menu counts/options in `DJConnectMenuModel`, and long HTTP timeout policy through `NetworkActivity`. This keeps `DJConnectApp` focused on orchestration instead of becoming the owner of every subsystem.
 
+The ESP32-S3-BOX-3 PlatformIO environment uses the Espressif `esp32s3box` board definition so PSRAM-capable Box hardware boots with PSRAM enabled. The LilyGO environment stays on the existing no-PSRAM `esp32-s3-devkitc-1` definition until a supported LilyGO T-Embed-CC1101 PSRAM module variant is explicitly verified.
+
 ## Architecture Decisions
 
 - Home Assistant is the trusted backend for pairing, playback command interpretation, backend credentials, Assist STT/TTS orchestration and OTA offer handling. The ESP stores only WiFi settings and its Home Assistant device token.
@@ -342,7 +344,7 @@ The device Settings menu includes a `Stress test` toggle. This is a local render
 
 ## OTA Firmware Updates
 
-Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries are board-specific: `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` for LilyGO and `djconnect-esp32-s3-box-3-vX.Y.Z.bin` for ESP32-S3-BOX-3. The manifest uses a `firmwares` array with each board profile, target device, asset, SHA256 and size; Home Assistant must select the entry that matches the paired device model. `min_ha_integration` is derived from the firmware major/minor version, so firmware `X.Y.Z` publishes `X.Y.0`.
+Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries are board-specific: `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` for LilyGO and `djconnect-esp32-s3-box-3-vX.Y.Z.bin` for ESP32-S3-BOX-3. The manifest uses a `firmwares` array with each board profile, target device, asset, SHA256 and size; Home Assistant must select the entry that matches the paired device model. `min_ha_integration` and `max_ha_integration` are derived from the firmware major/minor version, so firmware `X.Y.Z` publishes `min_ha_integration: "X.Y.0"` and exclusive `max_ha_integration: "X.(Y+1).0"`.
 
 Local development builds still show `vdev` on the device, but the Home Assistant/device API reports dev firmware as OTA-comparable version `0.0.0`. This keeps local flashes clearly recognizable while ensuring every published `X.Y.Z` firmware release is seen as an upgrade from a dev build.
 

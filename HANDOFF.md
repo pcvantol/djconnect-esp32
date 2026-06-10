@@ -6,10 +6,11 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release prepared and published from this repo: `v3.0.24`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` currently keep only the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
+- Latest firmware release target from this repo: `v3.1.0`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep only the newest semver release/tag after cleanup; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, board-specific OTA, DJ response and status updates.
 - Board profiles are split through `BoardProfile.h`. The production LilyGO build is `t_embed_cc1101` / `lilygo-t-embed-s3`; ESP32-S3-BOX-3 bring-up is `esp32_s3_box3` / `esp32-s3-box-3`.
+- The ESP32-S3-BOX-3 PlatformIO env uses the `esp32s3box` board definition with PSRAM enabled. The LilyGO env remains on the existing no-PSRAM `esp32-s3-devkitc-1` definition until a specific PSRAM-equipped T-Embed-CC1101 variant is verified.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
 - Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL. Middle encoder press cancels the active processing/DJ-response flow and requests response-audio stream stop as soon as possible.
 - Web portal includes Now Playing, DJ-response simulation, outputs, playlists, Up Next with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. Up Next is de-duplicated by URI or title/subtitle fallback so single-item queues do not render repeated tracks. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
@@ -24,6 +25,7 @@ Current repo state includes:
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
 - Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
 - HA should treat pairing as pending until the ESP confirms token storage. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token` plus `ha_local_url` and/or `ha_remote_url`, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/status` plus an immediate playback status poll.
+- Device IDs and mDNS hostnames are board-model specific. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`. Home Assistant should use the `model` field/TXT record for device-type routing instead of parsing the old `djconnect-lilygo-` prefix.
 - The ESP requires a real LAN `ha_local_url` for playback proxy commands. If Home Assistant sends a Nabu Casa `.ui.nabu.casa` URL as `ha_local_url`, firmware normalizes it into `ha_remote_url` and clears the local NVS key on the next pairing save. Playback fails clearly with `HA playback command unavailable: local HA URL missing` when local is absent instead of silently using cloud.
 - Direct pairing during the pairing screen leaves pairing mode first so BLE can shut down before the Okay Nabu TensorFlow runtime allocates its arena.
 - Okay Nabu wake word runs locally through TensorFlow Lite Micro plus the TensorFlow micro_speech frontend. Current tuning uses a 10 ms feature step, 3-frame sliding window and `0.90` cutoff. Wake-word recordings auto-stop after 1.2 seconds of silence and are hard-capped at 15 seconds.
@@ -44,7 +46,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e esp32_s3_box3
 ```
 
-All passed during the v3.0.24 release/hygiene pass. The public v3.0.24 release publishes both `djconnect-lilygo-t-embed-s3-v3.0.24.bin` and `djconnect-esp32-s3-box-3-v3.0.24.bin`, both `.sha256` files and `firmware_manifest.json` to `pcvantol/djconnect-firmware`.
+All passed before the v3.1.0 release. The public v3.1.0 release publishes both `djconnect-lilygo-t-embed-s3-v3.1.0.bin` and `djconnect-esp32-s3-box-3-v3.1.0.bin`, both `.sha256` files and `firmware_manifest.json` to `pcvantol/djconnect-firmware`.
 
 ## Architecture
 
@@ -86,7 +88,7 @@ Core data/security boundaries:
 - Up Next item playback requires a valid context URI. The ESP preserves queue `context_uri` from Home Assistant and uses it as a fallback when the latest playback snapshot has no context. Queue display state is de-duplicated on the ESP before device/web rendering.
 - Web Up Next album art is URL pass-through only. The ESP does not download queue thumbnails; the browser lazy-loads them when the queue panel is visible.
 - Release binaries/manifests are generated locally under `release/` but ignored by git; published OTA assets live only in `pcvantol/djconnect-firmware`, not in the closed-source source repo.
-- Release manifests use a `firmwares` array only. There is no legacy single-device asset compatibility: LilyGO uses `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-vX.Y.Z.bin`, and `min_ha_integration` is derived as `X.Y.0` from firmware version `X.Y.Z`.
+- Release manifests use a `firmwares` array only. There is no legacy single-device asset compatibility: LilyGO uses `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-vX.Y.Z.bin`, and HA compatibility is derived from firmware version `X.Y.Z` as `min_ha_integration:"X.Y.0"` plus exclusive `max_ha_integration:"X.(Y+1).0"`.
 - Local `dev` / `vdev` builds report OTA-comparable version `0.0.0` to Home Assistant/device API so published releases are seen as upgrades.
 - Bootstrap OTA is separate from normal HA OTA: it only runs before pairing, checks the public firmware release API, skips dev firmware, and reuses the normal OTA write/display/LED/sound path when a newer release is found.
 - True NVS Encryption is not active in the current Arduino/PlatformIO build. It requires an ESP-IDF or Arduino-as-component build with `CONFIG_NVS_ENCRYPTION=y` plus an `nvs_keys` partition and factory/serial flashing. OTA alone cannot safely enable it.

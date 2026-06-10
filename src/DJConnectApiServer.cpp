@@ -142,8 +142,8 @@ void DJConnectApiServer::handlePair() {
     sendJson(400, "{\"error\":\"device id missing\",\"message\":\"device_id required\"}");
     return;
   }
-  if (!Logic::isDjConnectLilygoDeviceId(deviceId.c_str()) || deviceId != device_->getDeviceId()) {
-    sendJson(400, "{\"error\":\"device id invalid\",\"message\":\"device_id must match this DJConnect LilyGO device\"}");
+  if (!Logic::isDjConnectDeviceIdForModel(deviceId.c_str(), device_->getModel().c_str()) || deviceId != device_->getDeviceId()) {
+    sendJson(400, "{\"error\":\"device id invalid\",\"message\":\"device_id must match this DJConnect device\"}");
     return;
   }
   if (clientType != device_->getClientType()) {

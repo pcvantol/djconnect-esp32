@@ -2,13 +2,13 @@
   "info": {
     "_postman_id": "1bfe1a4a-bf33-4a86-9dc5-djconnect-esp-api",
     "name": "DJConnect ESP API",
-    "description": "Public/local ESP API for a DJConnect device. Import this collection into Postman and set base_url to the device IP or mDNS URL, for example http://djconnect-lilygo-XXXXXXXXXXXX.local. Protected endpoints require device_token from Home Assistant pairing.",
+    "description": "Public/local ESP API for a DJConnect device. Import this collection into Postman and set base_url to the device IP or mDNS URL, for example http://djconnect-<device-model>-XXXXXXXXXXXX.local. Protected endpoints require device_token from Home Assistant pairing.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "base_url",
-      "value": "http://djconnect-lilygo-XXXXXXXXXXXX.local",
+      "value": "http://djconnect-<device-model>-XXXXXXXXXXXX.local",
       "type": "string"
     },
     {
@@ -28,7 +28,7 @@
     },
     {
       "key": "firmware_url",
-      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.0.24/djconnect-lilygo-t-embed-s3-v3.0.24.bin",
+      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.1.0/djconnect-lilygo-t-embed-s3-v3.1.0.bin",
       "type": "string"
     },
     {
@@ -101,7 +101,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pair_code\": \"123456\",\n  \"device_id\": \"djconnect-lilygo-XXXXXXXXXXXX\",\n  \"device_name\": \"DJConnect\",\n  \"client_type\": \"esp32\",\n  \"device_token\": \"{{device_token}}\",\n  \"ha_local_url\": \"{{ha_local_url}}\",\n  \"ha_remote_url\": \"{{ha_remote_url}}\",\n  \"device_language\": \"nl\"\n}"
+              "raw": "{\n  \"pair_code\": \"123456\",\n  \"device_id\": \"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX\",\n  \"device_name\": \"DJConnect\",\n  \"client_type\": \"esp32\",\n  \"device_token\": \"{{device_token}}\",\n  \"ha_local_url\": \"{{ha_local_url}}\",\n  \"ha_remote_url\": \"{{ha_remote_url}}\",\n  \"device_language\": \"nl\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/device/pair",
@@ -114,7 +114,7 @@
                 "pair"
               ]
             },
-            "description": "Direct Home Assistant pairing callback. Stores the device token plus local/cloud HA URLs on the ESP. The device_id must match the LilyGO device and client_type must be esp32."
+            "description": "Direct Home Assistant pairing callback. Stores the device token plus local/cloud HA URLs on the ESP. The device_id must match this DJConnect device and client_type must be esp32."
           },
           "response": []
         },
@@ -575,7 +575,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{firmware_url}}\",\n  \"sha256\": \"{{firmware_sha256}}\",\n  \"version\": \"3.0.24\",\n  \"device\": \"lilygo-t-embed-s3\"\n}"
+              "raw": "{\n  \"url\": \"{{firmware_url}}\",\n  \"sha256\": \"{{firmware_sha256}}\",\n  \"version\": \"3.1.0\",\n  \"device\": \"lilygo-t-embed-s3\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/device/ota",

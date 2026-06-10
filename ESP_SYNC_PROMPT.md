@@ -2,7 +2,7 @@
 Werk in de bestaande proprietary ESP firmware repo pcvantol/djconnect-esp32.
 
 Doel
-Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.0.21.
+Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.1.0.
 
 De HA integration is de trusted backend voor:
 
@@ -33,7 +33,7 @@ Okay Nabu wake-word support draait lokaal via TensorFlow Lite Micro en mag geen 
 De middelste encoderknop moet een actieve PTT processing/DJ-response flow kunnen annuleren.
 Oude backend-credential provisioning endpoints mogen niet bestaan of gebruikt worden.
 Pairing/status/voice/command auth gebruikt alleen het device bearer token.
-Device ID format voor actuele firmware is djconnect-lilygo-XXXXXXXXXXXX.
+Device ID format voor actuele firmware is djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.
 Accepteer geen legacy djconnect-XXXXXXXXXXXX device IDs en bouw geen compatibility fallback voor dat oude formaat.
 Alle user-facing tekst, filenames, namespaces, logs en provisioning labels gebruiken uitsluitend DJConnect / djconnect.
 NVS taal key blijft provision.language.
@@ -73,12 +73,12 @@ POST /api/djconnect/event indien gebruikt
 Headers:
 
 Authorization: Bearer <device_token>
-X-DJConnect-Device-ID: djconnect-lilygo-XXXXXXXXXXXX
+X-DJConnect-Device-ID: djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX
 Content-Type: application/json
 Voor PTT:
 
 Authorization: Bearer <device_token>
-X-DJConnect-Device-ID: djconnect-lilygo-XXXXXXXXXXXX
+X-DJConnect-Device-ID: djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX
 Content-Type: audio/wav
 HA -> ESP
 Protected local ESP routes:
@@ -102,7 +102,7 @@ ESP ontvangt device_token via POST /api/device/pair.
 ESP ontvangt ha_local_url en/of ha_remote_url via POST /api/device/pair.
 ESP gebruikt ha_local_url LAN-first en ha_remote_url als cloud fallback.
 ESP accepteert en verwacht geen oud enkelvoudig HA-URL pairingveld meer.
-ESP accepteert als persistent device ID alleen djconnect-lilygo-XXXXXXXXXXXX.
+ESP accepteert als persistent device ID alleen djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.
 Een tijdelijke setup-code identiteit mag alleen tijdens captive/setup flow bestaan; na pairing moet de firmware de echte LilyGO device ID gebruiken.
 ESP slaat exact die token persistent op.
 Eerste call naar HA /api/djconnect/command gebruikt exact die token.
@@ -124,7 +124,7 @@ Verwachte HA -> ESP pair payload:
 
 {
   "pair_code": "123456",
-  "device_id": "djconnect-lilygo-XXXXXXXXXXXX",
+  "device_id": "djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX",
   "device_name": "DJConnect",
   "device_language": "nl",
   "language": "nl",
@@ -141,10 +141,10 @@ Zorg dat periodieke HA status payload actuele device settings bevat zodat HA nat
 Stuur minimaal:
 
 {
-  "device_id": "djconnect-lilygo-XXXXXXXXXXXX",
+  "device_id": "djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX",
   "ha_pairing_status": "paired|pending|stale|unpaired",
-  "local_url": "http://djconnect-lilygo-XXXXXXXXXXXX.local",
-  "firmware": "3.0.x",
+  "local_url": "http://djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.local",
+  "firmware": "3.1.x",
   "battery_percent": 85,
   "wifi_rssi": -55,
   "uptime": 123456,
@@ -176,20 +176,20 @@ ESP stuurt playback commands naar:
 POST /api/djconnect/command
 Payload voorbeelden:
 
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"status"}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"devices"}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"queue"}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"playlists"}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"pause"}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"play"}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"next"}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"previous"}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_output","value":"iPhone","play":true}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_volume","value":35}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"start_liked_proxy","play":true}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"start_playlist","value":"spotify:playlist:...","play":true}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_shuffle","value":true}
-{"device_id":"djconnect-lilygo-XXXXXXXXXXXX","command":"set_repeat","value":"context"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"status"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"devices"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"queue"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"playlists"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"pause"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"play"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"next"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"previous"}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"set_output","value":"iPhone","play":true}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"set_volume","value":35}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"start_liked_proxy","play":true}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"start_playlist","value":"spotify:playlist:...","play":true}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"set_shuffle","value":true}
+{"device_id":"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX","command":"set_repeat","value":"context"}
 Verwachte response shapes:
 
 {
@@ -323,15 +323,15 @@ OTA endpoint blijft POST /api/device/ota.
 Bearer token verplicht.
 Payload accepteert:
 {
-  "version": "3.0.x",
+  "version": "3.1.x",
   "url": "https://...",
   "sha256": "...",
   "device": "lilygo-t-embed-s3",
-  "asset": "djconnect-lilygo-t-embed-s3-v3.0.x.bin"
+  "asset": "djconnect-lilygo-t-embed-s3-v3.1.x.bin"
 }
 device moet matchen met het boardprofiel van de firmware:
-- LilyGO productie: `lilygo-t-embed-s3`, asset `djconnect-lilygo-t-embed-s3-v3.0.x.bin`
-- ESP32-S3-BOX-3 bring-up: `esp32-s3-box-3`, asset `djconnect-esp32-s3-box-3-v3.0.x.bin`
+- LilyGO productie: `lilygo-t-embed-s3`, asset `djconnect-lilygo-t-embed-s3-v3.1.x.bin`
+- ESP32-S3-BOX-3 bring-up: `esp32-s3-box-3`, asset `djconnect-esp32-s3-box-3-v3.1.x.bin`
 Het manifest gebruikt alleen een `firmwares` array met board, device, asset,
 sha256 en size per firmware. Geen top-level single-device `device`, `asset`,
 `sha256` of `size` fallback.
@@ -372,7 +372,7 @@ OTA payload device target matcht het boardprofiel (`lilygo-t-embed-s3` of `esp32
 DJConnect asset conversie test of snapshot/checksum zodat het firmware asset niet per ongeluk terugvalt naar een oud producticoon.
 Acceptatiecriteria
 ESP pairt met HA en blijft paired na de eerste /api/djconnect/command.
-ESP gebruikt uitsluitend djconnect-lilygo-XXXXXXXXXXXX als echte device ID en accepteert geen legacy djconnect-XXXXXXXXXXXX.
+ESP gebruikt uitsluitend djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX als echte device ID en accepteert geen legacy djconnect-XXXXXXXXXXXX.
 ESP wist pairing niet door Spotify OAuth/backend failures.
 ESP status houdt HA native entities actueel.
 ESP gebruikt alleen de HA-native lokale API.

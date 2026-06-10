@@ -4,8 +4,8 @@ This handoff is for building a new native iOS/macOS DJConnect client that uses
 the same Home Assistant custom integration backend as the ESP32 firmware.
 
 Use this as the sync prompt for a new Apple-client repo. The current ESP
-firmware contract line is `v3.0.25`; Apple clients should follow the same
-`3.0.x` Home Assistant integration protocol unless that backend contract is
+firmware contract line is `v3.1.0`; Apple clients should follow the same
+`3.1.x` Home Assistant integration protocol unless that backend contract is
 changed deliberately.
 
 The app should be functionally comparable to the ESP device at the Home
@@ -64,8 +64,8 @@ Recommended fields:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "device_name": "DJConnect iPhone",
   "client_type": "ios",
-  "firmware": "3.0.25",
-  "app_version": "3.0.25",
+  "firmware": "3.1.0",
+  "app_version": "3.1.0",
   "platform": "ios"
 }
 ```
@@ -77,8 +77,8 @@ For macOS:
   "device_id": "djconnect-macos-8F3A2C91B45D",
   "device_name": "DJConnect Mac",
   "client_type": "macos",
-  "firmware": "3.0.25",
-  "app_version": "3.0.25",
+  "firmware": "3.1.0",
+  "app_version": "3.1.0",
   "platform": "macos"
 }
 ```
@@ -92,7 +92,6 @@ must keep `firmware` populated unless the backend contract is changed.
 DJConnect clients and the HA integration must share the same `major.minor`
 protocol version:
 
-- HA `3.0.z` accepts clients `3.0.z`.
 - HA `3.1.z` accepts clients `3.1.z`.
 - Patch versions may differ.
 - `0.0.0` is reserved as a dev-client escape hatch.
@@ -180,8 +179,8 @@ Minimum payload:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "client_type": "ios",
   "ha_pairing_status": "paired",
-  "firmware": "3.0.25",
-  "app_version": "3.0.25",
+  "firmware": "3.1.0",
+  "app_version": "3.1.0",
   "state": "online",
   "status": "online",
   "battery_percent": 85,

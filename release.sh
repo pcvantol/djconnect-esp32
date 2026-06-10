@@ -12,6 +12,7 @@ Environment:
   PIO_JOBS                PlatformIO build jobs per firmware environment, default 1.
   FIRMWARE_RELEASE_REPO   GitHub release repo, default pcvantol/djconnect-firmware.
   --min-ha-integration    Override default X.Y.0 integration requirement derived from the release version.
+  --max-ha-integration    Override default X.(Y+1).0 exclusive integration ceiling derived from the release version.
 EOF
 }
 
@@ -54,6 +55,18 @@ file_size() {
   else
     stat -c%s "$file"
   fi
+}
+
+default_min_ha_integration_for() {
+  local version="$1"
+  echo "${version%.*}.0"
+}
+
+default_max_ha_integration_for() {
+  local version="$1"
+  local major minor patch
+  IFS=. read -r major minor patch <<< "$version"
+  echo "$major.$((minor + 1)).0"
 }
 
 replace_version_examples() {
@@ -119,6 +132,7 @@ write_manifest() {
   "version_tag": "$tag",
   "channel": "$CHANNEL",
   "min_ha_integration": "$MIN_HA_INTEGRATION",
+  "max_ha_integration": "$MAX_HA_INTEGRATION",
   "firmwares": [
     {
       "board": "t_embed_cc1101",
@@ -144,6 +158,7 @@ DRY_RUN=false
 GH_RELEASE=false
 PUBLISH_FIRMWARE_REPO=""
 MIN_HA_INTEGRATION=""
+MAX_HA_INTEGRATION=""
 CHANNEL="stable"
 
 while [[ $# -gt 0 ]]; do
@@ -168,6 +183,11 @@ while [[ $# -gt 0 ]]; do
     --min-ha-integration)
       [[ $# -ge 2 ]] || fail "--min-ha-integration requires a version"
       MIN_HA_INTEGRATION="$2"
+      shift 2
+      ;;
+    --max-ha-integration)
+      [[ $# -ge 2 ]] || fail "--max-ha-integration requires a version"
+      MAX_HA_INTEGRATION="$2"
       shift 2
       ;;
     --channel)
@@ -200,7 +220,10 @@ if [[ "$VERSION_ARG" == *-beta ]]; then
   CHANNEL="beta"
 fi
 if [[ -z "$MIN_HA_INTEGRATION" ]]; then
-  MIN_HA_INTEGRATION="${VERSION%.*}.0"
+  MIN_HA_INTEGRATION="$(default_min_ha_integration_for "$VERSION")"
+fi
+if [[ -z "$MAX_HA_INTEGRATION" ]]; then
+  MAX_HA_INTEGRATION="$(default_max_ha_integration_for "$VERSION")"
 fi
 TAG="v$VERSION"
 MANIFEST="firmware_manifest.json"
@@ -224,6 +247,7 @@ echo "  version: $VERSION"
 echo "  tag:     $TAG"
 echo "  channel: $CHANNEL"
 echo "  min HA:  $MIN_HA_INTEGRATION"
+echo "  max HA:  <$MAX_HA_INTEGRATION"
 echo "  assets:  $ASSET, $BOX3_ASSET"
 echo "  dry-run: $DRY_RUN"
 
@@ -239,7 +263,7 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would update release examples/version references in platformio.ini, version files, README, CHANGELOG and AGENTS if present."
-  echo "Would build t_embed_cc1101 and esp32_s3_box3 in parallel with isolated PLATFORMIO_BUILD_DIR roots and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
+  echo "Would build t_embed_cc1101 and esp32_s3_box3 sequentially with isolated PLATFORMIO_BUILD_DIR roots and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
   echo "Would copy firmware to $RELEASE_DIR/$ASSET and $RELEASE_DIR/$BOX3_ASSET and write $RELEASE_DIR/$MANIFEST."
   echo "Would commit, tag and push source repo."
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
@@ -281,26 +305,16 @@ build_firmware_board() {
   ) >"$log_file" 2>&1
 }
 
-BUILD_PIDS=()
-BUILD_LOGS=()
 for board in "${RELEASE_BOARDS[@]}"; do
-  build_firmware_board "$board" &
-  BUILD_PIDS+=("$!")
-  BUILD_LOGS+=("$RELEASE_DIR/build-$board.log")
-done
-
-BUILD_FAILED=false
-for i in "${!BUILD_PIDS[@]}"; do
-  if wait "${BUILD_PIDS[$i]}"; then
-    echo "Build completed: ${RELEASE_BOARDS[$i]}"
+  if build_firmware_board "$board"; then
+    echo "Build completed: $board"
   else
-    echo "Build failed: ${RELEASE_BOARDS[$i]}" >&2
-    echo "---- ${BUILD_LOGS[$i]} tail ----" >&2
-    tail -n 80 "${BUILD_LOGS[$i]}" >&2 || true
-    BUILD_FAILED=true
+    echo "Build failed: $board" >&2
+    echo "---- $RELEASE_DIR/build-$board.log tail ----" >&2
+    tail -n 80 "$RELEASE_DIR/build-$board.log" >&2 || true
+    fail "firmware build failed for $board"
   fi
 done
-[[ "$BUILD_FAILED" == "false" ]] || fail "one or more firmware builds failed"
 
 for board in "${RELEASE_BOARDS[@]}"; do
   asset="$(asset_name_for "$board" "$VERSION")"

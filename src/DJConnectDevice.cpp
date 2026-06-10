@@ -28,12 +28,16 @@ String sixDigitCode(uint32_t value) {
 void DJConnectDevice::begin(const BatteryState *battery, DisplayManager *display) {
   battery_ = battery;
   display_ = display;
-  deviceId_ = "djconnect-lilygo-" + macSuffix();
+  deviceId_ = String("djconnect-") + Config::DeviceModel + "-" + macSuffix();
   if (readString("device_name").isEmpty()) {
     writeString("device_name", DefaultDeviceName);
   }
   clearLegacyPlaybackCredentials();
 
+  AppLog.print("Board: ");
+  AppLog.println(Config::BoardName);
+  AppLog.print("Device model: ");
+  AppLog.println(Config::DeviceModel);
   AppLog.print("Device ID: ");
   AppLog.println(deviceId_);
   AppLog.print("Home Assistant pairing: ");

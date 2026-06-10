@@ -3,7 +3,7 @@
 Use this prompt in the DJConnect Home Assistant integration repo when syncing with the ESP firmware.
 
 ```md
-# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.0.24
+# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.1.0
 
 Werk in de bestaande Home Assistant custom integration repo voor DJConnect.
 
@@ -19,7 +19,7 @@ Bij `POST /api/device/pair` naar de ESP:
 
 ```json
 {
-  "device_id": "djconnect-lilygo-XXXXXXXXXXXX",
+  "device_id": "djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX",
   "client_type": "esp32",
   "device_token": "...",
   "ha_local_url": "http://192.168.1.x:8123",
@@ -30,6 +30,9 @@ Bij `POST /api/device/pair` naar de ESP:
 
 Regels:
 
+- `device_id` is model-specifiek: `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX` voor LilyGO en `djconnect-esp32-s3-box-3-XXXXXXXXXXXX` voor ESP32-S3-BOX-3.
+- De ESP mDNS hostname gebruikt exact dezelfde `device_id`, dus bijvoorbeeld `http://djconnect-esp32-s3-box-3-XXXXXXXXXXXX.local`.
+- Gebruik het mDNS TXT veld `model` of de status/API `model` om het device model te bepalen; parse niet op de oude `djconnect-lilygo-` prefix.
 - `ha_local_url` moet een echte LAN URL zijn.
 - `ha_local_url` mag nooit `.ui.nabu.casa` bevatten.
 - `ha_remote_url` mag wel Nabu Casa/cloud zijn.
@@ -42,7 +45,7 @@ Alle ESP -> HA JSON payloads naar `/api/djconnect/status` en `/api/djconnect/com
 
 ```json
 {
-  "device_id": "djconnect-lilygo-XXXXXXXXXXXX",
+  "device_id": "djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX",
   "client_type": "esp32"
 }
 ```
@@ -85,24 +88,25 @@ Manifestvorm:
 
 ```json
 {
-  "version": "3.0.x",
-  "version_tag": "v3.0.x",
+  "version": "3.1.x",
+  "version_tag": "v3.1.x",
   "channel": "stable",
-  "min_ha_integration": "3.0.0",
+  "min_ha_integration": "3.1.0",
+  "max_ha_integration": "3.2.0",
   "firmwares": [
     {
       "board": "t_embed_cc1101",
       "device": "lilygo-t-embed-s3",
-      "asset": "djconnect-lilygo-t-embed-s3-v3.0.x.bin",
-      "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.0.x/djconnect-lilygo-t-embed-s3-v3.0.x.bin",
+      "asset": "djconnect-lilygo-t-embed-s3-v3.1.x.bin",
+      "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.1.x/djconnect-lilygo-t-embed-s3-v3.1.x.bin",
       "sha256": "...",
       "size": 123
     },
     {
       "board": "esp32_s3_box3",
       "device": "esp32-s3-box-3",
-      "asset": "djconnect-esp32-s3-box-3-v3.0.x.bin",
-      "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.0.x/djconnect-esp32-s3-box-3-v3.0.x.bin",
+      "asset": "djconnect-esp32-s3-box-3-v3.1.x.bin",
+      "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.1.x/djconnect-esp32-s3-box-3-v3.1.x.bin",
       "sha256": "...",
       "size": 123
     }
@@ -114,11 +118,11 @@ Bij `POST /api/device/ota` naar de ESP:
 
 ```json
 {
-  "version": "3.0.x",
+  "version": "3.1.x",
   "url": "https://...",
   "sha256": "...",
   "device": "lilygo-t-embed-s3",
-  "asset": "djconnect-lilygo-t-embed-s3-v3.0.x.bin"
+  "asset": "djconnect-lilygo-t-embed-s3-v3.1.x.bin"
 }
 ```
 
@@ -126,7 +130,9 @@ Regels:
 
 - LilyGO gebruikt `device:"lilygo-t-embed-s3"` en asset `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`.
 - ESP32-S3-BOX-3 gebruikt `device:"esp32-s3-box-3"` en asset `djconnect-esp32-s3-box-3-vX.Y.Z.bin`.
-- `min_ha_integration` volgt de firmware major.minor lijn: firmware `X.Y.Z` publiceert standaard `X.Y.0`. HA moet dus major.minor matchen, behalve dev firmware `0.0.0`.
+- `min_ha_integration` en `max_ha_integration` volgen de firmware major.minor lijn: firmware `X.Y.Z` publiceert standaard `min_ha_integration:"X.Y.0"` en exclusief `max_ha_integration:"X.(Y+1).0"`.
+- HA moet firmware alleen aanbieden/accepteren als de integratieversie `>= min_ha_integration` en `< max_ha_integration` is. Voor firmware `3.1.0` betekent dit dus `>=3.1.0` en `<3.2.0`.
+- Dev firmware `0.0.0` blijft de uitzondering voor upgrade-aanbod vanaf lokale builds.
 - Als er geen matching `firmwares[]` entry is, rapporteer duidelijk dat er geen firmware voor dit device type beschikbaar is.
 - Versievergelijking blijft op manifest `version`/`version_tag`; de assetselectie is device-type specifiek.
 
@@ -155,14 +161,14 @@ Regels:
 - Als er maar 1 queue-item is, retourneer 1 item.
 - `context_uri` blijft nodig voor ESP/web per-item play.
 - Album art URLs mogen pass-through zijn; de ESP downloadt queue thumbnails niet, de browser lazy-loadt ze wanneer de web queue zichtbaar is.
-- Firmware v3.0.24 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
+- Firmware v3.1.0 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
 
 ### Voice
 
 ESP physical PTT uploadt WAV naar `/api/djconnect/voice` met bearer token en `X-DJConnect-Device-ID`.
 HA doet Assist/STT/TTS en retourneert DJ tekst plus optionele `audio_url`.
 
-Firmware v3.0.24 kan de lokale PTT/DJ-response flow annuleren met de middelste encoderknop tijdens processing of het DJ-response scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
+Firmware v3.1.0 kan de lokale PTT/DJ-response flow annuleren met de middelste encoderknop tijdens processing of het DJ-response scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
 
 ### Wake Word
 

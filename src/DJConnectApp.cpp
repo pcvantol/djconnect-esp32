@@ -83,6 +83,14 @@ void DJConnectApp::begin() {
   Serial.begin(115200);
   AppLog.begin();
   AppLog.println(Config::BuildMarker);
+  if (psramFound()) {
+    AppLog.print("PSRAM: enabled size=");
+    AppLog.print(ESP.getPsramSize());
+    AppLog.print(" free=");
+    AppLog.println(ESP.getFreePsram());
+  } else {
+    AppLog.println("PSRAM: unavailable");
+  }
   configureWatchdog();
   responsiveDelay(500);
 

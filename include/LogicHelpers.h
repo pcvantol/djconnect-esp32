@@ -306,12 +306,10 @@ inline bool isDjConnectInvalidClientType(const char *error) {
   return error != nullptr && strcmp(error, "invalid_client_type") == 0;
 }
 
-inline bool isDjConnectLilygoDeviceId(const char *deviceId) {
-  static constexpr const char *prefix = "djconnect-lilygo-";
-  if (deviceId == nullptr || strncmp(deviceId, prefix, strlen(prefix)) != 0) {
+inline bool hasHexMacSuffix(const char *suffix) {
+  if (suffix == nullptr) {
     return false;
   }
-  const char *suffix = deviceId + strlen(prefix);
   for (size_t index = 0; index < 12; index++) {
     if (!isHexDigit(suffix[index])) {
       return false;
@@ -320,18 +318,28 @@ inline bool isDjConnectLilygoDeviceId(const char *deviceId) {
   return suffix[12] == '\0';
 }
 
+inline bool isDjConnectDeviceIdForModel(const char *deviceId, const char *deviceModel) {
+  static constexpr const char *basePrefix = "djconnect-";
+  if (deviceId == nullptr || deviceModel == nullptr || deviceModel[0] == '\0') {
+    return false;
+  }
+  if (strncmp(deviceId, basePrefix, strlen(basePrefix)) != 0) {
+    return false;
+  }
+  const char *modelStart = deviceId + strlen(basePrefix);
+  const size_t modelLength = strlen(deviceModel);
+  if (strncmp(modelStart, deviceModel, modelLength) != 0 || modelStart[modelLength] != '-') {
+    return false;
+  }
+  return hasHexMacSuffix(modelStart + modelLength + 1);
+}
+
 inline bool isLegacyDjConnectDeviceId(const char *deviceId) {
   static constexpr const char *prefix = "djconnect-";
   if (deviceId == nullptr || strncmp(deviceId, prefix, strlen(prefix)) != 0) {
     return false;
   }
-  const char *suffix = deviceId + strlen(prefix);
-  for (size_t index = 0; index < 12; index++) {
-    if (!isHexDigit(suffix[index])) {
-      return false;
-    }
-  }
-  return suffix[12] == '\0';
+  return hasHexMacSuffix(deviceId + strlen(prefix));
 }
 
 inline const char *voiceHttpFailureMessage(int statusCode) {

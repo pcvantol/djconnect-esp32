@@ -15,6 +15,7 @@ jobs:
       version_tag: ${{ steps.version.outputs.version_tag }}
       channel: ${{ steps.version.outputs.channel }}
       min_ha_integration: ${{ steps.version.outputs.min_ha_integration }}
+      max_ha_integration: ${{ steps.version.outputs.max_ha_integration }}
       lilygo_bin: ${{ steps.version.outputs.lilygo_bin }}
       box3_bin: ${{ steps.version.outputs.box3_bin }}
       manifest: ${{ steps.version.outputs.manifest }}
@@ -39,11 +40,14 @@ jobs:
             BOX3_BIN="djconnect-esp32-s3-box-3-v${VERSION}.bin"
             MANIFEST="firmware_manifest.json"
           fi
-          MIN_HA_INTEGRATION="${VERSION%.*}.0"
+          IFS=. read -r MAJOR MINOR PATCH <<< "${VERSION}"
+          MIN_HA_INTEGRATION="${MAJOR}.${MINOR}.0"
+          MAX_HA_INTEGRATION="${MAJOR}.$((MINOR + 1)).0"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "min_ha_integration=$MIN_HA_INTEGRATION" >> "$GITHUB_OUTPUT"
+          echo "max_ha_integration=$MAX_HA_INTEGRATION" >> "$GITHUB_OUTPUT"
           echo "lilygo_bin=$LILYGO_BIN" >> "$GITHUB_OUTPUT"
           echo "box3_bin=$BOX3_BIN" >> "$GITHUB_OUTPUT"
           echo "manifest=$MANIFEST" >> "$GITHUB_OUTPUT"
@@ -143,6 +147,7 @@ jobs:
           VERSION_TAG="${{ needs.release-info.outputs.version_tag }}"
           CHANNEL="${{ needs.release-info.outputs.channel }}"
           MIN_HA_INTEGRATION="${{ needs.release-info.outputs.min_ha_integration }}"
+          MAX_HA_INTEGRATION="${{ needs.release-info.outputs.max_ha_integration }}"
           MANIFEST="${{ needs.release-info.outputs.manifest }}"
 
           mkdir -p release
@@ -171,6 +176,7 @@ jobs:
             "version_tag": "${VERSION_TAG}",
             "channel": "${CHANNEL}",
             "min_ha_integration": "${MIN_HA_INTEGRATION}",
+            "max_ha_integration": "${MAX_HA_INTEGRATION}",
             "release_notes": "https://github.com/pcvantol/djconnect-firmware/releases/tag/${VERSION_TAG}",
             "firmwares": [
               {
