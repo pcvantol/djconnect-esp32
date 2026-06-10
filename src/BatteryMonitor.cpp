@@ -7,6 +7,10 @@
 #include "LogicHelpers.h"
 
 void BatteryMonitor::begin() {
+  if constexpr (!Config::HasBq27220BatteryGauge) {
+    markUnavailable();
+    return;
+  }
   Wire.begin(Config::I2cSdaPin, Config::I2cSclPin);
   Wire.setClock(400000);
   Wire.setTimeOut(100);
@@ -14,6 +18,11 @@ void BatteryMonitor::begin() {
 }
 
 bool BatteryMonitor::refresh() {
+  if constexpr (!Config::HasBq27220BatteryGauge) {
+    markUnavailable();
+    return false;
+  }
+
   uint16_t soc = 0;
   if (!readWord(Config::Bq27220StateOfChargeCommand, soc)) {
     markUnavailable();

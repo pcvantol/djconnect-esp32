@@ -1,5 +1,21 @@
 # Changelog
 
+## v3.0.23
+
+Patch release for board abstraction and dual firmware publishing.
+
+### Added
+
+- Added a board profile abstraction for pinout, device model and hardware capability differences.
+- Added an experimental `esp32_s3_box3` PlatformIO environment for ESP32-S3-BOX-3 display bring-up.
+- GitHub Actions and `release.sh` now build and publish both the LilyGO and ESP32-S3-BOX-3 firmware binaries.
+
+### Changed
+
+- OTA target validation now uses the active board profile device model instead of a hardcoded LilyGO model.
+- Release manifests keep top-level LilyGO compatibility fields and add a `firmwares` array for board-specific OTA selection.
+- The ESP32-S3-BOX-3 profile disables unverified battery gauge, LED ring, speaker and microphone paths until hardware mapping is validated.
+
 ## v3.0.22
 
 Patch release for HA local-route pairing, wake-word/PTT stability, queue rendering, playback control feedback and About-screen copy.

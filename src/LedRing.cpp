@@ -4,18 +4,18 @@
 #include "LogicHelpers.h"
 
 namespace {
-constexpr uint8_t SpotifyGreenRed = 0x1D;
-constexpr uint8_t SpotifyGreenGreen = 0xB9;
-constexpr uint8_t SpotifyGreenBlue = 0x54;
+constexpr uint8_t StatusGreenRed = 0x1D;
+constexpr uint8_t StatusGreenGreen = 0xB9;
+constexpr uint8_t StatusGreenBlue = 0x54;
 constexpr uint8_t VolumeOrangeRed = 0xFF;
 constexpr uint8_t VolumeOrangeGreen = 0x8A;
 constexpr uint8_t VolumeOrangeBlue = 0x00;
 
-CRGB scaledSpotifyGreen(uint8_t level) {
+CRGB scaledStatusGreen(uint8_t level) {
   return CRGB(
-      (SpotifyGreenRed * level) / 255,
-      (SpotifyGreenGreen * level) / 255,
-      (SpotifyGreenBlue * level) / 255);
+      (StatusGreenRed * level) / 255,
+      (StatusGreenGreen * level) / 255,
+      (StatusGreenBlue * level) / 255);
 }
 
 CRGB scaledVolumeOrange(uint8_t level) {
@@ -27,9 +27,13 @@ CRGB scaledVolumeOrange(uint8_t level) {
 }  // namespace
 
 void LedRing::begin() {
-  FastLED.addLeds<WS2812, Config::Ws2812DataPin, GRB>(leds_, Config::Ws2812LedCount);
-  FastLED.setBrightness(Config::LedRingBrightness);
-  ready_ = true;
+  if constexpr (Config::HasLedRing) {
+    FastLED.addLeds<WS2812, Config::Ws2812DataPin, GRB>(leds_, Config::Ws2812LedCount);
+    FastLED.setBrightness(Config::LedRingBrightness);
+    ready_ = true;
+  } else {
+    ready_ = false;
+  }
   showVolume(-1, true);
 }
 
@@ -204,9 +208,9 @@ void LedRing::showWifiConnectingAnimation() {
 
   fill_solid(leds_, Config::Ws2812LedCount, CRGB::Black);
   const uint8_t head = wifiFrame_++ % Config::Ws2812LedCount;
-  leds_[head] = scaledSpotifyGreen(255);
-  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = scaledSpotifyGreen(110);
-  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = scaledSpotifyGreen(40);
+  leds_[head] = scaledStatusGreen(255);
+  leds_[(head + Config::Ws2812LedCount - 1) % Config::Ws2812LedCount] = scaledStatusGreen(110);
+  leds_[(head + Config::Ws2812LedCount - 2) % Config::Ws2812LedCount] = scaledStatusGreen(40);
   FastLED.show();
 }
 

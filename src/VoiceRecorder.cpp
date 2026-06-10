@@ -29,6 +29,10 @@ void writeLe32(File &file, uint32_t value) {
 }  // namespace
 
 bool VoiceRecorder::begin() {
+  if constexpr (!Config::HasMicrophone) {
+    error_ = "Microphone unavailable on board profile";
+    return false;
+  }
   if (ready_) {
     return true;
   }

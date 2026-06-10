@@ -7,13 +7,13 @@
 #include <esp_system.h>
 
 #include "AppLog.h"
+#include "Config.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
 
 namespace {
 const char *Namespace = "djconnect";
 const char *DefaultDeviceName = "DJConnect";
-const char *Model = "lilygo-t-embed-s3";
 const char *ClientType = "esp32";
 const char *AssistPipelineKey = "assist_pipe";
 const uint32_t ActiveHaUrlCacheMs = 30000;
@@ -117,7 +117,7 @@ String DJConnectDevice::getFirmwareVersion() const {
 }
 
 String DJConnectDevice::getModel() const {
-  return Model;
+  return Config::DeviceModel;
 }
 
 String DJConnectDevice::getClientType() const {

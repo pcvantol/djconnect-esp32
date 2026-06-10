@@ -84,23 +84,60 @@ replace_version_examples() {
   fi
 }
 
+asset_name_for() {
+  local board="$1"
+  local version="$2"
+  if [[ "$CHANNEL" == "beta" ]]; then
+    case "$board" in
+      t_embed_cc1101) echo "djconnect-device-beta-v$version.bin" ;;
+      esp32_s3_box3) echo "djconnect-device-esp32-s3-box-3-beta-v$version.bin" ;;
+      *) fail "unknown release board: $board" ;;
+    esac
+  else
+    case "$board" in
+      t_embed_cc1101) echo "djconnect-device-v$version.bin" ;;
+      esp32_s3_box3) echo "djconnect-device-esp32-s3-box-3-v$version.bin" ;;
+      *) fail "unknown release board: $board" ;;
+    esac
+  fi
+}
+
 write_manifest() {
   local manifest="$1"
   local version="$2"
   local tag="$3"
-  local asset="$4"
-  local sha="$5"
-  local size="$6"
+  local lilygo_asset="$4"
+  local lilygo_sha="$5"
+  local lilygo_size="$6"
+  local box3_asset="$7"
+  local box3_sha="$8"
+  local box3_size="$9"
   cat > "$manifest" <<EOF
 {
   "version": "$version",
   "version_tag": "$tag",
   "device": "lilygo-t-embed-s3",
   "channel": "$CHANNEL",
-  "asset": "$asset",
-  "sha256": "$sha",
-  "size": $size,
-  "min_ha_integration": "$MIN_HA_INTEGRATION"
+  "asset": "$lilygo_asset",
+  "sha256": "$lilygo_sha",
+  "size": $lilygo_size,
+  "min_ha_integration": "$MIN_HA_INTEGRATION",
+  "firmwares": [
+    {
+      "board": "t_embed_cc1101",
+      "device": "lilygo-t-embed-s3",
+      "asset": "$lilygo_asset",
+      "sha256": "$lilygo_sha",
+      "size": $lilygo_size
+    },
+    {
+      "board": "esp32_s3_box3",
+      "device": "esp32-s3-box-3",
+      "asset": "$box3_asset",
+      "sha256": "$box3_sha",
+      "size": $box3_size
+    }
+  ]
 }
 EOF
 }
@@ -166,13 +203,14 @@ if [[ "$VERSION_ARG" == *-beta ]]; then
   CHANNEL="beta"
 fi
 TAG="v$VERSION"
-ASSET="djconnect-device-$TAG.bin"
 MANIFEST="firmware_manifest.json"
 if [[ "$CHANNEL" == "beta" ]]; then
   TAG="v$VERSION-beta"
-  ASSET="djconnect-device-beta-v$VERSION.bin"
   MANIFEST="firmware_manifest_beta.json"
 fi
+RELEASE_BOARDS=(t_embed_cc1101 esp32_s3_box3)
+ASSET="$(asset_name_for t_embed_cc1101 "$VERSION")"
+BOX3_ASSET="$(asset_name_for esp32_s3_box3 "$VERSION")"
 RELEASE_DIR="release"
 FIRMWARE_RELEASE_REPO="${FIRMWARE_RELEASE_REPO:-pcvantol/djconnect-firmware}"
 PIO_BIN="${PIO_BIN:-/Users/pcvantol/.platformio/penv/bin/pio}"
@@ -185,7 +223,7 @@ echo "DJConnect firmware release"
 echo "  version: $VERSION"
 echo "  tag:     $TAG"
 echo "  channel: $CHANNEL"
-echo "  asset:   $ASSET"
+echo "  assets:  $ASSET, $BOX3_ASSET"
 echo "  dry-run: $DRY_RUN"
 
 if git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -200,8 +238,8 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would update release examples/version references in platformio.ini, version files, README, CHANGELOG and AGENTS if present."
-  echo "Would build with DJCONNECT_VERSION=$VERSION and DJCONNECT_VERSION_TAG=$TAG."
-  echo "Would copy firmware to $RELEASE_DIR/$ASSET and write $RELEASE_DIR/$MANIFEST."
+  echo "Would build t_embed_cc1101 and esp32_s3_box3 with DJCONNECT_VERSION=$VERSION and DJCONNECT_VERSION_TAG=$TAG."
+  echo "Would copy firmware to $RELEASE_DIR/$ASSET and $RELEASE_DIR/$BOX3_ASSET and write $RELEASE_DIR/$MANIFEST."
   echo "Would commit, tag and push source repo."
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
     echo "Would publish assets to firmware repo path: $PUBLISH_FIRMWARE_REPO."
@@ -216,16 +254,48 @@ fi
 replace_version_examples "$VERSION" "$TAG"
 
 export DJCONNECT_BUILD_FLAGS="-DDJCONNECT_VERSION=$VERSION -DDJCONNECT_VERSION_TAG=$TAG"
-run "$PIO_BIN" run -e t_embed_cc1101 -j "$PIO_JOBS"
-
-FIRMWARE_BIN="$(find .pio/build -path '*/firmware.bin' -type f | sort | head -n 1)"
-[[ -n "$FIRMWARE_BIN" ]] || fail "no PlatformIO firmware.bin found"
-
 mkdir -p "$RELEASE_DIR"
-run cp "$FIRMWARE_BIN" "$RELEASE_DIR/$ASSET"
-SHA256="$(sha256_file "$RELEASE_DIR/$ASSET")"
-SIZE="$(file_size "$RELEASE_DIR/$ASSET")"
-write_manifest "$RELEASE_DIR/$MANIFEST" "$VERSION" "$TAG" "$ASSET" "$SHA256" "$SIZE"
+
+LILYGO_ASSET=""
+LILYGO_SHA256=""
+LILYGO_SIZE=""
+BOX3_ASSET=""
+BOX3_SHA256=""
+BOX3_SIZE=""
+
+for board in "${RELEASE_BOARDS[@]}"; do
+  run "$PIO_BIN" run -e "$board" -j "$PIO_JOBS"
+  asset="$(asset_name_for "$board" "$VERSION")"
+  firmware_bin=".pio/build/$board/firmware.bin"
+  [[ -f "$firmware_bin" ]] || fail "no PlatformIO firmware.bin found for $board"
+  run cp "$firmware_bin" "$RELEASE_DIR/$asset"
+  asset_sha="$(sha256_file "$RELEASE_DIR/$asset")"
+  asset_size="$(file_size "$RELEASE_DIR/$asset")"
+  printf '%s  %s\n' "$asset_sha" "$asset" > "$RELEASE_DIR/$asset.sha256"
+  case "$board" in
+    t_embed_cc1101)
+      LILYGO_ASSET="$asset"
+      LILYGO_SHA256="$asset_sha"
+      LILYGO_SIZE="$asset_size"
+      ;;
+    esp32_s3_box3)
+      BOX3_ASSET="$asset"
+      BOX3_SHA256="$asset_sha"
+      BOX3_SIZE="$asset_size"
+      ;;
+  esac
+done
+
+write_manifest \
+  "$RELEASE_DIR/$MANIFEST" \
+  "$VERSION" \
+  "$TAG" \
+  "$LILYGO_ASSET" \
+  "$LILYGO_SHA256" \
+  "$LILYGO_SIZE" \
+  "$BOX3_ASSET" \
+  "$BOX3_SHA256" \
+  "$BOX3_SIZE"
 
 run git add .
 if git diff --cached --quiet; then
@@ -240,9 +310,13 @@ run git push origin "$TAG"
 if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
   [[ -d "$PUBLISH_FIRMWARE_REPO" ]] || fail "firmware repo path does not exist: $PUBLISH_FIRMWARE_REPO"
   [[ -d "$PUBLISH_FIRMWARE_REPO/.git" ]] || fail "firmware repo path is not a git repo: $PUBLISH_FIRMWARE_REPO"
-  run cp "$RELEASE_DIR/$ASSET" "$PUBLISH_FIRMWARE_REPO/$ASSET"
+  for board in "${RELEASE_BOARDS[@]}"; do
+    asset="$(asset_name_for "$board" "$VERSION")"
+    run cp "$RELEASE_DIR/$asset" "$PUBLISH_FIRMWARE_REPO/$asset"
+    run cp "$RELEASE_DIR/$asset.sha256" "$PUBLISH_FIRMWARE_REPO/$asset.sha256"
+  done
   run cp "$RELEASE_DIR/$MANIFEST" "$PUBLISH_FIRMWARE_REPO/$MANIFEST"
-  run_in_dir "$PUBLISH_FIRMWARE_REPO" git add "$ASSET" "$MANIFEST"
+  run_in_dir "$PUBLISH_FIRMWARE_REPO" git add "$LILYGO_ASSET" "$LILYGO_ASSET.sha256" "$BOX3_ASSET" "$BOX3_ASSET.sha256" "$MANIFEST"
   run_in_dir "$PUBLISH_FIRMWARE_REPO" git commit -m "Release DJConnect firmware $TAG"
   if ! (cd "$PUBLISH_FIRMWARE_REPO" && git rev-parse "$TAG" >/dev/null 2>&1); then
     run_in_dir "$PUBLISH_FIRMWARE_REPO" git tag "$TAG"
@@ -256,7 +330,7 @@ if [[ "$GH_RELEASE" == "true" ]]; then
     run gh release create "$TAG" \
       --repo "$FIRMWARE_RELEASE_REPO" \
       --title "DJConnect firmware $TAG" \
-      "$RELEASE_DIR/$ASSET" "$RELEASE_DIR/$MANIFEST"
+      "$RELEASE_DIR"/*
   else
     echo "gh not found; skipping GitHub release creation"
   fi

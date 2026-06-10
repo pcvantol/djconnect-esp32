@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Guidance for coding agents working on the DJConnect LilyGO firmware.
+Guidance for coding agents working on the DJConnect ESP32-S3 firmware.
 
 ## Project Overview
 
-DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3. It is a Home Assistant paired playback remote with:
+DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3, with an early ESP32-S3-BOX-3 bring-up environment. It is a Home Assistant paired playback remote with:
 
 - TFT now-playing UI, menus, logs, album art, queue and sound output screens.
 - Rotary encoder and top-button controls.
@@ -14,7 +14,10 @@ DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP3
 - Home Assistant status publishing and native device command handling.
 - Home Assistant device-layer support: pairing, mDNS discovery, device API, status posting and OTA trigger endpoints.
 
-The current PlatformIO environment is `t_embed_cc1101`.
+The default production PlatformIO environment is `t_embed_cc1101`.
+The experimental BOX-3 bring-up environment is `esp32_s3_box3`; it currently
+targets display validation and keeps the battery gauge, LED ring, speaker and
+microphone paths disabled until their hardware mapping is verified.
 It is pinned to the pioarduino ESP32 platform line that uses ESP-IDF 5.3 with
 Arduino ESP32 3.x compatibility. Do not add Arduino ESP32 2.x / ESP-IDF 4.x
 fallback code unless the user explicitly changes the supported toolchain.
@@ -45,7 +48,8 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `platformio.ini`: PlatformIO board/env/build flags.
 - `src/main.cpp`: tiny Arduino entrypoint; keep real behavior in classes.
 - `include/DJConnectApp.h`, `src/DJConnectApp.cpp`: top-level app orchestration.
-- `include/Config.h`: shared constants, version, pins and timing.
+- `include/BoardProfile.h`: board-specific pinout, device model and hardware capability flags for the LilyGO and BOX-3 environments.
+- `include/Config.h`: shared constants, version, selected board pins and timing.
 - `include/AppState.h`: shared state structs.
 - `include/LogicHelpers.h`: pure helper functions with native unit tests.
 - `include/DJConnectMenuModel.h`: pure menu counts/options with native unit tests.
@@ -113,7 +117,12 @@ To also publish assets into the public firmware repo:
 
 The release script keeps local dev defaults as `dev` / `vdev` and injects the
 release version through PlatformIO build flags. Do not hardcode release versions
-into `include/Config.h`.
+into `include/Config.h`. Release builds publish both supported firmware assets:
+`t_embed_cc1101` as `djconnect-device-vX.Y.Z.bin` and `esp32_s3_box3` as
+`djconnect-device-esp32-s3-box-3-vX.Y.Z.bin`; beta releases use the same board
+split with `beta-vX.Y.Z` asset names. The manifest keeps top-level LilyGO fields
+for existing OTA clients and includes a `firmwares` array for board-specific OTA
+selection.
 
 Expected recurring third-party warnings:
 
@@ -354,7 +363,7 @@ Device OTA endpoint:
 - `POST /api/device/ota`
 - Requires `Authorization: Bearer <device_token>`.
 - Expects JSON with `url`, `sha256`, `version`, and `device`.
-- `device` must be `lilygo-t-embed-s3`.
+- `device` must match the active board profile model, such as `lilygo-t-embed-s3` for the production LilyGO build.
 - Battery must be above 40%, or charging/full, if battery state is available.
 
 Current OTA implementation streams via `Update.h`.

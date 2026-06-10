@@ -193,6 +193,10 @@ private:
 }  // namespace
 
 void SoundManager::begin() {
+  if constexpr (!Config::HasSpeaker) {
+    AppLog.println("Speaker unavailable on board profile");
+    return;
+  }
   if (ready_) {
     return;
   }
@@ -220,6 +224,9 @@ void SoundManager::begin() {
 }
 
 bool SoundManager::installI2s() {
+  if constexpr (!Config::HasSpeaker) {
+    return false;
+  }
   SpeakerI2S.setPins(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
   SpeakerI2S.setTimeout(100);
   if (!SpeakerI2S.begin(I2S_MODE_STD, Config::SpeakerSampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO)) {

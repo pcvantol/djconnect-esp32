@@ -12,6 +12,8 @@
 
 #include <Arduino.h>
 
+#include "BoardProfile.h"
+
 #define DJCONNECT_STRINGIFY_VALUE(value) #value
 #define DJCONNECT_STRINGIFY(value) DJCONNECT_STRINGIFY_VALUE(value)
 
@@ -22,25 +24,34 @@ static const char *const BuildMarker =
     "DJConnect " DJCONNECT_STRINGIFY(DJCONNECT_VERSION_TAG) " / " DJCONNECT_STRINGIFY(DJCONNECT_VERSION) " booting";
 
 // Board power, storage, radio, display, I2C, encoder, and WS2812 pin mapping.
-static constexpr uint8_t BoardUserKeyPin = 6;
-static constexpr uint8_t BoardPowerEnablePin = 15;
-static constexpr uint8_t DisplayBacklightPin = 21;
-static constexpr uint8_t SdCardChipSelectPin = 13;
-static constexpr uint8_t LoraChipSelectPin = 12;
-static constexpr uint8_t I2cSdaPin = 8;
-static constexpr uint8_t I2cSclPin = 18;
-static constexpr uint8_t Ws2812LedCount = 8;
-static constexpr uint8_t Ws2812DataPin = 14;
+static const char *const BoardName = BoardProfile::BoardName;
+static const char *const DeviceModel = BoardProfile::DeviceModel;
+static constexpr bool HasBoardPowerEnable = BoardProfile::HasBoardPowerEnable;
+static constexpr bool HasSdCardChipSelect = BoardProfile::HasSdCardChipSelect;
+static constexpr bool HasLoraChipSelect = BoardProfile::HasLoraChipSelect;
+static constexpr bool HasLedRing = BoardProfile::HasLedRing;
+static constexpr bool HasBq27220BatteryGauge = BoardProfile::HasBq27220BatteryGauge;
+static constexpr bool HasSpeaker = BoardProfile::HasSpeaker;
+static constexpr bool HasMicrophone = BoardProfile::HasMicrophone;
+static constexpr int BoardUserKeyPin = BoardProfile::BoardUserKeyPin;
+static constexpr int BoardPowerEnablePin = BoardProfile::BoardPowerEnablePin;
+static constexpr int DisplayBacklightPin = BoardProfile::DisplayBacklightPin;
+static constexpr int SdCardChipSelectPin = BoardProfile::SdCardChipSelectPin;
+static constexpr int LoraChipSelectPin = BoardProfile::LoraChipSelectPin;
+static constexpr int I2cSdaPin = BoardProfile::I2cSdaPin;
+static constexpr int I2cSclPin = BoardProfile::I2cSclPin;
+static constexpr uint8_t Ws2812LedCount = BoardProfile::Ws2812LedCount;
+static constexpr int Ws2812DataPin = BoardProfile::Ws2812DataPin;
 static constexpr uint8_t LedRingBrightness = 48;
 static constexpr uint8_t DisplayBacklightPwmResolution = 8;
-static constexpr uint8_t EncoderPinA = 4;
-static constexpr uint8_t EncoderPinB = 5;
-static constexpr uint8_t EncoderButtonPin = 0;
-static constexpr uint8_t SpeakerBclkPin = 46;
-static constexpr uint8_t SpeakerLrclkPin = 40;
-static constexpr uint8_t SpeakerDataPin = 7;
-static constexpr uint8_t MicrophoneDataPin = 42;
-static constexpr uint8_t MicrophoneClockPin = 39;
+static constexpr int EncoderPinA = BoardProfile::EncoderPinA;
+static constexpr int EncoderPinB = BoardProfile::EncoderPinB;
+static constexpr int EncoderButtonPin = BoardProfile::EncoderButtonPin;
+static constexpr int SpeakerBclkPin = BoardProfile::SpeakerBclkPin;
+static constexpr int SpeakerLrclkPin = BoardProfile::SpeakerLrclkPin;
+static constexpr int SpeakerDataPin = BoardProfile::SpeakerDataPin;
+static constexpr int MicrophoneDataPin = BoardProfile::MicrophoneDataPin;
+static constexpr int MicrophoneClockPin = BoardProfile::MicrophoneClockPin;
 
 // BQ27220 standard command registers used by BatteryMonitor.
 static constexpr uint8_t Bq27220I2cAddress = 0x55;

@@ -23,7 +23,7 @@ static constexpr uint16_t GamePink = 0xF81F;
 static constexpr uint16_t GameBrown = 0xA2C6;
 static constexpr uint16_t GameDarkBrown = 0x6203;
 static constexpr uint16_t NeutralLightGrey = 0xC618;
-static constexpr uint16_t SpotifyGreen = 0x1DCB;
+static constexpr uint16_t StatusGreen = 0x1DCB;
 static constexpr uint16_t VolumeOrange = 0xFD20;
 static constexpr int AlbumTextX = 172;
 static constexpr int AlbumTextWidth = 140;
@@ -92,13 +92,19 @@ void DisplayManager::begin() {
   digitalWrite(Config::DisplayBacklightPin, LOW);
 
   // Power-enable is shared by board peripherals; assert it before display and WS2812 work.
-  pinMode(Config::BoardPowerEnablePin, OUTPUT);
-  digitalWrite(Config::BoardPowerEnablePin, HIGH);
+  if constexpr (Config::HasBoardPowerEnable) {
+    pinMode(Config::BoardPowerEnablePin, OUTPUT);
+    digitalWrite(Config::BoardPowerEnablePin, HIGH);
+  }
 
-  pinMode(Config::SdCardChipSelectPin, OUTPUT);
-  digitalWrite(Config::SdCardChipSelectPin, HIGH);
-  pinMode(Config::LoraChipSelectPin, OUTPUT);
-  digitalWrite(Config::LoraChipSelectPin, HIGH);
+  if constexpr (Config::HasSdCardChipSelect) {
+    pinMode(Config::SdCardChipSelectPin, OUTPUT);
+    digitalWrite(Config::SdCardChipSelectPin, HIGH);
+  }
+  if constexpr (Config::HasLoraChipSelect) {
+    pinMode(Config::LoraChipSelectPin, OUTPUT);
+    digitalWrite(Config::LoraChipSelectPin, HIGH);
+  }
 
   // PWM backlight allows 100%/10%/0% idle brightness instead of only on/off.
   ledcAttach(
@@ -616,7 +622,7 @@ uint16_t DisplayManager::batteryColor(const BatteryState &battery) const {
   if (battery.percent <= 35) {
     return TFT_ORANGE;
   }
-  return TFT_GREEN;
+  return StatusGreen;
 }
 
 template <typename Canvas>
@@ -700,11 +706,11 @@ void DisplayManager::renderPlayback(
     canvas.drawFastVLine(x + 13, 6, 5, color);
   };
   const uint16_t playbackStatusColor = playbackConnectionState == PlaybackConnectionState::Ok
-                                           ? SpotifyGreen
+                                           ? StatusGreen
                                            : playbackConnectionState == PlaybackConnectionState::Idle
                                                  ? NeutralLightGrey
                                                  : TFT_RED;
-  drawStatusBadge(156, "H", homeAssistantConnected ? SpotifyGreen : TFT_RED);
+  drawStatusBadge(156, "H", homeAssistantConnected ? StatusGreen : TFT_RED);
   drawPlaybackBadge(178, playbackStatusColor);
   drawWifiIndicator(canvas, 214, 1);
   drawBatteryIndicator(canvas, battery, 250, 5);
@@ -729,7 +735,7 @@ void DisplayManager::renderPlayback(
 
   if (playback.hasPlayback && playback.durationMs > 0) {
     const int percent = (estimatedProgressMs(playback) * 100) / playback.durationMs;
-    drawProgressBar(canvas, 8, 124, 304, 8, percent, SpotifyGreen);
+    drawProgressBar(canvas, 8, 124, 304, 8, percent, StatusGreen);
   }
 
   if (playback.hasPlayback && playback.supportsVolume && displayedVolume >= 0) {
@@ -758,7 +764,7 @@ void DisplayManager::renderPlayback(
       footer += " ";
       footer += timeText;
     }
-    canvas.setTextColor(SpotifyGreen, TFT_BLACK);
+    canvas.setTextColor(StatusGreen, TFT_BLACK);
   }
   canvas.drawString(clippedText(canvas, footer, 304, 2), 8, 151, 2);
 }
@@ -833,9 +839,9 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
   };
   Row rows[] = {
       {I18n::text("web"), status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE},
-      {I18n::text("wifi"), I18n::connected(status.wifiConnected), static_cast<uint16_t>(status.wifiConnected ? SpotifyGreen : TFT_RED)},
-      {I18n::text("music"), I18n::connected(status.spotifyConnected), static_cast<uint16_t>(status.spotifyConnected ? SpotifyGreen : TFT_RED)},
-      {"Home Assistant", status.haPaired ? I18n::text("connected") : I18n::text("not_paired"), static_cast<uint16_t>(status.haPaired ? SpotifyGreen : TFT_RED)},
+      {I18n::text("wifi"), I18n::connected(status.wifiConnected), static_cast<uint16_t>(status.wifiConnected ? StatusGreen : TFT_RED)},
+      {I18n::text("music"), I18n::connected(status.spotifyConnected), static_cast<uint16_t>(status.spotifyConnected ? StatusGreen : TFT_RED)},
+      {"Home Assistant", status.haPaired ? I18n::text("connected") : I18n::text("not_paired"), static_cast<uint16_t>(status.haPaired ? StatusGreen : TFT_RED)},
       {"Copyright", "2026 Peter van Tol", NeutralLightGrey},
       {"Firmware", "Proprietary", NeutralLightGrey},
       {"Spotify", "Trademark Spotify AB", NeutralLightGrey},
@@ -1052,7 +1058,7 @@ void DisplayManager::drawWifiIndicator(Canvas &canvas, int x, int y) {
     }
   }
 
-  const uint16_t activeColor = level >= 3 ? SpotifyGreen : level >= 2 ? TFT_YELLOW : TFT_RED;
+  const uint16_t activeColor = level >= 3 ? StatusGreen : level >= 2 ? TFT_YELLOW : TFT_RED;
   static constexpr int heights[] = {5, 8, 11, 14};
   for (int index = 0; index < 4; index++) {
     const int barX = x + index * 5;

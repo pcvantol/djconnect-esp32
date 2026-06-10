@@ -12,7 +12,6 @@ jobs:
 
     env:
       FIRMWARE_REPO: pcvantol/djconnect-firmware
-      DEVICE: lilygo-t-embed-s3
       PROJECT: djconnect
 
     steps:
@@ -28,18 +27,21 @@ jobs:
             CHANNEL="beta"
             VERSION="${RAW%-beta}"
             VERSION_TAG="v${VERSION}-beta"
-            BIN="djconnect-device-beta-v${VERSION}.bin"
+            LILYGO_BIN="djconnect-device-beta-v${VERSION}.bin"
+            BOX3_BIN="djconnect-device-esp32-s3-box-3-beta-v${VERSION}.bin"
             MANIFEST="firmware_manifest_beta.json"
           else
             VERSION="${RAW}"
             VERSION_TAG="v${VERSION}"
-            BIN="djconnect-device-v${VERSION}.bin"
+            LILYGO_BIN="djconnect-device-v${VERSION}.bin"
+            BOX3_BIN="djconnect-device-esp32-s3-box-3-v${VERSION}.bin"
             MANIFEST="firmware_manifest.json"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "bin=$BIN" >> "$GITHUB_OUTPUT"
+          echo "lilygo_bin=$LILYGO_BIN" >> "$GITHUB_OUTPUT"
+          echo "box3_bin=$BOX3_BIN" >> "$GITHUB_OUTPUT"
           echo "manifest=$MANIFEST" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
@@ -56,34 +58,41 @@ jobs:
           VERSION_TAG="${{ steps.version.outputs.version_tag }}"
           export DJCONNECT_BUILD_FLAGS="-DDJCONNECT_VERSION=${VERSION} -DDJCONNECT_VERSION_TAG=${VERSION_TAG}"
           pio run -e t_embed_cc1101
+          pio run -e esp32_s3_box3
 
       - name: Verify embedded firmware version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_TAG="${{ steps.version.outputs.version_tag }}"
-          if ! strings .pio/build/t_embed_cc1101/firmware.elf | grep -q "DJConnect ${VERSION_TAG} / ${VERSION} booting"; then
-            echo "Firmware boot marker does not contain expected release version ${VERSION_TAG} / ${VERSION}" >&2
-            exit 1
-          fi
-          if strings .pio/build/t_embed_cc1101/firmware.bin | grep -Eq "(^|[^[:alnum:]])vdev([^[:alnum:]]|$)|DJConnect dev / dev booting"; then
-            echo "Firmware binary still contains a dev version placeholder" >&2
-            exit 1
-          fi
+          for ENV in t_embed_cc1101 esp32_s3_box3; do
+            if ! strings ".pio/build/${ENV}/firmware.elf" | grep -q "DJConnect ${VERSION_TAG} / ${VERSION} booting"; then
+              echo "${ENV} firmware boot marker does not contain expected release version ${VERSION_TAG} / ${VERSION}" >&2
+              exit 1
+            fi
+            if strings ".pio/build/${ENV}/firmware.bin" | grep -Eq "(^|[^[:alnum:]])vdev([^[:alnum:]]|$)|DJConnect dev / dev booting"; then
+              echo "${ENV} firmware binary still contains a dev version placeholder" >&2
+              exit 1
+            fi
+          done
 
       - name: Prepare release assets
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_TAG="${{ steps.version.outputs.version_tag }}"
           CHANNEL="${{ steps.version.outputs.channel }}"
-          BIN="${{ steps.version.outputs.bin }}"
+          LILYGO_BIN="${{ steps.version.outputs.lilygo_bin }}"
+          BOX3_BIN="${{ steps.version.outputs.box3_bin }}"
           MANIFEST="${{ steps.version.outputs.manifest }}"
 
           mkdir -p release
 
-          cp .pio/build/*/firmware.bin "release/${BIN}"
+          cp .pio/build/t_embed_cc1101/firmware.bin "release/${LILYGO_BIN}"
+          cp .pio/build/esp32_s3_box3/firmware.bin "release/${BOX3_BIN}"
 
-          SHA256=$(sha256sum "release/${BIN}" | awk '{print $1}')
-          SIZE=$(stat -c%s "release/${BIN}")
+          LILYGO_SHA256=$(sha256sum "release/${LILYGO_BIN}" | awk '{print $1}')
+          LILYGO_SIZE=$(stat -c%s "release/${LILYGO_BIN}")
+          BOX3_SHA256=$(sha256sum "release/${BOX3_BIN}" | awk '{print $1}')
+          BOX3_SIZE=$(stat -c%s "release/${BOX3_BIN}")
 
           cat > "release/${MANIFEST}" <<EOF
           {
@@ -91,16 +100,35 @@ jobs:
             "version_tag": "${VERSION_TAG}",
             "device": "lilygo-t-embed-s3",
             "channel": "${CHANNEL}",
-            "asset": "${BIN}",
-            "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/${VERSION_TAG}/${BIN}",
-            "sha256": "${SHA256}",
-            "size": ${SIZE},
+            "asset": "${LILYGO_BIN}",
+            "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/${VERSION_TAG}/${LILYGO_BIN}",
+            "sha256": "${LILYGO_SHA256}",
+            "size": ${LILYGO_SIZE},
             "min_ha_integration": "1.0.0",
-            "release_notes": "https://github.com/pcvantol/djconnect-firmware/releases/tag/${VERSION_TAG}"
+            "release_notes": "https://github.com/pcvantol/djconnect-firmware/releases/tag/${VERSION_TAG}",
+            "firmwares": [
+              {
+                "board": "t_embed_cc1101",
+                "device": "lilygo-t-embed-s3",
+                "asset": "${LILYGO_BIN}",
+                "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/${VERSION_TAG}/${LILYGO_BIN}",
+                "sha256": "${LILYGO_SHA256}",
+                "size": ${LILYGO_SIZE}
+              },
+              {
+                "board": "esp32_s3_box3",
+                "device": "esp32-s3-box-3",
+                "asset": "${BOX3_BIN}",
+                "url": "https://github.com/pcvantol/djconnect-firmware/releases/download/${VERSION_TAG}/${BOX3_BIN}",
+                "sha256": "${BOX3_SHA256}",
+                "size": ${BOX3_SIZE}
+              }
+            ]
           }
           EOF
 
-          echo "${SHA256}  ${BIN}" > "release/${BIN}.sha256"
+          echo "${LILYGO_SHA256}  ${LILYGO_BIN}" > "release/${LILYGO_BIN}.sha256"
+          echo "${BOX3_SHA256}  ${BOX3_BIN}" > "release/${BOX3_BIN}.sha256"
 
       - name: Publish GitHub Release to public firmware repo
         uses: softprops/action-gh-release@v2
@@ -112,11 +140,12 @@ jobs:
           body: |
             DJConnect firmware ${{ steps.version.outputs.version_tag }}
 
-            Device: `lilygo-t-embed-s3`
+            Devices: `lilygo-t-embed-s3`, `esp32-s3-box-3`
             Channel: `${{ steps.version.outputs.channel }}`
 
-            Binary:
-            `${{ steps.version.outputs.bin }}`
+            Binaries:
+            `${{ steps.version.outputs.lilygo_bin }}`
+            `${{ steps.version.outputs.box3_bin }}`
           files: |
             release/*
         env:

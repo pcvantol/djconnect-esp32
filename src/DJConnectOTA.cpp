@@ -17,7 +17,6 @@
 #include "ScopedWatchdogPause.h"
 
 namespace {
-const char *ExpectedModel = "lilygo-t-embed-s3";
 constexpr size_t OtaDownloadBufferBytes = 1460;
 
 String sha256Hex(const unsigned char digest[32]) {
@@ -73,7 +72,7 @@ bool DJConnectOTA::performUpdate(
     LedRing *ledRing,
     SoundManager *sound,
     String &message) {
-  if (request.device != ExpectedModel) {
+  if (request.device != Config::DeviceModel) {
     message = "Wrong device target";
     return false;
   }
@@ -95,6 +94,8 @@ bool DJConnectOTA::performUpdate(
 
   AppLog.print("OTA target version: ");
   AppLog.println(request.version);
+  AppLog.print("OTA download URL: ");
+  AppLog.println(request.url);
   if (sound != nullptr) {
     sound->playOtaStart();
   }
@@ -140,6 +141,10 @@ bool DJConnectOTA::performUpdate(
   if (code != HTTP_CODE_OK) {
     message = "OTA download failed " + String(code);
     AppLog.println(message);
+    if (code < 0) {
+      AppLog.print("OTA download transport: ");
+      AppLog.println(http.errorToString(code));
+    }
     http.end();
     activity.finish(code);
     failWithCue();
