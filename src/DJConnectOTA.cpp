@@ -11,6 +11,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "GitHubTls.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
@@ -71,6 +72,44 @@ String urlHost(const String &url) {
     hostEnd = url.length();
   }
   return url.substring(hostStart, hostEnd);
+}
+
+String stripPort(const String &host) {
+  const int portStart = host.indexOf(':');
+  if (portStart < 0) {
+    return host;
+  }
+  return host.substring(0, portStart);
+}
+
+void logHostResolution(const String &host) {
+  const String hostname = stripPort(host);
+  if (hostname.isEmpty()) {
+    return;
+  }
+  IPAddress address;
+  if (WiFi.hostByName(hostname.c_str(), address)) {
+    AppLog.print("OTA download IP: ");
+    AppLog.println(address.toString());
+  } else {
+    AppLog.print("OTA download DNS failed: ");
+    AppLog.println(hostname);
+  }
+}
+
+void logTlsError(WiFiClientSecure &client) {
+  char errorBuffer[128] = {};
+  const int errorCode = client.lastError(errorBuffer, sizeof(errorBuffer));
+  if (errorCode == 0 && errorBuffer[0] == '\0') {
+    return;
+  }
+  AppLog.print("OTA download TLS error: ");
+  AppLog.print(errorCode);
+  if (errorBuffer[0] != '\0') {
+    AppLog.print(" ");
+    AppLog.print(errorBuffer);
+  }
+  AppLog.println();
 }
 
 }
@@ -144,8 +183,8 @@ bool DJConnectOTA::performUpdate(
   NetworkActivity activity("ota_download", Config::OtaIoTimeoutMs);
   HTTPClient http;
   WiFiClientSecure secureClient;
-  // Firmware authenticity is enforced with the manifest SHA256 below.
-  secureClient.setInsecure();
+  secureClient.setCACert(GitHubApiCa);
+  secureClient.setHandshakeTimeout(Config::TlsHandshakeTimeoutMs);
   secureClient.setTimeout(Config::OtaIoTimeoutMs);
 
   String downloadUrl = request.url;
@@ -154,8 +193,10 @@ bool DJConnectOTA::performUpdate(
   while (true) {
     NetworkActivity::configureHttp(http, Config::OtaConnectTimeoutMs, Config::OtaIoTimeoutMs);
     http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
+    const String host = urlHost(downloadUrl);
     AppLog.print("OTA download host: ");
-    AppLog.println(urlHost(downloadUrl));
+    AppLog.println(host);
+    logHostResolution(host);
     const bool begun = http.begin(secureClient, downloadUrl);
     if (!begun) {
       message = "OTA HTTP begin failed";
@@ -163,6 +204,8 @@ bool DJConnectOTA::performUpdate(
       failWithCue();
       return false;
     }
+    http.addHeader("User-Agent", "DJConnect");
+    http.addHeader("Accept", "application/octet-stream");
 
     code = http.GET();
     if (!isHttpRedirect(code)) {
@@ -199,6 +242,7 @@ bool DJConnectOTA::performUpdate(
     if (code < 0) {
       AppLog.print("OTA download transport: ");
       AppLog.println(http.errorToString(code));
+      logTlsError(secureClient);
     }
     http.end();
     activity.finish(code);

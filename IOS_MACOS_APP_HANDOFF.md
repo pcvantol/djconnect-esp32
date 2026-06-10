@@ -164,6 +164,130 @@ X-DJConnect-Device-ID: <device_id>
 Content-Type: audio/wav
 ```
 
+## Local App Web API For HA -> App
+
+To be functionally comparable to the ESP firmware, the Apple client must also
+offer a small local authenticated Web API for Home Assistant -> app traffic.
+Without this, HA can receive app status and playback commands from the app, but
+cannot push native entity commands, DJ responses, pairing callbacks, or local
+state requests back to the running client.
+
+Run a local HTTP server while the app is reachable on the LAN:
+
+- macOS: run while the app/menu-bar helper is active; optionally launch at
+  login for persistent availability.
+- iOS/iPadOS: run while the app is foreground/active and has Local Network
+  permission. Do not assume a background HTTP server remains reachable after
+  suspension; HA must tolerate the app being temporarily unreachable.
+
+Advertise the app with Bonjour/mDNS using the same service as ESP clients:
+
+```text
+service: _djconnect._tcp
+hostname: <device_id>.local
+url: http://<device_id>.local:<port>
+TXT: name, device_id, version, paired, api, model, client_type
+```
+
+Use stable app device IDs:
+
+```text
+djconnect-ios-<stable-install-id>
+djconnect-macos-<stable-install-id>
+```
+
+Open local endpoints:
+
+```http
+GET /api/device/info
+GET /api/device/pairing-info
+```
+
+Protected local endpoints require:
+
+```http
+Authorization: Bearer <device_token>
+```
+
+Recommended protected endpoints:
+
+```http
+POST /api/device/pair
+POST /api/device/command
+POST /api/device/dj_response
+POST /api/device/forget
+```
+
+`POST /api/device/reboot` and `POST /api/device/ota` are ESP-specific and
+should not be implemented unless the Apple app has a real equivalent.
+
+`GET /api/device/pairing-info` should return:
+
+```json
+{
+  "device_id": "djconnect-ios-8F3A2C91B45D",
+  "device_name": "DJConnect iPhone",
+  "pair_code": "123456",
+  "client_type": "ios",
+  "firmware": "3.1.0",
+  "app_version": "3.1.0",
+  "local_url": "http://djconnect-ios-8F3A2C91B45D.local:18080"
+}
+```
+
+For macOS, use `client_type:"macos"` and a `djconnect-macos-...` device id.
+Never use `device_type` for identity.
+
+`POST /api/device/pair` from HA should accept:
+
+```json
+{
+  "pair_code": "123456",
+  "device_id": "djconnect-ios-8F3A2C91B45D",
+  "client_type": "ios",
+  "device_token": "<device-token>",
+  "ha_local_url": "http://192.168.1.x:8123",
+  "ha_remote_url": "https://xxxx.ui.nabu.casa",
+  "device_language": "nl",
+  "language": "nl"
+}
+```
+
+Rules:
+
+- Accept only this app installation's own `device_id`.
+- Accept only the expected `client_type` for the target app (`ios` or `macos`).
+- Store only the DJConnect bearer token, HA URLs, language and lightweight
+  DJConnect settings.
+- Keep `ha_local_url` as the normal route for app -> HA status, command and
+  voice calls; `ha_remote_url` is fallback/diagnostics, not the normal path.
+- Do not erase the token automatically on a single HA -> app command failure.
+- Return concise JSON errors for unauthorized, wrong device id, wrong
+  client_type, missing token, or unsupported command.
+
+`POST /api/device/command` is where HA native entities should control the app.
+Suggested command scope:
+
+- status request;
+- playback controls mirrored into app state if relevant;
+- language/theme/log-level updates;
+- voice/PTT enable flags if exposed as HA entities;
+- diagnostics/log export trigger if explicitly supported.
+
+`POST /api/device/dj_response` should let HA push DJ response text and optional
+audio URL to the app UI:
+
+```json
+{
+  "text": "Daar gaan we.",
+  "audio_url": "http://homeassistant.local:8123/api/djconnect/tts/token.mp3"
+}
+```
+
+The app may display the text and play returned WAV/MP3 audio locally if enabled.
+If playback is disabled or unsupported, acknowledge the command and show the
+text-only response.
+
 ## Status Endpoint
 
 Post client status to:
