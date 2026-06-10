@@ -8,9 +8,9 @@
 
 ### Changed
 
-- Refreshed handoff, sync prompts, backlog, Postman OTA examples and release hygiene tests for the v3.0.25 dual-firmware release contract.
+- Refreshed handoff, sync prompts, backlog, Postman OTA examples and release hygiene tests for the v1.3.1-beta dual-firmware release contract.
 
-## v3.0.25
+## v1.3.1-beta
 
 Patch release for board abstraction and dual firmware publishing.
 

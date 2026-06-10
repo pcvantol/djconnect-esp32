@@ -33,9 +33,12 @@ static constexpr bool HasLedRing = BoardProfile::HasLedRing;
 static constexpr bool HasBq27220BatteryGauge = BoardProfile::HasBq27220BatteryGauge;
 static constexpr bool HasSpeaker = BoardProfile::HasSpeaker;
 static constexpr bool HasMicrophone = BoardProfile::HasMicrophone;
+static constexpr bool HasRotaryEncoder = BoardProfile::HasRotaryEncoder;
+static constexpr bool HasSideRotationButtons = BoardProfile::HasSideRotationButtons;
 static constexpr int BoardUserKeyPin = BoardProfile::BoardUserKeyPin;
 static constexpr int BoardPowerEnablePin = BoardProfile::BoardPowerEnablePin;
 static constexpr int DisplayBacklightPin = BoardProfile::DisplayBacklightPin;
+static constexpr uint8_t DisplayRotation = BoardProfile::DisplayRotation;
 static constexpr int SdCardChipSelectPin = BoardProfile::SdCardChipSelectPin;
 static constexpr int LoraChipSelectPin = BoardProfile::LoraChipSelectPin;
 static constexpr int I2cSdaPin = BoardProfile::I2cSdaPin;
@@ -120,7 +123,7 @@ static constexpr int DisplayDimBrightnessPercent = 50;
 static const char *const ProvisioningApSsid = "DJConnect Setup";
 
 // Playback backend credentials and API endpoints live in Home Assistant, not on the ESP.
-static const char *const LikedProxyPlaylistName = "DJConnect Liked Proxy";
+static const char *const LikedProxyPlaylistName = "DJConnect Default Playlist";
 static const char *const BootstrapFirmwareReleaseApiUrl =
     "https://api.github.com/repos/pcvantol/djconnect-firmware/releases/latest";
 static const char *const BootstrapFirmwareManifestAsset = "firmware_manifest.json";

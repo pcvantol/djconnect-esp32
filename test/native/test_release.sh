@@ -73,8 +73,47 @@ echo "$beta_output" | grep -q "djconnect-lilygo-t-embed-s3-beta-v98.76.55.bin"
 echo "$beta_output" | grep -q "djconnect-esp32-s3-box-3-beta-v98.76.55.bin"
 echo "$beta_output" | grep -q "firmware_manifest_beta.json"
 
+beta_prerelease_output="$(./release.sh 98.76.57 --channel beta --gh-release --dry-run)"
+echo "$beta_prerelease_output" | grep -q "Would mark the GitHub release as a prerelease"
+
 beta_tag_output="$(./release.sh v98.76.56-beta --dry-run)"
 echo "$beta_tag_output" | grep -q "tag:     v98.76.56-beta"
 echo "$beta_tag_output" | grep -q "channel: beta"
+
+fake_gh_dir="$(mktemp -d)"
+trap 'rm -rf "$fake_gh_dir"' EXIT
+cat > "$fake_gh_dir/gh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+args="$*"
+if [[ "$1 $2" == "release list" ]]; then
+  if [[ "$args" == *"-beta"* ]]; then
+    printf 'v1.0.0-beta\tfalse\ttrue\n'
+    printf 'v1.1.0-beta\tfalse\ttrue\n'
+  else
+    printf 'v1.0.0\tfalse\tfalse\n'
+    printf 'v1.1.0\tfalse\tfalse\n'
+  fi
+elif [[ "$1" == "api" ]]; then
+  if [[ "$args" == *"-beta"* ]]; then
+    printf 'v1.0.0-beta\n'
+    printf 'v1.1.0-beta\n'
+  else
+    printf 'v1.0.0\n'
+    printf 'v1.1.0\n'
+  fi
+elif [[ "$1 $2" == "run list" ]]; then
+  printf '100\t2026-01-02T00:00:00Z\tcompleted\tsuccess\tmain\tRelease firmware\n'
+  printf '99\t2026-01-01T00:00:00Z\tcompleted\tsuccess\tmain\tRelease firmware\n'
+else
+  echo "unexpected fake gh call: $*" >&2
+  exit 1
+fi
+EOF
+chmod +x "$fake_gh_dir/gh"
+cleanup_beta_output="$(PATH="$fake_gh_dir:$PATH" scripts/cleanup_old_releases.sh --repo owner/repo --channel beta --keep 1 --dry-run)"
+echo "$cleanup_beta_output" | grep -q "Channel: beta"
+echo "$cleanup_beta_output" | grep -q "v1.1.0-beta"
+echo "$cleanup_beta_output" | grep -q "v1.0.0-beta"
 
 echo "release script tests passed"

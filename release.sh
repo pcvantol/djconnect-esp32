@@ -248,6 +248,9 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would push tag $TAG; GitHub Actions will build/publish the public firmware release."
   if [[ "$GH_RELEASE" == "true" ]]; then
     echo "Would also create GitHub release in $FIRMWARE_RELEASE_REPO locally because --gh-release was passed."
+    if [[ "$CHANNEL" == "beta" ]]; then
+      echo "Would mark the GitHub release as a prerelease."
+    fi
   fi
   exit 0
 fi
@@ -362,10 +365,12 @@ fi
 
 if [[ "$GH_RELEASE" == "true" ]]; then
   if command -v gh >/dev/null 2>&1; then
-    run gh release create "$TAG" \
-      --repo "$FIRMWARE_RELEASE_REPO" \
-      --title "DJConnect firmware $TAG" \
-      "$RELEASE_DIR"/*
+    GH_RELEASE_ARGS=(release create "$TAG" --repo "$FIRMWARE_RELEASE_REPO" --title "DJConnect firmware $TAG")
+    if [[ "$CHANNEL" == "beta" ]]; then
+      GH_RELEASE_ARGS+=(--prerelease)
+    fi
+    GH_RELEASE_ARGS+=("$RELEASE_DIR"/*)
+    run gh "${GH_RELEASE_ARGS[@]}"
   else
     echo "gh not found; skipping GitHub release creation"
   fi

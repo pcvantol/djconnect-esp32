@@ -200,6 +200,7 @@ jobs:
           token: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
           tag_name: ${{ needs.release-info.outputs.version_tag }}
           name: DJConnect Firmware ${{ needs.release-info.outputs.version_tag }}
+          prerelease: ${{ needs.release-info.outputs.channel == 'beta' }}
           body: |
             DJConnect firmware ${{ needs.release-info.outputs.version_tag }}
 

@@ -356,11 +356,14 @@ Release firmware can be prepared locally with `release.sh`. The public firmware 
 
 The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, `release/djconnect-esp32-s3-box-3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. The pushed git tag then triggers the GitHub Action, which builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that both compiled firmware images contain the expected `vX.Y.Z` version tag before publishing both OTA assets and their `.sha256` files.
 
+Beta firmware uses the same flow with `--channel beta` or a `vX.Y.Z-beta` tag. Beta assets are named `djconnect-lilygo-t-embed-s3-beta-vX.Y.Z.bin` and `djconnect-esp32-s3-box-3-beta-vX.Y.Z.bin`, the manifest is `firmware_manifest_beta.json`, and the GitHub release is marked as a prerelease.
+
 Old public firmware releases can be reviewed and pruned with the separate dry-run first cleanup helper:
 
 ```sh
 scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --dry-run
 scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --execute
+scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --channel beta --keep 1 --dry-run
 ```
 
 ```bash
@@ -371,6 +374,13 @@ Preflight without changing files, building, committing, pushing or publishing:
 
 ```bash
 ./release.sh X.Y.Z --dry-run
+```
+
+Prepare a beta release:
+
+```bash
+./release.sh X.Y.Z --channel beta
+./release.sh vX.Y.Z-beta --dry-run
 ```
 
 Publish the generated firmware asset and manifest into the public firmware release repo as part of the same flow:

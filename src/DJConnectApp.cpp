@@ -932,7 +932,7 @@ void DJConnectApp::handleInputEvents(const InputEvents &events) {
     topHoldMenuHintVisible_ = false;
   }
 
-  if (events.encoderPress && volumeFeedbackEnabled_) {
+  if (events.encoderPress && volumeFeedbackEnabled_ && activeScreen_ != UiScreen::AlbumArt) {
     sound_.playButtonPress();
   }
 
@@ -2366,11 +2366,25 @@ void DJConnectApp::startLikedProxyPlaylist() {
     return;
   }
 
-  AppLog.println("Playback: starting Liked Proxy playlist");
+  AppLog.println("Playback: starting default playlist");
   showNotice(I18n::text("starting_liked_proxy"), 1600);
   renderNow();
   if (spotify_.startLikedProxyPlaylist()) {
-    AppLog.println("Playback: Liked Proxy playlist command accepted");
+    AppLog.println("Playback: default playlist command accepted");
+    if (spotify_.setShuffle(true)) {
+      playback_.shuffle = true;
+      AppLog.println("Playback: default playlist shuffle enabled");
+    } else {
+      AppLog.print("Playback: default playlist shuffle failed: ");
+      AppLog.println(playback_.error);
+    }
+    if (spotify_.setRepeatMode("off")) {
+      playback_.repeatState = "off";
+      AppLog.println("Playback: default playlist repeat disabled");
+    } else {
+      AppLog.print("Playback: default playlist repeat failed: ");
+      AppLog.println(playback_.error);
+    }
     playback_.trackName = I18n::text("starting_liked_proxy");
     playback_.artistName = "";
     playback_.hasPlayback = true;
@@ -2383,7 +2397,7 @@ void DJConnectApp::startLikedProxyPlaylist() {
     showNotice(I18n::text("liked_proxy_started"), 2200);
     lastPlaybackPollAt_ = 0;
   } else {
-    AppLog.print("Playback: Liked Proxy playlist failed: ");
+    AppLog.print("Playback: default playlist failed: ");
     AppLog.println(playback_.error);
     showNotice(playback_.error, 3500);
   }

@@ -8,27 +8,54 @@ void InputController::begin() {
   activeInstance_ = this;
   encoderButton_.begin(Config::EncoderButtonPin);
   topButton_.begin(Config::BoardUserKeyPin);
-  attachInterrupt(digitalPinToInterrupt(Config::EncoderPinA), encoderInterrupt, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(Config::EncoderPinB), encoderInterrupt, CHANGE);
-  lastEncoderPosition_ = encoder_.getPosition();
+  if constexpr (Config::HasRotaryEncoder) {
+    attachInterrupt(digitalPinToInterrupt(Config::EncoderPinA), encoderInterrupt, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(Config::EncoderPinB), encoderInterrupt, CHANGE);
+    lastEncoderPosition_ = encoder_.getPosition();
+  }
+  if constexpr (Config::HasSideRotationButtons) {
+    sideRotationDownButton_.begin(Config::EncoderPinA);
+    sideRotationUpButton_.begin(Config::EncoderPinB);
+  }
   lastEncoderButtonPressed_ = encoderButton_.isPressed();
 }
 
 InputEvents InputController::poll() {
   // A tick in the loop complements the ISR and helps catch any missed transitions.
-  encoder_.tick();
+  if constexpr (Config::HasRotaryEncoder) {
+    encoder_.tick();
+  }
   encoderButton_.update();
   topButton_.update();
+  if constexpr (Config::HasSideRotationButtons) {
+    sideRotationDownButton_.update();
+    sideRotationUpButton_.update();
+  }
 
   InputEvents events;
-  const int position = encoder_.getPosition();
-  if (position != lastEncoderPosition_) {
-    // Earlier hardware testing showed this sign gives clockwise = volume up.
-    events.encoderSteps = lastEncoderPosition_ - position;
-    lastEncoderPosition_ = position;
+  if constexpr (Config::HasRotaryEncoder) {
+    const int position = encoder_.getPosition();
+    if (position != lastEncoderPosition_) {
+      // Earlier hardware testing showed this sign gives clockwise = volume up.
+      events.encoderSteps = lastEncoderPosition_ - position;
+      lastEncoderPosition_ = position;
+    }
   }
 
   const uint32_t now = millis();
+  if constexpr (Config::HasSideRotationButtons) {
+    events.encoderSteps += pollSideRotationButton(
+        sideRotationDownButton_,
+        -1,
+        sideRotationDownRepeatAt_,
+        now);
+    events.encoderSteps += pollSideRotationButton(
+        sideRotationUpButton_,
+        1,
+        sideRotationUpRepeatAt_,
+        now);
+  }
+
   const bool encoderPressedNow = encoderButton_.isPressed();
   events.encoderPress = encoderButton_.wasPressed();
   events.encoderRelease = lastEncoderButtonPressed_ && !encoderPressedNow;
@@ -79,7 +106,10 @@ InputEvents InputController::poll() {
     topButtonClickPending_ = false;
   }
   events.topButtonHeld = topButton_.isPressed();
-  events.buttonHeld = events.encoderHeld || events.topButtonHeld;
+  const bool sideRotationHeld =
+      Config::HasSideRotationButtons &&
+      (sideRotationDownButton_.isPressed() || sideRotationUpButton_.isPressed());
+  events.buttonHeld = events.encoderHeld || events.topButtonHeld || sideRotationHeld;
   // A held button also counts as activity so a long press wakes the dimmed display immediately.
   events.touched = events.encoderSteps != 0 ||
                    events.encoderPress ||
@@ -101,6 +131,8 @@ void InputController::clearPendingButtonActions() {
   encoderClickPending_ = false;
   topButton_.clearEvents();
   encoderButton_.clearEvents();
+  sideRotationDownButton_.clearEvents();
+  sideRotationUpButton_.clearEvents();
 }
 
 void InputController::consumeTopButtonPress() {
@@ -112,4 +144,27 @@ void IRAM_ATTR InputController::encoderInterrupt() {
   if (activeInstance_ != nullptr) {
     activeInstance_->encoder_.tick();
   }
+}
+
+int InputController::pollSideRotationButton(
+    DebouncedButton &button,
+    int step,
+    uint32_t &repeatAt,
+    uint32_t now) {
+  if (button.wasPressed()) {
+    repeatAt = now + SideRotationInitialRepeatDelayMs;
+    return step;
+  }
+
+  if (!button.isPressed()) {
+    repeatAt = 0;
+    return 0;
+  }
+
+  if (repeatAt != 0 && static_cast<int32_t>(now - repeatAt) >= 0) {
+    repeatAt = now + SideRotationRepeatIntervalMs;
+    return step;
+  }
+
+  return 0;
 }

@@ -230,8 +230,13 @@ bool SoundManager::installI2s() {
   SpeakerI2S.setPins(Config::SpeakerBclkPin, Config::SpeakerLrclkPin, Config::SpeakerDataPin);
   SpeakerI2S.setTimeout(100);
   if (!SpeakerI2S.begin(I2S_MODE_STD, Config::SpeakerSampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO)) {
+    AppLog.println(String("Speaker I2S error: ") +
+                   String(esp_err_to_name(static_cast<esp_err_t>(SpeakerI2S.lastError()))));
     return false;
   }
+  AppLog.println(String("Speaker I2S ready: bclk=") + String(Config::SpeakerBclkPin) +
+                 ", lrclk=" + String(Config::SpeakerLrclkPin) +
+                 ", data=" + String(Config::SpeakerDataPin));
   return true;
 }
 

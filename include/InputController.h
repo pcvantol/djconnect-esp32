@@ -50,14 +50,22 @@ private:
       RotaryEncoder::LatchMode::TWO03};
   DebouncedButton encoderButton_;
   DebouncedButton topButton_;
+  DebouncedButton sideRotationDownButton_;
+  DebouncedButton sideRotationUpButton_;
   int lastEncoderPosition_ = 0;
   bool topButtonClickPending_ = false;
   bool ignoreTopReleaseClick_ = false;
   bool lastEncoderButtonPressed_ = false;
+  uint32_t sideRotationDownRepeatAt_ = 0;
+  uint32_t sideRotationUpRepeatAt_ = 0;
   uint32_t topButtonClickPendingAt_ = 0;
   bool encoderClickPending_ = false;
   uint32_t encoderClickPendingAt_ = 0;
 
+  int pollSideRotationButton(DebouncedButton &button, int step, uint32_t &repeatAt, uint32_t now);
+
+  static constexpr uint32_t SideRotationInitialRepeatDelayMs = 420;
+  static constexpr uint32_t SideRotationRepeatIntervalMs = 140;
   static constexpr uint32_t TopButtonDoubleClickWindowMs = 350;
   static constexpr uint32_t EncoderDoubleClickWindowMs = 350;
 };

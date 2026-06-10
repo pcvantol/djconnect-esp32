@@ -73,7 +73,7 @@ static void testHaPlaybackConnectionErrorClassification() {
   assert(!Logic::haPlaybackErrorIsConnectionError(nullptr));
   assert(!Logic::haPlaybackErrorIsConnectionError(""));
   assert(!Logic::haPlaybackErrorIsConnectionError("No active playback"));
-  assert(!Logic::haPlaybackErrorIsConnectionError("Liked Proxy playlist not found"));
+  assert(!Logic::haPlaybackErrorIsConnectionError("Default playlist not found"));
 
   assert(Logic::haPlaybackErrorIsConnectionError("HA playback HTTP -1"));
   assert(Logic::haPlaybackErrorIsConnectionError("HA playback HTTP 503"));

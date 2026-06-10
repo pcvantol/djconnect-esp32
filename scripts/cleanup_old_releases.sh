@@ -11,6 +11,8 @@ the newest semantic version releases and newest workflow runs by default.
 
 Options:
   --repo OWNER/REPO       GitHub repository, for example pcvantol/djconnect-firmware.
+  --channel stable|beta|all
+                          Release channel to prune. Default: stable.
   --keep N                Number of newest semver releases/tags to keep. Default: 1.
                           Use 0 to delete all semver releases/tags.
   --keep-runs N           Number of newest workflow runs to keep. Defaults to --keep.
@@ -22,18 +24,22 @@ Options:
 
 Examples:
   scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --dry-run
+  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --channel beta --dry-run
   scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 2 --execute
+  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --channel beta --keep 1 --execute
   scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --keep-runs 5 --execute
 
 Notes:
   - Requires GitHub CLI: gh auth login
-  - Only semver tags/releases like v3.0.0 are considered.
+  - Stable semver tags/releases look like v3.0.0.
+  - Beta semver tags/releases look like v3.0.0-beta.
   - The kept releases are selected by semantic version, not by upload date.
   - Workflow runs are kept by newest created date.
 EOF
 }
 
 repo=""
+channel="stable"
 keep_count=1
 keep_runs=""
 mode="dry-run"
@@ -43,6 +49,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo)
       repo="${2:-}"
+      shift 2
+      ;;
+    --channel)
+      channel="${2:-}"
       shift 2
       ;;
     --keep)
@@ -82,6 +92,22 @@ if [[ -z "$repo" || ! "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
   exit 2
 fi
 
+case "$channel" in
+  stable)
+    tag_regex='^v[0-9]+\\.[0-9]+\\.[0-9]+$'
+    ;;
+  beta)
+    tag_regex='^v[0-9]+\\.[0-9]+\\.[0-9]+-beta$'
+    ;;
+  all)
+    tag_regex='^v[0-9]+\\.[0-9]+\\.[0-9]+(-beta)?$'
+    ;;
+  *)
+    echo "Error: --channel must be stable, beta or all." >&2
+    exit 2
+    ;;
+esac
+
 if [[ ! "$keep_count" =~ ^[0-9]+$ ]]; then
   echo "Error: --keep must be zero or a positive integer." >&2
   exit 2
@@ -114,12 +140,12 @@ delete_workflow_runs_file="$tmp_dir/delete_workflow_runs.tsv"
 
 echo "Reading releases from $repo..."
 gh release list --repo "$repo" --limit 1000 --json tagName,isDraft,isPrerelease \
-  --jq '.[] | select(.tagName | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | [.tagName, .isDraft, .isPrerelease] | @tsv' \
+  --jq ".[] | select(.tagName | test(\"$tag_regex\")) | [.tagName, .isDraft, .isPrerelease] | @tsv" \
   > "$releases_file"
 
 echo "Reading tags from $repo..."
 gh api "repos/$repo/git/matching-refs/tags/v" --paginate \
-  --jq '.[]?.ref | sub("^refs/tags/"; "") | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
+  --jq ".[]?.ref | sub(\"^refs/tags/\"; \"\") | select(test(\"$tag_regex\"))" \
   > "$tags_file"
 
 all_versions_file="$tmp_dir/all_versions.txt"
@@ -152,6 +178,8 @@ else
   awk -v keep="$keep_runs" 'NR > keep' "$workflow_runs_file" > "$delete_workflow_runs_file"
 fi
 
+echo
+echo "Channel: $channel"
 echo
 echo "Keeping newest $keep_count version(s):"
 if [[ -s "$keep_file" ]]; then

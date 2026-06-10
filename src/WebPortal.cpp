@@ -220,6 +220,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.icon-button.is-off { background:#243238; border-color:#3d5660; color:#a8b3af; }
     button.icon-button.is-on { background:#176031; border-color:#31c36a; color:#caffda; }
     button.icon-button.is-track { background:#1f6fd1; border-color:#2f8cff; color:#f2f8ff; }
+    .playback-actions button.icon-button,
+    .playback-actions button.icon-button.is-off,
+    .playback-actions button.icon-button.is-on,
+    .playback-actions button.icon-button.is-track { background:var(--orange); border-color:var(--orange); color:#111; }
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
     button.warning { background:#a57912; border-color:#d6a329; color:#fff3c4; }
     button.firmware { background:#6f3bd8; border-color:#9b72ff; color:#f4edff; }
@@ -340,7 +344,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       </div>
       <div id="shuffleStatus" class="status"></div>
       <div id="repeatStatus" class="status"></div>
-      <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start DJConnect Liked Proxy</button>
+      <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start default playlist</button>
       <div id="playbackCommandStatus" class="status"></div>
       <div class="row"><span class="key" data-i18n="output">Sound output</span><span id="device" class="value">-</span></div>
       <select id="soundOutputSelect" aria-label="Sound output"><option value="" data-i18n="loadingOutputs">Loading outputs...</option></select>
@@ -571,7 +575,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     const translations = {
       en: {
         deviceNotPaired:"Device not paired with Home Assistant", setup:"Click here to setup", providePair:"and provide pairing code:",
-        nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start DJConnect Liked Proxy",
+        nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start default playlist",
         webPttHold:"Test DJ response", webPttListening:"Testing DJ response...", webPttProcessing:"Sending test command...", webPttSent:"DJ response test sent", webPttTimeout:"DJ response test is still running on the device.",
         webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
         webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect response flow", webPttFlowInfo:"Tests: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ response text on the device.",
@@ -596,7 +600,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         discharging:"discharging", paired:"Paired", pairingMode:"Pairing mode", pairingUnavailable:"Pairing info unavailable",
         none:"None", noOutputs:"No sound outputs", outputsFailed:"Sound outputs failed", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
         playlistsFailed:"Playlists failed", noLogs:"No logs yet", switchingOutput:"Switching output...", skipping:"Skipping...",
-        goingBack:"Going back...", startingLiked:"Starting Liked Proxy...", startingQueueItem:"Starting selected song...", selectPlaylist:"Select a playlist",
+        goingBack:"Going back...", startingLiked:"Starting default playlist...", startingQueueItem:"Starting selected song...", selectPlaylist:"Select a playlist",
         startingPlaylist:"Starting playlist...", resumeLogs:"Resume logs", logsPaused:"Logs paused", logsLive:"Logs live",
         logsPausedSelected:"Logs paused and selected", saving:"Saving...", testWifiConfirm:"Test these WiFi credentials? The web page may disconnect during the test.",
         startingWifiTest:"Starting WiFi test...", refreshing:"Refreshing...", restartConfirm:"Restart DJConnect?",
@@ -608,7 +612,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       },
       nl: {
         deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om te koppelen", providePair:"en vul koppelcode in:",
-        nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start DJConnect Liked Proxy",
+        nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start standaard playlist",
         webPttHold:"Test DJ-response", webPttListening:"DJ-response testen...", webPttProcessing:"Testcommando versturen...", webPttSent:"DJ-response test verstuurd", webPttTimeout:"DJ-response test loopt nog op het device.",
         webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
         webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect response flow", webPttFlowInfo:"Test: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ-response tekst op het device.",
@@ -633,7 +637,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         discharging:"ontladen", paired:"Gekoppeld", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformatie niet beschikbaar",
         none:"Geen", noOutputs:"Geen geluidsuitgangen", outputsFailed:"Geluidsuitgangen mislukt", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
         playlistsFailed:"Afspeellijsten mislukt", noLogs:"Nog geen logs", switchingOutput:"Output wisselen...", skipping:"Overslaan...",
-        goingBack:"Teruggaan...", startingLiked:"Liked Proxy starten...", startingQueueItem:"Gekozen nummer starten...", selectPlaylist:"Selecteer een afspeellijst",
+        goingBack:"Teruggaan...", startingLiked:"Standaard playlist starten...", startingQueueItem:"Gekozen nummer starten...", selectPlaylist:"Selecteer een afspeellijst",
         startingPlaylist:"Afspeellijst starten...", resumeLogs:"Logs hervatten", logsPaused:"Logs gepauzeerd", logsLive:"Logs live",
         logsPausedSelected:"Logs gepauzeerd en geselecteerd", saving:"Opslaan...", testWifiConfirm:"Deze WiFi-gegevens testen? De webpagina kan tijdens de test loskoppelen.",
         startingWifiTest:"WiFi-test starten...", refreshing:"Verversen...", restartConfirm:"DJConnect herstarten?",
@@ -2025,7 +2029,7 @@ void WebPortal::handlePlaybackCommandPost() {
   AppLog.print("Web playback: action completed ");
   AppLog.println(action);
   spotify_->refreshPlayback();
-  String message = localizedText("Liked Proxy started", "Liked Proxy gestart");
+  String message = localizedText("Default playlist started", "Standaard playlist gestart");
   if (action == "next") {
     message = localizedText("Next song", "Volgend nummer");
   } else if (action == "previous") {
