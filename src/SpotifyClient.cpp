@@ -154,14 +154,8 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
     AppLog.println("HA playback status transport failed, keeping last playback state");
     return false;
   }
-  if (code < 0 && device_ != nullptr) {
-    AppLog.println("HA playback command transport failed, retrying route");
-    device_->invalidateActiveHaUrl();
-    const String retryUrl = proxyEndpoint();
-    if (!retryUrl.isEmpty()) {
-      payload = "";
-      code = postProxyRequest(retryUrl, token, body, command, payload);
-    }
+  if (code < 0) {
+    AppLog.println("HA playback command transport failed on local route");
   }
   AppLog.line("HA playback command response: " + String(code));
 

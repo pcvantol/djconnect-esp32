@@ -410,9 +410,6 @@ String VoiceHttpClient::endpoint(const char *path) const {
   }
   String base = device_->getHaLocalUrl();
   if (base.isEmpty()) {
-    base = device_->getActiveHaUrl();
-  }
-  if (base.isEmpty()) {
     return "";
   }
   if (base.endsWith("/")) {

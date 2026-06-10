@@ -174,7 +174,7 @@ set_repeat and status-refresh commands. Do not send `device_type` in ESP-to-HA
 JSON payloads. Raw WAV voice upload to `/api/djconnect/voice` uses auth headers
 and `X-DJConnect-Device-ID` instead of a JSON body.
 
-Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, firmware, battery percentage, WiFi RSSI, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state, LED state and sound output. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `ha_remote_url`, `ha_active_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_state`, `led_state`, `sound_output`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
+Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, firmware, battery percentage, WiFi RSSI, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state, LED state and sound output. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_state`, `led_state`, `sound_output`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
 
 For `/api/djconnect/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404 means stale pairing. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
 
@@ -251,7 +251,6 @@ NVS namespaces:
 `djconnect` keys:
 
 - `ha_local_url`
-- `ha_remote_url`
 - `device_token`
 - `device_name`
 - `fw_channel`
@@ -316,8 +315,8 @@ When WiFi is configured but Home Assistant is not paired:
 - Consume top-button press/hold/long-click UI events in pairing mode so holding the top button for the 10-second soft reset never flashes the normal menu first.
 - Soft reset and hard reset must remain available through the reset monitor.
 - The pairing code should also be available in Serial logging and the web pairing panel.
-- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token plus a real LAN `ha_local_url`. `/api/device/pair` may receive a direct HA callback with `device_token`, required `ha_local_url`, optional `ha_remote_url`, and lightweight settings; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/djconnect/status`; playback proxy commands must stay disabled until that authenticated status call succeeds. During the pairing-screen transition, direct pairing must leave pairing mode and stop BLE before wake-word inference starts.
-- `ha_local_url` must be a real LAN URL and must not be a Nabu Casa `.ui.nabu.casa` URL. If cloud is received as local, the ESP rejects pairing instead of entering a half-paired state. Status, playback proxy commands and voice calls use `ha_local_url` only; if local is missing, fail clearly instead of falling back to cloud. Cloud URL support is stored for diagnostics/future route handling, but do not assume Nabu Casa can reach ESP local endpoints directly.
+- Home Assistant must not report the ESP as paired just because the integration generated a token locally. The ESP is paired only after it stores a device token plus a real LAN `ha_local_url`. `/api/device/pair` may receive a direct HA callback with `device_token`, required `ha_local_url`, and lightweight settings; keep that route lightweight and only store token/settings there. The app loop confirms the pairing through `/api/djconnect/status`; playback proxy commands must stay disabled until that authenticated status call succeeds. During the pairing-screen transition, direct pairing must leave pairing mode and stop BLE before wake-word inference starts.
+- `ha_local_url` must be a real LAN URL and must not be a Nabu Casa `.ui.nabu.casa` URL. If cloud is received as local, the ESP rejects pairing instead of entering a half-paired state. Status, playback proxy commands and voice calls use `ha_local_url` only; if local is missing, fail clearly. Cloud/Nabu Casa URLs belong in the Home Assistant backend or OAuth/config flow, not in ESP runtime traffic.
 
 If WiFi is not configured, the device starts in setup/AP provisioning mode before HA pairing can happen.
 
@@ -373,7 +372,7 @@ Current OTA implementation streams via `Update.h`.
 
 SHA256 verification is mandatory for OTA. The endpoint rejects missing/invalid hashes, streams the image through `Update.h`, computes SHA256 while writing, and aborts before reboot if the manifest hash does not match.
 
-During OTA firmware write, show `Firmware update in progress..` on the display at 100% brightness for both HA-triggered OTA and manual web upload. Keep the LED ring in the fast purple firmware-update animation and play OTA start/progress/complete/failure cues through `SoundManager`. OTA streaming must keep feeding the watchdog/LED animation and tolerate slow GitHub/CDN byte bursts before declaring a controlled stream timeout.
+During OTA firmware write, show `Firmware update in progress..` on the display at 100% brightness for both HA-triggered OTA and manual web upload. Keep the LED ring in the fast purple firmware-update animation and play OTA start/progress/complete/failure cues through `SoundManager`. Before HA-triggered or bootstrap OTA download starts, release wake-word/TFLite and active voice/audio resources so GitHub TLS has enough contiguous heap on non-PSRAM boards. OTA streaming must keep feeding the watchdog/LED animation and tolerate slow GitHub/CDN byte bursts before declaring a controlled stream timeout.
 
 Local development builds may display `vdev`, but Home Assistant/device API version reporting must expose them as OTA-comparable `0.0.0` so every published `X.Y.Z` release is treated as an upgrade from a local flash.
 
@@ -471,7 +470,7 @@ The web portal is intended to be usable on mobile. Keep controls responsive and 
 
 Current web expectations:
 
-- Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and active HA URL/status.
+- Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and local HA URL/status.
 - The Home Assistant pairing banner setup link must open in a new tab/window so the local ESP web portal remains loaded.
 - The web portal and captive/setup portal should keep the current DJConnect blue/purple brand styling from the icon/logo. Use blue/purple for headers, panels, primary buttons and pairing surfaces while keeping status colors semantically green/yellow/red.
 - The top web title bar shows firmware version and board device model. The status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Hide the battery icon when `battery.available` is false, such as ESP32-S3-BOX-3. Keep the IP address in the WiFi block, not in the top status bar.

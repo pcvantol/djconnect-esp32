@@ -26,7 +26,8 @@ void DJConnectApiServer::begin(
     DjResponseCallback djResponseCallback,
     LanguageProvisionedCallback languageProvisionedCallback,
     DeviceCommandCallback deviceCommandCallback,
-    DirectPairCallback directPairCallback) {
+    DirectPairCallback directPairCallback,
+    OtaPrepareCallback otaPrepareCallback) {
   if (running_) {
     return;
   }
@@ -46,6 +47,7 @@ void DJConnectApiServer::begin(
   languageProvisionedCallback_ = languageProvisionedCallback;
   deviceCommandCallback_ = deviceCommandCallback;
   directPairCallback_ = directPairCallback;
+  otaPrepareCallback_ = otaPrepareCallback;
 
   static const char *headers[] = {"Authorization"};
   server_->collectHeaders(headers, 1);
@@ -104,8 +106,6 @@ void DJConnectApiServer::handleInfo() {
   doc["battery_mv"] = battery_ == nullptr ? 0 : battery_->voltageMv;
   doc["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
   doc["ha_local_url"] = device_->getHaLocalUrl();
-  doc["ha_remote_url"] = device_->getHaRemoteUrl();
-  doc["ha_active_url"] = device_->getActiveHaUrl();
   doc["last_dj_text"] = diagnostics_ == nullptr ? "" : diagnostics_->lastDjText;
   String payload;
   serializeJson(doc, payload);
@@ -134,7 +134,7 @@ void DJConnectApiServer::handlePair() {
   }
   const String legacyHaUrlKey = String("ha") + "_" + "url";
   if (!doc[legacyHaUrlKey].isNull()) {
-    sendJson(400, "{\"error\":\"legacy_url_unsupported\",\"message\":\"use ha_local_url and/or ha_remote_url\"}");
+    sendJson(400, "{\"error\":\"legacy_url_unsupported\",\"message\":\"use ha_local_url\"}");
     return;
   }
   const String deviceId = doc["device_id"] | "";
@@ -152,7 +152,6 @@ void DJConnectApiServer::handlePair() {
     return;
   }
   const String haLocalUrl = doc["ha_local_url"] | "";
-  const String haRemoteUrl = doc["ha_remote_url"] | "";
   const String deviceToken = doc["device_token"] | "";
   const String assistPipelineId = doc["assist_pipeline_id"] | "";
   String provisionedLanguage = doc["device_language"] | "";
@@ -176,10 +175,9 @@ void DJConnectApiServer::handlePair() {
   const bool samePairing =
       device_->isPaired() &&
       device_->getDeviceToken() == deviceToken &&
-      (haLocalUrl.isEmpty() || device_->getHaLocalUrl() == haLocalUrl) &&
-      (haRemoteUrl.isEmpty() || device_->getHaRemoteUrl() == haRemoteUrl);
+      device_->getHaLocalUrl() == haLocalUrl;
   if (!samePairing) {
-    device_->savePairing(deviceToken, haLocalUrl, haRemoteUrl);
+    device_->savePairing(deviceToken, haLocalUrl);
   }
   if (!assistPipelineId.isEmpty()) {
     if (device_->getAssistPipelineId() != assistPipelineId) {
@@ -240,6 +238,9 @@ void DJConnectApiServer::handleOta() {
   sendJson(200, payload);
 
   delay(100);
+  if (otaPrepareCallback_ != nullptr) {
+    otaPrepareCallback_(callbackContext_);
+  }
   if (ota_->performUpdate(request, battery_, display_, ledRing_, sound_, message)) {
     delay(500);
     ESP.restart();

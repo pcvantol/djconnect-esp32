@@ -102,8 +102,8 @@ Controleer en fix:
 
 ESP ontvangt device_token via POST /api/device/pair.
 ESP ontvangt een echte LAN ha_local_url via POST /api/device/pair.
-ESP mag daarnaast ha_remote_url ontvangen voor diagnostiek/toekomstig gebruik.
-ESP gebruikt ha_local_url als normale route voor status, playback en voice; ha_remote_url is fallback/diagnostiek en niet het normale pad.
+ESP ontvangt of bewaart geen ha_remote_url voor runtime verkeer.
+ESP gebruikt uitsluitend ha_local_url voor status, playback en voice.
 ESP accepteert en verwacht geen oud enkelvoudig HA-URL pairingveld meer.
 ESP accepteert als persistent device ID alleen de eigen model-specifieke ID.
 Een tijdelijke setup/pairing code mag alleen als `pair_code` bestaan; na pairing moet de firmware de echte model-specifieke device ID gebruiken.
@@ -134,10 +134,9 @@ Verwachte HA -> ESP pair payload:
   "language": "nl",
   "device_token": "<device-token>",
   "ha_local_url": "http://homeassistant.local:8123",
-  "ha_remote_url": "https://example.ui.nabu.casa",
   "assist_pipeline_id": "..."
 }
-ha_local_url is verplicht en moet een LAN URL zijn. Stuur geen oud enkelvoudig HA-URL veld mee en zet nooit Nabu Casa/cloud in ha_local_url.
+ha_local_url is verplicht en moet een LAN URL zijn. Stuur geen oud enkelvoudig HA-URL veld mee, stuur geen ha_remote_url naar de ESP en zet nooit Nabu Casa/cloud in ha_local_url.
 
 2. Status payload uitbreiden
 Zorg dat periodieke HA status payload actuele device settings bevat zodat HA native entities correct updaten.
@@ -344,6 +343,7 @@ sha256 en size per firmware. Geen top-level single-device `device`, `asset`,
 Tijdens OTA:
 duidelijke UI status;
 paarse snelle LED-ring animatie;
+release wake-word/TFLite en actieve voice/audio resources voordat firmware-download/TLS start;
 status na reboot terug naar idle;
 post-boot status naar HA met firmwareversie en idle state.
 8. BLE WiFi provisioning

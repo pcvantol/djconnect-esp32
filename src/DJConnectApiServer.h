@@ -22,6 +22,7 @@ public:
   using LanguageProvisionedCallback = void (*)(void *context, const String &languageCode);
   using DeviceCommandCallback = bool (*)(void *context, const DeviceCommand &command, String &message);
   using DirectPairCallback = void (*)(void *context);
+  using OtaPrepareCallback = void (*)(void *context);
 
   void begin(
       WebServer &server,
@@ -39,7 +40,8 @@ public:
       DjResponseCallback djResponseCallback = nullptr,
       LanguageProvisionedCallback languageProvisionedCallback = nullptr,
       DeviceCommandCallback deviceCommandCallback = nullptr,
-      DirectPairCallback directPairCallback = nullptr);
+      DirectPairCallback directPairCallback = nullptr,
+      OtaPrepareCallback otaPrepareCallback = nullptr);
   void loop();
   bool isRunning() const;
 
@@ -71,5 +73,6 @@ private:
   LanguageProvisionedCallback languageProvisionedCallback_ = nullptr;
   DeviceCommandCallback deviceCommandCallback_ = nullptr;
   DirectPairCallback directPairCallback_ = nullptr;
+  OtaPrepareCallback otaPrepareCallback_ = nullptr;
   bool running_ = false;
 };

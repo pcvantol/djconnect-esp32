@@ -22,11 +22,6 @@
       "type": "string"
     },
     {
-      "key": "ha_remote_url",
-      "value": "https://example.ui.nabu.casa",
-      "type": "string"
-    },
-    {
       "key": "firmware_url",
       "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v3.1.0/djconnect-lilygo-t-embed-s3-v3.1.0.bin",
       "type": "string"
@@ -60,7 +55,7 @@
                 "info"
               ]
             },
-            "description": "Returns device identity, firmware, model, pairing state, playback config state, battery, WiFi RSSI, active/local/remote HA URLs and last DJ text. No bearer token required."
+            "description": "Returns device identity, firmware, model, pairing state, playback config state, battery, WiFi RSSI, local HA URL and last DJ text. No bearer token required."
           },
           "response": []
         },
@@ -101,7 +96,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pair_code\": \"123456\",\n  \"device_id\": \"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX\",\n  \"device_name\": \"DJConnect\",\n  \"client_type\": \"esp32\",\n  \"device_token\": \"{{device_token}}\",\n  \"ha_local_url\": \"{{ha_local_url}}\",\n  \"ha_remote_url\": \"{{ha_remote_url}}\",\n  \"device_language\": \"nl\"\n}"
+              "raw": "{\n  \"pair_code\": \"123456\",\n  \"device_id\": \"djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX\",\n  \"device_name\": \"DJConnect\",\n  \"client_type\": \"esp32\",\n  \"device_token\": \"{{device_token}}\",\n  \"ha_local_url\": \"{{ha_local_url}}\",\n  \"device_language\": \"nl\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/device/pair",

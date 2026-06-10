@@ -21,6 +21,7 @@ public:
   bool available() const;
   bool enabled() const;
   void setEnabled(bool enabled);
+  void releaseResources();
 
 private:
   Callback callback_ = nullptr;

@@ -3531,6 +3531,7 @@ bool DJConnectApp::checkBootstrapFirmwareUpdate() {
 
   String message;
   AppLog.println("Bootstrap OTA starting pre-pairing update");
+  prepareForOta();
   if (haOta_.performUpdate(request, &battery_, &display_, &ledRing_, &sound_, message)) {
     responsiveDelay(500);
     ESP.restart();
@@ -3635,7 +3636,8 @@ void DJConnectApp::setupHomeAssistantLayer() {
       djResponseCallback,
       languageProvisionedCallback,
       deviceCommandCallback,
-      directPairCallback);
+      directPairCallback,
+      otaPrepareCallback);
 
   if (!apiWasRunning) {
     AppLog.line(String("Home Assistant: paired=") + (haDevice_.isPaired() ? "true" : "false") +
@@ -3643,8 +3645,6 @@ void DJConnectApp::setupHomeAssistantLayer() {
     if (haDevice_.isPaired()) {
       AppLog.line(String("Home Assistant local URL: ") +
                   (haDevice_.getHaLocalUrl().isEmpty() ? String("(empty)") : haDevice_.getHaLocalUrl()));
-      AppLog.line(String("Home Assistant remote URL: ") +
-                  (haDevice_.getHaRemoteUrl().isEmpty() ? String("(empty)") : haDevice_.getHaRemoteUrl()));
     }
   }
   if (!haDevice_.isPaired()) {
@@ -3935,6 +3935,13 @@ bool DJConnectApp::djResponseCallback(void *context, const String &text, const S
   return displayed;
 }
 
+void DJConnectApp::otaPrepareCallback(void *context) {
+  if (context == nullptr) {
+    return;
+  }
+  static_cast<DJConnectApp *>(context)->prepareForOta();
+}
+
 void DJConnectApp::languageProvisionedCallback(void *context, const String &languageCode) {
   if (context != nullptr) {
     static_cast<DJConnectApp *>(context)->applyProvisionedLanguage(languageCode);
@@ -4027,6 +4034,27 @@ void DJConnectApp::showDjResponseOverlay(const String &title, const String &text
   display_.wakeForUserActivity();
   showNotice(text, ttlMs);
   renderNow();
+}
+
+void DJConnectApp::prepareForOta() {
+  AppLog.line(String("OTA prepare: releasing runtime resources, free=") +
+              String(heap_caps_get_free_size(MALLOC_CAP_8BIT)) +
+              ", largest=" +
+              String(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
+  wakeWord_.releaseResources();
+  sound_.requestStopStreaming();
+  if (voiceRecorder_.isRecording()) {
+    voiceRecorder_.abort();
+  }
+  voiceRecording_ = false;
+  voiceState_ = VoiceState::Idle;
+  webVoiceTextOnlyActive_ = false;
+  webVoiceTextOnlyConsumeNext_ = false;
+  delay(50);
+  AppLog.line(String("OTA prepare: ready, free=") +
+              String(heap_caps_get_free_size(MALLOC_CAP_8BIT)) +
+              ", largest=" +
+              String(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
 }
 
 void DJConnectApp::renderMenuNow() {

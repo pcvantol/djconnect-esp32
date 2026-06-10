@@ -23,7 +23,6 @@ Bij `POST /api/device/pair` naar de ESP:
   "client_type": "esp32",
   "device_token": "...",
   "ha_local_url": "http://192.168.1.x:8123",
-  "ha_remote_url": "https://xxxx.ui.nabu.casa",
   "device_language": "nl"
 }
 ```
@@ -35,10 +34,10 @@ Regels:
 - Gebruik het mDNS TXT veld `model` of de status/API `model` om het device model te bepalen; parse niet op de oude `djconnect-lilygo-` prefix.
 - `ha_local_url` moet een echte LAN URL zijn.
 - `ha_local_url` mag nooit `.ui.nabu.casa` bevatten.
-- `ha_remote_url` mag wel Nabu Casa/cloud zijn.
+- Stuur geen `ha_remote_url` naar de ESP en gebruik geen cloud/Nabu Casa URL voor ESP runtime verkeer.
 - Als geen local URL bekend is, moet pairing pending/falen; zet cloud niet in local.
 - Bepaal local via HA network config, internal URL, source IP of fallback `http://<HA LAN IP>:8123`.
-- ESP firmware gebruikt `ha_local_url` als normale route voor `/api/djconnect/status`, `/api/djconnect/command` en `/api/djconnect/voice`. `ha_remote_url` is fallback/diagnostiek en mag niet nodig zijn om H groen te krijgen.
+- ESP firmware gebruikt uitsluitend `ha_local_url` voor `/api/djconnect/status`, `/api/djconnect/command` en `/api/djconnect/voice`. Cloud URL is alleen relevant voor HA/backend OAuth-configuratie, niet voor ESP verkeer.
 
 ### ESP Payload Identity
 
@@ -188,7 +187,6 @@ Regels:
 
 ```text
 Home Assistant local URL: http://192.168.1.x:8123
-Home Assistant remote URL: https://xxxx.ui.nabu.casa
 ```
 
 - Playback commands gebruiken local:

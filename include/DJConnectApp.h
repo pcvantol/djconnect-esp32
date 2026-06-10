@@ -182,6 +182,7 @@ private:
   // Shows HA DJ response text and optionally plays the HA-generated WAV/MP3 response URL.
   bool handleDjResponseText(const String &text, const String &audioUrl, bool &spoken);
   void showDjResponseOverlay(const String &title, const String &text, uint32_t ttlMs);
+  void prepareForOta();
 
   // Applies credentials and language pushed by Home Assistant without touching local fallbacks.
   void applyProvisionedLanguage(const String &languageCode);
@@ -208,6 +209,7 @@ private:
   static void resetPairingFromWebCallback(void *context);
   static void hardResetFromWebCallback(void *context);
   static bool djResponseCallback(void *context, const String &text, const String &audioUrl, bool &spoken, String &audioType);
+  static void otaPrepareCallback(void *context);
   static void languageProvisionedCallback(void *context, const String &languageCode);
   static bool deviceCommandCallback(void *context, const DeviceCommand &command, String &message);
   static void directPairCallback(void *context);

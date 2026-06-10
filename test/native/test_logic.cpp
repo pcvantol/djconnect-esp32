@@ -104,8 +104,6 @@ static void testHomeAssistantStatusAliasContractNames() {
       "client_type",
       "local_url",
       "ha_local_url",
-      "ha_remote_url",
-      "ha_active_url",
       "brightness",
       "screen_brightness",
       "screen_brightness_percent",

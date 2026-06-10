@@ -18,9 +18,6 @@ public:
   String getDeviceName() const;
   String getDeviceToken() const;
   String getHaLocalUrl() const;
-  String getHaRemoteUrl() const;
-  String getActiveHaUrl() const;
-  void invalidateActiveHaUrl() const;
   String getFirmwareVersion() const;
   String getModel() const;
   String getClientType() const;
@@ -37,8 +34,7 @@ public:
 
   void savePairing(
       const String &deviceToken,
-      const String &haLocalUrl,
-      const String &haRemoteUrl);
+      const String &haLocalUrl);
   void saveAssistPipelineId(const String &pipelineId);
   void clearHomeAssistantPairing();
   void clearPairing();
@@ -50,14 +46,10 @@ private:
   String readString(const char *key, const String &fallback = "") const;
   bool writeString(const char *key, const String &value);
   void removeKey(const char *key);
-  bool isUrlReachable(const String &url) const;
   static String macSuffix();
 
   const BatteryState *battery_ = nullptr;
   DisplayManager *display_ = nullptr;
   String deviceId_;
   String pairCode_;
-  mutable String activeHaUrl_;
-  mutable String activeHaRoute_;
-  mutable uint32_t activeHaUrlCheckedAt_ = 0;
 };

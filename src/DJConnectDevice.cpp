@@ -2,7 +2,6 @@
 #include "DJConnectDevice.h"
 
 #include <Arduino.h>
-#include <HTTPClient.h>
 #include <WiFi.h>
 #include <esp_system.h>
 
@@ -16,7 +15,6 @@ const char *Namespace = "djconnect";
 const char *DefaultDeviceName = "DJConnect";
 const char *ClientType = "esp32";
 const char *AssistPipelineKey = "assist_pipe";
-const uint32_t ActiveHaUrlCacheMs = 30000;
 
 String sixDigitCode(uint32_t value) {
   char buffer[7] = {};
@@ -66,54 +64,6 @@ String DJConnectDevice::getDeviceToken() const {
 
 String DJConnectDevice::getHaLocalUrl() const {
   return readString("ha_local_url");
-}
-
-String DJConnectDevice::getHaRemoteUrl() const {
-  return readString("ha_remote_url");
-}
-
-String DJConnectDevice::getActiveHaUrl() const {
-  const String localUrl = getHaLocalUrl();
-  const String remoteUrl = getHaRemoteUrl();
-  const uint32_t now = millis();
-  if (!activeHaUrl_.isEmpty() && activeHaRoute_ == "local" && now - activeHaUrlCheckedAt_ < ActiveHaUrlCacheMs) {
-    return activeHaUrl_;
-  }
-
-  activeHaUrlCheckedAt_ = now;
-  if (WiFi.status() != WL_CONNECTED) {
-    activeHaUrl_ = "";
-    activeHaRoute_ = "wifi_down";
-    return activeHaUrl_;
-  }
-
-  if (!localUrl.isEmpty() && isUrlReachable(localUrl)) {
-    activeHaUrl_ = localUrl;
-    if (activeHaRoute_ != "local") {
-      AppLog.println("Home Assistant route: local");
-    }
-    activeHaRoute_ = "local";
-    return activeHaUrl_;
-  }
-
-  if (!remoteUrl.isEmpty()) {
-    activeHaUrl_ = remoteUrl;
-    if (activeHaRoute_ != "cloud") {
-      AppLog.println("Home Assistant route: cloud");
-    }
-    activeHaRoute_ = "cloud";
-    return activeHaUrl_;
-  }
-
-  activeHaUrl_ = "";
-  activeHaRoute_ = "unavailable";
-  return activeHaUrl_;
-}
-
-void DJConnectDevice::invalidateActiveHaUrl() const {
-  activeHaUrl_ = "";
-  activeHaRoute_ = "";
-  activeHaUrlCheckedAt_ = 0;
 }
 
 String DJConnectDevice::getFirmwareVersion() const {
@@ -198,33 +148,16 @@ void DJConnectDevice::displayPaired() {
 
 void DJConnectDevice::savePairing(
     const String &deviceToken,
-    const String &haLocalUrl,
-    const String &haRemoteUrl) {
+    const String &haLocalUrl) {
   String normalizedLocalUrl = haLocalUrl;
-  String normalizedRemoteUrl = haRemoteUrl;
-  const bool localLooksRemote = normalizedLocalUrl.indexOf(".ui.nabu.casa") >= 0;
-  if (localLooksRemote) {
-    AppLog.println("Home Assistant pairing: cloud URL received as local, storing as remote");
-    if (normalizedRemoteUrl.isEmpty()) {
-      normalizedRemoteUrl = normalizedLocalUrl;
-    }
-    normalizedLocalUrl = "";
-  }
 
   if (!normalizedLocalUrl.isEmpty()) {
     writeString("ha_local_url", normalizedLocalUrl);
   } else {
     removeKey("ha_local_url");
   }
-  if (!normalizedRemoteUrl.isEmpty()) {
-    writeString("ha_remote_url", normalizedRemoteUrl);
-  } else {
-    removeKey("ha_remote_url");
-  }
+  removeKey("ha_remote_url");
   writeString("device_token", deviceToken);
-  activeHaUrl_ = "";
-  activeHaRoute_ = "";
-  activeHaUrlCheckedAt_ = 0;
   AppLog.println("Home Assistant pairing stored");
 }
 
@@ -246,9 +179,6 @@ void DJConnectDevice::clearHomeAssistantPairing() {
   removeKey("ha_local_url");
   removeKey("ha_remote_url");
   removeKey("device_token");
-  activeHaUrl_ = "";
-  activeHaRoute_ = "";
-  activeHaUrlCheckedAt_ = 0;
   pairCode_ = "";
   AppLog.println("Home Assistant pairing cleared");
 }
@@ -284,21 +214,6 @@ void DJConnectDevice::removeKey(const char *key) {
   preferences.begin(Namespace, false);
   preferences.remove(key);
   preferences.end();
-}
-
-bool DJConnectDevice::isUrlReachable(const String &url) const {
-  if (url.isEmpty()) {
-    return false;
-  }
-  HTTPClient http;
-  http.setConnectTimeout(Config::HttpConnectTimeoutMs);
-  http.setTimeout(1500);
-  if (!http.begin(url)) {
-    return false;
-  }
-  const int code = http.GET();
-  http.end();
-  return code > 0;
 }
 
 String DJConnectDevice::macSuffix() {

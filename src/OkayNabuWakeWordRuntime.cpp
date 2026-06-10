@@ -279,3 +279,12 @@ extern "C" bool djconnect_oke_nabu_wake_word_detect(const int16_t *samples, size
   }
   return false;
 }
+
+extern "C" void djconnect_oke_nabu_wake_word_release() {
+  if (gRuntime == nullptr) {
+    return;
+  }
+  delete gRuntime;
+  gRuntime = nullptr;
+  AppLog.println("Wake word: runtime released");
+}

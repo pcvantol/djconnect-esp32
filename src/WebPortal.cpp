@@ -1099,7 +1099,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         text("haMdnsUrl", info.device_id ? `http://${info.device_id}.local` : "-");
         text("haFirmware", info.firmware || "-");
         text("haModel", info.model || "-");
-        text("haUrl", info.ha_active_url || info.ha_local_url || info.ha_remote_url || "-");
+        text("haUrl", info.ha_local_url || "-");
         text("haStatus", "");
         if (homeAssistantRuntimePaired) {
           $("haPairBanner").classList.remove("visible");

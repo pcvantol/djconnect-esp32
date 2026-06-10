@@ -122,7 +122,6 @@ bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
   }
 
   const String localUrl = jsonString(response.as<JsonVariantConst>(), "ha_local_url");
-  const String remoteUrl = jsonString(response.as<JsonVariantConst>(), "ha_remote_url");
   if (localUrl.isEmpty()) {
     AppLog.println("HA pair missing required LAN ha_local_url");
     return false;
@@ -131,7 +130,7 @@ bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
     AppLog.println("HA pair rejected: ha_local_url is a cloud URL");
     return false;
   }
-  device_->savePairing(deviceToken, localUrl, remoteUrl);
+  device_->savePairing(deviceToken, localUrl);
   if (strlen(assistPipelineId) > 0) {
     device_->saveAssistPipelineId(assistPipelineId);
   }
@@ -168,8 +167,6 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   request["ha_pairing_status"] = "paired";
   request["local_url"] = device_->getLocalUrl();
   request["ha_local_url"] = device_->getHaLocalUrl();
-  request["ha_remote_url"] = device_->getHaRemoteUrl();
-  request["ha_active_url"] = haUrl;
   request["state"] = "online";
   request["status"] = "online";
   request["ota_state"] = "idle";

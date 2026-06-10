@@ -9,6 +9,7 @@ extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t 
 // Implemented only when a TFLite Micro/microWakeWord runtime is linked. The
 // vendored Okay Nabu model bytes alone are not an executable detector.
 extern "C" bool djconnect_oke_nabu_wake_word_detect(const int16_t *samples, size_t sampleCount) __attribute__((weak));
+extern "C" void djconnect_oke_nabu_wake_word_release() __attribute__((weak));
 
 void WakeWordEngine::begin() {
   available_ = djconnect_oke_nabu_wake_word_detect != nullptr || djconnect_micro_wake_word_detect != nullptr;
@@ -86,4 +87,11 @@ bool WakeWordEngine::enabled() const {
 
 void WakeWordEngine::setEnabled(bool enabled) {
   enabled_ = enabled;
+}
+
+void WakeWordEngine::releaseResources() {
+  loggedFirstAudio_ = false;
+  if (djconnect_oke_nabu_wake_word_release != nullptr) {
+    djconnect_oke_nabu_wake_word_release();
+  }
 }
