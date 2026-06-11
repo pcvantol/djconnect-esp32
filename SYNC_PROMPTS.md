@@ -30,8 +30,9 @@ commit the updated `SYNC_PROMPTS.md` there.
 ## Current Protocol Line
 
 The current shared protocol/release line is `3.1.x`; this bundle was last
-aligned after ESP firmware release `v3.1.9`. Firmware `3.1.9` is compatible
-with Home Assistant integration versions `>=3.1.0` and `<3.2.0`.
+aligned after Apple app release `v3.1.10`. DJConnect clients on the `3.1.x`
+line are compatible with Home Assistant integration versions `>=3.1.0` and
+`<3.2.0`.
 
 ---
 
@@ -85,7 +86,9 @@ Requirements:
   visible app code, and do not rotate device_id automatically.
 - Create native HA entities for paired app clients when status is received.
 - Support App Store review by allowing Apple clients to enter local Demo Mode
-  without HA; Demo Mode must not create HA devices/entities.
+  without HA; Demo Mode must not create HA devices/entities, tokens, or backend
+  traffic. Local sample DJ announcement audio/text in Demo Mode is app-local and
+  is not proof of HA voice validation.
 - Return HTTP 426 version_mismatch when client and HA major.minor protocol
   versions do not match; do not treat this as stale auth.
 - Return backend_unavailable as HTTP 200 success:false with
@@ -127,6 +130,16 @@ Requirements:
 - Offer Demo Mode from the unpaired pairing sheet for App Store review and UI
   inspection without a Home Assistant backend. Demo Mode must use local sample
   data and must not store a bearer token.
+- Fresh installs should default the Home Assistant URL field to
+  `http://homeassistant.local:8123`, while paired runtime traffic must use the
+  returned `ha_local_url`.
+- Use the shared DJConnect blue/purple gradient canvas across iOS, iPadOS, and
+  macOS screens.
+- Settings may preflight Microphone and Speech Recognition. Do not fake a Local
+  Network request button; Apple prompts when LAN/Bonjour access first occurs.
+- Keep permission rows compact on iPhone.
+- Local Games are app-only. When focused, game surfaces should consume arrow
+  keys and space instead of triggering app navigation.
 - Expose current-track seek controls on iOS/macOS by sending
   `command:"seek_relative"` with integer millisecond offsets. Positive values
   seek forward, negative values seek backward. This is optional for ESP.
@@ -177,7 +190,7 @@ Requirements:
 Use this prompt in the DJConnect Home Assistant integration repo when syncing with the ESP firmware.
 
 ```md
-# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.1.9
+# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.1.10
 
 Werk in de bestaande Home Assistant custom integration repo voor DJConnect.
 
@@ -305,7 +318,7 @@ Regels:
 - LilyGO gebruikt `device:"lilygo-t-embed-s3"` en asset `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`.
 - ESP32-S3-BOX-3 gebruikt `device:"esp32-s3-box-3"` en asset `djconnect-esp32-s3-box-3-vX.Y.Z.bin`.
 - `min_ha_integration` en `max_ha_integration` volgen de firmware major.minor lijn: firmware `X.Y.Z` publiceert standaard `min_ha_integration:"X.Y.0"` en exclusief `max_ha_integration:"X.(Y+1).0"`.
-- HA moet firmware alleen aanbieden/accepteren als de integratieversie `>= min_ha_integration` en `< max_ha_integration` is. Voor firmware `3.1.9` betekent dit dus `>=3.1.0` en `<3.2.0`.
+- HA moet firmware alleen aanbieden/accepteren als de integratieversie `>= min_ha_integration` en `< max_ha_integration` is. Voor firmware `3.1.10` betekent dit dus `>=3.1.0` en `<3.2.0`.
 - Dev firmware `0.0.0` blijft de uitzondering voor upgrade-aanbod vanaf lokale builds.
 - Als er geen matching `firmwares[]` entry is, rapporteer duidelijk dat er geen firmware voor dit device type beschikbaar is.
 - Versievergelijking blijft op manifest `version`/`version_tag`; de assetselectie is device-type specifiek.
@@ -335,14 +348,14 @@ Regels:
 - Als er maar 1 queue-item is, retourneer 1 item.
 - `context_uri` blijft nodig voor ESP/web per-item play.
 - Album art URLs mogen pass-through zijn; de ESP downloadt queue thumbnails niet, de browser lazy-loadt ze wanneer de web queue zichtbaar is.
-- Firmware v3.1.9 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
+- Firmware v3.1.10 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
 
 ### Voice
 
 ESP physical PTT uploadt WAV naar `/api/djconnect/voice` met bearer token en `X-DJConnect-Device-ID`.
 HA doet Assist/STT/TTS en retourneert DJ tekst plus optionele `audio_url`.
 
-Firmware v3.1.9 kan de lokale PTT/DJ-aankondiging flow annuleren met de middelste encoderknop tijdens processing of het DJ-aankondiging scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
+Firmware v3.1.10 kan de lokale PTT/DJ-aankondiging flow annuleren met de middelste encoderknop tijdens processing of het DJ-aankondiging scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
 
 ### Wake Word
 
@@ -386,7 +399,7 @@ url=http://192.168.1.x:8123/api/djconnect/command
 Werk in de bestaande proprietary ESP firmware repo pcvantol/djconnect-esp32.
 
 Doel
-Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.1.9.
+Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.1.10.
 
 De HA integration is de trusted backend voor:
 
@@ -785,7 +798,7 @@ This handoff is for building a new native iOS/macOS DJConnect client that uses
 the same Home Assistant custom integration backend as the ESP32 firmware.
 
 Use this as the sync prompt for a new Apple-client repo. The current ESP
-firmware contract line is `v3.1.9`; Apple clients should follow the same
+firmware contract line is `v3.1.10`; Apple clients should follow the same
 `3.1.x` Home Assistant integration protocol unless that backend contract is
 changed deliberately.
 
@@ -845,8 +858,8 @@ Recommended fields:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "device_name": "DJConnect iPhone",
   "client_type": "ios",
-  "firmware": "3.1.9",
-  "app_version": "3.1.9",
+  "firmware": "3.1.10",
+  "app_version": "3.1.10",
   "platform": "ios"
 }
 ```
@@ -858,8 +871,8 @@ For macOS:
   "device_id": "djconnect-macos-8F3A2C91B45D",
   "device_name": "DJConnect Mac",
   "client_type": "macos",
-  "firmware": "3.1.9",
-  "app_version": "3.1.9",
+  "firmware": "3.1.10",
+  "app_version": "3.1.10",
   "platform": "macos"
 }
 ```
@@ -893,7 +906,7 @@ Expected response:
   "success": false,
   "error": "version_mismatch",
   "message": "DJConnect Home Assistant integration and device firmware major.minor versions must match.",
-  "ha_version": "3.1.9",
+  "ha_version": "3.1.10",
   "ha_major_minor": "3.1",
   "firmware": "3.0.9",
   "firmware_major_minor": "3.0"
@@ -1010,8 +1023,8 @@ should not be implemented unless the Apple app has a real equivalent.
   "device_name": "DJConnect iPhone",
   "pair_code": "123456",
   "client_type": "ios",
-  "firmware": "3.1.9",
-  "app_version": "3.1.9",
+  "firmware": "3.1.10",
+  "app_version": "3.1.10",
   "local_url": "http://djconnect-ios-8F3A2C91B45D.local:18080"
 }
 ```
@@ -1084,8 +1097,8 @@ Minimum payload:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "client_type": "ios",
   "ha_pairing_status": "paired",
-  "firmware": "3.1.9",
-  "app_version": "3.1.9",
+  "firmware": "3.1.10",
+  "app_version": "3.1.10",
   "state": "online",
   "status": "online",
   "battery_percent": 85,
@@ -1481,7 +1494,9 @@ Requirements:
   visible app code, and do not rotate device_id automatically.
 - Create native HA entities for paired app clients when status is received.
 - Support App Store review by allowing Apple clients to enter local Demo Mode
-  without HA; Demo Mode must not create HA devices/entities.
+  without HA; Demo Mode must not create HA devices/entities, tokens, or backend
+  traffic. Local sample DJ announcement audio/text in Demo Mode is app-local and
+  is not proof of HA voice validation.
 - Return HTTP 426 version_mismatch when client and HA major.minor protocol
   versions do not match; do not treat this as stale auth.
 - Return backend_unavailable as HTTP 200 success:false with
@@ -1523,6 +1538,16 @@ Requirements:
 - Offer Demo Mode from the unpaired pairing sheet for App Store review and UI
   inspection without a Home Assistant backend. Demo Mode must use local sample
   data and must not store a bearer token.
+- Fresh installs should default the Home Assistant URL field to
+  `http://homeassistant.local:8123`, while paired runtime traffic must use the
+  returned `ha_local_url`.
+- Use the shared DJConnect blue/purple gradient canvas across iOS, iPadOS, and
+  macOS screens.
+- Settings may preflight Microphone and Speech Recognition. Do not fake a Local
+  Network request button; Apple prompts when LAN/Bonjour access first occurs.
+- Keep permission rows compact on iPhone.
+- Local Games are app-only. When focused, game surfaces should consume arrow
+  keys and space instead of triggering app navigation.
 - Detect likely unclean exits and offer only user-mediated crash reporting:
   copy redacted diagnostics or open a prefilled `pcvantol/djconnect` issue.
 - Do not log bearer tokens, HA tokens, Spotify secrets, or audio URLs.
