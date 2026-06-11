@@ -6,7 +6,7 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release target from this repo: `v3.1.6`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep only the newest semver release/tag after cleanup, and old workflow runs may be pruned with `scripts/cleanup_old_releases.sh --keep-runs`; generated `release/` artifacts are ignored in source.
+- Latest firmware release target from this repo: `v3.1.9`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should keep only the newest semver release/tag after cleanup, and old workflow runs may be pruned with `scripts/cleanup_old_releases.sh --keep-runs`; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, board-specific OTA, DJ response and status updates.
 - Board profiles are split through `BoardProfile.h`. The production LilyGO build is `t_embed_cc1101` / `lilygo-t-embed-s3`; ESP32-S3-BOX-3 bring-up is `esp32_s3_box3` / `esp32-s3-box-3`.
@@ -19,7 +19,7 @@ Current repo state includes:
 - Device Help screen lists top button, encoder button and rotary actions. It appears once after initial Home Assistant pairing, then remains available from the main menu.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
 - Home Assistant should expose the proxied playback as a native `media_player` entity if user-facing HA media controls are desired. That entity represents the backend playback session, not the ESP speaker.
-- The boot screen shows `Jouw persoonlijke muziek DJ` and `https://djconnect.pages.dev` for at least three seconds; the About screen also shows the website URL. WiFi boot connection timeout is 15 seconds. During WiFi connect, the LED ring shows a green chase animation.
+- The boot screen shows `Jouw persoonlijke muziek DJ` and `https://djconnect.pages.dev` for at least three seconds; the About screen shows the website URL and no longer includes a separate `Firmware / Proprietary` row. WiFi boot connection timeout is 15 seconds. During WiFi connect, the LED ring shows a green chase animation.
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed. The captive portal mirrors the blue/purple DJConnect web style and includes the board device model in browser title/header.
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
@@ -47,7 +47,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e esp32_s3_box3
 ```
 
-All passed before the v3.1.6 release. The public v3.1.6 release publishes both `djconnect-lilygo-t-embed-s3-v3.1.6.bin` and `djconnect-esp32-s3-box-3-v3.1.6.bin`, both `.sha256` files and `firmware_manifest.json` to `pcvantol/djconnect-firmware`.
+All passed before the v3.1.9 release. The public v3.1.9 release publishes both `djconnect-lilygo-t-embed-s3-v3.1.9.bin` and `djconnect-esp32-s3-box-3-v3.1.9.bin`, both `.sha256` files and `firmware_manifest.json` to `pcvantol/djconnect-firmware`.
 
 ## Architecture
 
@@ -132,12 +132,12 @@ Recommended next work:
    - commands: play/pause, next/previous, volume, source/output selection and playlist/media start;
    - keep actual backend credentials and playback API calls in Home Assistant.
 7. Validate ESP32-S3-BOX-3 display, speaker, mic and button mappings on physical hardware.
-8. Re-test OTA from a no-PSRAM LilyGO on `v3.1.6` to confirm the GitHub TLS memory issue is gone.
+8. Re-test OTA from a no-PSRAM LilyGO on `v3.1.9` to confirm the GitHub TLS memory issue is gone.
 9. Stress-test DJ-announcement MP3 playback with several short and long files.
 10. Continue reducing `DJConnectApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
 11. Update GitHub Actions for Node.js 24 compatibility.
 12. Add product security review for local HTTP device API, bearer-token lifetime, replay behavior and factory reset behavior.
 
-## Home Assistant Sync Prompt
+## Cross-Repo Sync Prompts
 
-A copy/paste prompt for syncing the Home Assistant integration with this firmware is maintained in `HA_SYNC_PROMPT.md`.
+The canonical copy/paste prompts for syncing the Home Assistant integration, Apple app and ESP firmware are maintained in `SYNC_PROMPTS.md`. This file is copied byte-for-byte between the DJConnect repos.
