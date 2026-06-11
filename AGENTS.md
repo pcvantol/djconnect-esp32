@@ -416,7 +416,7 @@ HA/Spotify status indicators:
 - Device statusbar: `H`, playback music-note icon.
 - Web header mirrors the same indicators.
 - LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup/pairing animations.
-- Boot shows the DJConnect tagline `Jouw persoonlijke muziek DJ` for at least three seconds, then uses a calm startup rainbow lap. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
+- Boot shows the DJConnect tagline `Jouw persoonlijke muziek DJ` and website URL `https://djconnect.pages.dev` for at least three seconds, then uses a calm startup rainbow lap. The About screen also shows the website URL. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
 
 ## Volume Rules
 

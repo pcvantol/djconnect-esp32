@@ -703,10 +703,13 @@ void DisplayManager::renderBoot(Canvas &canvas, const String &message, const Bat
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   canvas.drawString(Config::AppVersion, 102, tall ? 102 : 78, 2);
 
+  canvas.setTextColor(NeutralLightGrey, TFT_BLACK);
+  canvas.drawString(clippedText(canvas, Config::WebsiteUrl, w - 112, 1), 102, tall ? 126 : 98, 1);
+
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   String remaining = message;
   const bool multiLine = remaining.indexOf('\n') >= 0;
-  const int startY = tall ? (multiLine ? 136 : 156) : (multiLine ? 104 : 124);
+  const int startY = tall ? (multiLine ? 146 : 166) : (multiLine ? 114 : 128);
   for (int lineIndex = 0; lineIndex < 3 && remaining.length() > 0; ++lineIndex) {
     const int breakAt = remaining.indexOf('\n');
     const String line = breakAt >= 0 ? remaining.substring(0, breakAt) : remaining;
@@ -923,17 +926,19 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
     const char *label;
     String value;
     uint16_t color;
+    uint8_t valueFont;
   };
   Row rows[] = {
-      {I18n::text("web"), status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE},
-      {I18n::text("wifi"), I18n::connected(status.wifiConnected), static_cast<uint16_t>(status.wifiConnected ? StatusGreen : TFT_RED)},
-      {I18n::text("music"), I18n::connected(status.spotifyConnected), static_cast<uint16_t>(status.spotifyConnected ? StatusGreen : TFT_RED)},
-      {"Home Assistant", status.haPaired ? I18n::text("connected") : I18n::text("not_paired"), static_cast<uint16_t>(status.haPaired ? StatusGreen : TFT_RED)},
-      {"Copyright", "2026 Peter van Tol", NeutralLightGrey},
-      {"Firmware", "Proprietary", NeutralLightGrey},
-      {"Spotify", "Trademark Spotify AB", NeutralLightGrey},
-      {"Notice", "Not affiliated", NeutralLightGrey},
-      {"OSS", "See notices", NeutralLightGrey},
+      {I18n::text("web"), status.webAddress.isEmpty() ? "-" : status.webAddress, TFT_WHITE, 2},
+      {I18n::text("wifi"), I18n::connected(status.wifiConnected), static_cast<uint16_t>(status.wifiConnected ? StatusGreen : TFT_RED), 2},
+      {I18n::text("music"), I18n::connected(status.spotifyConnected), static_cast<uint16_t>(status.spotifyConnected ? StatusGreen : TFT_RED), 2},
+      {"Home Assistant", status.haPaired ? I18n::text("connected") : I18n::text("not_paired"), static_cast<uint16_t>(status.haPaired ? StatusGreen : TFT_RED), 2},
+      {"Website", Config::WebsiteUrl, NeutralLightGrey, 1},
+      {"Copyright", "2026 Peter van Tol", NeutralLightGrey, 2},
+      {"Firmware", "Proprietary", NeutralLightGrey, 2},
+      {"Spotify", "Trademark Spotify AB", NeutralLightGrey, 2},
+      {"Notice", "Not affiliated", NeutralLightGrey, 2},
+      {"OSS", "See notices", NeutralLightGrey, 2},
   };
 
   const size_t itemCount = sizeof(rows) / sizeof(rows[0]);
@@ -957,7 +962,8 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
     canvas.setTextColor(TFT_WHITE, selected ? TFT_DARKGREEN : TFT_BLACK);
     canvas.drawString(clippedText(canvas, rows[index].label, 112, 2), 14, y, 2);
     canvas.setTextColor(rows[index].color, selected ? TFT_DARKGREEN : TFT_BLACK);
-    canvas.drawString(clippedText(canvas, rows[index].value, canvasWidth(canvas) - 150, 2), 136, y, 2);
+    const int valueY = y + (rows[index].valueFont == 1 ? 4 : 0);
+    canvas.drawString(clippedText(canvas, rows[index].value, canvasWidth(canvas) - 150, rows[index].valueFont), 136, valueY, rows[index].valueFont);
   }
 
   const int trackX = canvasWidth(canvas) - 11;

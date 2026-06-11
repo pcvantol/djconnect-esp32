@@ -19,7 +19,7 @@ Current repo state includes:
 - Device Help screen lists top button, encoder button and rotary actions. It appears once after initial Home Assistant pairing, then remains available from the main menu.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
 - Home Assistant should expose the proxied playback as a native `media_player` entity if user-facing HA media controls are desired. That entity represents the backend playback session, not the ESP speaker.
-- The boot screen shows `Jouw persoonlijke muziek DJ` for at least three seconds. WiFi boot connection timeout is 15 seconds. During WiFi connect, the LED ring shows a green chase animation.
+- The boot screen shows `Jouw persoonlijke muziek DJ` and `https://djconnect.pages.dev` for at least three seconds; the About screen also shows the website URL. WiFi boot connection timeout is 15 seconds. During WiFi connect, the LED ring shows a green chase animation.
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed. The captive portal mirrors the blue/purple DJConnect web style and includes the board device model in browser title/header.
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
