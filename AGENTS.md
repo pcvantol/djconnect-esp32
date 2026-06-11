@@ -499,7 +499,7 @@ Keep these surfaces aligned:
 - `LICENSE`: proprietary firmware license.
 - `README.md`: legal/trademark section and security checklist.
 - `THIRD_PARTY_NOTICES.md`: dependency notices.
-- Device About screen: compact copyright/proprietary/trademark/not-affiliated/OSS notice rows.
+- Device About screen: compact website/copyright/trademark/not-affiliated/OSS notice rows.
 - Web portal Legal panel: copyright, Spotify trademark/non-affiliation and OSS components.
 
 When adding libraries, update `platformio.ini` and `THIRD_PARTY_NOTICES.md`

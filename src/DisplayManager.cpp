@@ -935,7 +935,6 @@ void DisplayManager::renderAbout(Canvas &canvas, const StatusNotice &notice, con
       {"Home Assistant", status.haPaired ? I18n::text("connected") : I18n::text("not_paired"), static_cast<uint16_t>(status.haPaired ? StatusGreen : TFT_RED), 2},
       {"Website", Config::WebsiteUrl, NeutralLightGrey, 1},
       {"Copyright", "2026 Peter van Tol", NeutralLightGrey, 2},
-      {"Firmware", "Proprietary", NeutralLightGrey, 2},
       {"Spotify", "Trademark Spotify AB", NeutralLightGrey, 2},
       {"Notice", "Not affiliated", NeutralLightGrey, 2},
       {"OSS", "See notices", NeutralLightGrey, 2},

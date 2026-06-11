@@ -58,7 +58,7 @@ constexpr size_t SettingsItemCount = 14;
 constexpr size_t RootMenuItemCount = 11;
 constexpr size_t GamesItemCount = 3;
 constexpr size_t HelpItemCount = 8;
-constexpr size_t AboutItemCount = 10;
+constexpr size_t AboutItemCount = 9;
 constexpr size_t FixedSoundOutputCount = 2;
 constexpr size_t MaxVisibleOutputs = 6;
 
