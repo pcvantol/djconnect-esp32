@@ -1,6 +1,30 @@
-# DJConnect Firmware Backlog
+# DJConnect Firmware Issues And Backlog
 
-Concrete backlog for follow-up implementation and validation.
+Concrete issue and task list after release `v3.1.6`.
+
+## Open Issues
+
+- [ ] ESP32-S3-BOX-3 display bring-up still needs physical validation.
+  - Backlight and display buffer initialize in logs, but earlier hardware testing showed a white screen/no text.
+  - Validate TFT controller/init sequence, rotation, backlight polarity and board revision.
+- [ ] Home Assistant sensor reset issue must be verified on the current HA integration.
+  - Firmware status payload is authoritative and release `v3.1.6` still posts periodic status.
+  - If HA sensors briefly populate and then become unknown/pending, fix integration entity refresh/coordinator behavior.
+- [ ] OTA from the physical LilyGO should be re-tested with `v3.1.6`.
+  - Firmware now releases wake-word/TFLite and active voice/audio resources before GitHub TLS.
+  - Confirm GitHub TLS no longer fails with memory allocation errors on no-PSRAM LilyGO hardware.
+- [ ] Okay Nabu wake-word reliability still needs real-room tuning.
+  - LilyGO cutoff is currently `0.90`; ESP32-S3-BOX-3 cutoff is `0.86`.
+  - Validate false positives, missed detections, silence auto-stop and PTT handoff.
+- [ ] MP3 DJ-announcement audio playback needs more stress testing.
+  - Test short/long MP3s and repeated HA/web flows.
+  - Confirm watchdog stays fed and LED animation remains live.
+- [ ] ESP32-S3-BOX-3 speaker, microphone and button mapping need physical verification.
+  - Top button maps to LilyGO top button.
+  - Touch/center button maps to LilyGO encoder button.
+  - Side buttons map to LilyGO rotary direction.
+- [ ] GitHub Actions emits Node.js 20 deprecation warnings.
+  - Current release workflow passes, but actions should be updated or opted into Node.js 24 before GitHub forces the runner default.
 
 ## Security
 
@@ -31,7 +55,7 @@ Concrete backlog for follow-up implementation and validation.
 - [ ] Add host tests for WiFi-failure factory-reset confirmation.
 - [ ] Add host tests for setup/AP timeout text and center-button turn-off state.
 - [ ] Consider moving captive portal, BLE provisioning and setup/AP loop out of `DJConnectApp` into a dedicated `SetupController`.
-- [ ] Verify on-device that WiFi connect timeout is actually 30 seconds.
+- [ ] Verify on-device that WiFi connect timeout is actually 15 seconds.
 - [ ] Verify green LED-ring animation during WiFi connect.
 - [ ] Verify setup/AP screen shows portal active for 10 minutes.
 - [ ] Verify center-button turn off in setup/AP mode.
@@ -44,32 +68,36 @@ Concrete backlog for follow-up implementation and validation.
 
 - [ ] Validate OTA status clearing after successful update and reboot.
 - [ ] Validate runtime stale-pairing behavior for HA 401, 403 and 404.
+- [ ] Validate that Home Assistant sends a real LAN `ha_local_url` during pairing.
+- [ ] Validate that Home Assistant never sends Nabu Casa `.ui.nabu.casa` as `ha_local_url`.
 - [ ] Confirm HA reports pairing as pending until ESP confirms token storage through `/api/device/pair`.
 - [ ] Confirm playback commands stay disabled until `/api/djconnect/status` accepts the stored device token.
 - [ ] Confirm HA integration owns backend OAuth/credential refresh without sending backend tokens to the ESP.
-- [ ] Confirm HA integration can return DJ response text plus WAV URL.
-- [ ] Confirm HA integration can return DJ response text plus MP3 URL.
+- [ ] Confirm HA integration can return DJ announcement text plus WAV URL.
+- [ ] Confirm HA integration can return DJ announcement text plus MP3 URL.
 - [ ] Confirm Home Assistant status payload includes firmware version after OTA boot.
 - [ ] Add integration-side test prompt/checklist for `/api/djconnect/voice` STT/TTS provider configuration.
+- [ ] Verify HA media/player play-pause entity actions mirror back on the device screen.
 
 ## Playback Backend
 
 - [ ] Re-test playlist fallback for Up Next when the backend queue endpoint returns empty.
 - [ ] Confirm required backend playlist scopes/configuration are handled in the HA integration.
-- [ ] Validate `DJConnect Liked Proxy` lookup against:
+- [ ] Validate default playlist lookup against:
   - private playlist;
   - public playlist;
   - larger library with multiple playlist pages.
-- [ ] Add host tests for Liked Proxy search fallback logic if it can be isolated.
+- [ ] Add host tests for default-playlist search fallback logic if it can be isolated.
 - [ ] Confirm no playback controls are active when there is no playback.
+- [ ] Confirm center button starts the default playlist, enables shuffle and turns repeat off after start succeeds.
 
-## Voice / DJ Response
+## Voice / DJ Announcement
 
-- [ ] Stress-test MP3 DJ-response playback with multiple lengths/bitrates.
-- [ ] Stress-test WAV DJ-response playback after repeated web simulation calls.
-- [ ] Confirm green LED-ring animation stays active while DJ response audio plays.
-- [ ] Confirm DJ response overlay closes after timeout and does not let Now Playing bleed through.
-- [ ] Add guard tests for DJ response audio type detection:
+- [ ] Stress-test MP3 DJ-announcement playback with multiple lengths/bitrates.
+- [ ] Stress-test WAV DJ-announcement playback after repeated web simulation calls.
+- [ ] Confirm purple LED-ring animation stays active while DJ announcement audio plays.
+- [ ] Confirm DJ announcement overlay closes after timeout and does not let Now Playing bleed through.
+- [ ] Add guard tests for DJ announcement audio type detection:
   - `audio/wav`;
   - `audio/x-wav`;
   - `audio/mpeg`;
@@ -78,10 +106,14 @@ Concrete backlog for follow-up implementation and validation.
   - ID3 magic bytes;
   - MP3 frame sync.
 - [ ] Confirm PTT works only from Now Playing and not from Current Song.
-- [ ] Confirm web DJ-response simulation requires HA pairing but not backend credentials on the ESP.
+- [ ] Confirm web DJ-announcement simulation requires HA pairing but not backend credentials on the ESP.
+- [ ] Confirm middle encoder button cancels processing/DJ-announcement flow quickly.
+- [ ] Confirm PTT start cue is not included in uploaded WAV.
 
 ## Web Portal
 
+- [ ] Verify web title bar shows `Jouw persoonlijke muziek DJ`, firmware version and device model on mobile and desktop widths.
+- [ ] Verify playback controls and volume slider use the lila/magenta accent instead of orange.
 - [ ] Re-test visibility-aware polling:
   - logs only while logs panel is visible and not paused;
   - queue only while queue block is visible;
@@ -119,26 +151,27 @@ Concrete backlog for follow-up implementation and validation.
 
 ## OTA / Release
 
-- [ ] Confirm GitHub Action release binary contains expected `vX.Y.Z` marker.
-- [ ] Confirm both public OTA binary assets are published:
-  - `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`;
-  - `djconnect-esp32-s3-box-3-vX.Y.Z.bin`.
-- [ ] Confirm manifest uses only the `firmwares` array and no legacy top-level single-device OTA fields.
-- [ ] Confirm manifest `device` values match ESP OTA validation:
+- [x] Confirm GitHub Action release binary contains expected `v3.1.6` marker.
+- [x] Confirm both public OTA binary assets are published for `v3.1.6`:
+  - `djconnect-lilygo-t-embed-s3-v3.1.6.bin`;
+  - `djconnect-esp32-s3-box-3-v3.1.6.bin`.
+- [x] Confirm manifest is published with the release.
+- [ ] Confirm manifest uses only the `firmwares` array and no legacy top-level single-device OTA fields on every future release.
+- [ ] Confirm manifest `device` values match ESP OTA validation on every future release:
   - `lilygo-t-embed-s3`;
   - `esp32-s3-box-3`.
-- [ ] Confirm `min_ha_integration` is derived from the firmware major/minor version (`X.Y.Z` -> `X.Y.0`).
+- [x] Confirm `min_ha_integration` is derived from the firmware major/minor version (`3.1.6` -> `3.1.0`) and `max_ha_integration` is `<3.2.0`.
 - [ ] Confirm OTA update screen shows target version.
 - [ ] Confirm OTA start/progress/complete/failure beeps are simple and not stuttery.
 - [ ] Confirm purple LED-ring animation is visible during OTA.
-- [ ] Add CI check for `release.sh --dry-run` and invalid version if not already wired.
+- [x] Add CI/local check for `release.sh --dry-run` and invalid version.
 - [ ] Update GitHub Actions to Node.js 24-compatible action versions or opt in once the runner default changes.
 
 ## Refactor
 
 - [ ] Extract setup/AP/captive/BLE flow from `DJConnectApp` into `SetupController`.
 - [ ] Continue reducing blocking paths in Spotify/HA/audio code using `NetworkActivity`.
-- [ ] Consider isolating DJ response overlay state into a small UI state object.
+- [ ] Consider isolating DJ-announcement overlay state into a small UI state object.
 - [ ] Consider splitting web route registration into smaller route groups.
 - [ ] Keep pure option/count logic in host-testable helpers instead of embedded in display code.
 

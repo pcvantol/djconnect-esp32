@@ -4,7 +4,7 @@ This handoff is for building a new native iOS/macOS DJConnect client that uses
 the same Home Assistant custom integration backend as the ESP32 firmware.
 
 Use this as the sync prompt for a new Apple-client repo. The current ESP
-firmware contract line is `v3.1.0`; Apple clients should follow the same
+firmware contract line is `v3.1.6`; Apple clients should follow the same
 `3.1.x` Home Assistant integration protocol unless that backend contract is
 changed deliberately.
 
@@ -36,7 +36,7 @@ The iOS/macOS app owns:
 - native UI;
 - local app state;
 - local audio recording if voice/PTT is implemented;
-- local playback of returned DJ response audio, if desired;
+- local playback of returned DJ announcement audio, if desired;
 - local notifications/menus/widgets, if desired.
 
 The app must not store or request Spotify OAuth secrets, refresh tokens, client
@@ -64,8 +64,8 @@ Recommended fields:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "device_name": "DJConnect iPhone",
   "client_type": "ios",
-  "firmware": "3.1.0",
-  "app_version": "3.1.0",
+  "firmware": "3.1.6",
+  "app_version": "3.1.6",
   "platform": "ios"
 }
 ```
@@ -77,8 +77,8 @@ For macOS:
   "device_id": "djconnect-macos-8F3A2C91B45D",
   "device_name": "DJConnect Mac",
   "client_type": "macos",
-  "firmware": "3.1.0",
-  "app_version": "3.1.0",
+  "firmware": "3.1.6",
+  "app_version": "3.1.6",
   "platform": "macos"
 }
 ```
@@ -112,7 +112,7 @@ Expected response:
   "success": false,
   "error": "version_mismatch",
   "message": "DJConnect Home Assistant integration and device firmware major.minor versions must match.",
-  "ha_version": "3.1.0",
+  "ha_version": "3.1.6",
   "ha_major_minor": "3.1",
   "firmware": "3.0.9",
   "firmware_major_minor": "3.0"
@@ -229,8 +229,8 @@ should not be implemented unless the Apple app has a real equivalent.
   "device_name": "DJConnect iPhone",
   "pair_code": "123456",
   "client_type": "ios",
-  "firmware": "3.1.0",
-  "app_version": "3.1.0",
+  "firmware": "3.1.6",
+  "app_version": "3.1.6",
   "local_url": "http://djconnect-ios-8F3A2C91B45D.local:18080"
 }
 ```
@@ -274,7 +274,7 @@ Suggested command scope:
 - voice/PTT enable flags if exposed as HA entities;
 - diagnostics/log export trigger if explicitly supported.
 
-`POST /api/device/dj_response` should let HA push DJ response text and optional
+`POST /api/device/dj_response` should let HA push DJ announcement text and optional
 audio URL to the app UI:
 
 ```json
@@ -303,8 +303,8 @@ Minimum payload:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "client_type": "ios",
   "ha_pairing_status": "paired",
-  "firmware": "3.1.0",
-  "app_version": "3.1.0",
+  "firmware": "3.1.6",
+  "app_version": "3.1.6",
   "state": "online",
   "status": "online",
   "battery_percent": 85,
@@ -476,7 +476,7 @@ Rules:
 - Do not call OpenAI or Spotify directly from the app for DJConnect commands.
 - Do not log temporary `audio_url` tokens.
 - If returned audio cannot be played, show text-only response.
-- If a user cancels the PTT/DJ-response flow locally, the app may ignore any
+- If a user cancels the PTT/DJ-announcement flow locally, the app may ignore any
   late HA response from the in-flight request.
 - If implementing wake-word support on Apple platforms, keep detection local to
   the app/device where Apple platform policy permits it, then start the same

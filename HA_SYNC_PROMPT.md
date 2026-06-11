@@ -3,7 +3,7 @@
 Use this prompt in the DJConnect Home Assistant integration repo when syncing with the ESP firmware.
 
 ```md
-# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.1.0
+# Codex Prompt: Sync DJConnect HA Integration With ESP Firmware v3.1.6
 
 Werk in de bestaande Home Assistant custom integration repo voor DJConnect.
 
@@ -131,7 +131,7 @@ Regels:
 - LilyGO gebruikt `device:"lilygo-t-embed-s3"` en asset `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`.
 - ESP32-S3-BOX-3 gebruikt `device:"esp32-s3-box-3"` en asset `djconnect-esp32-s3-box-3-vX.Y.Z.bin`.
 - `min_ha_integration` en `max_ha_integration` volgen de firmware major.minor lijn: firmware `X.Y.Z` publiceert standaard `min_ha_integration:"X.Y.0"` en exclusief `max_ha_integration:"X.(Y+1).0"`.
-- HA moet firmware alleen aanbieden/accepteren als de integratieversie `>= min_ha_integration` en `< max_ha_integration` is. Voor firmware `3.1.0` betekent dit dus `>=3.1.0` en `<3.2.0`.
+- HA moet firmware alleen aanbieden/accepteren als de integratieversie `>= min_ha_integration` en `< max_ha_integration` is. Voor firmware `3.1.6` betekent dit dus `>=3.1.0` en `<3.2.0`.
 - Dev firmware `0.0.0` blijft de uitzondering voor upgrade-aanbod vanaf lokale builds.
 - Als er geen matching `firmwares[]` entry is, rapporteer duidelijk dat er geen firmware voor dit device type beschikbaar is.
 - Versievergelijking blijft op manifest `version`/`version_tag`; de assetselectie is device-type specifiek.
@@ -161,14 +161,14 @@ Regels:
 - Als er maar 1 queue-item is, retourneer 1 item.
 - `context_uri` blijft nodig voor ESP/web per-item play.
 - Album art URLs mogen pass-through zijn; de ESP downloadt queue thumbnails niet, de browser lazy-loadt ze wanneer de web queue zichtbaar is.
-- Firmware v3.1.0 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
+- Firmware v3.1.6 dedupet defensief op `uri` of `title/subtitle`, maar HA moet nog steeds geen kunstmatige duplicaten genereren.
 
 ### Voice
 
 ESP physical PTT uploadt WAV naar `/api/djconnect/voice` met bearer token en `X-DJConnect-Device-ID`.
 HA doet Assist/STT/TTS en retourneert DJ tekst plus optionele `audio_url`.
 
-Firmware v3.1.0 kan de lokale PTT/DJ-response flow annuleren met de middelste encoderknop tijdens processing of het DJ-response scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
+Firmware v3.1.6 kan de lokale PTT/DJ-aankondiging flow annuleren met de middelste encoderknop tijdens processing of het DJ-aankondiging scherm. HA hoeft hiervoor geen extra endpoint te implementeren; als een request al loopt mag de ESP de latere response lokaal negeren.
 
 ### Wake Word
 

@@ -65,6 +65,10 @@ hardware mapping is verified.
 - OTA through `/api/device/ota` requires HTTPS and verifies the streamed firmware against the manifest SHA256 before rebooting.
 - Web portal DJ announcement test runs through the ESP and Home Assistant pairing, displays the returned DJ text on the device and does not require browser microphone access.
 
+## Cross-Repo Sync Prompts
+
+Canonical prompts for syncing this firmware repo with the Home Assistant integration and Apple app repos live in [`SYNC_PROMPTS.md`](SYNC_PROMPTS.md).
+
 ## License
 
 DJConnect firmware is closed-source proprietary firmware. See [LICENSE](LICENSE).

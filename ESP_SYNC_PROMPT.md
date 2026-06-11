@@ -2,7 +2,7 @@
 Werk in de bestaande proprietary ESP firmware repo pcvantol/djconnect-esp32.
 
 Doel
-Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.1.0.
+Synchroniseer de ESP firmware met de actuele Home Assistant djconnect integration architectuur voor release 3.1.6.
 
 De HA integration is de trusted backend voor:
 
@@ -22,7 +22,7 @@ LED-ring;
 local speaker cues;
 WiFi/setup;
 raw WAV capture/upload;
-local playback van HA DJ response audio.
+local playback van HA DJ-aankondiging audio.
 Belangrijke beslissingen
 Eerdere non-HTTP control routes zijn verwijderd. ESP is geen backend music speaker/player.
 ESP bewaart geen playback-backend credentials.
@@ -30,7 +30,7 @@ ESP stuurt generieke playback commands naar HA.
 HA vertaalt playback commands naar Spotify of toekomstige backends.
 ESP speaker is alleen voor local cues en DJ/voice response audio.
 Okay Nabu wake-word support draait lokaal via TensorFlow Lite Micro en mag geen netwerk-I/O doen in het audio poll pad.
-De middelste encoderknop moet een actieve PTT processing/DJ-response flow kunnen annuleren.
+De middelste encoderknop moet een actieve PTT processing/DJ-aankondiging flow kunnen annuleren.
 Oude backend-credential provisioning endpoints mogen niet bestaan of gebruikt worden.
 Pairing/status/voice/command auth gebruikt alleen het device bearer token.
 Device ID formats voor actuele firmware zijn model-specifiek:
@@ -312,7 +312,7 @@ Encoder PTT start pas met opnemen na de start cue/settle delay; stop cue speelt 
 Wake-word detection start dezelfde lokale PTT WAV-upload flow als encoder PTT.
 Wake-word tuning: Okay Nabu model, 10 ms feature step, 3-frame sliding window. LilyGO cutoff is 0.90; ESP32-S3-BOX-3 cutoff is 0.86.
 Wake-word-started recording stopt automatisch na stilte en blijft altijd begrensd door de maximale opname-duur.
-Tijdens processing of het DJ-response scherm annuleert een middelste encoderdruk de rest van de PTT flow zo snel mogelijk; lopende HA HTTP responses mogen lokaal genegeerd worden en response audio moet een stop request krijgen.
+Tijdens processing of het DJ-aankondiging scherm annuleert een middelste encoderdruk de rest van de PTT flow zo snel mogelijk; lopende HA HTTP responses mogen lokaal genegeerd worden en response audio moet een stop request krijgen.
 6. OAuth / Spotify secrets verwijderen
 Controleer dat ESP:
 
@@ -384,8 +384,8 @@ ESP status houdt HA native entities actueel.
 ESP gebruikt alleen de HA-native lokale API.
 ESP bewaart geen Spotify credentials.
 ESP stuurt generic playback commands naar HA.
-ESP PTT uploadt raw WAV naar HA en speelt HA DJ response lokaal af.
-ESP annuleert PTT/DJ-response flow op middelste encoderdruk tijdens processing/response.
+ESP PTT uploadt raw WAV naar HA en speelt HA DJ-aankondiging lokaal af.
+ESP annuleert PTT/DJ-aankondiging flow op middelste encoderdruk tijdens processing/response.
 ESP deduplicates Up Next queue display so one real queue item is not shown repeatedly.
 OTA gebruikt `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` met target `lilygo-t-embed-s3`, en `djconnect-esp32-s3-box-3-vX.Y.Z.bin` met target `esp32-s3-box-3`.
 Het device gebruikt de echte DJConnect icon assets uit pcvantol/djconnect in plaats van een opnieuw getekende benadering.
