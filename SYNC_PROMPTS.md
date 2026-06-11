@@ -1163,6 +1163,34 @@ Examples:
 {"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"set_output","value":"iPhone","play":true}
 ```
 
+Playlist command responses should include playlist metadata and artwork when
+available:
+
+```json
+{
+  "success": true,
+  "playlists": [
+    {
+      "id": "spotify:playlist:...",
+      "name": "Friday Night",
+      "uri": "spotify:playlist:...",
+      "image_url": "https://..."
+    }
+  ]
+}
+```
+
+For playlist artwork, clients should accept these aliases:
+
+- `image_url`
+- `album_image_url`
+- `media_image_url`
+- `entity_picture`
+
+Home Assistant should prefer `image_url` for playlist artwork, but may also
+return one of the aliases above when sharing code with queue/playback image
+serializers. Queue items continue to use `album_image_url` as the primary field.
+
 Apple app clients may expose current-track seek controls. Use
 `command:"seek_relative"` with an integer `value` in milliseconds. Positive
 values seek forward and negative values seek backward. Home Assistant should
