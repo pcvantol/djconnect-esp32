@@ -16,8 +16,9 @@ DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP3
 
 The default production PlatformIO environment is `t_embed_cc1101`.
 The experimental BOX-3 bring-up environment is `esp32_s3_box3`; it currently
-targets display validation and keeps the battery gauge, LED ring, speaker and
-microphone paths disabled until their hardware mapping is verified.
+targets physical display, speaker, microphone and button validation. It has no
+battery gauge or LED ring, and those UI indicators/animations must stay hidden
+or disabled for that board profile.
 It is pinned to the pioarduino ESP32 platform line that uses ESP-IDF 5.3 with
 Arduino ESP32 3.x compatibility. Do not add Arduino ESP32 2.x / ESP-IDF 4.x
 fallback code unless the user explicitly changes the supported toolchain.

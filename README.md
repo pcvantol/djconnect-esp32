@@ -376,8 +376,8 @@ to keep more recent GitHub Actions history than release/tag history.
 
 ```sh
 scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --dry-run
-scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --execute
-scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --keep-runs 5 --execute
+scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --execute --yes
+scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --keep-runs 5 --execute --yes
 scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --channel beta --keep 1 --dry-run
 ```
 
