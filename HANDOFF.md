@@ -6,7 +6,7 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release target from this repo: `v3.1.14`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` have been cleaned so the remote stable semver tag/release set keeps only `v3.1.14`; generated `release/` artifacts are ignored in source.
+- Latest firmware release target from this repo: `v3.1.15`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` have been cleaned so the remote stable semver tag/release set keeps only `v3.1.15`; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, board-specific OTA, DJ response and status updates.
 - Board profiles are split through `BoardProfile.h`. The production LilyGO build is `t_embed_cc1101` / `lilygo-t-embed-s3`; ESP32-S3-BOX-3 bring-up is `esp32_s3_box3` / `esp32-s3-box-3`.
@@ -47,7 +47,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e esp32_s3_box3
 ```
 
-The native logic test, release-script test and local dual-board release build passed for `v3.1.14`. The public v3.1.14 release publishes both `djconnect-lilygo-t-embed-s3-v3.1.14.bin` and `djconnect-esp32-s3-box-3-v3.1.14.bin`, both `.sha256` files and `firmware_manifest.json` to `pcvantol/djconnect-firmware`.
+The native logic test, release-script test and local dual-board release build passed for `v3.1.15`. The public v3.1.15 release publishes both `djconnect-lilygo-t-embed-s3-v3.1.15.bin` and `djconnect-esp32-s3-box-3-v3.1.15.bin`, both `.sha256` files and `firmware_manifest.json` to `pcvantol/djconnect-firmware`.
 
 ## Architecture
 
@@ -132,7 +132,7 @@ Recommended next work:
    - commands: play/pause, next/previous, volume, source/output selection and playlist/media start;
    - keep actual backend credentials and playback API calls in Home Assistant.
 7. Validate ESP32-S3-BOX-3 display, speaker, mic and button mappings on physical hardware.
-8. Re-test OTA from a no-PSRAM LilyGO on `v3.1.14` to confirm the GitHub TLS memory issue is gone.
+8. Re-test OTA from a no-PSRAM LilyGO on `v3.1.15` to confirm the GitHub TLS memory issue is gone.
 9. Stress-test DJ-announcement MP3 playback with several short and long files.
 10. Continue reducing `DJConnectApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
 11. Update GitHub Actions for Node.js 24 compatibility.

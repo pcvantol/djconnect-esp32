@@ -4,12 +4,12 @@
 
 ### Changed
 
-- Refreshed handoff, backlog and release cleanup documentation after the `v3.1.14` stable release and cleanup.
+- Refreshed handoff, backlog and release cleanup documentation after the `v3.1.15` stable release and cleanup.
 - Updated the release hygiene snapshot test checksum for the refreshed web manifest tagline.
 - Updated README hardware, sync-prompt scope and test descriptions for the current dual-board and cross-repo contract.
 - Added Raspberry Pi mDNS/config-flow verification tasks to the backlog.
 
-## v3.1.14
+## v3.1.15
 
 Stable release for canonical cross-repo sync prompts, website URL/About copy and dual-firmware publication.
 
@@ -23,7 +23,7 @@ Stable release for canonical cross-repo sync prompts, website URL/About copy and
 - Consolidated old per-repo sync prompt files into `SYNC_PROMPTS.md`.
 - Removed the separate proprietary firmware row from the About screen while keeping the legal notices compact.
 - Published both LilyGO T-Embed S3 and ESP32-S3-BOX-3 firmware assets plus `firmware_manifest.json`.
-- Cleaned old stable releases, tags and source workflow runs after publication so only `v3.1.14` remains remotely.
+- Cleaned old stable releases, tags and source workflow runs after publication so only `v3.1.15` remains remotely.
 
 ## v3.1.9
 

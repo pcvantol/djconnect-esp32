@@ -32,7 +32,7 @@ commit the updated `SYNC_PROMPTS.md` there.
 ## Current Protocol Line
 
 The current shared protocol/release line is `3.1.x`; this bundle was last
-aligned after cross-repo release `v3.1.14`. DJConnect clients on the `3.1.x`
+aligned after cross-repo release `v3.1.15`. DJConnect clients on the `3.1.x`
 line are compatible with Home Assistant integration versions `>=3.1.0` and
 `<3.2.0`.
 
@@ -958,8 +958,8 @@ Recommended fields:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "device_name": "DJConnect iPhone",
   "client_type": "ios",
-  "firmware": "3.1.14",
-  "app_version": "3.1.14",
+  "firmware": "3.1.15",
+  "app_version": "3.1.15",
   "platform": "ios"
 }
 ```
@@ -971,8 +971,8 @@ For macOS:
   "device_id": "djconnect-macos-8F3A2C91B45D",
   "device_name": "DJConnect Mac",
   "client_type": "macos",
-  "firmware": "3.1.14",
-  "app_version": "3.1.14",
+  "firmware": "3.1.15",
+  "app_version": "3.1.15",
   "platform": "macos"
 }
 ```
@@ -1006,7 +1006,7 @@ Expected response:
   "success": false,
   "error": "version_mismatch",
   "message": "DJConnect Home Assistant integration and device firmware major.minor versions must match.",
-  "ha_version": "3.1.14",
+  "ha_version": "3.1.15",
   "ha_major_minor": "3.1",
   "firmware": "3.0.9",
   "firmware_major_minor": "3.0"
@@ -1123,8 +1123,8 @@ should not be implemented unless the Apple app has a real equivalent.
   "device_name": "DJConnect iPhone",
   "pair_code": "123456",
   "client_type": "ios",
-  "firmware": "3.1.14",
-  "app_version": "3.1.14",
+  "firmware": "3.1.15",
+  "app_version": "3.1.15",
   "local_url": "http://djconnect-ios-8F3A2C91B45D.local:18080"
 }
 ```
@@ -1194,8 +1194,8 @@ Minimum payload:
   "device_id": "djconnect-ios-8F3A2C91B45D",
   "client_type": "ios",
   "ha_pairing_status": "paired",
-  "firmware": "3.1.14",
-  "app_version": "3.1.14",
+  "firmware": "3.1.15",
+  "app_version": "3.1.15",
   "state": "online",
   "status": "online",
   "battery_percent": 85,
