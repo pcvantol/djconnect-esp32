@@ -112,7 +112,7 @@ Concrete issue and task list after release `v3.1.11`.
 
 ## Web Portal
 
-- [ ] Verify web title bar shows `Jouw persoonlijke muziek DJ`, firmware version and device model on mobile and desktop widths.
+- [ ] Verify web title bar shows `Muziekbediening met karakter`, firmware version and device model on mobile and desktop widths.
 - [ ] Verify playback controls and volume slider use the lila/magenta accent instead of orange.
 - [ ] Re-test visibility-aware polling:
   - logs only while logs panel is visible and not paused;

@@ -295,7 +295,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <header>
-    <h1><img class="brand-icon" src="/icon-192.png?v=3" alt=""><span class="brand-copy"><span class="brand-line">DJConnect <span id="appVersion" class="sub">-</span><span id="appModel" class="model-chip">-</span></span><span class="brand-tagline">Jouw persoonlijke muziek DJ</span></span></h1>
+    <h1><img class="brand-icon" src="/icon-192.png?v=3" alt=""><span class="brand-copy"><span class="brand-line">DJConnect <span id="appVersion" class="sub">-</span><span id="appModel" class="model-chip">-</span></span><span class="brand-tagline">Muziekbediening met karakter</span></span></h1>
     <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Playback">♪</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">

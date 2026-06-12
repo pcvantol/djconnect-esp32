@@ -1,7 +1,7 @@
 {
   "name": "DJConnect",
   "short_name": "DJConnect",
-  "description": "DJConnect. Jouw persoonlijke muziek DJ.",
+  "description": "DJConnect. Muziekbediening met karakter.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#070812",

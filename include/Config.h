@@ -20,7 +20,7 @@
 namespace Config {
 static const char *const AppVersion = DJCONNECT_STRINGIFY(DJCONNECT_VERSION_TAG);
 static const char *const AppVersionNumber = DJCONNECT_STRINGIFY(DJCONNECT_VERSION);
-static const char *const AppTagline = "Jouw persoonlijke muziek DJ";
+static const char *const AppTagline = "Muziekbediening met karakter";
 static const char *const WebsiteUrl = "https://djconnect.pages.dev";
 static const char *const BuildMarker =
     "DJConnect " DJCONNECT_STRINGIFY(DJCONNECT_VERSION_TAG) " / " DJCONNECT_STRINGIFY(DJCONNECT_VERSION) " booting";
