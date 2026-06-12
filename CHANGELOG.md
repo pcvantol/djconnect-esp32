@@ -5,6 +5,9 @@
 ### Changed
 
 - Refreshed handoff, backlog and release cleanup documentation after the `v3.1.14` stable release and cleanup.
+- Updated the release hygiene snapshot test checksum for the refreshed web manifest tagline.
+- Updated README hardware, sync-prompt scope and test descriptions for the current dual-board and cross-repo contract.
+- Added Raspberry Pi mDNS/config-flow verification tasks to the backlog.
 
 ## v3.1.14
 

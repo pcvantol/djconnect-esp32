@@ -40,23 +40,21 @@ DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotif
 
 ## Hardware
 
-- LilyGO T-Embed-CC1101.
-- Experimental ESP32-S3-BOX-3 PlatformIO environment for display bring-up.
-- ESP32-S3 PlatformIO target on the pinned pioarduino ESP-IDF 5.3 / Arduino
-  ESP32 3.x toolchain. Arduino ESP32 2.x / ESP-IDF 4.x compatibility is not
-  maintained.
-- ST7789 display.
-- Rotary encoder with center button.
-- Top button / board user key.
-- BQ27220 battery gauge.
-- WS2812 LED ring.
-- Built-in speaker cues and microphone for push-to-talk.
+Supported firmware targets:
 
-The default production environment is `t_embed_cc1101`. Board-specific pins and
-hardware capabilities live in `include/BoardProfile.h`; use
-`esp32_s3_box3` only for first-pass BOX-3 validation. In that environment the
-battery gauge, LED ring, speaker and microphone paths are disabled until the
-hardware mapping is verified.
+- LilyGO T-Embed-CC1101 / T-Embed S3 through PlatformIO environment `t_embed_cc1101`.
+- Experimental ESP32-S3-BOX-3 bring-up through PlatformIO environment `esp32_s3_box3`.
+
+The LilyGO build uses the ST7789 display, rotary encoder with center button,
+top button, BQ27220 battery gauge, WS2812 LED ring, built-in speaker cues and
+microphone for push-to-talk.
+
+The ESP32-S3-BOX-3 build uses the board display, speaker, microphone and button
+mapping under `BoardProfile.h`. It does not expose a battery gauge or LED ring,
+so those indicators and animations stay hidden/disabled on that board.
+
+Both targets use the pinned pioarduino ESP-IDF 5.3 / Arduino ESP32 3.x toolchain.
+Arduino ESP32 2.x / ESP-IDF 4.x compatibility is not maintained.
 
 ## Important Limitations
 
@@ -67,7 +65,7 @@ hardware mapping is verified.
 
 ## Cross-Repo Sync Prompts
 
-Canonical prompts for syncing this firmware repo with the Home Assistant integration and Apple app repos live in [`SYNC_PROMPTS.md`](SYNC_PROMPTS.md).
+Canonical prompts for syncing this firmware repo with the Home Assistant integration, Apple app, Raspberry Pi client and website/docs repos live in [`SYNC_PROMPTS.md`](SYNC_PROMPTS.md).
 
 ## License
 
@@ -449,7 +447,7 @@ Run release-script checks:
 bash test/native/test_release.sh
 ```
 
-The native test binary covers pure logic such as battery estimation, menu option counts/values including log-level options, device command parsing, Home Assistant pairing/provisioning helpers and network timeout helper behavior. The release shell test covers `release.sh` syntax, dry-run behavior and invalid version handling.
+The native test binary covers pure logic such as battery estimation, menu option counts/values including log-level options, device command parsing, Home Assistant pairing/provisioning helpers and network timeout helper behavior. The release shell test covers `release.sh` syntax, asset snapshot checks, dry-run behavior, invalid version handling, beta release naming and the release cleanup helper dry-run path.
 
 ## Security Checklist
 
