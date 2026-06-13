@@ -32,9 +32,9 @@ commit the updated `SYNC_PROMPTS.md` there.
 ## Current Protocol Line
 
 The current shared protocol/release line is `3.1.x`; this bundle was last
-aligned after Raspberry Pi client release `v3.1.19`. DJConnect clients on the `3.1.x`
-line are compatible with Home Assistant integration versions `>=3.1.0` and
-`<3.2.0`.
+aligned after Raspberry Pi client release `v3.1.25`. DJConnect clients on the
+`3.1.x` line are compatible with Home Assistant integration versions `>=3.1.0`
+and `<3.2.0`.
 
 ---
 
@@ -206,9 +206,9 @@ Requirements:
   djconnect-raspberry-pi-XXXXXXXXXXXX.
 - Treat the Pi as an app-like display remote, not ESP firmware.
 - Support both outbound POST /api/djconnect/pair and the app-like local Client
-  API URL flow. The Pi exposes GET /api/device/info, GET /api/device/pairing-info,
-  POST /api/device/pair, POST /api/device/command, POST /api/device/dj_response
-  and POST /api/device/forget.
+  API URL flow. The Pi exposes GET /api/device/info,
+  GET /api/device/pairing-info, POST /api/device/pair,
+  POST /api/device/command and POST /api/device/forget.
 - Advertise `_djconnect._tcp` mDNS on the local Client API port with TXT records
   including device_id, client_type=raspberry_pi, version, device_name and
   local_url.
@@ -219,9 +219,10 @@ Requirements:
 - Send playback commands to POST /api/djconnect/command. Supported first
   version commands are status, play, pause, next, previous, set_volume,
   set_shuffle and set_repeat.
-- Do not implement PTT, microphone capture, POST /api/djconnect/voice or local
-  DJ response audio playback. POST /api/device/dj_response displays text on
-  screen and may report audio_played:false when no audio device is configured.
+- Do not implement PTT, microphone capture, POST /api/djconnect/voice, local
+  DJ response audio playback or a Pi-local `/api/device/dj_response` endpoint.
+  If HA returns DJ response text in normal command/status responses, the Pi may
+  display that text on screen without treating itself as an audio/voice device.
 - Do not expose ESP-only reboot, OTA, battery, Wi-Fi RSSI, screen brightness,
   screen timeout, speaker volume, LED, log-level or firmware entities.
 - Keep the updater and OS maintenance daemon separate from the touch UI and
@@ -231,6 +232,18 @@ Requirements:
   timezone, SSH, apt full-upgrade, minimal X11/Qt runtime dependencies,
   HyperPixel and optional Raspberry Pi Connect. It must not install or manage
   Glances.
+- Public Raspberry Pi release tarballs are distribution artifacts, not source
+  checkouts. They include `docs/`, `systemd/`, `scripts/install.sh` and a
+  bundled wheel under `wheels/`, but not the loose `src/` app source tree or
+  repo-only bootstrap helper.
+- The public `scripts/install.sh` installer must be re-runnable and resumable:
+  it verifies SHA256 release assets, requires Raspberry Pi OS Lite 64-bit,
+  checks root, arm64/aarch64, Python >=3.11, writable install paths, GitHub
+  release reachability, at least 3GB free disk space, at least 1GB active swap,
+  and logs memory/swap/disk/inode plus thermal/throttling state around major
+  steps. It installs from the bundled wheel, removes incomplete `.venv`
+  directories before retrying dependencies, and keeps pip cache/temp files
+  under `/var/cache/djconnect-pip`.
 - Use unattended GitHub release updates only after verifying release assets with
   SHA256 at minimum; prefer signed manifests when available.
 - Treat backend_unavailable and version_mismatch as recoverable without
@@ -865,7 +878,7 @@ Na succesvolle HA direct pair en eerste geaccepteerde HA command/status mag UI n
 Backend unavailable mag niet terug naar pairing-code scherm forceren.
 Pairing stale mag duidelijk tonen: reset/re-pair nodig.
 Soft reset/reboot moet local cue sound en felle witte LED-ring flash tonen vlak voor reboot.
-Bonus games Paddle Rally, Meteor Run, Sky Dash en Maze Chase mogen in UI blijven.
+Bonus games Pong, Asteroids, Fly en Pacman mogen in UI blijven.
 10. Tests
 Voeg/update host tests waar mogelijk:
 
@@ -1274,14 +1287,8 @@ Examples:
 {"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"set_repeat","value":"context"}
 {"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"start_liked_proxy","play":true}
 {"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"start_playlist","value":"spotify:playlist:...","play":true}
-{"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"set_output","value":"Living Room","play":true}
+{"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"set_output","value":"iPhone","play":true}
 ```
-
-Apple app clients may prepend a local `Geen`/`None` no-output choice in the UI.
-They must not synthesize `iPhone standaard` or `Mac standaard` output choices,
-because those are not backend playback devices. When `Geen` is selected,
-playback-start commands are blocked locally until a real backend output is
-selected.
 
 Playlist command responses should include playlist metadata and artwork when
 available:
