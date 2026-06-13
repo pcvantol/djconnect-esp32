@@ -281,6 +281,8 @@ void DJConnectApp::loop() {
     updateAsteroids();
   } else if (activeScreen_ == UiScreen::Flyer) {
     updateFlyer();
+  } else if (activeScreen_ == UiScreen::MazeChase) {
+    updateMazeChase();
   }
 
   updateVisualPower();
@@ -314,6 +316,7 @@ void DJConnectApp::loadProvisioning() {
   pongHighScore_ = static_cast<int>(min(settings.pongHighScore, static_cast<uint32_t>(INT_MAX)));
   asteroidHighScore_ = static_cast<int>(min(settings.asteroidsHighScore, static_cast<uint32_t>(INT_MAX)));
   flyerHighScore_ = static_cast<int>(min(settings.flyerHighScore, static_cast<uint32_t>(INT_MAX)));
+  mazeHighScore_ = static_cast<int>(min(settings.mazeHighScore, static_cast<uint32_t>(INT_MAX)));
   setupModeRequested_ = settings.setupModeRequested;
   helpShown_ = settings.helpShown;
 
@@ -1024,6 +1027,11 @@ void DJConnectApp::handleMenuInputEvents(const InputEvents &events) {
     renderNow();
     return;
   }
+  if (activeScreen_ == UiScreen::MazeChase && events.encoderSteps != 0) {
+    mazePlayerX_ = constrain(mazePlayerX_ + (events.encoderSteps * 10), 30, 290);
+    renderNow();
+    return;
+  }
 
   if (activeScreen_ == UiScreen::Logs && events.encoderSteps != 0) {
     const size_t available = AppLog.availableLines();
@@ -1069,6 +1077,20 @@ void DJConnectApp::handleMenuInputEvents(const InputEvents &events) {
     }
     if (events.encoderLongClick) {
       resetFlyer();
+      renderNow();
+      return;
+    }
+  }
+  if (activeScreen_ == UiScreen::MazeChase) {
+    if (events.encoderPress) {
+      switchMazeLane();
+      return;
+    }
+    if (events.encoderClick) {
+      return;
+    }
+    if (events.encoderLongClick) {
+      resetMazeChase();
       renderNow();
       return;
     }
@@ -1228,9 +1250,12 @@ void DJConnectApp::selectCurrentMenuItem() {
       } else if (gamesSelection_ == 1) {
         resetAsteroids();
         openScreen(UiScreen::Asteroids);
-      } else {
+      } else if (gamesSelection_ == 2) {
         resetFlyer();
         openScreen(UiScreen::Flyer);
+      } else {
+        resetMazeChase();
+        openScreen(UiScreen::MazeChase);
       }
       break;
 
@@ -1378,6 +1403,7 @@ void DJConnectApp::selectCurrentMenuItem() {
     case UiScreen::Pong:
     case UiScreen::Asteroids:
     case UiScreen::Flyer:
+    case UiScreen::MazeChase:
       break;
     case UiScreen::Queue:
       startSelectedQueueItem();
@@ -1608,6 +1634,7 @@ size_t DJConnectApp::selectedIndexForScreen(UiScreen screen) const {
     case UiScreen::Pong:
     case UiScreen::Asteroids:
     case UiScreen::Flyer:
+    case UiScreen::MazeChase:
     case UiScreen::NowPlaying:
       return 0;
   }
@@ -1659,6 +1686,7 @@ size_t &DJConnectApp::selectedIndexRefForScreen(UiScreen screen) {
     case UiScreen::Pong:
     case UiScreen::Asteroids:
     case UiScreen::Flyer:
+    case UiScreen::MazeChase:
     case UiScreen::NowPlaying:
       return rootMenuSelection_;
   }
@@ -1842,7 +1870,8 @@ void DJConnectApp::updateGameHighScore(int &highScore, int score) {
   provisioning_.saveGameHighScores(
       static_cast<uint32_t>(max(pongHighScore_, 0)),
       static_cast<uint32_t>(max(asteroidHighScore_, 0)),
-      static_cast<uint32_t>(max(flyerHighScore_, 0)));
+      static_cast<uint32_t>(max(flyerHighScore_, 0)),
+      static_cast<uint32_t>(max(mazeHighScore_, 0)));
 }
 
 void DJConnectApp::updatePong() {
@@ -2032,6 +2061,81 @@ void DJConnectApp::updateFlyer() {
     flyerScore_ = 0;
     flyerObstacleX_ = 310;
     flyerObstacleY_ = 52 + static_cast<int>(esp_random() % 92);
+    if (volumeFeedbackEnabled_) {
+      sound_.playPongMiss();
+    }
+  }
+  renderNow();
+}
+
+void DJConnectApp::resetMazeChase() {
+  mazePlayerX_ = 52;
+  mazePlayerLane_ = 1;
+  mazeGhostX_ = 278;
+  mazeGhostLane_ = static_cast<int>(esp_random() % 3);
+  mazePelletX_ = 90 + static_cast<int>(esp_random() % 170);
+  mazePelletLane_ = static_cast<int>(esp_random() % 3);
+  mazeScore_ = 0;
+  mazeFlashUntil_ = 0;
+  lastMazeFrameAt_ = 0;
+}
+
+void DJConnectApp::switchMazeLane() {
+  mazePlayerLane_ = (mazePlayerLane_ + 1) % 3;
+  if (volumeFeedbackEnabled_) {
+    sound_.playMenuTick(1);
+  }
+  renderNow();
+}
+
+void DJConnectApp::updateMazeChase() {
+  if (!display_.isOn()) {
+    return;
+  }
+  const uint32_t now = millis();
+  if (lastMazeFrameAt_ == 0) {
+    lastMazeFrameAt_ = now;
+    renderNow();
+    return;
+  }
+  if (now - lastMazeFrameAt_ < 42) {
+    return;
+  }
+  lastMazeFrameAt_ = now;
+
+  const int chaseSpeed = 2 + min(mazeScore_ / 8, 4);
+  if (mazeGhostX_ > mazePlayerX_) {
+    mazeGhostX_ -= chaseSpeed;
+  } else {
+    mazeGhostX_ += chaseSpeed;
+  }
+  if ((esp_random() % 12) == 0) {
+    if (mazeGhostLane_ < mazePlayerLane_) {
+      mazeGhostLane_++;
+    } else if (mazeGhostLane_ > mazePlayerLane_) {
+      mazeGhostLane_--;
+    }
+  }
+
+  if (abs(mazePlayerX_ - mazePelletX_) < 13 && mazePlayerLane_ == mazePelletLane_) {
+    mazeScore_++;
+    updateGameHighScore(mazeHighScore_, mazeScore_);
+    mazePelletX_ = 42 + static_cast<int>(esp_random() % 236);
+    mazePelletLane_ = static_cast<int>(esp_random() % 3);
+    if (volumeFeedbackEnabled_) {
+      sound_.playConfirm();
+    }
+  }
+
+  if (abs(mazePlayerX_ - mazeGhostX_) < 15 && mazePlayerLane_ == mazeGhostLane_) {
+    mazeFlashUntil_ = now + 350;
+    mazeScore_ = 0;
+    mazePlayerX_ = 52;
+    mazePlayerLane_ = 1;
+    mazeGhostX_ = 278;
+    mazeGhostLane_ = static_cast<int>(esp_random() % 3);
+    mazePelletX_ = 90 + static_cast<int>(esp_random() % 170);
+    mazePelletLane_ = static_cast<int>(esp_random() % 3);
     if (volumeFeedbackEnabled_) {
       sound_.playPongMiss();
     }
@@ -2993,7 +3097,7 @@ void DJConnectApp::renderNow() {
     return;
   }
 
-  const bool gameScreen = activeScreen_ == UiScreen::Pong || activeScreen_ == UiScreen::Asteroids || activeScreen_ == UiScreen::Flyer;
+  const bool gameScreen = activeScreen_ == UiScreen::Pong || activeScreen_ == UiScreen::Asteroids || activeScreen_ == UiScreen::Flyer || activeScreen_ == UiScreen::MazeChase;
 
   // Render from the same snapshot into both visual outputs so screen and ring agree.
   if (isMenuActive()) {
@@ -3025,6 +3129,14 @@ void DJConnectApp::renderNow() {
   }
   if (activeScreen_ == UiScreen::Flyer && display_.backlightPercent() > 0) {
     ledRing_.showGamePosition(flyerPlaneY_, 52, 138, CRGB(92, 204, 255));
+    ledRing_.setPowerPercent(display_.backlightPercent());
+    visualState_.screenOn = display_.isOn();
+    visualState_.screenBrightnessLevel = display_.backlightPercent();
+    visualState_.ledOn = ledRing_.isOn();
+    return;
+  }
+  if (activeScreen_ == UiScreen::MazeChase && display_.backlightPercent() > 0) {
+    ledRing_.showGamePosition(mazePlayerX_, 30, 290, CRGB(255, 220, 40));
     ledRing_.setPowerPercent(display_.backlightPercent());
     visualState_.screenOn = display_.isOn();
     visualState_.screenBrightnessLevel = display_.backlightPercent();
@@ -4168,11 +4280,16 @@ void DJConnectApp::renderMenuNow() {
       display_.renderFlyerScreen(flyerPlaneY_, flyerObstacleX_, flyerObstacleY_, flyerShotX_, flyerShotActive_, flyerScore_, flyerHighScore_, millis() < flyerFlashUntil_, notice_);
       break;
 
+    case UiScreen::MazeChase:
+      display_.renderMazeChaseScreen(mazePlayerX_, mazePlayerLane_, mazeGhostX_, mazeGhostLane_, mazePelletX_, mazePelletLane_, mazeScore_, mazeHighScore_, millis() < mazeFlashUntil_, notice_);
+      break;
+
     case UiScreen::Games: {
       MenuItemView items[GamesItemCount] = {
           {I18n::text("pong")},
           {I18n::text("asteroids")},
           {I18n::text("flyer")},
+          {I18n::text("maze_chase")},
       };
       display_.renderMenuList(I18n::text("games"), items, GamesItemCount, gamesSelection_, notice_);
       break;

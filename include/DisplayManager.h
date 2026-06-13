@@ -55,14 +55,17 @@ public:
   // Renders the newest firmware log lines from the in-memory Serial log buffer.
   void renderLogsScreen(const String *lines, size_t lineCount, const StatusNotice &notice);
 
-  // Renders the tiny Pong mini game screen.
+  // Renders the Paddle Rally mini game screen.
   void renderPongScreen(int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice);
 
-  // Renders the local Asteroids-style mini game.
+  // Renders the local Meteor Run mini game.
   void renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
 
-  // Renders the local side-scrolling plane mini game.
+  // Renders the local Sky Dash mini game.
   void renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
+
+  // Renders the local maze chase mini game.
+  void renderMazeChaseScreen(int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool hitFlash, const StatusNotice &notice);
 
   // Renders the 160x160 current-song album art view.
   void renderAlbumArtScreen(
@@ -166,6 +169,8 @@ private:
   void renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
   template <typename Canvas>
   void renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
+  template <typename Canvas>
+  void renderMazeChase(Canvas &canvas, int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool hitFlash, const StatusNotice &notice);
 
   template <typename Canvas>
   String clippedText(Canvas &canvas, String text, int maxWidth, uint8_t font);

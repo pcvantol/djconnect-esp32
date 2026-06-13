@@ -20,6 +20,7 @@ struct ProvisioningSettings {
   uint32_t pongHighScore = 0;
   uint32_t asteroidsHighScore = 0;
   uint32_t flyerHighScore = 0;
+  uint32_t mazeHighScore = 0;
   bool setupModeRequested = false;
   bool helpShown = false;
 };
@@ -41,7 +42,7 @@ public:
 
   void saveWifiCredentials(const String &ssid, const String &password) const;
   void saveSetupProvisioning(const String &ssid, const String &password) const;
-  void saveGameHighScores(uint32_t pongHighScore, uint32_t asteroidsHighScore, uint32_t flyerHighScore) const;
+  void saveGameHighScores(uint32_t pongHighScore, uint32_t asteroidsHighScore, uint32_t flyerHighScore, uint32_t mazeHighScore) const;
   void requestSetupMode() const;
   void requestWifiChangeMode() const;
   void markHelpShown() const;

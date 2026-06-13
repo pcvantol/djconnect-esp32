@@ -128,6 +128,13 @@ static void testHomeAssistantStatusAliasContractNames() {
   }
 }
 
+static void testGamesMenuCount() {
+  MenuCountInput input;
+  assert(DJConnectMenuModel::itemCount(UiScreen::Games, input) == 4);
+  assert(DJConnectMenuModel::GamesItemCount == 4);
+  assert(DJConnectMenuModel::itemCount(UiScreen::MazeChase, input) == 0);
+}
+
 static void testHomeAssistantClientTypeErrorContract() {
   assert(Logic::isDjConnectInvalidClientType("invalid_client_type"));
   assert(!Logic::isDjConnectInvalidClientType(nullptr));
@@ -780,6 +787,7 @@ int main() {
   testHaPlaybackConnectionErrorClassification();
   testHomeAssistantStatusMirroredSettingsDefaults();
   testHomeAssistantStatusAliasContractNames();
+  testGamesMenuCount();
   testHomeAssistantClientTypeErrorContract();
   testImmediatePollTimestampConvention();
   testSpotifyConfiguredForHomeAssistantStatus();

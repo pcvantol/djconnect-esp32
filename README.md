@@ -18,7 +18,7 @@ DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotif
 - Log level setting from the device, web portal and Home Assistant command API: debug, info, warning or error. The default is info.
 - Playlist browser on the device and web portal to start playlists directly.
 - Current song menu screen with album art download/cache.
-- Local Games menu and web portal games panel with Pong, Asteroids and Fly mini-games.
+- Local Games menu and web portal games panel with Paddle Rally, Meteor Run, Sky Dash and Maze Chase mini-games.
 - Help screen with button/encoder controls, shown once after initial Home Assistant pairing and available from the main menu.
 - Encoder short press on Now Playing: pause/resume.
 - Encoder long press on Now Playing: push-to-talk through Home Assistant Assist; release stops listening.
@@ -194,7 +194,7 @@ The ESP stores one Home Assistant URL for runtime traffic:
 
 `ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant sends a Nabu Casa URL as `ha_local_url`, the ESP rejects pairing instead of entering a half-paired state. Status, playback and voice calls always use the local URL. Cloud/Nabu Casa URLs are not stored or used by the ESP runtime; they belong only in Home Assistant's backend/OAuth configuration flows.
 
-A Postman collection for these local ESP endpoints is available at `postman/DJConnect ESP API.postman_collection.json`. Import it and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing.
+Postman collections are available under `postman/`. `DJConnect ESP API.postman_collection.json` documents the protected Home Assistant device-layer endpoints, and `DJConnect Local API.postman_collection.json` covers the local web portal/API test routes. Import one of them and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing when testing protected routes.
 
 ## Playback Provisioning
 
@@ -217,7 +217,7 @@ While the device is processing the PTT request or showing the DJ announcement sc
 
 The Current song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
-Games are local mini-games in the device menu and web portal. Pong shows score and high score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Asteroids uses the encoder to move horizontally and shoots on encoder press. Fly uses the encoder to move vertically and shoots on encoder press while flying left-to-right. Device game highscores are stored in the `provision` NVS namespace and are cleared by factory reset; web game highscores are stored locally in the browser.
+Games are local mini-games in the device menu and web portal. Paddle Rally shows score and high score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Meteor Run uses the encoder to move horizontally and shoots on encoder press. Sky Dash uses the encoder to move vertically and shoots on encoder press while flying left-to-right. Maze Chase uses the encoder for horizontal movement and center press to switch lanes while collecting pellets and avoiding the ghost. Device game highscores are stored in the `provision` NVS namespace and are cleared by factory reset; web game highscores are stored locally in the browser.
 
 Web portal PTT is a simulation button for testing the DJ-announcement text path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant, displays the returned DJ text on the device and then returns the voice/PTT state to idle. The web simulation intentionally does not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block the physical encoder PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
 

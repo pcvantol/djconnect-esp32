@@ -383,9 +383,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div class="game-shell">
         <div class="game-tabs" role="tablist" aria-label="Games">
           <button class="game-tab active" type="button" data-game="none" data-i18n="none">None</button>
-          <button class="game-tab" type="button" data-game="pong">Pong</button>
-          <button class="game-tab" type="button" data-game="asteroids">Asteroids</button>
-          <button class="game-tab" type="button" data-game="fly">Fly</button>
+          <button class="game-tab" type="button" data-game="pong">Paddle Rally</button>
+          <button class="game-tab" type="button" data-game="asteroids">Meteor Run</button>
+          <button class="game-tab" type="button" data-game="fly">Sky Dash</button>
+          <button class="game-tab" type="button" data-game="maze">Maze Chase</button>
         </div>
         <div id="gameHud" class="game-hud"><span id="gameScore">Score 0</span><span id="gameHighScore">High 0</span></div>
         <canvas id="gameCanvas" class="game-canvas" width="320" height="170"></canvas>
@@ -811,14 +812,17 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       });
     }
     const game = {
-      mode:"none", visible:true, score:0, high:{ pong:0, asteroids:0, fly:0 },
+      mode:"none", visible:true, score:0, high:{ pong:0, asteroids:0, fly:0, maze:0 },
       paddleY:86, ballX:160, ballY:86, ballVX:3, ballVY:2,
       shipX:160, asteroidX:180, asteroidY:48, asteroidVX:2, asteroidVY:2, bullet:false, bulletY:0,
-      planeY:86, obstacleX:300, obstacleY:86, shot:false, shotX:0, flashUntil:0, last:0
+      planeY:86, obstacleX:300, obstacleY:86, shot:false, shotX:0,
+      mazeX:52, mazeLane:1, ghostX:278, ghostLane:1, pelletX:180, pelletLane:1,
+      flashUntil:0, last:0
     };
+    const gameNames = { pong:"Paddle Rally", asteroids:"Meteor Run", fly:"Sky Dash", maze:"Maze Chase" };
     function gameHighKey(mode) { return `djconnect.web.${mode}.high`; }
     function loadGameHighScores() {
-      for (const mode of ["pong","asteroids","fly"]) game.high[mode] = Number(localStorage.getItem(gameHighKey(mode)) || 0);
+      for (const mode of ["pong","asteroids","fly","maze"]) game.high[mode] = Number(localStorage.getItem(gameHighKey(mode)) || 0);
     }
     function updateGameHud() {
       $("gameScore").textContent = `Score ${game.score}`;
@@ -835,7 +839,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("gameCanvas").style.display = active ? "" : "none";
       $("gameControls").style.display = active ? "grid" : "none";
       if (!active) return;
-      const horizontal = game.mode === "asteroids";
+      const horizontal = game.mode === "asteroids" || game.mode === "maze";
       setGameButton($("gameUpButton"), horizontal ? "Left" : "Up", horizontal ? "M5 12l8-7v14z" : "M12 5l7 8H5z");
       setGameButton($("gameDownButton"), horizontal ? "Right" : "Down", horizontal ? "M19 12l-8 7V5z" : "M12 19l-7-8h14z");
       $("gameFireButton").style.display = game.mode === "pong" ? "none" : "";
@@ -857,6 +861,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         game.shipX = 160; game.asteroidX = 40 + Math.random() * 240; game.asteroidY = 48; game.asteroidVX = Math.random() > .5 ? 2 : -2; game.asteroidVY = 2; game.bullet = false;
       } else if (game.mode === "fly") {
         game.planeY = 86; game.obstacleX = 300; game.obstacleY = 52 + Math.random() * 92; game.shot = false;
+      } else if (game.mode === "maze") {
+        game.mazeX = 52; game.mazeLane = 1; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3);
       }
       updateGameHud();
     }
@@ -870,10 +876,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       if (game.mode === "pong") game.paddleY = Math.max(42, Math.min(126, game.paddleY + delta * 6));
       if (game.mode === "asteroids") game.shipX = Math.max(24, Math.min(296, game.shipX + delta * 8));
       if (game.mode === "fly") game.planeY = Math.max(52, Math.min(138, game.planeY + delta * 7));
+      if (game.mode === "maze") game.mazeX = Math.max(30, Math.min(290, game.mazeX + delta * 10));
     }
     function fireGame() {
       if (game.mode === "asteroids" && !game.bullet) { game.bullet = true; game.bulletY = 120; }
       if (game.mode === "fly" && !game.shot) { game.shot = true; game.shotX = 58; }
+      if (game.mode === "maze") game.mazeLane = (game.mazeLane + 1) % 3;
     }
     function drawGame() {
       if (game.mode === "none") return;
@@ -882,8 +890,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       ctx.clearRect(0, 0, 320, 170);
       ctx.fillStyle = "#020405"; ctx.fillRect(0, 0, 320, 170);
       ctx.strokeStyle = "#30383a"; ctx.beginPath(); ctx.moveTo(8, 36); ctx.lineTo(312, 36); ctx.stroke();
-      ctx.font = "14px system-ui"; ctx.fillStyle = game.mode === "pong" ? "#ff9f1a" : game.mode === "asteroids" ? "#5fa7ff" : "#5cccff";
-      ctx.fillText(game.mode === "fly" ? "Fly" : game.mode[0].toUpperCase() + game.mode.slice(1), 8, 20);
+      ctx.font = "14px system-ui"; ctx.fillStyle = game.mode === "pong" ? "#ff9f1a" : game.mode === "asteroids" ? "#5fa7ff" : game.mode === "maze" ? "#ffd84f" : "#5cccff";
+      ctx.fillText(gameNames[game.mode] || "", 8, 20);
       ctx.fillStyle = "#f3f7f5"; ctx.textAlign = "right"; ctx.fillText(`Score ${game.score}  High ${game.high[game.mode] || 0}`, 312, 20); ctx.textAlign = "left";
       if (game.mode === "pong") {
         ctx.strokeStyle = "#30383a"; ctx.beginPath(); ctx.moveTo(160,42); ctx.lineTo(160,160); ctx.stroke();
@@ -893,11 +901,19 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         ctx.strokeStyle = "#5fa7ff"; ctx.beginPath(); ctx.moveTo(game.shipX, 128); ctx.lineTo(game.shipX - 8, 146); ctx.lineTo(game.shipX + 8, 146); ctx.closePath(); ctx.stroke();
         ctx.strokeStyle = "#ff6ab7"; ctx.beginPath(); ctx.arc(game.asteroidX, game.asteroidY, 9, 0, Math.PI * 2); ctx.stroke();
         if (game.bullet) { ctx.fillStyle = "#5cccff"; ctx.fillRect(game.shipX - 2, game.bulletY, 4, 10); }
-      } else {
+      } else if (game.mode === "fly") {
         ctx.fillStyle = "#5cccff"; ctx.beginPath(); ctx.moveTo(60, game.planeY); ctx.lineTo(30, game.planeY - 10); ctx.lineTo(30, game.planeY + 10); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = "#5cccff"; ctx.beginPath(); ctx.moveTo(38, game.planeY); ctx.lineTo(20, game.planeY - 18); ctx.moveTo(38, game.planeY); ctx.lineTo(20, game.planeY + 18); ctx.stroke();
         ctx.fillStyle = "#9a6a43"; ctx.fillRect(game.obstacleX - 8, game.obstacleY - 16, 16, 32);
         if (game.shot) { ctx.fillStyle = "#5cccff"; ctx.fillRect(game.shotX, game.planeY - 2, 14, 4); }
+      } else if (game.mode === "maze") {
+        const lanes = [58, 96, 134];
+        ctx.strokeStyle = "#5fa7ff";
+        lanes.forEach(y => { ctx.beginPath(); ctx.moveTo(18, y); ctx.lineTo(302, y); ctx.stroke(); });
+        ctx.fillStyle = "#f3f7f5"; ctx.beginPath(); ctx.arc(game.pelletX, lanes[game.pelletLane], 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ffd84f"; ctx.beginPath(); ctx.arc(game.mazeX, lanes[game.mazeLane], 10, 0.25 * Math.PI, 1.75 * Math.PI); ctx.lineTo(game.mazeX, lanes[game.mazeLane]); ctx.fill();
+        ctx.fillStyle = "#d72ff3"; ctx.fillRect(game.ghostX - 10, lanes[game.ghostLane] - 10, 20, 20);
+        ctx.fillStyle = "#f3f7f5"; ctx.beginPath(); ctx.arc(game.ghostX - 4, lanes[game.ghostLane] - 3, 2, 0, Math.PI * 2); ctx.arc(game.ghostX + 4, lanes[game.ghostLane] - 3, 2, 0, Math.PI * 2); ctx.fill();
       }
       if (Date.now() < game.flashUntil) { ctx.strokeStyle = "#ff735d"; ctx.lineWidth = 2; ctx.strokeRect(1, 1, 318, 168); ctx.lineWidth = 1; }
     }
@@ -933,6 +949,16 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
           }
           if (game.obstacleX < 24) { game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; setGameScore(game.score + 1); }
           if (game.obstacleX < 64 && game.obstacleX > 28 && Math.abs(game.planeY - game.obstacleY) < 28) { game.flashUntil = Date.now() + 350; game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; setGameScore(0); }
+        } else if (game.mode === "maze") {
+          const speed = 2 + Math.min(Math.floor(game.score / 8), 4);
+          game.ghostX += game.ghostX > game.mazeX ? -speed : speed;
+          if (Math.random() < .08) game.ghostLane += game.ghostLane < game.mazeLane ? 1 : game.ghostLane > game.mazeLane ? -1 : 0;
+          if (Math.abs(game.mazeX - game.pelletX) < 13 && game.mazeLane === game.pelletLane) {
+            setGameScore(game.score + 1); game.pelletX = 42 + Math.random() * 236; game.pelletLane = Math.floor(Math.random() * 3);
+          }
+          if (Math.abs(game.mazeX - game.ghostX) < 15 && game.mazeLane === game.ghostLane) {
+            game.flashUntil = Date.now() + 350; game.mazeX = 52; game.mazeLane = 1; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3); setGameScore(0);
+          }
         }
         drawGame();
       }
@@ -950,7 +976,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("gameCanvas").addEventListener("pointerdown", event => { event.preventDefault(); fireGame(); });
       window.addEventListener("keydown", event => {
         if (game.mode === "none" || !game.visible || ["INPUT","SELECT","TEXTAREA","BUTTON"].includes(document.activeElement?.tagName || "")) return;
-        const movementKeys = game.mode === "asteroids" ? ["ArrowLeft","ArrowRight"] : ["ArrowUp","ArrowDown"];
+        const movementKeys = (game.mode === "asteroids" || game.mode === "maze") ? ["ArrowLeft","ArrowRight"] : ["ArrowUp","ArrowDown"];
         if (![...movementKeys, " ", "Enter"].includes(event.key)) return;
         event.preventDefault();
         if (event.key === movementKeys[0]) moveGame(-1);

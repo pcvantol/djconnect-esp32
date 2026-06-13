@@ -1,0 +1,945 @@
+{
+  "info": {
+    "_postman_id": "c3a93b1f-0cf4-4b90-8b2a-djconnect-local-api",
+    "name": "DJConnect Local API",
+    "description": "Local ESP web portal and device API for a DJConnect device. Set base_url to the device IP or mDNS URL, for example http://djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.local. Web portal routes use form-urlencoded bodies and generally do not require auth. Device-layer routes under /api/device require Authorization: Bearer {{device_token}} except info and pairing-info.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX.local",
+      "type": "string"
+    },
+    {
+      "key": "device_token",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "device_id",
+      "value": "djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX",
+      "type": "string"
+    },
+    {
+      "key": "pair_code",
+      "value": "123456",
+      "type": "string"
+    },
+    {
+      "key": "ha_local_url",
+      "value": "http://homeassistant.local:8123",
+      "type": "string"
+    },
+    {
+      "key": "firmware_version",
+      "value": "3.1.16",
+      "type": "string"
+    },
+    {
+      "key": "device_model",
+      "value": "lilygo-t-embed-s3",
+      "type": "string"
+    },
+    {
+      "key": "firmware_url",
+      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v{{firmware_version}}/djconnect-lilygo-t-embed-s3-v{{firmware_version}}.bin",
+      "type": "string"
+    },
+    {
+      "key": "firmware_sha256",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "playlist_uri",
+      "value": "spotify:playlist:example",
+      "type": "string"
+    },
+    {
+      "key": "queue_item_uri",
+      "value": "spotify:track:example",
+      "type": "string"
+    },
+    {
+      "key": "output_name",
+      "value": "iPhone",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Open / Diagnostics",
+      "item": [
+        {
+          "name": "Web Portal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/",
+            "description": "Loads the local mobile web portal."
+          },
+          "response": []
+        },
+        {
+          "name": "Web Status JSON",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/status",
+            "description": "Returns the live web portal status snapshot: app/device model, firmware, HA pairing, playback, WiFi, battery, settings and game-independent UI state."
+          },
+          "response": []
+        },
+        {
+          "name": "Logs Text",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/logs",
+            "description": "Returns the in-memory device log as text."
+          },
+          "response": []
+        },
+        {
+          "name": "Playback Devices JSON",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/devices",
+            "description": "Returns playback outputs known through Home Assistant. Returns an unavailable payload when playback is not connected."
+          },
+          "response": []
+        },
+        {
+          "name": "Playlists JSON",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/playlists",
+            "description": "Returns playlists from the Home Assistant playback backend."
+          },
+          "response": []
+        },
+        {
+          "name": "Queue JSON",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/queue",
+            "description": "Returns Up Next queue items, including title, subtitle, URI and optional imageUrl."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/device/info",
+            "description": "Open device-layer identity/status endpoint: device_id, device model, firmware, pairing state, local URL and runtime state."
+          },
+          "response": []
+        },
+        {
+          "name": "Pairing Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/device/pairing-info",
+            "description": "Open pairing endpoint with pair_code, device_id, client_type esp32, firmware and mDNS local_url."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Web Portal Playback",
+      "item": [
+        {
+          "name": "Playback Play",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "action",
+                  "value": "play",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/playback",
+            "description": "Same local action as the web portal play button."
+          },
+          "response": []
+        },
+        {
+          "name": "Playback Pause",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "action",
+                  "value": "pause",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/playback",
+            "description": "Same local action as the web portal pause button."
+          },
+          "response": []
+        },
+        {
+          "name": "Playback Next",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "action",
+                  "value": "next",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/playback",
+            "description": "Same local action as the web portal next button."
+          },
+          "response": []
+        },
+        {
+          "name": "Playback Previous",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "action",
+                  "value": "previous",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/playback",
+            "description": "Same local action as the web portal previous button."
+          },
+          "response": []
+        },
+        {
+          "name": "Start Default Playlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "action",
+                  "value": "likedProxy",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/playback",
+            "description": "Starts the configured default playlist through Home Assistant."
+          },
+          "response": []
+        },
+        {
+          "name": "Start Playlist URI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "action",
+                  "value": "playlist",
+                  "type": "text"
+                },
+                {
+                  "key": "uri",
+                  "value": "{{playlist_uri}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/playback",
+            "description": "Starts a playlist URI through the Home Assistant playback backend."
+          },
+          "response": []
+        },
+        {
+          "name": "Play Queue Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "action",
+                  "value": "queue_item",
+                  "type": "text"
+                },
+                {
+                  "key": "uri",
+                  "value": "{{queue_item_uri}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/playback",
+            "description": "Starts the selected queue item using the current queue/context URI. Mirrors the Up Next play button."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Volume",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "volume",
+                  "value": "35",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/volume",
+            "description": "Queues a playback volume change. User-facing range is 0-60."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Shuffle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "enabled",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/shuffle",
+            "description": "Sets regular shuffle on/off."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Repeat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "repeat",
+                  "value": "off",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/repeat",
+            "description": "Sets repeat mode: off, track or context."
+          },
+          "response": []
+        },
+        {
+          "name": "Transfer Output",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "deviceId",
+                  "value": "{{output_name}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/transfer",
+            "description": "Transfers playback to a named output/id. Use none to stop output."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Playback / Queue",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/refresh",
+            "description": "Requests a local refresh of playback, devices, playlists and queue state."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Web Portal Settings",
+      "item": [
+        {
+          "name": "Save Settings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "brightness",
+                  "value": "100",
+                  "type": "text"
+                },
+                {
+                  "key": "offTimeoutMs",
+                  "value": "60000",
+                  "type": "text"
+                },
+                {
+                  "key": "sleepTimeoutMs",
+                  "value": "900000",
+                  "type": "text"
+                },
+                {
+                  "key": "speakerVolume",
+                  "value": "100",
+                  "type": "text"
+                },
+                {
+                  "key": "language",
+                  "value": "nl",
+                  "type": "text"
+                },
+                {
+                  "key": "theme",
+                  "value": "dark",
+                  "type": "text"
+                },
+                {
+                  "key": "logLevel",
+                  "value": "info",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/settings",
+            "description": "Applies display/settings live and saves them to NVS. No reboot required."
+          },
+          "response": []
+        },
+        {
+          "name": "Test WiFi Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "ssid",
+                  "value": "Example WiFi",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/wifi",
+            "description": "Starts a WiFi credential test. Keep password empty in committed collections; set it only in your local Postman environment."
+          },
+          "response": []
+        },
+        {
+          "name": "Web Voice Text Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "text",
+                  "value": "Test de DJConnect response flow",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/api/voice-text",
+            "description": "Runs the web portal fixed-text DJ announcement flow through ESP -> HA /api/djconnect/voice. It intentionally does not play returned TTS audio."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Device Layer Pairing",
+      "item": [
+        {
+          "name": "Pair Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pair_code\": \"{{pair_code}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"device_name\": \"DJConnect\",\n  \"client_type\": \"esp32\",\n  \"device_token\": \"{{device_token}}\",\n  \"ha_local_url\": \"{{ha_local_url}}\",\n  \"device_language\": \"nl\",\n  \"language\": \"nl\"\n}"
+            },
+            "url": "{{base_url}}/api/device/pair",
+            "description": "Home Assistant direct pairing callback. The ESP accepts only its own model-specific device_id, client_type esp32 and a real LAN ha_local_url."
+          },
+          "response": []
+        },
+        {
+          "name": "Forget Pairing",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/device/forget",
+            "description": "Protected endpoint. Clears Home Assistant pairing and restarts into pairing mode."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Device Layer Commands",
+      "item": [
+        {
+          "name": "Device Command - Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"status\"\n}"
+            },
+            "url": "{{base_url}}/api/device/command",
+            "description": "Protected native command endpoint used by Home Assistant entities."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Command - Play/Pause",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"play_pause\"\n}"
+            },
+            "url": "{{base_url}}/api/device/command",
+            "description": "Protected native play/pause command."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Command - Next",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"next\"\n}"
+            },
+            "url": "{{base_url}}/api/device/command",
+            "description": "Protected native next-track command."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Command - Previous",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"previous\"\n}"
+            },
+            "url": "{{base_url}}/api/device/command",
+            "description": "Protected native previous-track command."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Command - DJ Announcement",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"dj_response\",\n  \"text\": \"DJConnect is klaar voor je volgende verzoek.\",\n  \"audio_url\": \"\"\n}"
+            },
+            "url": "{{base_url}}/api/device/command",
+            "description": "Protected native command parser path for a DJ announcement."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Command - Brightness",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"set_brightness\",\n  \"value\": 100\n}"
+            },
+            "url": "{{base_url}}/api/device/command",
+            "description": "Protected native settings command. Applies live and persists."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Command - Speaker Cue Volume",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"set_speaker_volume\",\n  \"value\": 100\n}"
+            },
+            "url": "{{base_url}}/api/device/command",
+            "description": "Protected native settings command for built-in cue volume."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Device Layer Direct Actions",
+      "item": [
+        {
+          "name": "Post DJ Announcement",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"DJConnect is klaar voor je volgende verzoek.\",\n  \"audio_url\": \"\"\n}"
+            },
+            "url": "{{base_url}}/api/device/dj_response",
+            "description": "Protected endpoint used by Home Assistant to show and optionally play a DJ announcement. audio_url may point to WAV or MP3."
+          },
+          "response": []
+        },
+        {
+          "name": "Start OTA",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{firmware_url}}\",\n  \"sha256\": \"{{firmware_sha256}}\",\n  \"version\": \"{{firmware_version}}\",\n  \"device\": \"{{device_model}}\"\n}"
+            },
+            "url": "{{base_url}}/api/device/ota",
+            "description": "Protected OTA endpoint. The device field must match the active board profile, for example lilygo-t-embed-s3 or esp32-s3-box-3."
+          },
+          "response": []
+        },
+        {
+          "name": "Reboot Device",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{device_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/device/reboot",
+            "description": "Protected endpoint. Returns success, then restarts after a short delay."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Destructive Web Actions",
+      "item": [
+        {
+          "name": "Reset HA Pairing From Web",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/reset-pairing",
+            "description": "Destructive local web action. Clears Home Assistant pairing and restarts into pairing mode."
+          },
+          "response": []
+        },
+        {
+          "name": "Reboot From Web",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/reboot",
+            "description": "Local web action. Restarts the device."
+          },
+          "response": []
+        },
+        {
+          "name": "Factory Reset From Web",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/hard-reset",
+            "description": "Destructive local web action. Runs the firmware factory-reset callback and restarts into setup flow."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

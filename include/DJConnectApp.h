@@ -122,6 +122,9 @@ private:
   void resetFlyer();
   void updateFlyer();
   void fireFlyer();
+  void resetMazeChase();
+  void updateMazeChase();
+  void switchMazeLane();
   void updateGameHighScore(int &highScore, int score);
   bool transferToOutputByNameOrId(const String &output);
   bool startPlaylistByNameOrUri(const String &playlist);
@@ -298,6 +301,15 @@ private:
   int flyerHighScore_ = 0;
   bool flyerShotActive_ = false;
   uint32_t flyerFlashUntil_ = 0;
+  int mazePlayerX_ = 52;
+  int mazePlayerLane_ = 1;
+  int mazeGhostX_ = 278;
+  int mazeGhostLane_ = 1;
+  int mazePelletX_ = 180;
+  int mazePelletLane_ = 1;
+  int mazeScore_ = 0;
+  int mazeHighScore_ = 0;
+  uint32_t mazeFlashUntil_ = 0;
   uint32_t screenOffTimeoutMs_ = Config::DisplayOffAfterMs;
   uint32_t deviceSleepTimeoutMs_ = Config::DeviceSleepAfterMs;
   uint8_t screenBrightnessPercent_ = 100;
@@ -370,6 +382,7 @@ private:
   uint32_t lastPongFrameAt_ = 0;
   uint32_t lastAsteroidsFrameAt_ = 0;
   uint32_t lastFlyerFrameAt_ = 0;
+  uint32_t lastMazeFrameAt_ = 0;
   uint32_t stressTestStepCount_ = 0;
   uint32_t heapTrendBaselineMinFree_ = 0;
   uint32_t heapTrendBaselineLargestBlock_ = 0;

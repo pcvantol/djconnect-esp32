@@ -331,6 +331,17 @@ void DisplayManager::renderFlyerScreen(int planeY, int obstacleX, int obstacleY,
   renderFlyer(tft_, planeY, obstacleX, obstacleY, shotX, shotActive, score, highScore, hitFlash, notice);
 }
 
+void DisplayManager::renderMazeChaseScreen(int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
+  if (screenBufferReady_) {
+    screen_.fillSprite(TFT_BLACK);
+    renderMazeChase(screen_, playerX, playerLane, ghostX, ghostLane, pelletX, pelletLane, score, highScore, hitFlash, notice);
+    screen_.pushSprite(0, 0);
+    return;
+  }
+  tft_.fillScreen(TFT_BLACK);
+  renderMazeChase(tft_, playerX, playerLane, ghostX, ghostLane, pelletX, pelletLane, score, highScore, hitFlash, notice);
+}
+
 void DisplayManager::renderAlbumArtScreen(
     const SpotifyState &playback,
     const StatusNotice &notice,
@@ -1005,7 +1016,7 @@ void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ball
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
   canvas.setTextColor(TFT_ORANGE, TFT_BLACK);
-  canvas.drawString("Pong", 8, 5, 2);
+  canvas.drawString(I18n::text("pong"), 8, 5, 2);
   const String scoreText = String("Score ") + String(score) + "  High " + String(highScore);
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
@@ -1066,6 +1077,38 @@ void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int 
   if (shotActive) {
     canvas.fillRoundRect(shotX, planeY - 2, 14, 4, 2, GameLightBlue);
   }
+  if (hitFlash) {
+    canvas.drawRect(0, 0, 320, 170, TFT_RED);
+    canvas.drawRect(1, 1, 318, 168, TFT_RED);
+  }
+  drawMenuFooter(canvas, notice);
+}
+
+template <typename Canvas>
+void DisplayManager::renderMazeChase(Canvas &canvas, int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
+  canvas.setTextDatum(TL_DATUM);
+  canvas.fillScreen(TFT_BLACK);
+  canvas.setTextColor(TFT_YELLOW, TFT_BLACK);
+  canvas.drawString(I18n::text("maze_chase"), 8, 5, 2);
+  const String scoreText = String("Score ") + String(score) + "  High " + String(highScore);
+  canvas.setTextColor(TFT_WHITE, TFT_BLACK);
+  canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
+  canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
+  const int lanes[3] = {58, 96, 134};
+  for (int lane = 0; lane < 3; lane++) {
+    canvas.drawFastHLine(18, lanes[lane], 284, GameBlue);
+    for (int x = 42; x <= 278; x += 34) {
+      canvas.drawPixel(x, lanes[lane], TFT_DARKGREY);
+    }
+  }
+  canvas.fillCircle(pelletX, lanes[constrain(pelletLane, 0, 2)], 4, TFT_WHITE);
+  const int y = lanes[constrain(playerLane, 0, 2)];
+  canvas.fillCircle(playerX, y, 10, TFT_YELLOW);
+  canvas.fillTriangle(playerX + 4, y, playerX + 13, y - 7, playerX + 13, y + 7, TFT_BLACK);
+  const int gy = lanes[constrain(ghostLane, 0, 2)];
+  canvas.fillRoundRect(ghostX - 10, gy - 10, 20, 20, 6, BrightPurple);
+  canvas.fillCircle(ghostX - 4, gy - 3, 2, TFT_WHITE);
+  canvas.fillCircle(ghostX + 4, gy - 3, 2, TFT_WHITE);
   if (hitFlash) {
     canvas.drawRect(0, 0, 320, 170, TFT_RED);
     canvas.drawRect(1, 1, 318, 168, TFT_RED);

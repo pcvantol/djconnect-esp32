@@ -15,6 +15,7 @@ enum class UiScreen {
   Pong,
   Asteroids,
   Flyer,
+  MazeChase,
   RootMenu,
   About,
   Settings,
@@ -56,7 +57,7 @@ constexpr size_t HardResetOptionCount = ConfirmOptionCount;
 constexpr size_t WifiFailureOptionCount = 4;
 constexpr size_t SettingsItemCount = 14;
 constexpr size_t RootMenuItemCount = 11;
-constexpr size_t GamesItemCount = 3;
+constexpr size_t GamesItemCount = 4;
 constexpr size_t HelpItemCount = 8;
 constexpr size_t AboutItemCount = 9;
 constexpr size_t FixedSoundOutputCount = 2;
@@ -74,6 +75,7 @@ inline size_t itemCount(UiScreen screen, const MenuCountInput &input) {
     case UiScreen::Pong:
     case UiScreen::Asteroids:
     case UiScreen::Flyer:
+    case UiScreen::MazeChase:
     case UiScreen::NowPlaying:
       return 0;
     case UiScreen::Games:

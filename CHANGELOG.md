@@ -2,9 +2,15 @@
 
 ## Unreleased
 
-No unreleased changes yet.
+### Added
 
-## v3.1.16
+- Added Maze Chase as a fourth local game on device and web, with device/browser-local high score storage.
+
+### Changed
+
+- Renamed the visible game labels to match the iOS app: Paddle Rally, Meteor Run, Sky Dash and Maze Chase.
+
+## v3.1.17
 
 Hygiene release for documentation, tests, handoff, backlog, issues and cross-repo sync prompts.
 
@@ -139,8 +145,8 @@ Focused UI, playback, web portal and release hygiene update.
 
 ### Added
 
-- Web portal Games panel with local browser-side Pong, Asteroids and Fly, including browser-local highscores.
-- Device game highscores for Pong, Asteroids and Fly stored in the `provision` NVS namespace and cleared by factory reset.
+- Web portal Games panel with local browser-side Paddle Rally, Meteor Run and Sky Dash, including browser-local highscores.
+- Device game highscores for Paddle Rally, Meteor Run and Sky Dash stored in the `provision` NVS namespace and cleared by factory reset.
 - Web Up Next per-item play buttons and a compact refresh button.
 - Web Up Next album art thumbnails when Home Assistant supplies queue image URLs. The ESP only passes URLs through; the browser lazy-loads thumbnails when the queue panel is visible.
 - Queue context propagation for Up Next item playback so `play_context_at` can use the queue/context URI returned by Home Assistant.
@@ -151,9 +157,9 @@ Focused UI, playback, web portal and release hygiene update.
 - Playback status indicator is now a music-note icon on device and web instead of `S`, while keeping the same green/grey/red status colors.
 - `Current Song` label is now `Current song`; Dutch remains `Huidig nummer`.
 - Up Next on device refreshes automatically after selecting a queue item.
-- Web game controls are game-specific: Asteroids uses left/right arrows and Pong hides the fire button.
-- Pong colors were swapped to orange title/paddle/LED-ring and green ball.
-- Asteroids visuals were refined with a smaller ship and asteroid; the device LED-ring uses blue for Asteroids and light blue for Fly.
+- Web game controls are game-specific: Meteor Run uses left/right arrows and Paddle Rally hides the fire button.
+- Paddle Rally colors were swapped to orange title/paddle/LED-ring and green ball.
+- Meteor Run visuals were refined with a smaller ship and asteroid; the device LED-ring uses blue for Meteor Run and light blue for Sky Dash.
 - Menu and no-playback LED-ring handling now hard-clears pixels so stale volume LEDs do not remain visible.
 - Web portal playback/queue/game controls use compact SVG/icon buttons and avoid page scrolling while game keyboard controls are active.
 - Voice/DJ-response error messages from Home Assistant are surfaced on the device DJ response screen.
@@ -175,7 +181,7 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 
 - Home Assistant backed playback remote control with Now Playing, track progress, volume, pause/resume, next and previous controls.
 - Device menus for Up Next, Playlists, Sound Outputs, Settings, About and Logs.
-- Local Games menu with Pong, Asteroids and Flyer mini-games.
+- Local Games menu with Paddle Rally, Meteor Run and Sky Dash mini-games.
 - Help screen with button/encoder controls, shown once after initial Home Assistant pairing and available from the main menu.
 - Separate shuffle and repeat controls on the device main menu, Now Playing web portal and Home Assistant command API.
 - Language setting for the device UI, web portal and captive portal with English and Dutch support.
@@ -195,7 +201,7 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Proprietary firmware license for closed-source distribution on sold devices.
 - WS2812 LED-ring feedback for volume, status, setup/AP mode, charging, connectivity and firmware update state.
 - Speaker cues for boot, reset, battery warning, factory reset, charging completed, menu/back and push-to-talk start/stop.
-- Pong score display, restart-on-encoder-long-press, subtle wall-bounce cues, miss feedback sound/red border and dedicated bright-orange paddle LED-ring feedback that pauses when the screen turns off.
+- Paddle Rally score display, restart-on-encoder-long-press, subtle wall-bounce cues, miss feedback sound/red border and dedicated bright-orange paddle LED-ring feedback that pauses when the screen turns off.
 - Direct Home Assistant pairing now treats the first token as pending; if HA rejects it with 401/403/404 during first validation, the device returns to pairing mode instead of staying half-paired.
 - Home Assistant playback backend unavailability can be reported as HTTP 200 with `backend_available:false`; the ESP shows playback status red without treating it as a pairing/auth failure.
 - After WiFi/Home Assistant setup at boot, the first playback status poll is forced immediately so the playback music-note indicator reflects the backend state without waiting for a button or volume action.
