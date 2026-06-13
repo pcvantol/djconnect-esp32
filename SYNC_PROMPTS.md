@@ -227,10 +227,11 @@ Requirements:
 - Keep the updater and OS maintenance daemon separate from the touch UI and
   keep the touch UI runnable without root privileges.
 - Keep general Raspberry Pi OS bootstrap separate from the app release tarball.
-  Repo-only bootstrap may configure timezone, SSH, apt full-upgrade, HyperPixel
-  and Glances web monitoring; Glances web should run from a dedicated
-  `/opt/djconnect-glances` virtualenv through `glances-web.service` on port
-  `61208` instead of the distro `glances.service`.
+  Repo-only bootstrap targets Raspberry Pi OS Lite 64-bit and may configure
+  timezone, SSH, apt full-upgrade, minimal X11/Qt runtime dependencies,
+  HyperPixel and Glances web monitoring. Glances web should run from a
+  dedicated `/opt/djconnect-glances` virtualenv through `glances-web.service`
+  on port `61208` instead of the distro `glances.service`.
 - Use unattended GitHub release updates only after verifying release assets with
   SHA256 at minimum; prefer signed manifests when available.
 - Treat backend_unavailable and version_mismatch as recoverable without
@@ -1743,10 +1744,11 @@ Requirements:
 - Keep the updater and OS maintenance daemon separate from the touch UI and
   keep the touch UI runnable without root privileges.
 - Keep general Raspberry Pi OS bootstrap separate from the app release tarball.
-  Repo-only bootstrap may configure timezone, SSH, apt full-upgrade, HyperPixel
-  and Glances web monitoring; Glances web should run from a dedicated
-  `/opt/djconnect-glances` virtualenv through `glances-web.service` on port
-  `61208` instead of the distro `glances.service`.
+  Repo-only bootstrap targets Raspberry Pi OS Lite 64-bit and may configure
+  timezone, SSH, apt full-upgrade, minimal X11/Qt runtime dependencies,
+  HyperPixel and Glances web monitoring. Glances web should run from a
+  dedicated `/opt/djconnect-glances` virtualenv through `glances-web.service`
+  on port `61208` instead of the distro `glances.service`.
 - Use unattended GitHub release updates only after verifying release assets with
   SHA256 at minimum; prefer signed manifests when available.
 - Treat backend_unavailable and version_mismatch as recoverable without
