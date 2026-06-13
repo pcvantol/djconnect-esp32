@@ -865,7 +865,7 @@ Na succesvolle HA direct pair en eerste geaccepteerde HA command/status mag UI n
 Backend unavailable mag niet terug naar pairing-code scherm forceren.
 Pairing stale mag duidelijk tonen: reset/re-pair nodig.
 Soft reset/reboot moet local cue sound en felle witte LED-ring flash tonen vlak voor reboot.
-Bonus games Pong, Asteroids, Fly en Pacman mogen in UI blijven.
+Bonus games Paddle Rally, Meteor Run, Sky Dash en Maze Chase mogen in UI blijven.
 10. Tests
 Voeg/update host tests waar mogelijk:
 
@@ -1274,8 +1274,14 @@ Examples:
 {"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"set_repeat","value":"context"}
 {"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"start_liked_proxy","play":true}
 {"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"start_playlist","value":"spotify:playlist:...","play":true}
-{"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"set_output","value":"iPhone","play":true}
+{"device_id":"djconnect-ios-8F3A2C91B45D","client_type":"ios","command":"set_output","value":"Living Room","play":true}
 ```
+
+Apple app clients may prepend a local `Geen`/`None` no-output choice in the UI.
+They must not synthesize `iPhone standaard` or `Mac standaard` output choices,
+because those are not backend playback devices. When `Geen` is selected,
+playback-start commands are blocked locally until a real backend output is
+selected.
 
 Playlist command responses should include playlist metadata and artwork when
 available:
