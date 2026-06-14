@@ -816,7 +816,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       paddleY:86, ballX:160, ballY:86, ballVX:3, ballVY:2,
       shipX:160, asteroidX:180, asteroidY:48, asteroidVX:2, asteroidVY:2, bullet:false, bulletY:0,
       planeY:86, obstacleX:300, obstacleY:86, shot:false, shotX:0,
-      mazeX:52, mazeLane:1, ghostX:278, ghostLane:1, pelletX:180, pelletLane:1,
+      mazeX:52, mazeLane:1, ghostX:278, ghostLane:1, pelletX:180, pelletLane:1, mazePowerUntil:0,
       flashUntil:0, last:0
     };
     const gameNames = { pong:"Paddle Rally", asteroids:"Meteor Run", fly:"Sky Dash", maze:"Maze Chase" };
@@ -862,7 +862,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       } else if (game.mode === "fly") {
         game.planeY = 86; game.obstacleX = 300; game.obstacleY = 52 + Math.random() * 92; game.shot = false;
       } else if (game.mode === "maze") {
-        game.mazeX = 52; game.mazeLane = 1; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3);
+        game.mazeX = 52; game.mazeLane = 1; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3); game.mazePowerUntil = 0;
       }
       updateGameHud();
     }
@@ -912,7 +912,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         lanes.forEach(y => { ctx.beginPath(); ctx.moveTo(18, y); ctx.lineTo(302, y); ctx.stroke(); });
         ctx.fillStyle = "#f3f7f5"; ctx.beginPath(); ctx.arc(game.pelletX, lanes[game.pelletLane], 4, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#ffd84f"; ctx.beginPath(); ctx.arc(game.mazeX, lanes[game.mazeLane], 10, 0.25 * Math.PI, 1.75 * Math.PI); ctx.lineTo(game.mazeX, lanes[game.mazeLane]); ctx.fill();
-        ctx.fillStyle = "#d72ff3"; ctx.fillRect(game.ghostX - 10, lanes[game.ghostLane] - 10, 20, 20);
+        const vulnerable = Date.now() < game.mazePowerUntil;
+        ctx.fillStyle = vulnerable ? (Math.floor(Date.now() / 180) % 2 ? "#f3f7f5" : "#5fa7ff") : "#d72ff3"; ctx.fillRect(game.ghostX - 10, lanes[game.ghostLane] - 10, 20, 20);
         ctx.fillStyle = "#f3f7f5"; ctx.beginPath(); ctx.arc(game.ghostX - 4, lanes[game.ghostLane] - 3, 2, 0, Math.PI * 2); ctx.arc(game.ghostX + 4, lanes[game.ghostLane] - 3, 2, 0, Math.PI * 2); ctx.fill();
       }
       if (Date.now() < game.flashUntil) { ctx.strokeStyle = "#ff735d"; ctx.lineWidth = 2; ctx.strokeRect(1, 1, 318, 168); ctx.lineWidth = 1; }
@@ -950,14 +951,19 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
           if (game.obstacleX < 24) { game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; setGameScore(game.score + 1); }
           if (game.obstacleX < 64 && game.obstacleX > 28 && Math.abs(game.planeY - game.obstacleY) < 28) { game.flashUntil = Date.now() + 350; game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; setGameScore(0); }
         } else if (game.mode === "maze") {
-          const speed = 2 + Math.min(Math.floor(game.score / 8), 4);
+          const vulnerable = Date.now() < game.mazePowerUntil;
+          const speed = vulnerable ? 1 : 1 + Math.min(Math.floor(game.score / 10), 3);
           game.ghostX += game.ghostX > game.mazeX ? -speed : speed;
-          if (Math.random() < .08) game.ghostLane += game.ghostLane < game.mazeLane ? 1 : game.ghostLane > game.mazeLane ? -1 : 0;
+          if (Math.random() < (vulnerable ? .05 : .07)) game.ghostLane += game.ghostLane < game.mazeLane ? 1 : game.ghostLane > game.mazeLane ? -1 : 0;
           if (Math.abs(game.mazeX - game.pelletX) < 13 && game.mazeLane === game.pelletLane) {
-            setGameScore(game.score + 1); game.pelletX = 42 + Math.random() * 236; game.pelletLane = Math.floor(Math.random() * 3);
+            setGameScore(game.score + 1); game.mazePowerUntil = Date.now() + 6000; game.pelletX = 42 + Math.random() * 236; game.pelletLane = Math.floor(Math.random() * 3);
           }
           if (Math.abs(game.mazeX - game.ghostX) < 15 && game.mazeLane === game.ghostLane) {
-            game.flashUntil = Date.now() + 350; game.mazeX = 52; game.mazeLane = 1; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3); setGameScore(0);
+            if (vulnerable) {
+              setGameScore(game.score + 5); game.flashUntil = Date.now() + 180; game.ghostX = game.mazeX < 160 ? 278 : 42; game.ghostLane = Math.floor(Math.random() * 3);
+            } else {
+              game.flashUntil = Date.now() + 350; game.mazeX = 52; game.mazeLane = 1; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3); game.mazePowerUntil = 0; setGameScore(0);
+            }
           }
         }
         drawGame();

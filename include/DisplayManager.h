@@ -65,7 +65,7 @@ public:
   void renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
 
   // Renders the local maze chase mini game.
-  void renderMazeChaseScreen(int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool hitFlash, const StatusNotice &notice);
+  void renderMazeChaseScreen(int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool ghostVulnerable, bool hitFlash, const StatusNotice &notice);
 
   // Renders the 160x160 current-song album art view.
   void renderAlbumArtScreen(
@@ -170,7 +170,7 @@ private:
   template <typename Canvas>
   void renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
   template <typename Canvas>
-  void renderMazeChase(Canvas &canvas, int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool hitFlash, const StatusNotice &notice);
+  void renderMazeChase(Canvas &canvas, int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool ghostVulnerable, bool hitFlash, const StatusNotice &notice);
 
   template <typename Canvas>
   String clippedText(Canvas &canvas, String text, int maxWidth, uint8_t font);

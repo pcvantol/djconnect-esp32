@@ -331,15 +331,15 @@ void DisplayManager::renderFlyerScreen(int planeY, int obstacleX, int obstacleY,
   renderFlyer(tft_, planeY, obstacleX, obstacleY, shotX, shotActive, score, highScore, hitFlash, notice);
 }
 
-void DisplayManager::renderMazeChaseScreen(int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderMazeChaseScreen(int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool ghostVulnerable, bool hitFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderMazeChase(screen_, playerX, playerLane, ghostX, ghostLane, pelletX, pelletLane, score, highScore, hitFlash, notice);
+    renderMazeChase(screen_, playerX, playerLane, ghostX, ghostLane, pelletX, pelletLane, score, highScore, ghostVulnerable, hitFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderMazeChase(tft_, playerX, playerLane, ghostX, ghostLane, pelletX, pelletLane, score, highScore, hitFlash, notice);
+  renderMazeChase(tft_, playerX, playerLane, ghostX, ghostLane, pelletX, pelletLane, score, highScore, ghostVulnerable, hitFlash, notice);
 }
 
 void DisplayManager::renderAlbumArtScreen(
@@ -1085,7 +1085,7 @@ void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int 
 }
 
 template <typename Canvas>
-void DisplayManager::renderMazeChase(Canvas &canvas, int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderMazeChase(Canvas &canvas, int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool ghostVulnerable, bool hitFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
   canvas.setTextColor(TFT_YELLOW, TFT_BLACK);
@@ -1106,7 +1106,8 @@ void DisplayManager::renderMazeChase(Canvas &canvas, int playerX, int playerLane
   canvas.fillCircle(playerX, y, 10, TFT_YELLOW);
   canvas.fillTriangle(playerX + 4, y, playerX + 13, y - 7, playerX + 13, y + 7, TFT_BLACK);
   const int gy = lanes[constrain(ghostLane, 0, 2)];
-  canvas.fillRoundRect(ghostX - 10, gy - 10, 20, 20, 6, BrightPurple);
+  const uint16_t ghostColor = ghostVulnerable ? (((millis() / 180) % 2) == 0 ? GameBlue : TFT_WHITE) : BrightPurple;
+  canvas.fillRoundRect(ghostX - 10, gy - 10, 20, 20, 6, ghostColor);
   canvas.fillCircle(ghostX - 4, gy - 3, 2, TFT_WHITE);
   canvas.fillCircle(ghostX + 4, gy - 3, 2, TFT_WHITE);
   if (hitFlash) {

@@ -2076,6 +2076,7 @@ void DJConnectApp::resetMazeChase() {
   mazePelletX_ = 90 + static_cast<int>(esp_random() % 170);
   mazePelletLane_ = static_cast<int>(esp_random() % 3);
   mazeScore_ = 0;
+  mazePowerUntil_ = 0;
   mazeFlashUntil_ = 0;
   lastMazeFrameAt_ = 0;
 }
@@ -2098,18 +2099,20 @@ void DJConnectApp::updateMazeChase() {
     renderNow();
     return;
   }
-  if (now - lastMazeFrameAt_ < 42) {
+  if (now - lastMazeFrameAt_ < 48) {
     return;
   }
   lastMazeFrameAt_ = now;
 
-  const int chaseSpeed = 2 + min(mazeScore_ / 8, 4);
+  const bool ghostVulnerable = now < mazePowerUntil_;
+  const int chaseSpeed = ghostVulnerable ? 1 : 1 + min(mazeScore_ / 10, 3);
   if (mazeGhostX_ > mazePlayerX_) {
     mazeGhostX_ -= chaseSpeed;
   } else {
     mazeGhostX_ += chaseSpeed;
   }
-  if ((esp_random() % 12) == 0) {
+  const uint32_t laneChance = ghostVulnerable ? 20 : 14;
+  if ((esp_random() % laneChance) == 0) {
     if (mazeGhostLane_ < mazePlayerLane_) {
       mazeGhostLane_++;
     } else if (mazeGhostLane_ > mazePlayerLane_) {
@@ -2120,6 +2123,7 @@ void DJConnectApp::updateMazeChase() {
   if (abs(mazePlayerX_ - mazePelletX_) < 13 && mazePlayerLane_ == mazePelletLane_) {
     mazeScore_++;
     updateGameHighScore(mazeHighScore_, mazeScore_);
+    mazePowerUntil_ = now + 6000;
     mazePelletX_ = 42 + static_cast<int>(esp_random() % 236);
     mazePelletLane_ = static_cast<int>(esp_random() % 3);
     if (volumeFeedbackEnabled_) {
@@ -2128,8 +2132,21 @@ void DJConnectApp::updateMazeChase() {
   }
 
   if (abs(mazePlayerX_ - mazeGhostX_) < 15 && mazePlayerLane_ == mazeGhostLane_) {
+    if (ghostVulnerable) {
+      mazeScore_ += 5;
+      updateGameHighScore(mazeHighScore_, mazeScore_);
+      mazeGhostX_ = mazePlayerX_ < 160 ? 278 : 42;
+      mazeGhostLane_ = static_cast<int>(esp_random() % 3);
+      mazeFlashUntil_ = now + 180;
+      if (volumeFeedbackEnabled_) {
+        sound_.playConfirm();
+      }
+      renderNow();
+      return;
+    }
     mazeFlashUntil_ = now + 350;
     mazeScore_ = 0;
+    mazePowerUntil_ = 0;
     mazePlayerX_ = 52;
     mazePlayerLane_ = 1;
     mazeGhostX_ = 278;
@@ -4281,7 +4298,7 @@ void DJConnectApp::renderMenuNow() {
       break;
 
     case UiScreen::MazeChase:
-      display_.renderMazeChaseScreen(mazePlayerX_, mazePlayerLane_, mazeGhostX_, mazeGhostLane_, mazePelletX_, mazePelletLane_, mazeScore_, mazeHighScore_, millis() < mazeFlashUntil_, notice_);
+      display_.renderMazeChaseScreen(mazePlayerX_, mazePlayerLane_, mazeGhostX_, mazeGhostLane_, mazePelletX_, mazePelletLane_, mazeScore_, mazeHighScore_, millis() < mazePowerUntil_, millis() < mazeFlashUntil_, notice_);
       break;
 
     case UiScreen::Games: {

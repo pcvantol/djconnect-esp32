@@ -309,6 +309,7 @@ private:
   int mazePelletLane_ = 1;
   int mazeScore_ = 0;
   int mazeHighScore_ = 0;
+  uint32_t mazePowerUntil_ = 0;
   uint32_t mazeFlashUntil_ = 0;
   uint32_t screenOffTimeoutMs_ = Config::DisplayOffAfterMs;
   uint32_t deviceSleepTimeoutMs_ = Config::DeviceSleepAfterMs;

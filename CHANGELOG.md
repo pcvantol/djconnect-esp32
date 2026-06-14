@@ -9,8 +9,9 @@
 ### Changed
 
 - Renamed the visible game labels to match the iOS app: Paddle Rally, Meteor Run, Sky Dash and Maze Chase.
+- Slowed the Maze Chase ghost and made the white pellet turn the ghost temporarily edible with a blinking vulnerable state.
 
-## v3.1.17
+## v3.1.18
 
 Hygiene release for documentation, tests, handoff, backlog, issues and cross-repo sync prompts.
 
