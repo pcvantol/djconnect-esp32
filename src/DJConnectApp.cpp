@@ -136,7 +136,9 @@ void DJConnectApp::begin() {
     }
     display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
     sendHomeAssistantStatusIfDue(true);
-    lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
+    lastPlaybackPollAt_ = millis();
+    playbackPollPausedUntil_ = millis() + Config::PlaybackBootGraceMs;
+    playbackRefreshAfterPairing_ = true;
   }
 
   lastBatteryPollAt_ = millis();
@@ -200,6 +202,7 @@ void DJConnectApp::loop() {
     webVoiceTextOnlyActive_ = false;
     webVoiceTextOnlyConsumeNext_ = false;
   }
+  processPendingWebVoiceText();
   if (voiceRecording_) {
     if (!voiceRecorder_.update()) {
       const String error = voiceRecorder_.error();
@@ -233,7 +236,7 @@ void DJConnectApp::loop() {
       }
     }
   }
-  if (!voiceRecording_ && voiceState_ == VoiceState::Idle && homeAssistantPaired_) {
+  if (!voiceRecording_ && voiceState_ == VoiceState::Idle && !djResponseOverlayVisible_ && homeAssistantPaired_) {
     wakeWord_.loop(voiceRecorder_);
   } else if (wakeWord_.available() && millis() - lastWakeWordGateLogAt_ > 5000) {
     String reason;
@@ -241,6 +244,8 @@ void DJConnectApp::loop() {
       reason = "recording active";
     } else if (voiceState_ != VoiceState::Idle) {
       reason = String("voice state ") + String(static_cast<int>(voiceState_));
+    } else if (djResponseOverlayVisible_) {
+      reason = "DJ announcement active";
     } else if (!homeAssistantPaired_) {
       reason = "HA not paired";
     } else {
@@ -287,7 +292,7 @@ void DJConnectApp::loop() {
 
   updateVisualPower();
   if (!deepSleepStarted_ && display_.idleMs() >= deviceSleepTimeoutMs_) {
-    enterDeepSleep();
+    enterDeepSleep("idle timeout");
   }
   pollBatteryIfDue();
   pollPlaybackIfDue();
@@ -2679,6 +2684,71 @@ void DJConnectApp::stopVoiceRecordingAndSendText() {
   renderNow();
 }
 
+void DJConnectApp::processPendingWebVoiceText() {
+  if (!webVoiceTextPending_) {
+    return;
+  }
+  if (static_cast<int32_t>(millis() - pendingWebVoiceTextProcessAfter_) < 0) {
+    return;
+  }
+  if (voiceRecording_ || voiceState_ != VoiceState::Idle) {
+    return;
+  }
+
+  const String text = pendingWebVoiceText_;
+  pendingWebVoiceText_ = "";
+  webVoiceTextPending_ = false;
+  pendingWebVoiceTextProcessAfter_ = 0;
+  lastPlaybackPollAt_ = millis();
+  lastHaStatusAt_ = millis();
+  AppLog.print("Web voice: processing queued text chars=");
+  AppLog.println(text.length());
+
+  voiceCancelRequested_ = false;
+  voiceState_ = VoiceState::SendingCommand;
+  voiceRecording_ = false;
+  webVoiceTextOnlyActive_ = true;
+  webVoiceTextOnlyConsumeNext_ = true;
+  webVoiceTextOnlyUntil_ = millis() + Config::WebVoiceTextOnlySuppressMs;
+  notice_.visibleUntil = 0;
+  renderNow();
+
+  String message;
+  String audioUrl;
+  bool ok = false;
+  {
+    ScopedWatchdogPause watchdogPause;
+    ok = voiceClient_.sendRecognizedText(text, message, &audioUrl);
+  }
+  serviceWatchdog();
+  yield();
+
+  if (ok) {
+    if (message != "Voice command sent") {
+      showDjResponseOverlay(I18n::text("voice_dj_response"), message, 6000);
+      lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "skipped";
+      AppLog.print("DJ response displayed chars=");
+      AppLog.println(message.length());
+    } else {
+      showDjResponseOverlay(I18n::text("voice_dj_response"), I18n::text("voice_no_dj_response"), 6000);
+      lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "skipped";
+    }
+  } else if (voiceClient_.pairingInvalidated()) {
+    markHomeAssistantPairingInvalid(message);
+  } else {
+    showDjResponseOverlay(I18n::text("voice_dj_response"), message, 6000);
+  }
+
+  voiceState_ = VoiceState::Idle;
+  voiceRecording_ = false;
+  lastPlaybackPollAt_ = millis();
+  lastHaStatusAt_ = millis();
+  notice_.visibleUntil = 0;
+  renderNow();
+  serviceWatchdog();
+  yield();
+}
+
 void DJConnectApp::cancelVoiceFlow(const char *reason) {
   AppLog.print("Voice: cancel requested");
   if (reason != nullptr && strlen(reason) > 0) {
@@ -2696,6 +2766,9 @@ void DJConnectApp::cancelVoiceFlow(const char *reason) {
   nextVoiceStartFromWakeWord_ = false;
   voiceSilenceStartedAt_ = 0;
   voiceState_ = VoiceState::Idle;
+  webVoiceTextPending_ = false;
+  pendingWebVoiceText_ = "";
+  pendingWebVoiceTextProcessAfter_ = 0;
   webVoiceTextOnlyActive_ = false;
   webVoiceTextOnlyConsumeNext_ = false;
   djResponseOverlayVisible_ = false;
@@ -2884,7 +2957,12 @@ void DJConnectApp::refreshPlaybackAndBattery() {
   batteryMonitor_.refresh();
   evaluateBatteryTransition();
   if (playbackProxyReady()) {
-    spotify_.refreshPlayback();
+    {
+      ScopedWatchdogPause watchdogPause;
+      spotify_.refreshPlayback();
+    }
+    serviceWatchdog();
+    yield();
   } else {
     playback_.error = I18n::text("ha_pairing_invalid");
     showNotice(playback_.error, 2500);
@@ -2909,6 +2987,17 @@ void DJConnectApp::pollBatteryIfDue() {
 }
 
 void DJConnectApp::pollPlaybackIfDue() {
+  if (static_cast<int32_t>(millis() - playbackPollPausedUntil_) < 0) {
+    return;
+  }
+  if (webVoiceTextPending_ ||
+      webVoiceTextOnlyActive_ ||
+      djResponseOverlayVisible_ ||
+      voiceState_ == VoiceState::SendingCommand ||
+      voiceState_ == VoiceState::WaitingForResult) {
+    lastPlaybackPollAt_ = millis();
+    return;
+  }
   if (millis() - lastPlaybackPollAt_ <= Config::PlaybackPollIntervalMs) {
     return;
   }
@@ -2917,7 +3006,12 @@ void DJConnectApp::pollPlaybackIfDue() {
   if (!playbackProxyReady()) {
     return;
   }
-  spotify_.refreshPlayback();
+  {
+    ScopedWatchdogPause watchdogPause;
+    spotify_.refreshPlayback();
+  }
+  serviceWatchdog();
+  yield();
   if (spotify_.needsCredentialRefresh()) {
     if (haPairingPendingValidation_) {
       AppLog.println("Home Assistant: pending pairing rejected by playback proxy");
@@ -3055,15 +3149,6 @@ void DJConnectApp::transferToSelectedOutput() {
     } else {
       showNotice(playback_.error, 3500);
     }
-    renderNow();
-    return;
-  }
-
-  if (soundOutputSelection_ == 1) {
-    if (transferToOutputByNameOrId("iPhone")) {
-      return;
-    }
-    showNotice(playback_.error, 3500);
     renderNow();
     return;
   }
@@ -3434,9 +3519,19 @@ void DJConnectApp::logHeapIfDue() {
   heapTrendPreviousLargestBlock_ = largestBlock;
 }
 
-void DJConnectApp::enterDeepSleep() {
+void DJConnectApp::enterDeepSleep(const char *reason) {
   deepSleepStarted_ = true;
-  AppLog.println("Entering deep sleep");
+  AppLog.print("Entering deep sleep");
+  if (reason != nullptr && strlen(reason) > 0) {
+    AppLog.print(": ");
+    AppLog.print(reason);
+  }
+  AppLog.print(" uptime_ms=");
+  AppLog.print(millis());
+  AppLog.print(" idle_ms=");
+  AppLog.print(display_.idleMs());
+  AppLog.print(" timeout_ms=");
+  AppLog.println(deviceSleepTimeoutMs_);
   sound_.playTurnOff();
   responsiveDelay(220);
   ledRing_.playTurnOffRainbow();
@@ -3809,6 +3904,15 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
   if (!haDevice_.isPaired() || WiFi.status() != WL_CONNECTED) {
     return;
   }
+  if (!force &&
+      (webVoiceTextPending_ ||
+       webVoiceTextOnlyActive_ ||
+       djResponseOverlayVisible_ ||
+       voiceState_ == VoiceState::SendingCommand ||
+       voiceState_ == VoiceState::WaitingForResult)) {
+    lastHaStatusAt_ = millis();
+    return;
+  }
   const uint32_t now = millis();
   if (!force && now - lastHaStatusAt_ < Config::HaStatusIntervalMs) {
     return;
@@ -3836,7 +3940,8 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
     haPairingPendingValidation_ = false;
     if (wasPendingValidation || playbackRefreshAfterPairing_) {
       playbackRefreshAfterPairing_ = false;
-      lastPlaybackPollAt_ = Logic::forceImmediatePollTimestamp();
+      lastPlaybackPollAt_ = millis();
+      playbackPollPausedUntil_ = millis() + Config::PlaybackBootGraceMs;
       AppLog.println("Home Assistant: pairing status confirmed, enabling playback proxy");
     }
   } else if (result == DJConnectPairing::StatusResult::PairingInvalid) {
@@ -3942,7 +4047,7 @@ bool DJConnectApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   if (!deepSleepStarted_ && now - haPairingStartedAt_ >= Config::PairingModeTimeoutMs) {
     display_.showBootMessage(I18n::text("boot_pair_timeout_sleeping"), battery_);
     responsiveDelay(600);
-    enterDeepSleep();
+    enterDeepSleep("pairing timeout");
   }
   recordLoopMetrics(loopStartedAt);
   responsiveDelay(10);
@@ -3978,33 +4083,19 @@ bool DJConnectApp::sendWebVoiceTextCallback(void *context, const String &text, S
     return false;
   }
   DJConnectApp *app = static_cast<DJConnectApp *>(context);
-  AppLog.print("Web voice: sending text chars=");
+  AppLog.print("Web voice: queued text chars=");
   AppLog.println(text.length());
-  app->voiceState_ = VoiceState::SendingCommand;
-  app->voiceRecording_ = false;
-  app->webVoiceTextOnlyActive_ = true;
-  app->webVoiceTextOnlyConsumeNext_ = true;
-  app->webVoiceTextOnlyUntil_ = millis() + Config::WebVoiceTextOnlySuppressMs;
-  app->notice_.visibleUntil = 0;
-  const bool ok = app->voiceClient_.sendRecognizedText(text, message, &audioUrl);
-  if (ok) {
-    if (message != "Voice command sent") {
-      app->showDjResponseOverlay(I18n::text("voice_dj_response"), message, 6000);
-      app->lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "skipped";
-      AppLog.print("DJ response displayed chars=");
-      AppLog.println(message.length());
-    } else {
-      app->showDjResponseOverlay(I18n::text("voice_dj_response"), I18n::text("voice_no_dj_response"), 6000);
-      app->lastDjAudioType_ = audioUrl.isEmpty() ? "none" : "skipped";
-    }
-  } else if (app->voiceClient_.pairingInvalidated()) {
-    app->markHomeAssistantPairingInvalid(message);
+  if (app->webVoiceTextPending_ || app->voiceRecording_ || app->voiceState_ != VoiceState::Idle) {
+    message = I18n::text("voice_processing");
+    audioUrl = "";
+    return false;
   }
-  app->voiceState_ = VoiceState::Idle;
-  app->voiceRecording_ = false;
-  app->notice_.visibleUntil = 0;
-  app->renderNow();
-  return ok;
+  app->pendingWebVoiceText_ = text;
+  app->webVoiceTextPending_ = true;
+  app->pendingWebVoiceTextProcessAfter_ = millis() + 750;
+  message = "DJ announcement test queued";
+  audioUrl = "";
+  return true;
 }
 
 void DJConnectApp::wakeWordDetectedCallback(void *context) {
@@ -4012,7 +4103,10 @@ void DJConnectApp::wakeWordDetectedCallback(void *context) {
     return;
   }
   DJConnectApp *app = static_cast<DJConnectApp *>(context);
-  if (app->voiceRecording_ || app->voiceState_ != VoiceState::Idle || !app->homeAssistantPaired_) {
+  if (app->voiceRecording_ ||
+      app->voiceState_ != VoiceState::Idle ||
+      app->djResponseOverlayVisible_ ||
+      !app->homeAssistantPaired_) {
     return;
   }
   AppLog.println("Wake word: starting push-to-talk flow");
@@ -4246,7 +4340,9 @@ bool DJConnectApp::handleDjResponseText(const String &text, const String &audioU
         }
       }
     }
+    input_.clearPendingButtonActions();
     const DjResponseAudioResult audioResult = djAudio_.play(resolvedAudioUrl);
+    input_.clearPendingButtonActions();
     if (voiceCancelRequested_) {
       voiceCancelRequested_ = false;
       spoken = false;
@@ -4326,7 +4422,6 @@ void DJConnectApp::renderMenuNow() {
     case UiScreen::SoundOutputs: {
       MenuItemView items[8];
       items[0].label = I18n::text("none");
-      items[1].label = "iPhone";
       size_t itemCount = DJConnectMenuModel::FixedSoundOutputCount;
       if (deviceList_.available && deviceList_.count > 0) {
         const size_t maxDevices = min(deviceList_.count, DJConnectMenuModel::MaxVisibleOutputs);

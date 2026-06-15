@@ -135,6 +135,7 @@ private:
   void handleVoiceButton();
   void stopVoiceRecordingAndSendText();
   void cancelVoiceFlow(const char *reason);
+  void processPendingWebVoiceText();
   void goToNextTrack();
   void goToPreviousTrack();
   void refreshPlaybackAndBattery();
@@ -175,7 +176,7 @@ private:
   void serviceWatchdog();
   void responsiveDelay(uint32_t durationMs);
   void logHeapIfDue();
-  void enterDeepSleep();
+  void enterDeepSleep(const char *reason = nullptr);
   void enterDeepSleepWithoutDisplay();
   void recordLoopMetrics(uint32_t loopStartedAt);
   // Applies settings posted from the web dashboard and persists them.
@@ -349,6 +350,9 @@ private:
   bool nextVoiceStartFromWakeWord_ = false;
   volatile bool voiceCancelRequested_ = false;
   VoiceState voiceState_ = VoiceState::Idle;
+  bool webVoiceTextPending_ = false;
+  String pendingWebVoiceText_;
+  uint32_t pendingWebVoiceTextProcessAfter_ = 0;
   bool webVoiceTextOnlyActive_ = false;
   bool webVoiceTextOnlyConsumeNext_ = false;
   uint32_t webVoiceTextOnlyUntil_ = 0;
@@ -367,6 +371,7 @@ private:
   int pendingVolume_ = -1;
   uint32_t pendingVolumeChangedAt_ = 0;
   uint32_t lastPlaybackPollAt_ = 0;
+  uint32_t playbackPollPausedUntil_ = 0;
   uint32_t lastBatteryPollAt_ = 0;
   uint32_t lastPauseToggleAt_ = 0;
   uint32_t lastReconnectAttemptAt_ = 0;

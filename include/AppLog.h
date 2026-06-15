@@ -36,6 +36,7 @@ public:
   size_t availableLines() const;
 
 private:
+  void storeLineUnlocked(const char *line);
   void appendChar(char value);
   void appendCharUnlocked(char value);
   void commitCurrentLine();

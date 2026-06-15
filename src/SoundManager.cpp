@@ -8,6 +8,7 @@
 #include <AudioGeneratorMP3.h>
 #include <AudioOutput.h>
 #include <ESP_I2S.h>
+#include <esp_heap_caps.h>
 #include <esp_task_wdt.h>
 #include <cstring>
 
@@ -19,6 +20,7 @@ static constexpr uint32_t MinVolumeTickIntervalMs = 90;
 
 namespace {
 I2SClass SpeakerI2S;
+alignas(8) uint8_t Mp3DecoderArena[AudioGeneratorMP3::preAllocSize()];
 
 void serviceAudioWatchdog() {
   ScopedWatchdogPause::resetIfAttached();
@@ -519,10 +521,15 @@ bool SoundManager::playMp3Stream(const String &url) {
   DjConnectI2sMp3Output output;
   output.SetGain(static_cast<float>(volumePercent_) / 100.0f);
 
-  AudioGeneratorMP3 mp3;
+  AudioGeneratorMP3 mp3(Mp3DecoderArena, sizeof(Mp3DecoderArena));
   const bool started = mp3.begin(&id3, &output);
   if (!started) {
-    AppLog.println("MP3 decoder start failed");
+    AppLog.print("MP3 decoder start failed, arena=");
+    AppLog.print(sizeof(Mp3DecoderArena));
+    AppLog.print(" free=");
+    AppLog.print(heap_caps_get_free_size(MALLOC_CAP_8BIT));
+    AppLog.print(" largest=");
+    AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     id3.close();
     buffered.close();
     source.close();
@@ -591,10 +598,15 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   DjConnectI2sMp3Output output;
   output.SetGain(static_cast<float>(volumePercent_) / 100.0f);
 
-  AudioGeneratorMP3 mp3;
+  AudioGeneratorMP3 mp3(Mp3DecoderArena, sizeof(Mp3DecoderArena));
   const bool started = mp3.begin(&id3, &output);
   if (!started) {
-    AppLog.println("MP3 decoder start failed");
+    AppLog.print("MP3 decoder start failed, arena=");
+    AppLog.print(sizeof(Mp3DecoderArena));
+    AppLog.print(" free=");
+    AppLog.print(heap_caps_get_free_size(MALLOC_CAP_8BIT));
+    AppLog.print(" largest=");
+    AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     id3.close();
     buffered.close();
     source.close();

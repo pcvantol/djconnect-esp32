@@ -259,6 +259,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .playback-actions { margin-top:12px; }
     .queue { display:grid; gap:8px; }
+    #queueList, #playlistList { max-height:320px; overflow-y:auto; padding-right:6px; overscroll-behavior:contain; scrollbar-color:rgba(201,184,255,.72) rgba(155,114,255,.16); scrollbar-width:thin; }
+    #queueList::-webkit-scrollbar, #playlistList::-webkit-scrollbar { width:8px; }
+    #queueList::-webkit-scrollbar-track, #playlistList::-webkit-scrollbar-track { background:rgba(155,114,255,.14); border-radius:999px; }
+    #queueList::-webkit-scrollbar-thumb, #playlistList::-webkit-scrollbar-thumb { background:rgba(201,184,255,.72); border-radius:999px; }
     .queue-item { border-top:1px solid var(--row-line); padding-top:8px; display:grid; grid-template-columns:42px 1fr 38px; gap:10px; align-items:center; }
     .queue-item:first-child { border-top:0; padding-top:0; }
     .queue-art { width:42px; height:42px; border-radius:6px; border:1px solid var(--line); background:var(--art-bg); object-fit:cover; }
@@ -310,6 +314,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.art-popover-close { position:absolute; top:8px; right:8px; width:38px; height:38px; min-width:38px; min-height:38px; border-radius:8px; padding:0; background:rgba(8,11,12,.76); border-color:rgba(255,255,255,.28); color:#fff; font-size:24px; line-height:1; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--log-bg); color:var(--log-text); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
+    @media (min-width:720px) { #queueList, #playlistList { max-height:360px; } }
+    @media (max-width:640px) { #queueList, #playlistList { max-height:280px; } }
     @media (max-width:640px) { .game-tabs { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
     @media (max-width:420px) { button.ptt { width:100%; } }
   </style>
@@ -371,7 +377,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div id="repeatStatus" class="status"></div>
       <button id="startLikedProxyButton" class="section-action" type="button" style="display:none">Start default playlist</button>
       <div id="playbackCommandStatus" class="status"></div>
-      <div class="row"><span class="key" data-i18n="output">Sound output</span><span id="device" class="value">-</span></div>
       <select id="soundOutputSelect" aria-label="Sound output"><option value="" data-i18n="loadingOutputs">Loading outputs...</option></select>
       <div id="soundOutputStatus" class="status"></div>
       <div id="volumeStatus" class="status"></div>
@@ -1021,9 +1026,10 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("gameCanvas").addEventListener("pointerdown", event => { event.preventDefault(); focusGameCanvas(); fireGame(); });
       window.addEventListener("keydown", event => {
         if (game.mode === "none" || !game.visible || ["INPUT","SELECT","TEXTAREA","BUTTON"].includes(document.activeElement?.tagName || "")) return;
-        const movementKeys = (game.mode === "asteroids" || game.mode === "maze") ? ["ArrowLeft","ArrowRight"] : ["ArrowUp","ArrowDown"];
-        if (![...movementKeys, " ", "Enter"].includes(event.key)) return;
+        const gameKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," ","Enter"];
+        if (!gameKeys.includes(event.key)) return;
         event.preventDefault();
+        const movementKeys = (game.mode === "asteroids" || game.mode === "maze") ? ["ArrowLeft","ArrowRight"] : ["ArrowUp","ArrowDown"];
         if (event.key === movementKeys[0]) moveGame(-1);
         if (event.key === movementKeys[1]) moveGame(1);
         if (event.key === " " || event.key === "Enter") fireGame();
@@ -1075,7 +1081,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         $("shuffleStatus").textContent = "";
         $("repeatStatus").textContent = "";
         $("volumeStatus").textContent = "";
-        $("soundOutputSelect").innerHTML = `<option value="none">${tr("none")}</option><option value="iPhone">iPhone</option>`;
+        $("soundOutputSelect").innerHTML = `<option value="none">${tr("none")}</option>`;
         $("playlistList").innerHTML = `<div class="fine">${tr("spotifyUnavailable")}</div>`;
         $("queueList").innerHTML = '<div class="fine"></div>';
       }
@@ -1116,7 +1122,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       updatePlaybackButtonStates();
       text("time", `${duration(data.playback.progressMs)} / ${duration(data.playback.durationMs)}`);
       $("progressBar").style.width = `${data.playback.progressPercent || 0}%`;
-      text("device", data.device.name || "-");
       text("volume", data.device.volume >= 0 ? `${data.device.volume}%` : "-");
       setInput("volumeSlider", data.device.volume >= 0 ? String(data.device.volume) : "0");
       $("volumeSlider").disabled = !data.spotify.authorized || !data.playback.hasPlayback || !data.device.supportsVolume;
@@ -1203,15 +1208,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         none.value = "none";
         none.textContent = tr("none") || "None";
         select.appendChild(none);
-        const iphone = document.createElement("option");
-        iphone.value = "iPhone";
-        iphone.textContent = "iPhone";
-        select.appendChild(iphone);
         for (const device of (data.devices || [])) {
           if ((device.name || "").toLowerCase().includes("iphone")) {
-            iphone.value = device.id || "iPhone";
-            iphone.selected = !!device.active;
-            iphone.textContent = device.active ? "iPhone *" : "iPhone";
             continue;
           }
           const option = document.createElement("option");
@@ -2218,7 +2216,12 @@ void WebPortal::handleVoiceTextPost() {
   AppLog.println(voiceText.length());
   String message;
   String audioUrl;
-  const bool ok = voiceTextCallback_(callbackContext_, voiceText, message, audioUrl);
+  bool ok = false;
+  {
+    ScopedWatchdogPause watchdogPause;
+    ok = voiceTextCallback_(callbackContext_, voiceText, message, audioUrl);
+  }
+  ScopedWatchdogPause::resetIfAttached();
 
   JsonDocument doc;
   doc["success"] = ok;

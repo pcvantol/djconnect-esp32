@@ -19,6 +19,14 @@
 #define SPOTIFY_ALLOW_INSECURE_TLS 0
 #endif
 
+namespace {
+constexpr size_t MaxLargePlaybackPayloadBytes = 32768;
+
+bool isLargePlaybackCommand(const String &command) {
+  return command == "queue" || command == "playlists";
+}
+}  // namespace
+
 SpotifyClient::RequestGuard::RequestGuard(SemaphoreHandle_t mutex, uint32_t waitMs)
     : mutex_(mutex) {
   // If the mutex could not be created, allow the call to proceed rather than deadlocking the app.
@@ -193,7 +201,16 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
       setProxyError("HA playback empty response");
       return false;
     }
-    const DeserializationError error = deserializeJson(*response, payload);
+    if (isLargePlaybackCommand(command) && payload.length() > MaxLargePlaybackPayloadBytes) {
+      AppLog.line("HA playback response too large for " + command + " len=" + String(payload.length()));
+      setProxyError("HA playback response too large");
+      return false;
+    }
+    DeserializationError error;
+    {
+      ScopedWatchdogPause watchdogPause;
+      error = deserializeJson(*response, payload);
+    }
     if (error) {
       AppLog.line("HA playback JSON failed len=" + String(payload.length()) + " body=" + payload.substring(0, 96));
       setProxyError("HA playback JSON failed");

@@ -68,6 +68,7 @@ static constexpr uint8_t Bq27220StateOfChargeCommand = 0x2C;
 
 // Polling, debounce-adjacent, and display animation timings.
 static constexpr uint32_t PlaybackPollIntervalMs = 15000;
+static constexpr uint32_t PlaybackBootGraceMs = 30000;
 static constexpr uint32_t BatteryPollIntervalMs = 15000;
 static constexpr uint32_t HaStatusIntervalMs = 60000;
 static constexpr uint32_t VolumeFlushDelayMs = 450;

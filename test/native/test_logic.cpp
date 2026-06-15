@@ -715,7 +715,7 @@ static void testDJConnectMenuItemCounts() {
   assert(DJConnectMenuModel::SettingsItemCount == 14);
   assert(DJConnectMenuModel::itemCount(UiScreen::About, input) == DJConnectMenuModel::AboutItemCount);
   assert(DJConnectMenuModel::itemCount(UiScreen::Playlists, input) == 1);
-  assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == 2);
+  assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == 1);
 
   input.playlistsAvailable = true;
   input.playlistCount = 3;
@@ -723,7 +723,7 @@ static void testDJConnectMenuItemCounts() {
 
   input.devicesAvailable = true;
   input.deviceCount = 3;
-  assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == 5);
+  assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == 4);
 
   input.deviceCount = 99;
   assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == DJConnectMenuModel::MaxVisibleOutputs + DJConnectMenuModel::FixedSoundOutputCount);

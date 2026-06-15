@@ -1,6 +1,6 @@
 # DJConnect Firmware Issues And Backlog
 
-Concrete issue and task list after release `v3.1.16`.
+Concrete issue and task list after release `v3.1.21`.
 
 ## Open Issues
 
@@ -8,9 +8,9 @@ Concrete issue and task list after release `v3.1.16`.
   - Backlight and display buffer initialize in logs, but earlier hardware testing showed a white screen/no text.
   - Validate TFT controller/init sequence, rotation, backlight polarity and board revision.
 - [ ] Home Assistant sensor reset issue must be verified on the current HA integration.
-  - Firmware status payload is authoritative and release `v3.1.16` still posts periodic status.
+  - Firmware status payload is authoritative and release `v3.1.21` still posts periodic status.
   - If HA sensors briefly populate and then become unknown/pending, fix integration entity refresh/coordinator behavior.
-- [ ] OTA from the physical LilyGO should be re-tested with `v3.1.16`.
+- [ ] OTA from the physical LilyGO should be re-tested with `v3.1.21`.
   - Firmware now releases wake-word/TFLite and active voice/audio resources before GitHub TLS.
   - Confirm GitHub TLS no longer fails with memory allocation errors on no-PSRAM LilyGO hardware.
 - [ ] Okay Nabu wake-word reliability still needs real-room tuning.
@@ -158,16 +158,16 @@ Concrete issue and task list after release `v3.1.16`.
 
 ## OTA / Release
 
-- [x] Confirm GitHub Action release binary contains expected `v3.1.16` marker.
-- [x] Confirm both public OTA binary assets are published for `v3.1.16`:
-  - `djconnect-lilygo-t-embed-s3-v3.1.16.bin`;
-  - `djconnect-esp32-s3-box-3-v3.1.16.bin`.
+- [x] Confirm GitHub Action release binary contains expected `v3.1.21` marker.
+- [x] Confirm both public OTA binary assets are published for `v3.1.21`:
+  - `djconnect-lilygo-t-embed-s3-v3.1.21.bin`;
+  - `djconnect-esp32-s3-box-3-v3.1.21.bin`.
 - [x] Confirm manifest is published with the release.
 - [ ] Confirm manifest uses only the `firmwares` array and no legacy top-level single-device OTA fields on every future release.
 - [ ] Confirm manifest `device` values match ESP OTA validation on every future release:
   - `lilygo-t-embed-s3`;
   - `esp32-s3-box-3`.
-- [x] Confirm `min_ha_integration` is derived from the firmware major/minor version (`3.1.16` -> `3.1.0`) and `max_ha_integration` is `<3.2.0`.
+- [x] Confirm `min_ha_integration` is derived from the firmware major/minor version (`3.1.21` -> `3.1.0`) and `max_ha_integration` is `<3.2.0`.
 - [x] Update release hygiene snapshot checksum for `assets/website/site.webmanifest` after the tagline change.
 - [ ] Confirm OTA update screen shows target version.
 - [ ] Confirm OTA start/progress/complete/failure beeps are simple and not stuttery.

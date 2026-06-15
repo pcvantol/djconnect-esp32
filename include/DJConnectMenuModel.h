@@ -60,7 +60,7 @@ constexpr size_t RootMenuItemCount = 11;
 constexpr size_t GamesItemCount = 4;
 constexpr size_t HelpItemCount = 8;
 constexpr size_t AboutItemCount = 9;
-constexpr size_t FixedSoundOutputCount = 2;
+constexpr size_t FixedSoundOutputCount = 1;
 constexpr size_t MaxVisibleOutputs = 6;
 
 inline bool isMenuScreen(UiScreen screen) {

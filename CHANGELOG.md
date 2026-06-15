@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## v3.1.21
+
+Stability and web portal polish release for LilyGO playback polling, web DJ-announcement tests and queue/playlist layout.
+
+### Fixed
+
+- Prevented vertical arrow keys from scrolling the browser while Maze Chase is active in the web portal.
+- Removed the current sound-output label from the web portal playback panel, leaving the output combobox as the single control.
+- Made the web portal queue and playlist panels internally scrollable with shorter fixed list heights.
+- Blocked wake-word reactivation while the DJ announcement overlay is still visible and cleared stale encoder input around DJ-response audio playback.
+- Made DJ-response MP3 playback use a preallocated decoder arena and log heap details if decoder startup still fails.
+- Delayed automatic playback polling after boot/pairing and guarded the periodic playback status refresh so slow HA playback responses do not trip the loop-task watchdog.
+- Moved web DJ-announcement tests out of the synchronous HTTP request path, suppressing background playback/status polling while the test announcement is active, and guarded large HA queue/playlist response processing against loop-task watchdog resets.
+- Removed the fixed iPhone sound-output shortcut from device and web output selectors; `None`/`Geen` remains available.
+- Added explicit deep-sleep reason, uptime, idle and timeout values to the shutdown log so normal sleep is distinguishable from crashes in serial monitor output.
+
 ## v3.1.20
 
 Sync-prompt maintenance release for the shared DJConnect cross-repo contracts.

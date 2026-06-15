@@ -2,6 +2,7 @@
 #include "AppLog.h"
 
 #include <esp_log.h>
+#include <esp_system.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -161,6 +162,14 @@ void AppLogger::appendChar(char value) {
   unlock();
 }
 
+void AppLogger::storeLineUnlocked(const char *line) {
+  snprintf(lines_[nextLine_], MaxLineLength, "%s", line == nullptr ? "" : line);
+  nextLine_ = (nextLine_ + 1) % MaxLines;
+  if (lineCount_ < MaxLines) {
+    lineCount_++;
+  }
+}
+
 void AppLogger::appendCharUnlocked(char value) {
   if (!ready_) {
     return;
@@ -202,11 +211,7 @@ void AppLogger::commitCurrentLineUnlocked() {
   }
   const String line = linePrefix(severity) + normalized;
   Serial.println(line);
-  snprintf(lines_[nextLine_], MaxLineLength, "%s", line.c_str());
-  nextLine_ = (nextLine_ + 1) % MaxLines;
-  if (lineCount_ < MaxLines) {
-    lineCount_++;
-  }
+  storeLineUnlocked(line.c_str());
 }
 
 void AppLogger::lock() const {
