@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## v3.1.20
+
+Sync-prompt maintenance release for the shared DJConnect cross-repo contracts.
+
+### Added
+
+- Added committed device screenshot baselines under `docs/screenshots/device/`; web screenshot baselines are documented for future releases when the live portal is reachable.
+
+### Changed
+
+- Updated `SYNC_PROMPTS.md` with the Home Assistant playlist command response contract, localized UI review requirement, Spotify preflight pairing guard and guarded STT fuzzy-correction notes.
+- Restored release-cycle guidance to revalidate embedded HTTPS CA/certificate bundles for firmware/device repos before publishing.
+
+## v3.1.19
+
+Feature, UI and release-hygiene update for the ESP firmware and web portal.
+
 ### Added
 
 - Added Maze Chase as a fourth local game on device and web, with device/browser-local high score storage.
@@ -41,9 +58,9 @@
 
 - Fixed a loop-task stack canary crash when the web portal fetched larger queue snapshots.
 
-## v3.1.19
+### Maintenance
 
-Hygiene release for documentation, tests, handoff, backlog, issues and cross-repo sync prompts.
+- Hygiene release for documentation, tests, handoff, backlog, issues and cross-repo sync prompts.
 
 ### Changed
 
