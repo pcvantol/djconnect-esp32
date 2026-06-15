@@ -902,7 +902,7 @@ void DJConnectApp::handleInputEvents(const InputEvents &events) {
 
   if (events.touched) {
     if (display_.backlightPercent() == 0) {
-      display_.wakeForUserActivity();
+      wakeDisplayWithSplash();
       input_.clearPendingButtonActions();
       suppressInputUntilRelease_ = events.buttonHeld;
       return;
@@ -3091,9 +3091,6 @@ void DJConnectApp::transferToSelectedOutput() {
 void DJConnectApp::renderNow() {
   if (lowBatteryGuardActive_ || criticalBatteryGuardActive_) {
     renderLowBatteryGuard();
-    if (djResponseOverlayVisible_) {
-      display_.renderDjResponseOverlay(djResponseOverlayTitle_, diagnostics_.lastDjText);
-    }
     return;
   }
 
@@ -3254,6 +3251,12 @@ bool DJConnectApp::updateLowBatteryGuard() {
     criticalBatteryGuardActive_ = critical;
     chargingBatteryGuardActive_ = charging && !critical;
     lowBatteryGuardStartedAt_ = millis();
+    notice_.clear();
+    djResponseOverlayVisible_ = false;
+    display_.resetDjResponseOverlayCache();
+    if (voiceState_ != VoiceState::Listening && voiceState_ != VoiceState::SendingCommand) {
+      voiceState_ = VoiceState::Idle;
+    }
     input_.clearPendingButtonActions();
     renderLowBatteryGuard();
   }
@@ -3302,6 +3305,24 @@ bool DJConnectApp::connectionHealthy() {
   const bool homeAssistantOk = homeAssistantPaired_;
   const bool playbackOkOrIdle = playbackConnectionState() != PlaybackConnectionState::Error;
   return homeAssistantOk && playbackOkOrIdle;
+}
+
+void DJConnectApp::wakeDisplayWithSplash() {
+  if (lowBatteryGuardActive_ || criticalBatteryGuardActive_ || chargingBatteryGuardActive_) {
+    display_.wakeForUserActivity();
+    renderLowBatteryGuard();
+    return;
+  }
+
+  if (haPairingScreenActive_) {
+    display_.wakeForUserActivity();
+    haDevice_.displayPairingCode();
+    return;
+  }
+
+  display_.showSplashScreen(battery_);
+  responsiveDelay(Config::WakeSplashDurationMs);
+  renderNow();
 }
 
 AboutStatus DJConnectApp::aboutStatus() {
@@ -3768,7 +3789,8 @@ void DJConnectApp::setupHomeAssistantLayer() {
       languageProvisionedCallback,
       deviceCommandCallback,
       directPairCallback,
-      otaPrepareCallback);
+      otaPrepareCallback,
+      debugScreenCallback);
 
   if (!apiWasRunning) {
     AppLog.line(String("Home Assistant: paired=") + (haDevice_.isPaired() ? "true" : "false") +
@@ -4092,6 +4114,95 @@ void DJConnectApp::directPairCallback(void *context) {
     return;
   }
   static_cast<DJConnectApp *>(context)->noteDirectPairingReceived();
+}
+
+bool DJConnectApp::debugScreenCallback(void *context, const String &screenName, String &message) {
+  if (context == nullptr) {
+    message = "App unavailable";
+    return false;
+  }
+  return static_cast<DJConnectApp *>(context)->openDebugScreen(screenName, message);
+}
+
+bool DJConnectApp::openDebugScreen(const String &screenName, String &message) {
+  String normalized = screenName;
+  normalized.trim();
+  normalized.toLowerCase();
+  normalized.replace("_", "-");
+  normalized.replace(" ", "-");
+
+  UiScreen target = UiScreen::NowPlaying;
+  if (normalized == "now-playing" || normalized == "now" || normalized == "playback") {
+    target = UiScreen::NowPlaying;
+  } else if (normalized == "current-song" || normalized == "album-art") {
+    target = UiScreen::AlbumArt;
+  } else if (normalized == "queue" || normalized == "up-next") {
+    target = UiScreen::Queue;
+  } else if (normalized == "playlists") {
+    target = UiScreen::Playlists;
+  } else if (normalized == "outputs" || normalized == "sound-outputs") {
+    target = UiScreen::SoundOutputs;
+  } else if (normalized == "logs") {
+    target = UiScreen::Logs;
+  } else if (normalized == "games") {
+    target = UiScreen::Games;
+  } else if (normalized == "help") {
+    target = UiScreen::Help;
+  } else if (normalized == "paddle-rally" || normalized == "pong") {
+    resetPong();
+    target = UiScreen::Pong;
+  } else if (normalized == "meteor-run" || normalized == "asteroids") {
+    resetAsteroids();
+    target = UiScreen::Asteroids;
+  } else if (normalized == "sky-dash" || normalized == "flyer" || normalized == "fly") {
+    resetFlyer();
+    target = UiScreen::Flyer;
+  } else if (normalized == "maze-chase" || normalized == "pacman") {
+    resetMazeChase();
+    target = UiScreen::MazeChase;
+  } else if (normalized == "menu" || normalized == "root-menu") {
+    target = UiScreen::RootMenu;
+  } else if (normalized == "about") {
+    target = UiScreen::About;
+  } else if (normalized == "settings") {
+    target = UiScreen::Settings;
+  } else if (normalized == "dim-timeout") {
+    target = UiScreen::DimTimeout;
+  } else if (normalized == "brightness") {
+    target = UiScreen::Brightness;
+  } else if (normalized == "language") {
+    target = UiScreen::Language;
+  } else if (normalized == "theme") {
+    target = UiScreen::Theme;
+  } else if (normalized == "log-level") {
+    target = UiScreen::LogLevel;
+  } else if (normalized == "speaker-volume") {
+    target = UiScreen::SpeakerVolume;
+  } else if (normalized == "shuffle") {
+    target = UiScreen::ShuffleMode;
+  } else if (normalized == "repeat") {
+    target = UiScreen::RepeatMode;
+  } else if (normalized == "sleep-timeout" || normalized == "turn-off-after") {
+    target = UiScreen::SleepTimeout;
+  } else if (normalized == "change-wifi") {
+    target = UiScreen::ChangeWifiConfirm;
+  } else if (normalized == "reset-pairing") {
+    target = UiScreen::ResetPairingConfirm;
+  } else if (normalized == "factory-reset") {
+    target = UiScreen::HardResetConfirm;
+  } else {
+    message = "Unknown screen";
+    return false;
+  }
+
+  menuStackSize_ = 0;
+  activeScreen_ = target;
+  notice_.clear();
+  display_.wakeForUserActivity();
+  renderNow();
+  message = "Screen opened";
+  AppLog.line("Debug screen opened: " + normalized);
+  return true;
 }
 
 void DJConnectApp::noteDirectPairingReceived() {

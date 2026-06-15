@@ -7,6 +7,7 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <esp_task_wdt.h>
+#include <new>
 
 #include "Config.h"
 #include "I18n.h"
@@ -117,6 +118,22 @@ String postedValue(WebServer &server, const String &rawBody, const char *primary
   return formValueFromBody(rawBody, fallbackKey);
 }
 
+String jsonEscaped(String value) {
+  value.replace("\\", "\\\\");
+  value.replace("\"", "\\\"");
+  value.replace("\n", "\\n");
+  value.replace("\r", "\\r");
+  value.replace("\t", "\\t");
+  return value;
+}
+
+void sendJsonEscapedContent(WebServer &server, const String &value) {
+  const String escaped = jsonEscaped(value);
+  if (escaped.length() > 0) {
+    server.sendContent(escaped);
+  }
+}
+
 void sendNoStore(WebServer &server) {
   server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   server.sendHeader("Pragma", "no-cache");
@@ -174,6 +191,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .model-chip { color:var(--muted); font-size:12px; font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .sub { color:var(--muted); font-size:13px; margin-top:4px; }
     .header-status { display:flex; justify-content:flex-end; align-items:center; gap:8px; }
+    .header-website { color:var(--purple-soft); font-size:12px; font-weight:800; text-decoration:none; border:1px solid rgba(155,114,255,.38); border-radius:999px; padding:2px 8px; line-height:1.35; }
+    .header-website:hover, .header-website:focus-visible { color:var(--text); border-color:var(--purple); outline:none; }
     main { padding:12px; display:grid; gap:12px; max-width:960px; margin:0 auto; }
     .panel { background:linear-gradient(180deg,rgba(47,140,255,.06),rgba(155,114,255,.04)),var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
     h2 { margin:0 0 10px; font-size:15px; color:var(--purple-soft); font-weight:700; }
@@ -202,6 +221,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .status-dot.ok { border-color:var(--green); color:var(--green); }
     .status-dot.idle { border-color:var(--muted); color:var(--muted); }
     .pill { display:inline-flex; align-items:center; min-height:24px; border-radius:999px; padding:2px 10px; background:rgba(47,140,255,.18); color:#b8d8ff; font-size:13px; }
+    .pill.ok { background:rgba(30,215,96,.22); color:#c9ffd9; }
     .pill.warn { background:rgba(155,114,255,.20); color:var(--purple-soft); }
     .pill.bad { background:#421b17; color:#ffb4aa; }
     .bar { height:8px; border:1px solid #39484a; border-radius:999px; overflow:hidden; background:var(--bar-bg); }
@@ -224,8 +244,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.icon-button.is-off { background:#243238; border-color:#3d5660; color:#a8b3af; }
     button.icon-button.is-on { background:linear-gradient(135deg,var(--blue),var(--purple)); border-color:var(--purple-soft); color:#fff; }
     button.icon-button.is-track { background:var(--purple); border-color:var(--purple-soft); color:#fff; }
-    .playback-actions button.icon-button,
-    .playback-actions button.icon-button.is-off,
+    .playback-actions button.icon-button { background:linear-gradient(135deg,var(--playback-lila),var(--playback-lila-deep)); border-color:rgba(231,139,255,.86); color:#fff; }
+    .playback-actions button.icon-button.is-off { background:#222733; border-color:#3b4254; color:#aeb7c8; }
     .playback-actions button.icon-button.is-on,
     .playback-actions button.icon-button.is-track { background:linear-gradient(135deg,var(--playback-lila),var(--playback-lila-deep)); border-color:rgba(231,139,255,.86); color:#fff; }
     button.secondary { background:#243238; border-color:#3d5660; color:#f0f6f4; }
@@ -276,8 +296,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     .pair-banner a { color:#fff; font-weight:800; text-decoration:none; }
     .pair-banner .pair-code { display:inline-block; margin-left:4px; padding:2px 7px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.22); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.08em; }
     .game-shell { display:grid; gap:10px; }
-    .game-tabs { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
-    .game-tab { min-height:38px; padding:6px; background:var(--field); border-color:var(--line); color:var(--text); }
+    .game-tabs { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:8px; }
+    .game-tab { min-height:38px; padding:6px; background:var(--field); border-color:var(--line); color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .game-tab.active { border-color:var(--purple); color:var(--purple-soft); box-shadow:0 0 0 1px rgba(155,114,255,.25) inset; }
     .game-hud { display:flex; justify-content:space-between; gap:10px; color:var(--muted); font-size:13px; }
     canvas.game-canvas { width:100%; max-width:640px; aspect-ratio:320/170; border:1px solid var(--line); border-radius:8px; background:#020405; touch-action:none; image-rendering:pixelated; }
@@ -290,13 +310,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     button.art-popover-close { position:absolute; top:8px; right:8px; width:38px; height:38px; min-width:38px; min-height:38px; border-radius:8px; padding:0; background:rgba(8,11,12,.76); border-color:rgba(255,255,255,.28); color:#fff; font-size:24px; line-height:1; }
     pre.logs { min-height:220px; max-height:360px; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--log-bg); color:var(--log-text); font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (min-width:720px) { main { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
+    @media (max-width:640px) { .game-tabs { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
     @media (max-width:420px) { button.ptt { width:100%; } }
   </style>
 </head>
 <body>
   <header>
     <h1><img class="brand-icon" src="/icon-192.png?v=3" alt=""><span class="brand-copy"><span class="brand-line">DJConnect <span id="appVersion" class="sub">-</span><span id="appModel" class="model-chip">-</span></span><span class="brand-tagline">Muziekbediening met karakter</span></span></h1>
-    <div class="sub header-status"><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Playback">♪</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
+    <div class="sub header-status"><a class="header-website" href="https://djconnect.dev" target="_blank" rel="noopener noreferrer">djconnect.dev</a><span class="status-icons"><span id="haHeaderStatus" class="status-dot" title="Home Assistant">H</span><span id="spotifyHeaderStatus" class="status-dot" title="Playback">♪</span></span><span id="wifiHeaderSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="batteryHeader" class="header-battery high" title="Battery"><span id="batteryHeaderFill" class="battery-fill"></span><span id="batteryHeaderText" class="battery-text">--%</span><span class="battery-flash">⚡</span></span></div>
   </header>
   <div id="haPairBanner" class="pair-banner">
     <svg class="pair-alert-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -326,14 +347,14 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       <div class="row"><span class="key" data-i18n="time">Time</span><span id="time" class="value">-</span></div>
       <div class="playback-actions compact-actions" aria-label="Playback controls">
         <button id="previousButton" class="icon-button" type="button" aria-label="Previous song" title="Previous song">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6l-8 6 8 6V6z"></path><path d="M11 6l-8 6 8 6V6z"></path></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"></path><path d="M18 6l-9 6 9 6V6z"></path></svg>
         </button>
         <button id="playPauseButton" class="icon-button" type="button" aria-label="Play" title="Play">
           <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
           <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"></path><path d="M16 5v14"></path></svg>
         </button>
         <button id="nextButton" class="icon-button" type="button" aria-label="Next song" title="Next song">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6l8 6-8 6V6z"></path><path d="M13 6l8 6-8 6V6z"></path></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l9 6-9 6V6z"></path><path d="M18 5v14"></path></svg>
         </button>
         <button id="shuffleButton" class="icon-button is-off" type="button" aria-label="Shuffle off" title="Shuffle off">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5"></path><path d="M4 20l5.5-5.5"></path><path d="M15 9l6-6"></path><path d="M4 4l5 5"></path><path d="M13 13l8 8"></path><path d="M16 21h5v-5"></path></svg>
@@ -372,9 +393,13 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     </section>
 
     <section id="playlistsPanel" class="panel">
-      <h2 data-i18n="playlists">Playlists</h2>
-      <select id="playlistSelect" aria-label="Playlist"><option value="">Loading playlists...</option></select>
-      <button id="startPlaylistButton" class="section-action" type="button">Start playlist</button>
+      <div class="section-title-row">
+        <h2 data-i18n="playlists">Playlists</h2>
+        <button id="refreshPlaylistsButton" class="icon-button header-icon" type="button" aria-label="Refresh playlists" title="Refresh playlists">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2"></path><path d="M3 12A9 9 0 0 1 18.5 5.8"></path><path d="M18 2v4h4"></path><path d="M6 22v-4H2"></path></svg>
+        </button>
+      </div>
+      <div id="playlistList" class="queue"><div class="fine" data-i18n="loadingPlaylists">Loading playlists...</div></div>
       <div id="playlistStatus" class="status"></div>
     </section>
 
@@ -389,7 +414,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
           <button class="game-tab" type="button" data-game="maze">Maze Chase</button>
         </div>
         <div id="gameHud" class="game-hud"><span id="gameScore">Score 0</span><span id="gameHighScore">High 0</span></div>
-        <canvas id="gameCanvas" class="game-canvas" width="320" height="170"></canvas>
+        <canvas id="gameCanvas" class="game-canvas" width="320" height="170" tabindex="0"></canvas>
         <div id="gameControls" class="game-controls">
           <button id="gameUpButton" class="icon-button" type="button" aria-label="Up" title="Up"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 8H5z"></path></svg></button>
           <button id="gameDownButton" class="icon-button" type="button" aria-label="Down" title="Down"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l-7-8h14z"></path></svg></button>
@@ -482,12 +507,12 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     </section>
 
     <section class="panel">
-      <h2 data-i18n="playback">Playback</h2>
+      <h2 data-i18n="playback">Music</h2>
       <div class="grid">
-        <div class="row"><span class="key" data-i18n="connection">Connection</span><span id="spotifyState" class="value">-</span></div>
-        <div class="row"><span class="key" data-i18n="error">Error</span><span id="spotifyError" class="value">-</span></div>
+        <div class="row"><span class="key" data-i18n="musicStatus">Status</span><span id="spotifyState" class="value">-</span></div>
+        <div class="row"><span class="key" data-i18n="musicLastIssue">Last issue</span><span id="spotifyError" class="value">-</span></div>
       </div>
-      <button id="refreshButton" data-i18n="refreshPlayback" class="section-action" type="button">Refresh playback status</button>
+      <button id="refreshButton" data-i18n="refreshPlayback" class="section-action" type="button">Refresh music status</button>
       <div id="refreshStatus" class="status"></div>
     </section>
 
@@ -574,7 +599,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       return h ? `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}` : `${m}:${String(sec).padStart(2,"0")}`;
     };
     function pill(el, state) {
-      el.className = "pill" + (state === "bad" ? " bad" : state === "warn" ? " warn" : "");
+      el.className = "pill" + (state === "ok" ? " ok" : state === "bad" ? " bad" : state === "warn" ? " warn" : "");
     }
     let currentLanguage = "en";
     const translations = {
@@ -585,7 +610,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
         webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect announcement flow", webPttFlowInfo:"Tests: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ announcement text on the device.",
         spotifyUnavailable:"Playback not connected",
-        output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Up Next", refreshUpNext:"Refresh Up Next", loadingQueue:"Loading queue...",
+        output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Queue", refreshUpNext:"Refresh queue", refreshPlaylists:"Refresh playlists", loadingQueue:"Loading queue...",
         playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", games:"Games", settings:"Settings",
         brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
         language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error",
@@ -595,7 +620,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.",
         wifiPasswordPlaceholder:"leave blank to keep current",
         ha:"Home Assistant", pairing:"Pairing", pairCode:"Pair code", firmware:"Firmware", model:"Model", resetPairing:"Reset pairing",
-        spotify:"Playback", connection:"Connection", token:"Backend", error:"Error", refreshSpotify:"Refresh playback status",
+        spotify:"Playback", playback:"Music", connection:"Connection", musicStatus:"Status", musicLastIssue:"Last issue", token:"Backend", error:"Error", refreshSpotify:"Refresh playback status", refreshPlayback:"Refresh music status",
         username:"Username", discovery:"HA discovery", lastPublished:"Last published", diagnostics:"Diagnostics", screen:"Screen",
         ledRing:"LED ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Storage", sketch:"Sketch", restart:"Restart device",
         logs:"Logs", pauseLogs:"Pause logs", selectAll:"Select all", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -622,7 +647,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
         webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect aankondiging flow", webPttFlowInfo:"Test: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ aankondiging tekst op het device.",
         spotifyUnavailable:"Afspelen niet verbonden",
-        output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Volgende nummers", refreshUpNext:"Volgende verversen", loadingQueue:"Wachtrij laden...",
+        output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Wachtrij", refreshUpNext:"Wachtrij verversen", refreshPlaylists:"Afspeellijsten verversen", loadingQueue:"Wachtrij laden...",
         playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", games:"Games", settings:"Instellingen",
         brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
         language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout",
@@ -632,7 +657,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         wifiFine:"Het device test de nieuwe WiFi nadat deze pagina antwoord krijgt. Bij succes worden credentials opgeslagen en herstart het device.",
         wifiPasswordPlaceholder:"leeg laten om huidige te behouden",
         ha:"Home Assistant", pairing:"Koppeling", pairCode:"Koppelcode", firmware:"Firmware", model:"Model", resetPairing:"Home Assistant koppeling resetten",
-        spotify:"Afspelen", connection:"Verbinding", token:"Backend", error:"Fout", refreshSpotify:"Afspeelstatus verversen",
+        spotify:"Afspelen", playback:"Muziek", connection:"Verbinding", musicStatus:"Status", musicLastIssue:"Laatste melding", token:"Backend", error:"Fout", refreshSpotify:"Afspeelstatus verversen", refreshPlayback:"Muziekstatus verversen",
         username:"Gebruikersnaam", discovery:"HA discovery", lastPublished:"Laatst gepubliceerd", diagnostics:"Diagnostiek", screen:"Scherm",
         ledRing:"LED-ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:"Opslag", sketch:"Sketch", restart:"Device herstarten",
         logs:"Logs", pauseLogs:"Pauzeer logs", selectAll:"Selecteer alles", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
@@ -670,10 +695,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       if (!webPttRunning) $("webPttButton").textContent = tr("webPttHold");
       $("pauseLogsButton").textContent = logsPaused ? tr("resumeLogs") : tr("pauseLogs");
       setButtonLabel("refreshQueueButton", tr("refreshUpNext"));
+      setButtonLabel("refreshPlaylistsButton", tr("refreshPlaylists"));
       const outputOption = $("soundOutputSelect").querySelector("option[data-i18n='loadingOutputs']");
       if (spotifyControlsEnabled && outputOption) outputOption.textContent = tr("loadingOutputs");
-      const playlistOption = $("playlistSelect").querySelector("option");
-      if (spotifyControlsEnabled && playlistOption && playlistOption.value === "") playlistOption.textContent = tr("loadingPlaylists");
     }
     function setButtonLabel(id, label) {
       const button = $(id);
@@ -770,6 +794,17 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     let queueVisible = false;
     let playlistsVisible = false;
     let soundOutputsVisible = false;
+    let playbackFetchChain = Promise.resolve();
+    async function fetchPlaybackJson(url) {
+      const run = async () => {
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) throw new Error(`${url} ${response.status}`);
+        return response.json();
+      };
+      const next = playbackFetchChain.then(run, run);
+      playbackFetchChain = next.catch(() => {});
+      return next;
+    }
     function openAlbumArtPopover() {
       if (!albumArtUrl) return;
       $("albumArtLarge").src = albumArtUrl;
@@ -828,6 +863,9 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       $("gameScore").textContent = `Score ${game.score}`;
       $("gameHighScore").textContent = `High ${game.high[game.mode] || 0}`;
     }
+    function focusGameCanvas() {
+      if (game.mode !== "none") $("gameCanvas").focus({ preventScroll:true });
+    }
     function setGameButton(button, label, svgPath) {
       button.setAttribute("aria-label", label);
       button.title = label;
@@ -871,6 +909,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       document.querySelectorAll(".game-tab").forEach(button => button.classList.toggle("active", button.dataset.game === mode));
       updateGameControls();
       resetGame();
+      focusGameCanvas();
     }
     function moveGame(delta) {
       if (game.mode === "pong") game.paddleY = Math.max(42, Math.min(126, game.paddleY + delta * 6));
@@ -975,11 +1014,11 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       updateGameControls();
       resetGame();
       document.querySelectorAll(".game-tab").forEach(button => button.addEventListener("click", () => selectGame(button.dataset.game)));
-      $("gameUpButton").addEventListener("click", () => moveGame(-1));
-      $("gameDownButton").addEventListener("click", () => moveGame(1));
-      $("gameFireButton").addEventListener("pointerdown", event => { event.preventDefault(); fireGame(); });
-      $("gameResetButton").addEventListener("click", resetGame);
-      $("gameCanvas").addEventListener("pointerdown", event => { event.preventDefault(); fireGame(); });
+      $("gameUpButton").addEventListener("click", () => { moveGame(-1); focusGameCanvas(); });
+      $("gameDownButton").addEventListener("click", () => { moveGame(1); focusGameCanvas(); });
+      $("gameFireButton").addEventListener("pointerdown", event => { event.preventDefault(); fireGame(); focusGameCanvas(); });
+      $("gameResetButton").addEventListener("click", () => { resetGame(); focusGameCanvas(); });
+      $("gameCanvas").addEventListener("pointerdown", event => { event.preventDefault(); focusGameCanvas(); fireGame(); });
       window.addEventListener("keydown", event => {
         if (game.mode === "none" || !game.visible || ["INPUT","SELECT","TEXTAREA","BUTTON"].includes(document.activeElement?.tagName || "")) return;
         const movementKeys = (game.mode === "asteroids" || game.mode === "maze") ? ["ArrowLeft","ArrowRight"] : ["ArrowUp","ArrowDown"];
@@ -1026,7 +1065,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     function setSpotifyControlsEnabled(enabled) {
       spotifyControlsEnabled = !!enabled;
-      for (const id of ["previousButton", "nextButton", "shuffleButton", "repeatButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "playlistSelect", "startPlaylistButton", "refreshQueueButton"]) {
+      for (const id of ["previousButton", "nextButton", "shuffleButton", "repeatButton", "volumeSlider", "soundOutputSelect", "startLikedProxyButton", "refreshQueueButton", "refreshPlaylistsButton"]) {
         $(id).disabled = !spotifyControlsEnabled;
       }
       updatePlaybackButtonStates();
@@ -1037,7 +1076,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
         $("repeatStatus").textContent = "";
         $("volumeStatus").textContent = "";
         $("soundOutputSelect").innerHTML = `<option value="none">${tr("none")}</option><option value="iPhone">iPhone</option>`;
-        $("playlistSelect").innerHTML = `<option value="">${tr("spotifyUnavailable")}</option>`;
+        $("playlistList").innerHTML = `<div class="fine">${tr("spotifyUnavailable")}</div>`;
         $("queueList").innerHTML = '<div class="fine"></div>';
       }
     }
@@ -1158,8 +1197,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       const select = $("soundOutputSelect");
       soundOutputLoadedAt = Date.now();
       try {
-        const response = await fetch("/api/devices", { cache: "no-store" });
-        const data = await response.json();
+        const data = await fetchPlaybackJson("/api/devices");
         select.innerHTML = "";
         const none = document.createElement("option");
         none.value = "none";
@@ -1191,8 +1229,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       const list = $("queueList");
       queueLoadedAt = Date.now();
       try {
-        const response = await fetch("/api/queue", { cache: "no-store" });
-        const data = await response.json();
+        const data = await fetchPlaybackJson("/api/queue");
         list.innerHTML = "";
         if (!data.items || data.items.length === 0) {
           list.innerHTML = `<div class="fine">${data.error || tr("noQueuedSongs")}</div>`;
@@ -1244,25 +1281,57 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     }
     async function loadPlaylists() {
       if (!playlistsVisible) return;
-      const select = $("playlistSelect");
+      const list = $("playlistList");
       playlistsLoadedAt = Date.now();
       try {
-        const response = await fetch("/api/playlists", { cache: "no-store" });
-        const data = await response.json();
-        select.innerHTML = "";
+        const data = await fetchPlaybackJson("/api/playlists");
+        list.innerHTML = "";
         if (!data.items || data.items.length === 0) {
-          select.innerHTML = `<option value="">${data.error || tr("noPlaylists")}</option>`;
+          list.innerHTML = `<div class="fine">${data.error || tr("noPlaylists")}</div>`;
           return;
         }
         for (const playlist of data.items) {
-          const option = document.createElement("option");
-          option.value = playlist.uri;
-          option.textContent = playlist.owner ? `${playlist.name} - ${playlist.owner}` : playlist.name;
-          select.appendChild(option);
+          const row = document.createElement("div");
+          row.className = "queue-item";
+          if (playlist.imageUrl) {
+            const art = document.createElement("img");
+            art.className = "queue-art";
+            art.alt = "";
+            art.loading = "lazy";
+            art.decoding = "async";
+            art.referrerPolicy = "no-referrer";
+            art.src = playlist.imageUrl;
+            row.appendChild(art);
+          } else {
+            const art = document.createElement("div");
+            art.className = "queue-art empty";
+            art.textContent = "♪";
+            row.appendChild(art);
+          }
+          const meta = document.createElement("div");
+          const title = document.createElement("div");
+          title.className = "queue-title";
+          title.textContent = playlist.name || "-";
+          const subtitle = document.createElement("div");
+          subtitle.className = "queue-subtitle";
+          subtitle.textContent = playlist.owner || "-";
+          meta.appendChild(title);
+          meta.appendChild(subtitle);
+          row.appendChild(meta);
+          const button = document.createElement("button");
+          button.className = "icon-button queue-play";
+          button.type = "button";
+          button.title = tr("play");
+          button.setAttribute("aria-label", tr("play"));
+          button.disabled = !spotifyControlsEnabled || !playlist.uri;
+          button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
+          button.addEventListener("click", () => playPlaylist(playlist.uri));
+          row.appendChild(button);
+          list.appendChild(row);
         }
         $("playlistStatus").textContent = "";
       } catch (error) {
-        select.innerHTML = `<option value="">${tr("playlistsFailed")}</option>`;
+        list.innerHTML = `<div class="fine">${tr("playlistsFailed")}</div>`;
       }
     }
     async function refreshLogs() {
@@ -1330,11 +1399,26 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
       await refresh();
       await loadQueue();
     }
+    async function playPlaylist(uri) {
+      if (!spotifyControlsEnabled || !uri) return;
+      $("playlistStatus").textContent = tr("startingPlaylist");
+      const body = new URLSearchParams({ action:"playlist", uri });
+      const response = await fetch("/api/playback", { method:"POST", body });
+      $("playlistStatus").textContent = await response.text();
+      await refresh();
+      await loadQueue();
+    }
     $("refreshQueueButton").addEventListener("click", async () => {
       if (!spotifyControlsEnabled) return;
       queueLoadedAt = 0;
       $("queueStatus").textContent = tr("refreshing");
       await loadQueue();
+    });
+    $("refreshPlaylistsButton").addEventListener("click", async () => {
+      if (!spotifyControlsEnabled) return;
+      playlistsLoadedAt = 0;
+      $("playlistStatus").textContent = tr("refreshing");
+      await loadPlaylists();
     });
     $("previousButton").addEventListener("click", () => sendPlaybackCommand("previous"));
     $("nextButton").addEventListener("click", () => sendPlaybackCommand("next"));
@@ -1343,20 +1427,6 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
     $("webPttButton").addEventListener("click", event => {
       event.preventDefault();
       startWebPtt();
-    });
-    $("startPlaylistButton").addEventListener("click", async () => {
-      if (!spotifyControlsEnabled) return;
-      const playlistUri = $("playlistSelect").value;
-      if (!playlistUri) {
-        $("playlistStatus").textContent = tr("selectPlaylist");
-        return;
-      }
-      $("playlistStatus").textContent = tr("startingPlaylist");
-      const body = new URLSearchParams({ action:"playlist", uri:playlistUri });
-      const response = await fetch("/api/playback", { method:"POST", body });
-      $("playlistStatus").textContent = await response.text();
-      await refresh();
-      await loadQueue();
     });
     $("pauseLogsButton").addEventListener("click", () => {
       logsPaused = !logsPaused;
@@ -1873,24 +1943,38 @@ void WebPortal::handleDevicesJson() {
     return;
   }
 
-  DeviceListState devices;
-  spotify_->refreshDevices(devices);
-
-  JsonDocument doc;
-  doc["available"] = devices.available;
-  doc["error"] = devices.error;
-  JsonArray items = doc["devices"].to<JsonArray>();
-  for (size_t index = 0; index < devices.count; index++) {
-    JsonObject item = items.add<JsonObject>();
-    item["id"] = devices.devices[index].id;
-    item["name"] = devices.devices[index].name;
-    item["active"] = devices.devices[index].active;
-    item["supportsVolume"] = devices.devices[index].supportsVolume;
+  DeviceListState *devices = new (std::nothrow) DeviceListState();
+  if (devices == nullptr) {
+    server_.send(503, "application/json", "{\"error\":\"devices memory unavailable\"}");
+    return;
   }
+  spotify_->refreshDevices(*devices);
 
-  String body;
-  serializeJson(doc, body);
-  server_.send(200, "application/json", body);
+  server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server_.send(200, "application/json", "");
+  server_.sendContent("{\"available\":");
+  server_.sendContent(devices->available ? "true" : "false");
+  server_.sendContent(",\"error\":\"");
+  sendJsonEscapedContent(server_, devices->error);
+  server_.sendContent("\",\"devices\":[");
+  for (size_t index = 0; index < devices->count; index++) {
+    const SpotifyDeviceState &device = devices->devices[index];
+    if (index > 0) {
+      server_.sendContent(",");
+    }
+    server_.sendContent("{\"id\":\"");
+    sendJsonEscapedContent(server_, device.id);
+    server_.sendContent("\",\"name\":\"");
+    sendJsonEscapedContent(server_, device.name);
+    server_.sendContent("\",\"active\":");
+    server_.sendContent(device.active ? "true" : "false");
+    server_.sendContent(",\"supportsVolume\":");
+    server_.sendContent(device.supportsVolume ? "true" : "false");
+    server_.sendContent("}");
+    yield();
+  }
+  server_.sendContent("]}");
+  delete devices;
 }
 
 void WebPortal::handleQueueJson() {
@@ -1903,24 +1987,38 @@ void WebPortal::handleQueueJson() {
     return;
   }
 
-  QueueState queue;
-  spotify_->refreshQueue(queue);
-
-  JsonDocument doc;
-  doc["available"] = queue.available;
-  doc["error"] = queue.error;
-  JsonArray items = doc["items"].to<JsonArray>();
-  for (size_t index = 0; index < queue.count; index++) {
-    JsonObject item = items.add<JsonObject>();
-    item["title"] = queue.items[index].title;
-    item["subtitle"] = queue.items[index].subtitle;
-    item["uri"] = queue.items[index].uri;
-    item["imageUrl"] = queue.items[index].imageUrl;
+  QueueState *queue = new (std::nothrow) QueueState();
+  if (queue == nullptr) {
+    server_.send(503, "application/json", "{\"error\":\"queue memory unavailable\"}");
+    return;
   }
+  spotify_->refreshQueue(*queue);
 
-  String body;
-  serializeJson(doc, body);
-  server_.send(200, "application/json", body);
+  server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server_.send(200, "application/json", "");
+  server_.sendContent("{\"available\":");
+  server_.sendContent(queue->available ? "true" : "false");
+  server_.sendContent(",\"error\":\"");
+  sendJsonEscapedContent(server_, queue->error);
+  server_.sendContent("\",\"items\":[");
+  for (size_t index = 0; index < queue->count; index++) {
+    const QueueItemState &item = queue->items[index];
+    if (index > 0) {
+      server_.sendContent(",");
+    }
+    server_.sendContent("{\"title\":\"");
+    sendJsonEscapedContent(server_, item.title);
+    server_.sendContent("\",\"subtitle\":\"");
+    sendJsonEscapedContent(server_, item.subtitle);
+    server_.sendContent("\",\"uri\":\"");
+    sendJsonEscapedContent(server_, item.uri);
+    server_.sendContent("\",\"imageUrl\":\"");
+    sendJsonEscapedContent(server_, item.imageUrl);
+    server_.sendContent("\"}");
+    yield();
+  }
+  server_.sendContent("]}");
+  delete queue;
 }
 
 void WebPortal::handlePlaylistsJson() {
@@ -1933,23 +2031,38 @@ void WebPortal::handlePlaylistsJson() {
     return;
   }
 
-  PlaylistListState playlists;
-  spotify_->refreshPlaylists(playlists);
-
-  JsonDocument doc;
-  doc["available"] = playlists.available;
-  doc["error"] = playlists.error;
-  JsonArray items = doc["items"].to<JsonArray>();
-  for (size_t index = 0; index < playlists.count; index++) {
-    JsonObject item = items.add<JsonObject>();
-    item["name"] = playlists.items[index].name;
-    item["owner"] = playlists.items[index].owner;
-    item["uri"] = playlists.items[index].uri;
+  PlaylistListState *playlists = new (std::nothrow) PlaylistListState();
+  if (playlists == nullptr) {
+    server_.send(503, "application/json", "{\"error\":\"playlists memory unavailable\"}");
+    return;
   }
+  spotify_->refreshPlaylists(*playlists);
 
-  String body;
-  serializeJson(doc, body);
-  server_.send(200, "application/json", body);
+  server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server_.send(200, "application/json", "");
+  server_.sendContent("{\"available\":");
+  server_.sendContent(playlists->available ? "true" : "false");
+  server_.sendContent(",\"error\":\"");
+  sendJsonEscapedContent(server_, playlists->error);
+  server_.sendContent("\",\"items\":[");
+  for (size_t index = 0; index < playlists->count; index++) {
+    const PlaylistItemState &playlist = playlists->items[index];
+    if (index > 0) {
+      server_.sendContent(",");
+    }
+    server_.sendContent("{\"name\":\"");
+    sendJsonEscapedContent(server_, playlist.name);
+    server_.sendContent("\",\"owner\":\"");
+    sendJsonEscapedContent(server_, playlist.owner);
+    server_.sendContent("\",\"uri\":\"");
+    sendJsonEscapedContent(server_, playlist.uri);
+    server_.sendContent("\",\"imageUrl\":\"");
+    sendJsonEscapedContent(server_, playlist.imageUrl);
+    server_.sendContent("\"}");
+    yield();
+  }
+  server_.sendContent("]}");
+  delete playlists;
 }
 
 void WebPortal::handleTransferPost() {

@@ -23,6 +23,7 @@ public:
   using DeviceCommandCallback = bool (*)(void *context, const DeviceCommand &command, String &message);
   using DirectPairCallback = void (*)(void *context);
   using OtaPrepareCallback = void (*)(void *context);
+  using DebugScreenCallback = bool (*)(void *context, const String &screenName, String &message);
 
   void begin(
       WebServer &server,
@@ -41,7 +42,8 @@ public:
       LanguageProvisionedCallback languageProvisionedCallback = nullptr,
       DeviceCommandCallback deviceCommandCallback = nullptr,
       DirectPairCallback directPairCallback = nullptr,
-      OtaPrepareCallback otaPrepareCallback = nullptr);
+      OtaPrepareCallback otaPrepareCallback = nullptr,
+      DebugScreenCallback debugScreenCallback = nullptr);
   void loop();
   bool isRunning() const;
 
@@ -56,6 +58,8 @@ private:
   void handleCommand();
   void handleReboot();
   void handleForget();
+  void handleScreenshot();
+  void handleDebugScreen();
 
   WebServer *server_ = nullptr;
   DJConnectDevice *device_ = nullptr;
@@ -74,5 +78,6 @@ private:
   DeviceCommandCallback deviceCommandCallback_ = nullptr;
   DirectPairCallback directPairCallback_ = nullptr;
   OtaPrepareCallback otaPrepareCallback_ = nullptr;
+  DebugScreenCallback debugScreenCallback_ = nullptr;
   bool running_ = false;
 };

@@ -23,6 +23,10 @@ public:
   // Draws a boot/status screen with the current battery and charge state in the header.
   void showBootMessage(const String &message, const BatteryState &battery);
 
+  // Draws the DJConnect splash without a transient status message.
+  void showSplashScreen();
+  void showSplashScreen(const BatteryState &battery);
+
   // Draws the Home Assistant pairing code screen with a large, readable code.
   void showPairingCode(const String &pairCode);
 
@@ -121,6 +125,12 @@ public:
 
   // Returns how long the UI has had no physical input.
   uint32_t idleMs() const;
+
+  // Exposes the most recently rendered frame for authenticated debug screenshots.
+  int screenshotWidth();
+  int screenshotHeight();
+  bool hasScreenshotBuffer() const;
+  uint16_t screenshotPixel565(int x, int y);
 
 private:
   // Tracks one horizontal one-shot text marquee.

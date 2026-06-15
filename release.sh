@@ -263,6 +263,8 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would update release examples/version references in platformio.ini, version files, README, CHANGELOG and AGENTS if present."
+  echo "Would update and upgrade PlatformIO Core, global packages/tools and project packages for t_embed_cc1101 and esp32_s3_box3 before building."
+  echo "Would write $RELEASE_DIR/build-dependencies.diff and require THIRD_PARTY_NOTICES.md / DESIGN_DECISIONS.md review if dependency versions changed."
   echo "Would build t_embed_cc1101 and esp32_s3_box3 in parallel with isolated PLATFORMIO_BUILD_DIR roots and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
   echo "Would copy firmware to $RELEASE_DIR/$ASSET and $RELEASE_DIR/$BOX3_ASSET and write $RELEASE_DIR/$MANIFEST."
   echo "Would commit, tag and push source repo."
@@ -286,6 +288,9 @@ mkdir -p "$RELEASE_DIR"
 RELEASE_BUILD_ROOT=".pio/build-release/$TAG"
 rm -rf "$RELEASE_BUILD_ROOT"
 mkdir -p "$RELEASE_BUILD_ROOT"
+
+echo "+ REPORT_DIR=$RELEASE_DIR scripts/update_build_dependencies.sh ${RELEASE_BOARDS[*]}"
+REPORT_DIR="$RELEASE_DIR" scripts/update_build_dependencies.sh "${RELEASE_BOARDS[@]}"
 
 LILYGO_ASSET=""
 LILYGO_SHA256=""

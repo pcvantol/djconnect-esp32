@@ -188,9 +188,14 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
 
   tokenInvalidGrant_ = false;
   lastProxyFailureAt_ = 0;
-  if (response != nullptr && !payload.isEmpty()) {
+  if (response != nullptr) {
+    if (payload.isEmpty()) {
+      setProxyError("HA playback empty response");
+      return false;
+    }
     const DeserializationError error = deserializeJson(*response, payload);
     if (error) {
+      AppLog.line("HA playback JSON failed len=" + String(payload.length()) + " body=" + payload.substring(0, 96));
       setProxyError("HA playback JSON failed");
       return false;
     }
@@ -397,17 +402,37 @@ void SpotifyClient::applyPlaylists(JsonVariantConst source, PlaylistListState &p
   playlists.available = false;
   playlists.error = "";
   playlists.count = 0;
-  JsonArrayConst items = source["playlists"].is<JsonArrayConst>()
-                             ? source["playlists"].as<JsonArrayConst>()
-                             : source["items"].as<JsonArrayConst>();
+  JsonArrayConst items;
+  if (source["playlists"].is<JsonArrayConst>()) {
+    items = source["playlists"].as<JsonArrayConst>();
+  } else if (source["items"].is<JsonArrayConst>()) {
+    items = source["items"].as<JsonArrayConst>();
+  } else if (source["playlists"]["items"].is<JsonArrayConst>()) {
+    items = source["playlists"]["items"].as<JsonArrayConst>();
+  } else if (source["data"].is<JsonArrayConst>()) {
+    items = source["data"].as<JsonArrayConst>();
+  } else if (source["data"]["items"].is<JsonArrayConst>()) {
+    items = source["data"]["items"].as<JsonArrayConst>();
+  } else if (source["result"].is<JsonArrayConst>()) {
+    items = source["result"].as<JsonArrayConst>();
+  } else if (source["result"]["items"].is<JsonArrayConst>()) {
+    items = source["result"]["items"].as<JsonArrayConst>();
+  } else if (source["result"]["playlists"].is<JsonArrayConst>()) {
+    items = source["result"]["playlists"].as<JsonArrayConst>();
+  } else if (source["result"]["playlists"]["items"].is<JsonArrayConst>()) {
+    items = source["result"]["playlists"]["items"].as<JsonArrayConst>();
+  }
   for (JsonVariantConst item : items) {
-    if (playlists.count >= 8) {
+    if (playlists.count >= PlaylistListState::MaxItems) {
       break;
     }
     PlaylistItemState &target = playlists.items[playlists.count];
-    target.name = item["name"] | "";
-    target.owner = item["owner"] | "";
-    target.uri = item["uri"] | item["id"] | "";
+    target.name = item["name"] | item["title"] | "";
+    target.owner = item["owner"] | item["owner_name"] | item["subtitle"] | "";
+    target.uri = item["uri"] | item["id"] | item["playlist_uri"] | "";
+    target.imageUrl =
+        item["image_url"] | item["imageUrl"] | item["album_image_url"] | item["albumImageUrl"] |
+        item["media_image_url"] | item["entity_picture"] | "";
     if (target.name.isEmpty() || target.uri.isEmpty()) {
       continue;
     }
@@ -474,7 +499,10 @@ bool SpotifyClient::refreshDevices(DeviceListState &devices) {
 
 bool SpotifyClient::refreshQueue(QueueState &queue) {
   JsonDocument response;
-  if (!proxyCommand("queue", &response)) {
+  JsonDocument request;
+  request["command"] = "queue";
+  request["limit"] = static_cast<int>(QueueState::MaxItems);
+  if (!proxyRequest(request, &response)) {
     queue.available = false;
     queue.error = state_.error;
     queue.contextUri = "";
@@ -496,13 +524,21 @@ bool SpotifyClient::fillQueueFromPlaylistContext(QueueState &queue) {
 
 bool SpotifyClient::refreshPlaylists(PlaylistListState &playlists) {
   JsonDocument response;
-  if (!proxyCommand("playlists", &response)) {
+  JsonDocument request;
+  request["command"] = "playlists";
+  request["limit"] = static_cast<int>(PlaylistListState::MaxItems);
+  if (!proxyRequest(request, &response)) {
     playlists.available = false;
     playlists.error = state_.error;
     playlists.count = 0;
     return false;
   }
   applyPlaylists(response.as<JsonVariantConst>(), playlists);
+  if (playlists.count == 0) {
+    String body;
+    serializeJson(response, body);
+    AppLog.line("Playback: playlists empty response " + body.substring(0, 96));
+  }
   return true;
 }
 

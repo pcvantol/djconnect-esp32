@@ -153,6 +153,7 @@ private:
 
   // Updates the display and LED ring from the current state snapshot.
   void renderNow();
+  void wakeDisplayWithSplash();
 
   // Hides the temporary DJ response overlay when it times out or the user acknowledges it.
   bool dismissDjResponseOverlay();
@@ -216,9 +217,11 @@ private:
   static void languageProvisionedCallback(void *context, const String &languageCode);
   static bool deviceCommandCallback(void *context, const DeviceCommand &command, String &message);
   static void directPairCallback(void *context);
+  static bool debugScreenCallback(void *context, const String &screenName, String &message);
   void noteDirectPairingReceived();
   void showNotice(const String &message, uint32_t ttlMs = 2500);
   int displayedVolume() const;
+  bool openDebugScreen(const String &screenName, String &message);
 
   SpotifyState playback_;
   BatteryState battery_;

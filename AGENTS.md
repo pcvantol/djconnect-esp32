@@ -68,6 +68,12 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `src/WebPortal.cpp`: embedded mobile web UI, diagnostics, settings, logs and HA pairing panel.
 - `include/SoundManager.h`, `src/SoundManager.cpp`: generated built-in speaker cues and cue volume scaling.
 - `README.md`: user-facing English project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
+- `DESIGN_DECISIONS.md`: reverse-engineered technical design decisions, code-level patterns, coding conventions and full dependency inventory. Keep it in sync for every release when architecture, style, board support, APIs, release flow or dependencies change.
+- `PRODUCT_ROADMAP.md`: canonical cross-repo product roadmap for feature ideas,
+  killer features, production-release must-haves and premium feature candidates.
+  Keep it byte-for-byte synchronized across DJConnect repos. During every
+  release, review implemented items and mark them checked with the implementing
+  major.minor version.
 - `THIRD_PARTY_NOTICES.md`: third-party dependency notices for firmware libraries and frameworks.
 
 ## Build And Test Commands
@@ -125,7 +131,14 @@ same board split with `beta-vX.Y.Z` asset names. The manifest uses a
 `firmwares` array for board-specific OTA selection and does not keep top-level
 single-device asset fields. `min_ha_integration` is derived from the firmware
 major/minor version, so firmware `X.Y.Z` publishes `X.Y.0` unless the release
-command explicitly overrides it.
+command explicitly overrides it. Before firmware builds, release tooling must
+run `scripts/update_build_dependencies.sh` to upgrade PlatformIO Core and update
+global/project PlatformIO packages for both board environments. Review the
+generated build-dependency diff; if framework, library or tool versions changed,
+update `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing.
+Also revalidate the embedded GitHub OTA TLS CA/certificate bundle against the
+current GitHub API and release-asset redirect chains, and update
+`include/GitHubTls.h` before publishing if the chain changed.
 
 Expected recurring third-party warnings:
 
@@ -138,7 +151,7 @@ paths are migrated from the legacy I2S API to `i2s_std`/`i2s_pdm`.
 
 Keep concerns separated:
 
-- `DJConnectApp` orchestrates modules and owns the main loop flow.
+- `DJConnectApp` orchestrates modules and owns the main loop flow. Keep `DESIGN_DECISIONS.md` current when changing these ownership boundaries or introducing new patterns.
 - `SpotifyClient` owns backend-agnostic playback proxy calls to Home Assistant.
 - `DisplayManager` owns drawing only. Do not put network or NVS logic in it.
 - `WebPortal` owns the existing mobile dashboard and shared port-80 `WebServer`.
@@ -417,7 +430,7 @@ HA/Spotify status indicators:
 - Device statusbar: `H`, playback music-note icon.
 - Web header mirrors the same indicators.
 - LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup/pairing animations.
-- Boot shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.pages.dev` for at least three seconds, then uses a calm startup rainbow lap. The About screen also shows the website URL and keeps legal notices compact without a separate proprietary firmware row. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
+- Boot shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.dev` for at least three seconds, then uses a calm startup rainbow lap. The About screen also shows the website URL and keeps legal notices compact without a separate proprietary firmware row. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
 
 ## Volume Rules
 
@@ -480,10 +493,11 @@ Current web expectations:
 - Volume slider range is `0-60`.
 - Volume slider is disabled when no track/playback is active.
 - Web Now Playing includes previous, next, play and pause controls with compact CSS icons.
-- The web portal includes a local Games panel with Pong, Asteroids and Fly.
+- The web portal includes a local Games panel with Paddle Rally, Meteor Run, Sky Dash and Maze Chase.
 - Sound output selection uses a combobox/list without device type suffixes. Keep `None`/`Geen` and `iPhone` as fixed first entries before live Spotify Connect devices on both device and web UI.
 - Logs support pause/resume and copy/select-all behavior. Logs should poll only while the logs panel is visible and not paused.
 - Queue, playlist and sound-output list requests should be visibility-aware so hidden panels do not keep polling.
+- Queue state supports up to 20 Up Next items from Home Assistant. Keep the cap centralized in `QueueState::MaxItems` so the ESP stays responsive while rendering/device-web JSON remains bounded.
 - Queue rendering must de-duplicate repeated items by URI, or by title/subtitle fallback when no URI is available, so one-track queues are not shown repeatedly on device or web.
 - Highlight error-like web status messages with the alert/error status styling so long HA pairing/voice endpoint failures are obvious.
 - Root/status/log API responses should stay uncached; embedded static icon and manifest assets should keep explicit browser cache headers.

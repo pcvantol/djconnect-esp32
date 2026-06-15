@@ -38,6 +38,7 @@ void DJConnectDiscovery::updateTxtRecords() {
 
   MDNS.addServiceTxt("djconnect", "tcp", "name", device_->getDeviceName());
   MDNS.addServiceTxt("djconnect", "tcp", "device_id", device_->getDeviceId());
+  MDNS.addServiceTxt("djconnect", "tcp", "client_type", device_->getClientType());
   MDNS.addServiceTxt("djconnect", "tcp", "version", device_->getFirmwareVersion());
   MDNS.addServiceTxt("djconnect", "tcp", "paired", device_->isPaired() ? "true" : "false");
   MDNS.addServiceTxt("djconnect", "tcp", "api", "/api/device");

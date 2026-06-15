@@ -5,13 +5,43 @@
 ### Added
 
 - Added Maze Chase as a fourth local game on device and web, with device/browser-local high score storage.
+- Added `DESIGN_DECISIONS.md` with reverse-engineered firmware design decisions, code-level patterns, coding conventions and a full framework/library dependency inventory.
+- Added canonical cross-repo `PRODUCT_ROADMAP.md` with new feature ideas, killer features, production-release must-haves and premium feature candidates.
+- Added release-test coverage to require the technical design decisions document and scan it in release hygiene checks.
 
 ### Changed
 
+- The Home Assistant pairing screen now shows the default LAN Home Assistant URL hint `http://homeassistant.local:8123` above the pairing code.
+- ESP queue rendering is capped at 20 items for device/web responsiveness.
+- ESP playlist fetching/rendering is capped at 20 items for device/web responsiveness while other clients may keep larger backend limits.
+- Web playlists now have an explicit refresh button, matching the queue panel refresh flow.
+- Web playlists now render as artwork rows with per-playlist play buttons; the old playlist combobox and `Start playlist` button were removed.
+- Web game tabs now fit all five game choices on one row on wider screens.
+- Web games now focus the game canvas after selecting or pressing game controls so keyboard input works consistently, including Maze Chase.
+- Web playback diagnostics now use polished Music/Muziek labels and localized refresh button text.
+- Web previous/next playback controls now use single-track skip icons (`|<` and `>|`) instead of double-skip icons.
+- Web shuffle/repeat playback controls now show an explicit grey off state and purple active states.
+- Web now-playing status pill now uses a green background for the active playing state.
+- OTA downloads now trust the Let’s Encrypt R12 chain currently used by GitHub release asset redirects.
+- Release hygiene now explicitly requires revalidating the embedded OTA TLS CA/certificate bundle before publishing firmware.
 - Renamed the visible game labels to match the iOS app: Paddle Rally, Meteor Run, Sky Dash and Maze Chase.
 - Slowed the Maze Chase ghost and made the white pellet turn the ghost temporarily edible with a blinking vulnerable state.
+- Screen wake now shows the DJConnect splash briefly before restoring the active UI.
+- Local `dev` / `vdev` firmware now allows unauthenticated `/api/device/screenshot.bmp` captures for development screenshots; release firmware keeps the endpoint bearer-token protected.
+- Added `scripts/capture_device_screens.sh` and a debug screen-open endpoint so local/SSH development flows can capture all known device screens after deploy.
+- Up Next now supports up to 20 queue items from Home Assistant before truncating on the ESP.
+- Renamed the visible queue screen title from `Up Next` / `Volgende nummers` to `Queue` / `Wachtrij`.
+- Boot and About screens now show the canonical website URL `https://djconnect.dev`.
+- Web portal title/status bar now includes a compact link to `https://djconnect.dev`.
+- mDNS discovery now advertises `client_type=esp32` in TXT records so Home Assistant can detect ESP clients without legacy prefix parsing.
+- Release and GitHub Actions builds now update/upgrade PlatformIO Core, build tools, frameworks and project libraries before compiling firmware, with a dependency diff that triggers third-party notices and dependency inventory review.
+- Documented that future releases must keep `DESIGN_DECISIONS.md` and `PRODUCT_ROADMAP.md` current together with README, changelog, handoff, third-party notices, sync prompts, Postman collections and tests.
 
-## v3.1.18
+### Fixed
+
+- Fixed a loop-task stack canary crash when the web portal fetched larger queue snapshots.
+
+## v3.1.19
 
 Hygiene release for documentation, tests, handoff, backlog, issues and cross-repo sync prompts.
 

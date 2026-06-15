@@ -6,6 +6,24 @@ cd "$ROOT"
 
 bash -n release.sh
 bash -n scripts/cleanup_old_releases.sh
+bash -n scripts/capture_device_screens.sh
+bash -n scripts/update_build_dependencies.sh
+test -s DESIGN_DECISIONS.md
+grep -q "Technical Design Decisions" DESIGN_DECISIONS.md
+grep -q "Frameworks, Libraries And Third-Party Dependencies" DESIGN_DECISIONS.md
+grep -q "Release Maintenance Rule" DESIGN_DECISIONS.md
+grep -q "embedded OTA TLS CA/certificate" README.md
+grep -q "GitHub OTA TLS CA/certificate bundle" AGENTS.md
+grep -q "CA/certificate bundles" SYNC_PROMPTS.md
+grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
+test -s PRODUCT_ROADMAP.md
+grep -q "Release Cycle Rule" PRODUCT_ROADMAP.md
+grep -q "Production Release Must-Haves" PRODUCT_ROADMAP.md
+grep -q "Killer Features" PRODUCT_ROADMAP.md
+grep -q "Premium / Paid Feature Candidates" PRODUCT_ROADMAP.md
+grep -q 'DefaultHomeAssistantUrl = "http://homeassistant.local:8123"' include/Config.h
+grep -q "DefaultHomeAssistantUrl" src/DisplayManager.cpp
+grep -q "http://homeassistant.local:8123" README.md
 
 # Repository hygiene: generated release assets must stay out of source control.
 git check-ignore -q release/djconnect-lilygo-t-embed-s3-v3.0.0.bin
@@ -24,19 +42,19 @@ echo "34e667173f5fe834f9282d11ab5a1f4f5fa2225010388f50a6f5bf7d72e2d460  assets/w
 
 # The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
 if rg -n --glob "!test/native/test_release.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
-  README.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old product/endpoint reference found" >&2
   exit 1
 fi
 
 if rg -n --glob "!test/native/test_release.sh" "spotifydj-device|releases/download/v2\.[0-9]+\.[0-9]+|tag/v2\.[0-9]+\.[0-9]+|Release .*v2\.[0-9]+\.[0-9]+|firmware v2\.[0-9]+\.[0-9]+" \
-  README.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old 2.x firmware release reference found" >&2
   exit 1
 fi
 
 if rg -n --glob "!test/native/test_release.sh" "djconnect-device-v|djconnect-device-esp32-s3-box-3|\"asset\": \"djconnect-device|\"url\": \"https://github.com/pcvantol/djconnect-firmware/releases/download/.*/djconnect-device" \
-  README.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old single-device firmware asset reference found" >&2
   exit 1
 fi
@@ -49,6 +67,8 @@ echo "$dry_run_output" | grep -q "min HA:  98.76.0"
 echo "$dry_run_output" | grep -q "max HA:  <98.77.0"
 echo "$dry_run_output" | grep -q "djconnect-lilygo-t-embed-s3-v98.76.54.bin"
 echo "$dry_run_output" | grep -q "djconnect-esp32-s3-box-3-v98.76.54.bin"
+echo "$dry_run_output" | grep -q "Would update and upgrade PlatformIO Core, global packages/tools and project packages"
+echo "$dry_run_output" | grep -q "Would write release/build-dependencies.diff and require THIRD_PARTY_NOTICES.md / DESIGN_DECISIONS.md review"
 echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 and esp32_s3_box3 in parallel with isolated PLATFORMIO_BUILD_DIR roots"
 echo "$dry_run_output" | grep -q "DJCONNECT_VERSION=98.76.54 / DJCONNECT_VERSION_TAG=v98.76.54"
 echo "$dry_run_output" | grep -q "Would commit, tag and push source repo"
@@ -56,6 +76,9 @@ echo "$dry_run_output" | grep -q "GitHub Actions will build/publish"
 grep -q '"$RELEASE_DIR/$LILYGO_ASSET"' release.sh
 grep -q '"$RELEASE_DIR/$BOX3_ASSET"' release.sh
 grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
+grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.sh
+grep -q 'scripts/update_build_dependencies.sh "${{ matrix.env }}"' .github/workflows/release-firmware.yml
+grep -q 'THIRD_PARTY_NOTICES.md and DESIGN_DECISIONS.md before publishing' scripts/update_build_dependencies.sh
 if grep -q 'GH_RELEASE_ARGS+=(.*"$RELEASE_DIR"/\\*)' release.sh; then
   echo "GitHub release upload must not glob every local release artifact" >&2
   exit 1

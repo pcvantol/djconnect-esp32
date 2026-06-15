@@ -780,6 +780,18 @@ static void testNetworkActivityLogicWithFakeHttp() {
   assert(NetworkActivityLogic::isSlow(1001, 1000));
 }
 
+static void testEspListLengthContracts() {
+  static_assert(QueueState::MaxItems == 20, "DJConnect ESP queue capacity must stay capped for device responsiveness");
+  static_assert(PlaylistListState::MaxItems == 20,
+                "DJConnect ESP playlist capacity must stay capped for device responsiveness");
+  QueueState queue;
+  PlaylistListState playlists;
+  assert(queue.count == 0);
+  assert(playlists.count == 0);
+  assert(QueueState::MaxItems == 20);
+  assert(PlaylistListState::MaxItems == 20);
+}
+
 int main() {
   testTrackTimeFormatting();
   testOtaComparableFirmwareVersion();
@@ -814,5 +826,6 @@ int main() {
   testDJConnectMenuItemCounts();
   testDJConnectMenuOptionValues();
   testNetworkActivityLogicWithFakeHttp();
+  testEspListLengthContracts();
   return 0;
 }

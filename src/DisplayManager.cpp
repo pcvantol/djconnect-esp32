@@ -189,6 +189,34 @@ void DisplayManager::showBootMessage(const String &message, const BatteryState &
   wakeForUserActivity();
 }
 
+void DisplayManager::showSplashScreen() {
+  if (screenBufferReady_) {
+    screen_.fillSprite(TFT_BLACK);
+    renderBoot(screen_, "");
+    screen_.pushSprite(0, 0);
+    wakeForUserActivity();
+    return;
+  }
+
+  tft_.fillScreen(TFT_BLACK);
+  renderBoot(tft_, "");
+  wakeForUserActivity();
+}
+
+void DisplayManager::showSplashScreen(const BatteryState &battery) {
+  if (screenBufferReady_) {
+    screen_.fillSprite(TFT_BLACK);
+    renderBoot(screen_, "", &battery);
+    screen_.pushSprite(0, 0);
+    wakeForUserActivity();
+    return;
+  }
+
+  tft_.fillScreen(TFT_BLACK);
+  renderBoot(tft_, "", &battery);
+  wakeForUserActivity();
+}
+
 void DisplayManager::showPairingCode(const String &pairCode) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
@@ -591,6 +619,25 @@ uint32_t DisplayManager::idleMs() const {
   return millis() - lastUserActivityAt_;
 }
 
+int DisplayManager::screenshotWidth() {
+  return screenBufferReady_ ? screen_.width() : tft_.width();
+}
+
+int DisplayManager::screenshotHeight() {
+  return screenBufferReady_ ? screen_.height() : tft_.height();
+}
+
+bool DisplayManager::hasScreenshotBuffer() const {
+  return screenBufferReady_;
+}
+
+uint16_t DisplayManager::screenshotPixel565(int x, int y) {
+  if (screenBufferReady_) {
+    return screen_.readPixel(x, y);
+  }
+  return tft_.readPixel(x, y);
+}
+
 void DisplayManager::observeText(TextMarqueeState &marquee, const String &text) {
   if (text == marquee.observedText) {
     return;
@@ -753,12 +800,15 @@ void DisplayManager::renderPairingCode(Canvas &canvas, const String &pairCode, c
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   canvas.drawString(I18n::text("pairing_code"), 14, tall ? 86 : 62, 2);
   canvas.drawString("Home Assistant", 14, tall ? 108 : 82, 2);
+  const String haUrl = String(I18n::text("pairing_ha_url")) + ": " + Config::DefaultHomeAssistantUrl;
+  canvas.setTextColor(NeutralLightGrey, TFT_BLACK);
+  canvas.drawString(clippedText(canvas, haUrl, w - 28, 1), 14, tall ? 128 : 100, 1);
 
-  canvas.drawFastHLine(14, tall ? 136 : 106, w - 28, TFT_DARKGREY);
+  canvas.drawFastHLine(14, tall ? 148 : 112, w - 28, TFT_DARKGREY);
 
   canvas.setTextDatum(MC_DATUM);
   canvas.setTextColor(BrightPurple, TFT_BLACK);
-  canvas.drawString(pairCode, w / 2, tall ? 176 : 132, 4);
+  canvas.drawString(pairCode, w / 2, tall ? 184 : 136, 4);
   canvas.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   canvas.drawString(I18n::text("setup_turn_off_hint"), w / 2, h - 10, 1);
   canvas.setTextDatum(TL_DATUM);

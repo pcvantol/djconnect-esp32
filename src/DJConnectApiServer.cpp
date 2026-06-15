@@ -4,12 +4,39 @@
 #include <ArduinoJson.h>
 #include <Arduino.h>
 #include <WiFi.h>
+#include <cstring>
+#include <memory>
+#include <new>
 
 #include "AppLog.h"
 #include "DeviceCommandParser.h"
 #include "DjResponseDebugLog.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
+
+namespace {
+void writeLe16(uint8_t *buffer, uint16_t value) {
+  buffer[0] = static_cast<uint8_t>(value & 0xff);
+  buffer[1] = static_cast<uint8_t>((value >> 8) & 0xff);
+}
+
+void writeLe32(uint8_t *buffer, uint32_t value) {
+  buffer[0] = static_cast<uint8_t>(value & 0xff);
+  buffer[1] = static_cast<uint8_t>((value >> 8) & 0xff);
+  buffer[2] = static_cast<uint8_t>((value >> 16) & 0xff);
+  buffer[3] = static_cast<uint8_t>((value >> 24) & 0xff);
+}
+
+void rgb565ToBgr888(uint16_t color, uint8_t *out) {
+  const uint8_t r5 = static_cast<uint8_t>((color >> 11) & 0x1f);
+  const uint8_t g6 = static_cast<uint8_t>((color >> 5) & 0x3f);
+  const uint8_t b5 = static_cast<uint8_t>(color & 0x1f);
+  out[0] = static_cast<uint8_t>((b5 * 255) / 31);
+  out[1] = static_cast<uint8_t>((g6 * 255) / 63);
+  out[2] = static_cast<uint8_t>((r5 * 255) / 31);
+}
+} // namespace
+
 void DJConnectApiServer::begin(
     WebServer &server,
     DJConnectDevice &device,
@@ -27,7 +54,8 @@ void DJConnectApiServer::begin(
     LanguageProvisionedCallback languageProvisionedCallback,
     DeviceCommandCallback deviceCommandCallback,
     DirectPairCallback directPairCallback,
-    OtaPrepareCallback otaPrepareCallback) {
+    OtaPrepareCallback otaPrepareCallback,
+    DebugScreenCallback debugScreenCallback) {
   if (running_) {
     return;
   }
@@ -48,6 +76,7 @@ void DJConnectApiServer::begin(
   deviceCommandCallback_ = deviceCommandCallback;
   directPairCallback_ = directPairCallback;
   otaPrepareCallback_ = otaPrepareCallback;
+  debugScreenCallback_ = debugScreenCallback;
 
   static const char *headers[] = {"Authorization"};
   server_->collectHeaders(headers, 1);
@@ -60,6 +89,8 @@ void DJConnectApiServer::begin(
   server_->on("/api/device/command", HTTP_POST, [this]() { handleCommand(); });
   server_->on("/api/device/reboot", HTTP_POST, [this]() { handleReboot(); });
   server_->on("/api/device/forget", HTTP_POST, [this]() { handleForget(); });
+  server_->on("/api/device/screenshot.bmp", HTTP_GET, [this]() { handleScreenshot(); });
+  server_->on("/api/device/debug/screen", HTTP_POST, [this]() { handleDebugScreen(); });
   running_ = true;
   AppLog.println("Device API routes registered");
 }
@@ -342,4 +373,105 @@ void DJConnectApiServer::handleForget() {
   sendJson(200, "{\"success\":true}");
   delay(500);
   ESP.restart();
+}
+
+void DJConnectApiServer::handleScreenshot() {
+  const bool devFirmware = device_ != nullptr && device_->getFirmwareVersion() == "0.0.0";
+  if (!devFirmware && !validateBearerToken()) {
+    return;
+  }
+  if (devFirmware && !validateBearerToken(false)) {
+    AppLog.println("Device screenshot: dev firmware allows unauthenticated capture");
+  }
+  if (display_ == nullptr) {
+    sendJson(503, "{\"success\":false,\"error\":\"display unavailable\"}");
+    return;
+  }
+
+  const int width = display_->screenshotWidth();
+  const int height = display_->screenshotHeight();
+  if (width <= 0 || height <= 0) {
+    sendJson(503, "{\"success\":false,\"error\":\"screenshot unavailable\"}");
+    return;
+  }
+
+  const size_t rowBytes = static_cast<size_t>(width) * 3;
+  const size_t rowStride = (rowBytes + 3) & ~static_cast<size_t>(3);
+  const uint32_t pixelBytes = static_cast<uint32_t>(rowStride * static_cast<size_t>(height));
+  const uint32_t fileSize = 54 + pixelBytes;
+
+  uint8_t header[54] = {};
+  header[0] = 'B';
+  header[1] = 'M';
+  writeLe32(header + 2, fileSize);
+  writeLe32(header + 10, 54);
+  writeLe32(header + 14, 40);
+  writeLe32(header + 18, static_cast<uint32_t>(width));
+  writeLe32(header + 22, static_cast<uint32_t>(height));
+  writeLe16(header + 26, 1);
+  writeLe16(header + 28, 24);
+  writeLe32(header + 34, pixelBytes);
+
+  std::unique_ptr<uint8_t[]> row(new (std::nothrow) uint8_t[rowStride]);
+  if (!row) {
+    sendJson(503, "{\"success\":false,\"error\":\"screenshot buffer unavailable\"}");
+    return;
+  }
+
+  server_->setContentLength(fileSize);
+  server_->send(200, "image/bmp", "");
+  WiFiClient client = server_->client();
+  client.write(header, sizeof(header));
+
+  for (int y = height - 1; y >= 0 && client.connected(); --y) {
+    memset(row.get(), 0, rowStride);
+    for (int x = 0; x < width; ++x) {
+      rgb565ToBgr888(display_->screenshotPixel565(x, y), row.get() + (static_cast<size_t>(x) * 3));
+    }
+    client.write(row.get(), rowStride);
+    if ((y & 0x0f) == 0) {
+      delay(0);
+    }
+  }
+  AppLog.print("Device screenshot served ");
+  AppLog.print(width);
+  AppLog.print("x");
+  AppLog.println(height);
+}
+
+void DJConnectApiServer::handleDebugScreen() {
+  const bool devFirmware = device_ != nullptr && device_->getFirmwareVersion() == "0.0.0";
+  if (!devFirmware && !validateBearerToken()) {
+    return;
+  }
+  if (devFirmware && !validateBearerToken(false)) {
+    AppLog.println("Device debug screen: dev firmware allows unauthenticated screen selection");
+  }
+  if (debugScreenCallback_ == nullptr) {
+    sendJson(501, "{\"success\":false,\"error\":\"debug screen handler unavailable\"}");
+    return;
+  }
+
+  String screenName = server_->arg("screen");
+  if (screenName.isEmpty()) {
+    JsonDocument doc;
+    if (!deserializeJson(doc, server_->arg("plain"))) {
+      screenName = doc["screen"] | "";
+    }
+  }
+  screenName.trim();
+  if (screenName.isEmpty()) {
+    sendJson(400, "{\"success\":false,\"error\":\"screen missing\"}");
+    return;
+  }
+
+  String message;
+  const bool ok = debugScreenCallback_(callbackContext_, screenName, message);
+  JsonDocument response;
+  response["success"] = ok;
+  response["screen"] = screenName;
+  response["message"] = message;
+  String payload;
+  serializeJson(response, payload);
+  sendJson(ok ? 200 : 404, payload);
 }

@@ -82,6 +82,10 @@ struct StatusNotice {
     return visibleUntil != 0 && static_cast<int32_t>(millis() - visibleUntil) < 0;
   }
 
+  void clear() {
+    visibleUntil = 0;
+  }
+
   // Clears expired notices and reports whether the display should be redrawn.
   bool clearIfExpired() {
     if (visibleUntil == 0 || isVisible()) {
@@ -122,7 +126,7 @@ struct QueueItemState {
 };
 
 struct QueueState {
-  static constexpr size_t MaxItems = 12;
+  static constexpr size_t MaxItems = 20;
   bool available = false;
   String error;
   String contextUri;
@@ -134,13 +138,15 @@ struct PlaylistItemState {
   String name;
   String owner;
   String uri;
+  String imageUrl;
 };
 
 struct PlaylistListState {
+  static constexpr size_t MaxItems = 20;
   bool available = false;
   String error;
   size_t count = 0;
-  PlaylistItemState items[8];
+  PlaylistItemState items[MaxItems];
 };
 
 struct SpotifyDeviceState {

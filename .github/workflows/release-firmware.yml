@@ -77,7 +77,12 @@ jobs:
           python-version: "3.x"
 
       - name: Install PlatformIO
-        run: pip install platformio
+        run: pip install --upgrade platformio
+
+      - name: Update build dependencies
+        run: |
+          mkdir -p "release/${{ matrix.env }}"
+          REPORT_DIR="release/${{ matrix.env }}" scripts/update_build_dependencies.sh "${{ matrix.env }}"
 
       - name: Build firmware
         run: |
@@ -109,7 +114,6 @@ jobs:
             ASSET="${{ needs.release-info.outputs.box3_bin }}"
           fi
           FIRMWARE_DIR=".pio/build-release/${{ matrix.env }}/${{ matrix.env }}"
-          mkdir -p "release/${{ matrix.env }}"
           cp "${FIRMWARE_DIR}/firmware.bin" "release/${{ matrix.env }}/${ASSET}"
           SHA256=$(sha256sum "release/${{ matrix.env }}/${ASSET}" | awk '{print $1}')
           SIZE=$(stat -c%s "release/${{ matrix.env }}/${ASSET}")

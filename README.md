@@ -60,12 +60,28 @@ Arduino ESP32 2.x / ESP-IDF 4.x compatibility is not maintained.
 
 - Playback backend requirements are handled by the Home Assistant integration. For Spotify this may still require Spotify Premium and an available Spotify Connect output.
 - Some playback outputs may not support volume or queue metadata; the ESP disables unsupported actions when Home Assistant reports they are unavailable.
+- Up Next stores and renders up to 20 queue items from Home Assistant. Longer backend queues are truncated on the ESP.
 - OTA through `/api/device/ota` requires HTTPS and verifies the streamed firmware against the manifest SHA256 before rebooting.
 - Web portal DJ announcement test runs through the ESP and Home Assistant pairing, displays the returned DJ text on the device and does not require browser microphone access.
 
 ## Cross-Repo Sync Prompts
 
 Canonical prompts for syncing this firmware repo with the Home Assistant integration, Apple app, Raspberry Pi client and website/docs repos live in [`SYNC_PROMPTS.md`](SYNC_PROMPTS.md).
+
+## Technical Design Decisions
+
+Reverse-engineered firmware design decisions, code-level patterns, coding style
+conventions and the full framework/library dependency inventory live in
+[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md). Keep it updated with every release
+when architecture, coding conventions, board support, APIs, release flow or
+dependencies change.
+
+## Product Roadmap
+
+Product ideas, killer features, production-release must-haves and premium
+feature candidates live in [`PRODUCT_ROADMAP.md`](PRODUCT_ROADMAP.md). Keep it
+byte-for-byte synchronized across DJConnect repos. Every release should mark
+implemented roadmap items as checked with the implementing major.minor version.
 
 ## License
 
@@ -142,7 +158,7 @@ The ESP sends generic playback commands to Home Assistant and receives generic p
 
 The custom integration domain is `djconnect`.
 
-When WiFi is configured but Home Assistant is not paired, the device enters pairing mode. The display shows the DJConnect logo/name, battery state, a large pairing code and a center-button turn-off hint. The screen stays at 100% brightness for 10 minutes and the LED ring breathes blue. Normal playback/menu input is blocked, while reset controls, BLE advertising, the web portal and the device API remain available.
+When WiFi is configured but Home Assistant is not paired, the device enters pairing mode. The display shows the DJConnect logo/name, battery state, the default Home Assistant URL hint `http://homeassistant.local:8123`, a large pairing code and a center-button turn-off hint. The screen stays at 100% brightness for 10 minutes and the LED ring breathes blue. Normal playback/menu input is blocked, while reset controls, BLE advertising, the web portal and the device API remain available.
 
 ### mDNS Discovery
 
@@ -160,7 +176,7 @@ Browsable URL:
 http://djconnect-<device-model>-XXXXXXXXXXXX.local
 ```
 
-The hostname is the device ID. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`. TXT records include `name`, `device_id`, `version`, `paired`, `api` and `model`.
+The hostname is the device ID. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`. TXT records include `name`, `device_id`, `client_type`, `version`, `paired`, `api` and `model`.
 The firmware does not use or accept persistent legacy IDs such as `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` or `djconnect-[six-digit-code]`. The six-digit setup value is only a temporary `pair_code`.
 
 ### Local Device API
@@ -179,6 +195,18 @@ Protected endpoints require `Authorization: Bearer <device_token>`:
 - `POST /api/device/reboot`
 - `POST /api/device/forget`
 - `POST /api/device/dj_response`
+- `GET /api/device/screenshot.bmp`
+
+Local `dev` / `vdev` firmware reports version `0.0.0` and allows
+`/api/device/screenshot.bmp` without a bearer token for local development
+screen-capture workflows. Published release firmware keeps this endpoint
+protected by the paired device token.
+
+Local `dev` / `vdev` firmware also exposes `POST /api/device/debug/screen`
+with a `screen` query/body value so development tooling can open known device
+screens before capturing screenshots. Release firmware requires the paired
+device token for this route. Use `scripts/capture_device_screens.sh` to capture
+all known screens locally or through an SSH jump host on the same LAN.
 
 Playback credentials live in Home Assistant and are never accepted or stored by the ESP.
 
@@ -190,7 +218,7 @@ Repeated direct callbacks with the same local URL and `device_token` are treated
 
 The ESP stores one Home Assistant URL for runtime traffic:
 
-- `ha_local_url`: the LAN URL the ESP should use for normal control, for example `http://192.168.1.10:8123`.
+- `ha_local_url`: the LAN URL the ESP should use for normal control, for example `http://192.168.1.10:8123`. The pairing screen shows `http://homeassistant.local:8123` as the default user hint for where Home Assistant is expected on the LAN.
 
 `ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant sends a Nabu Casa URL as `ha_local_url`, the ESP rejects pairing instead of entering a half-paired state. Status, playback and voice calls always use the local URL. Cloud/Nabu Casa URLs are not stored or used by the ESP runtime; they belong only in Home Assistant's backend/OAuth configuration flows.
 
@@ -303,7 +331,7 @@ After boot and Home Assistant setup, the ESP forces an immediate playback status
 
 ## Web Portal
 
-The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-announcement flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, local games, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. The portal uses the current DJConnect icon style with blue/purple brand accents for headers, panels and primary actions while preserving green/red/yellow status colors for state. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header shows `Muziekbediening met karakter`, firmware version and board device model, then right-aligns status in the same order as the device: H, playback music-note icon, WiFi signal bars and, only on boards with a battery gauge, a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The playback music-note indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
+The web portal starts after WiFi connects and is available at the device IP address and mDNS hostname. It provides Now Playing, DJ-announcement flow testing, album art, volume, previous/next, play/pause, sound output selection, queue, playlists, local games, Home Assistant status, WiFi credential update, diagnostics, logs, OTA upload and dark/light/auto theme support. Queue and playlist panels have explicit refresh buttons. Queue and playlist entries render as artwork rows with their own play buttons; playlist artwork is lazy-loaded by the browser when HA provides an image URL. The portal uses the current DJConnect icon style with blue/purple brand accents for headers, panels and primary actions while preserving green/red/yellow status colors for state. Sound output lists always include `None`/`Geen` and `iPhone` before live outputs returned by Home Assistant. The Home Assistant pairing banner opens the My Home Assistant setup link in a new browser tab so the local ESP page remains available. The header shows `Muziekbediening met karakter`, firmware version and board device model, includes a compact `djconnect.dev` website link in the title/status bar, then right-aligns status in the same order as the device: H, playback music-note icon, WiFi signal bars and, only on boards with a battery gauge, a CSS-rendered battery indicator with the percentage inside the icon and a flashing charge marker while charging. The playback music-note indicator is green for active usable playback, grey when the playback backend is reachable but has no active playback, and red on playback proxy errors. The IP address is shown in the WiFi details block.
 
 The device Logs screen shows the newest log tail by default and can be scrolled with the encoder to inspect older buffered entries. Serial, web and device logs use the compact `HH:mm INF` severity prefix format.
 
@@ -313,7 +341,7 @@ The web portal includes Safari/iOS home-screen metadata and an Apple touch icon.
 
 To reduce unnecessary ESP HTTP work, the portal only polls heavier panels when they are visible: logs poll only while the logs panel is visible and not paused, and queue, playlist and sound-output list refreshes run only when their related UI is on screen. Dynamic API and root page responses use `no-store` cache headers, while embedded static assets such as icons and the web manifest use browser cache headers.
 
-Queue, playlist and output data are supplied by the Home Assistant integration. The firmware de-duplicates returned queue items by URI, or by title/subtitle when no URI is supplied, so a one-track queue is not rendered repeatedly on the device or web portal. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
+Queue, playlist and output data are supplied by the Home Assistant integration. The firmware accepts up to 20 queue items, then de-duplicates returned queue items by URI, or by title/subtitle when no URI is supplied, so a one-track queue is not rendered repeatedly on the device or web portal. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
 
 ## Firmware Architecture
 
@@ -358,13 +386,22 @@ Local development builds still show `vdev` on the device, but the Home Assistant
 
 Freshly provisioned, unpaired release firmware also performs a pre-pairing bootstrap update check after WiFi connects. It uses the GitHub Releases API for `pcvantol/djconnect-firmware`, follows the normal OTA screen/LED/sound/write flow when a newer release is available, and continues silently into pairing if the check fails. Dev builds are skipped so local development firmware is not replaced automatically.
 
-During normal boot, the display shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.pages.dev` for at least three seconds before WiFi, setup/AP, charging or playback states take over. The About screen also shows the website URL and keeps legal notices compact without a separate proprietary firmware row. The LED ring then plays one calm rainbow startup lap. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. Before HA-triggered or bootstrap OTA download starts, the firmware releases wake-word/TFLite and active voice/audio resources so GitHub TLS has a large enough free heap block on non-PSRAM boards. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot. OTA downloads tolerate slow GitHub/CDN bursts with a longer idle window while still aborting controlled when the stream genuinely stalls.
+During normal boot, the display shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.dev` for at least three seconds before WiFi, setup/AP, charging or playback states take over. When the screen wakes from backlight-off normal mode, the first physical input shows the DJConnect splash briefly and then restores the active UI without executing the underlying action. The About screen also shows the website URL and keeps legal notices compact without a separate proprietary firmware row. The LED ring then plays one calm rainbow startup lap. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. Before HA-triggered or bootstrap OTA download starts, the firmware releases wake-word/TFLite and active voice/audio resources so GitHub TLS has a large enough free heap block on non-PSRAM boards. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot. OTA downloads tolerate slow GitHub/CDN bursts with a longer idle window while still aborting controlled when the stream genuinely stalls.
 
 ## GitHub Firmware Release
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, `release/djconnect-esp32-s3-box-3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. The pushed git tag then triggers the GitHub Action, which builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that both compiled firmware images contain the expected `vX.Y.Z` version tag before publishing both OTA assets and their `.sha256` files.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, `release/djconnect-esp32-s3-box-3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. The pushed git tag then triggers the GitHub Action, which performs the same dependency update step, builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that both compiled firmware images contain the expected `vX.Y.Z` version tag before publishing both OTA assets and their `.sha256` files.
+
+Dependency updates write `release/build-dependencies-before.txt`,
+`release/build-dependencies-after.txt` and `release/build-dependencies.diff`
+locally, and equivalent per-board reports in GitHub Actions artifacts. If the
+diff shows upgraded frameworks, libraries or tools, update
+`THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing the release.
+Before publishing firmware, also revalidate the embedded OTA TLS CA/certificate
+bundle in `include/GitHubTls.h` against the current GitHub API and release-asset
+redirect certificate chains.
 
 Beta firmware uses the same flow with `--channel beta` or a `vX.Y.Z-beta` tag. Beta assets are named `djconnect-lilygo-t-embed-s3-beta-vX.Y.Z.bin` and `djconnect-esp32-s3-box-3-beta-vX.Y.Z.bin`, the manifest is `firmware_manifest_beta.json`, and the GitHub release is marked as a prerelease.
 
@@ -425,6 +462,12 @@ Build firmware:
 
 ```bash
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
+```
+
+Refresh build dependencies before a manual verification build:
+
+```bash
+scripts/update_build_dependencies.sh t_embed_cc1101 esp32_s3_box3
 ```
 
 The firmware environment is pinned to the pioarduino ESP32 platform line that

@@ -32,9 +32,68 @@ commit the updated `SYNC_PROMPTS.md` there.
 ## Current Protocol Line
 
 The current shared protocol/release line is `3.1.x`; this bundle was last
-aligned after Raspberry Pi client release `v3.1.25`. DJConnect clients on the
+aligned after website release `v3.1.27`. DJConnect clients on the
 `3.1.x` line are compatible with Home Assistant integration versions `>=3.1.0`
 and `<3.2.0`.
+
+## Shared Release Cycle
+
+Every DJConnect release in any repo must follow the shared release hygiene
+checklist. Apply the repo-specific commands and skip only steps that are truly
+not applicable for that repo.
+
+Before publishing:
+
+- Review `PRODUCT_ROADMAP.md`.
+- Keep `PRODUCT_ROADMAP.md` byte-for-byte identical across all DJConnect repos.
+- Check whether any roadmap item was implemented.
+- Mark implemented roadmap items as checked.
+- Add the implementing major.minor version in parentheses, for example
+  `[x] Queue supports up to 100 items (3.1)`.
+- If the implementation is client-specific, include the client after the
+  version, for example `[x] ESP32 screenshot endpoint (3.1, ESP32)`.
+- Do not delete recently implemented checked items during the release; keep
+  them as product memory until a later roadmap cleanup.
+- Update changelog with a new entry for the release. Do not collapse unrelated
+  historical entries into one version.
+- Update README, handoff, tests, design decisions, Postman collections,
+  third-party notices and repo-specific docs when product behavior, APIs,
+  release flow, dependencies or public contracts changed.
+- Update this `SYNC_PROMPTS.md` when the cross-repo contract or release
+  checklist changes.
+- Sync the updated `PRODUCT_ROADMAP.md` and `SYNC_PROMPTS.md` to all sibling
+  DJConnect repos before finishing release hygiene.
+- Bump the repo version according to that repo's release mechanism.
+- Run build cleanup before release/build commands so stale assets do not leak
+  into published artifacts.
+- For repos with managed third-party build dependencies, update/upgrade
+  frameworks, libraries and build tools before compiling release artifacts. If
+  dependency versions changed, update third-party notices and dependency
+  inventory/design documentation before publishing.
+- Run the relevant automated tests for the repo.
+- Run build/package validation for every supported target.
+- Deploy to a connected app/device when the repo has a connected local target
+  available and the release/change calls for it.
+- Run smoke/monkey testing where the repo has an app, website, device or local
+  UI surface. For ESP/device clients, keep monkey tests non-destructive:
+  render/navigation only, no OTA, factory reset, WiFi changes, playback
+  mutations or credential changes.
+- Validate logs after smoke/monkey testing and explicitly check for crashes,
+  watchdogs, panics, assertions, unhandled exceptions, repeated HTTP failures,
+  memory allocation failures and secret leakage.
+
+Publishing and cleanup:
+
+- Publish the release through the repo's standard release script or workflow.
+- Verify published artifacts/assets are present and named according to the
+  current contract.
+- Delete old GitHub releases that should not be retained.
+- Delete old Git tags that should not be retained.
+- Delete old GitHub Actions workflow runs that should not be retained.
+- Keep only the agreed latest stable/beta releases for that repo.
+- Re-run or verify cleanup scripts where the repo provides them.
+- Confirm the final release state in docs/changelog/handoff and note any
+  skipped validation with the reason.
 
 ---
 
@@ -50,6 +109,60 @@ Canonical repo locations:
 - ESP firmware: `pcvantol/djconnect-esp32`
 - Website/docs: `pcvantol/djconnect-website`
 - Raspberry Pi client: `pcvantol/djconnect-pi`
+
+## Website/Docs
+
+```text
+Sync the DJConnect website/docs with the Home Assistant integration, Apple app,
+ESP firmware and Raspberry Pi client contracts.
+
+Requirements:
+- Keep the canonical production domain `https://djconnect.dev`; keep
+  `https://www.djconnect.dev` as a permanent redirect to the apex domain.
+- Keep `djconnect.pages.dev` only as the Cloudflare Pages fallback URL.
+- Keep homepage navigation focused on `Hoe werkt het`, `Features`, `Spraak`,
+  `Installeren` and `Blog`, plus the primary `Aan de slag` CTA.
+- Keep the voice commands page at `/voice-commands` aligned with Home Assistant
+  intent parsing and local fallback behavior. It must document artist-first
+  generic music requests, explicit track/album/playlist media words, default
+  playlist/favorites and the expandable playback-control family in Dutch and
+  English. Keep the examples in a maintainable data/config object and render
+  only the selected NL or EN examples according to the website language toggle.
+- Use `VOICE_INTENT_DATA_PROMPT.md` when the Home Assistant integration needs
+  to hand over only updated voice/PTT intentdata to the website. That prompt
+  must request structured data only and exclude website rendering, styling,
+  release, changelog and deploy instructions.
+- Keep macOS, iOS, Raspberry Pi/Linux and ESP32 pages minimal: app/device pages
+  should label the platform route as `Home` and avoid cross-link clutter in
+  their top menus.
+- Keep `macos-download` retired. The canonical macOS page is `/macos`.
+- Render macOS downloads from `pcvantol/djconnect-app-releases`, ESP32 firmware
+  downloads from `pcvantol/djconnect-firmware`, and Raspberry Pi/Linux downloads
+  from `pcvantol/djconnect-pi-releases`.
+- Show only the latest GitHub release in ESP32 firmware and Raspberry Pi/Linux
+  download blocks. Keep macOS aligned with the same latest-version download
+  pattern unless an App Store link replaces it.
+- Route website-originated download clicks through `/go/download` so aggregate
+  click counters can be combined with GitHub release asset download_count.
+- Route the public Raspberry Pi/Linux installer through `/go/linux-install`;
+  generate the install command from the latest `djconnect-pi-*` tarball and run
+  `sudo ./scripts/install.sh`.
+- Keep click/download analytics cookieless and aggregate-only: no cookies, IP
+  addresses, user agents, referrers or visitor identifiers.
+- Keep SEO metadata, sitemap, canonical URLs and social preview images current
+  for the production domain.
+- Keep the translated footer privacy notice and the footer website version on
+  every public page.
+- Keep bonus game names aligned with the current app labels: Paddle Rally,
+  Meteor Run, Sky Dash and Maze Chase.
+- Keep tests for translation coverage, current navigation, latest-only embeds,
+  tracked redirects, retired routes, SEO canonicals, link checking, voice
+  command intent-family docs and stale pre-flashed copy.
+- Keep release documentation, handoff, tests, changelog, design decisions,
+  roadmap and third-party notices current before every website release.
+- Keep old website releases, tags and workflow runs cleaned up by default after
+  publishing.
+```
 
 ## Home Assistant Integration
 
@@ -279,6 +392,9 @@ Requirements:
   language, log_level, and current device settings in status payloads.
 - Send raw WAV voice audio to POST /api/djconnect/voice with Authorization:
   Bearer <device_token> and X-DJConnect-Device-ID.
+- Keep Up Next queue capacity aligned with the shared contract: accept and
+  render up to 100 real queue items from Home Assistant, then truncate locally.
+  Do not pad short queues with repeated current-track entries.
 - Treat backend_unavailable and version_mismatch as recoverable without
   clearing pairing.
 - Treat authenticated 401/403/404 as stale/setup recovery while keeping
@@ -322,6 +438,8 @@ Regels:
 
 - `device_id` is model-specifiek: `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX` voor LilyGO en `djconnect-esp32-s3-box-3-XXXXXXXXXXXX` voor ESP32-S3-BOX-3.
 - De ESP mDNS hostname gebruikt exact dezelfde `device_id`, dus bijvoorbeeld `http://djconnect-esp32-s3-box-3-XXXXXXXXXXXX.local`.
+- ESP mDNS TXT bevat minimaal `name`, `device_id`, `client_type=esp32`,
+  `version`, `paired`, `api` en `model`.
 - Gebruik het mDNS TXT veld `model` of de status/API `model` om het device model te bepalen; parse niet op de oude `djconnect-lilygo-` prefix.
 - `ha_local_url` moet een echte LAN URL zijn.
 - `ha_local_url` mag nooit `.ui.nabu.casa` bevatten.
@@ -449,7 +567,8 @@ Voor `POST /api/djconnect/command` met `command:"queue"`:
 Regels:
 
 - App-clients mogen `limit:100` meesturen; HA retourneert maximaal 100 echte
-  backend queue-items.
+  backend queue-items. ESP firmware in de `3.1.x` lijn accepteert en toont
+  maximaal 100 items.
 - Retourneer de echte backend queue/context, niet dezelfde current track als padding.
 - Als er maar 1 queue-item is, retourneer 1 item.
 - `context_uri` blijft nodig voor ESP/web per-item play.

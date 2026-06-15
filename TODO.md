@@ -185,7 +185,7 @@ Concrete issue and task list after release `v3.1.16`.
 
 ## Documentation
 
-- [ ] Keep `README.md`, `AGENTS.md`, `CHANGELOG.md`, `HANDOFF.md` and this backlog aligned after each feature slice.
+- [ ] Keep `README.md`, `DESIGN_DECISIONS.md`, `AGENTS.md`, `CHANGELOG.md`, `HANDOFF.md` and this backlog aligned after each feature slice/release.
 - [ ] Add production security migration notes when NVS Encryption/Flash Encryption are actually implemented.
 - [ ] Add a manual factory test checklist for sold devices.
 - [ ] Add troubleshooting section for HA STT/TTS provider errors.
