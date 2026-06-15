@@ -60,7 +60,7 @@ Arduino ESP32 2.x / ESP-IDF 4.x compatibility is not maintained.
 
 - Playback backend requirements are handled by the Home Assistant integration. For Spotify this may still require Spotify Premium and an available Spotify Connect output.
 - Some playback outputs may not support volume or queue metadata; the ESP disables unsupported actions when Home Assistant reports they are unavailable.
-- Up Next stores and renders up to 20 queue items from Home Assistant. Longer backend queues are truncated on the ESP.
+- Queue stores and renders up to 100 queue items from Home Assistant. Longer backend queues are truncated on the ESP.
 - OTA through `/api/device/ota` requires HTTPS and verifies the streamed firmware against the manifest SHA256 before rebooting.
 - Web portal DJ announcement test runs through the ESP and Home Assistant pairing, displays the returned DJ text on the device and does not require browser microphone access.
 
@@ -154,6 +154,17 @@ In Home Assistant pairing mode, BLE advertising remains active so a Home Assista
 ## Playback Backend
 
 The ESP sends generic playback commands to Home Assistant and receives generic playback state back. The firmware intentionally avoids Spotify OAuth storage and direct Spotify Web API calls. Home Assistant owns backend-specific details such as Spotify refresh tokens, Sonos entity selection, media-player services, playlist lookup and queue behavior.
+
+List-style playback commands must include safe limits when a client can provide
+one. ESP32 firmware sends `{"command":"playlists","limit":20}` so the device and
+embedded web portal stay responsive, while iOS/macOS clients may request
+`{"command":"playlists","limit":50}`. Home Assistant must also remain backwards
+compatible with older clients that omit the playlist limit by defaulting
+internally to Spotify's safe maximum of `50`, not to an invalid value. Queue
+requests use `{"command":"queue","limit":100}` and Home Assistant should clamp
+or validate incoming positive integer limits before calling provider APIs.
+Provider-specific technical failures should be logged, while user-facing
+responses should stay generic and JSON-shaped.
 
 ## Home Assistant Integration
 
@@ -329,9 +340,9 @@ Supported command payloads:
 
 Status is still posted periodically to the Home Assistant integration through `/api/djconnect/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. Every ESP-to-Home Assistant JSON payload for `/api/djconnect/status` and `/api/djconnect/command` includes top-level `device_id` and `client_type:"esp32"`; the firmware does not send `device_type` in those payloads. Playback command payloads stay identity-only and must not carry partial device-status snapshots; `/api/djconnect/status` is the authoritative source for battery, firmware, RSSI, pairing, screen, LED, settings and sound-output sensor values. Raw WAV uploads to `/api/djconnect/voice` use the bearer token and `X-DJConnect-Device-ID` headers instead of a JSON body.
 
-The status payload mirrors user device settings both top-level and under `settings`, including `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `ota_state`, `update_state` and `sound_output`. It also includes `screen_state`, `led_state`, `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to unknown or minimum values.
+The status payload mirrors user device settings both top-level and under `settings`, including `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `ota_state`, `update_state`, `sound_output` and `playback_configured`. It also sends the compatibility hint `spotify_configured` as the same boolean without exposing credentials. The payload includes `screen_state`, `led_state`, `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to unknown or minimum values.
 
-Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing. If HA returns `{"success":false,"error":"invalid_client_type"}` or an HTTP error body with `error:"invalid_client_type"`, the ESP logs `HA rejected payload: missing client_type=esp32`, treats it as a firmware/HA contract problem and does not clear NVS pairing or the device token.
+Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing and shows a localized Home Assistant Spotify-connection hint instead of raw provider errors. If HA returns `{"success":false,"error":"invalid_client_type"}` or an HTTP error body with `error:"invalid_client_type"`, the ESP logs `HA rejected payload: missing client_type=esp32`, treats it as a firmware/HA contract problem and does not clear NVS pairing or the device token. HTTP 426 with `error:"version_mismatch"` requires a firmware/integration update and also keeps pairing/token intact.
 
 After boot and Home Assistant setup, the ESP posts status immediately, then gives automatic playback polling a short grace period before the first background playback status command. Physical playback controls remain available, while the delayed background poll avoids stacking wake-word startup, HA status and playback proxy work during the tight no-PSRAM boot window.
 
@@ -347,7 +358,7 @@ The web portal includes Safari/iOS home-screen metadata and an Apple touch icon.
 
 To reduce unnecessary ESP HTTP work, the portal only polls heavier panels when they are visible: logs poll only while the logs panel is visible and not paused, and queue, playlist and sound-output list refreshes run only when their related UI is on screen. Dynamic API and root page responses use `no-store` cache headers, while embedded static assets such as icons and the web manifest use browser cache headers.
 
-Queue, playlist and output data are supplied by the Home Assistant integration. The firmware accepts up to 20 queue items, then de-duplicates returned queue items by URI, or by title/subtitle when no URI is supplied, so a one-track queue is not rendered repeatedly on the device or web portal. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
+Queue, playlist and output data are supplied by the Home Assistant integration. The firmware accepts up to 100 queue items, then de-duplicates returned queue items by URI, or by title/subtitle when no URI is supplied, so a one-track queue is not rendered repeatedly on the device or web portal. Playlist fetching/rendering remains capped at 20 items on ESP32 clients. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
 
 ## Firmware Architecture
 
@@ -398,7 +409,12 @@ During normal boot, the display shows the DJConnect tagline `Muziekbediening met
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, `release/djconnect-esp32-s3-box-3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. The pushed git tag then triggers the GitHub Action, which performs the same dependency update step, builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that both compiled firmware images contain the expected `vX.Y.Z` version tag before publishing both OTA assets and their `.sha256` files. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, `release/djconnect-esp32-s3-box-3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. The pushed git tag then triggers the GitHub Action, which performs the same dependency update step, builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that both compiled firmware images contain the expected `vX.Y.Z` version tag before publishing both OTA assets and their `.sha256` files. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
+
+The embedded web portal lives in `src/WebPortal.cpp` as a PROGMEM raw literal.
+Run `python3 scripts/minify_webportal.py` after changing the portal markup,
+styles or scripts so the served portal remains compact without adding runtime
+decompression to the no-PSRAM LilyGO path.
 
 Dependency updates write `release/build-dependencies-before.txt`,
 `release/build-dependencies-after.txt` and `release/build-dependencies.diff`

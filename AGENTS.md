@@ -140,6 +140,13 @@ run `scripts/update_build_dependencies.sh` to upgrade PlatformIO Core and update
 global/project PlatformIO packages for both board environments. Review the
 generated build-dependency diff; if framework, library or tool versions changed,
 update `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing.
+Release builds must also set `DJCONNECT_RELEASE_BUILD=1` and keep the explicit
+size-oriented `-Os` flag in both `release.sh` and the GitHub workflow. Do not
+enable `-flto` in the current Arduino ESP32 / ESP-IDF 5.3 toolchain unless a
+full release build proves the final link works; it currently fails during link.
+After web portal markup, CSS or JavaScript changes, run
+`python3 scripts/minify_webportal.py` so the embedded PROGMEM portal stays
+compact without adding runtime decompression on no-PSRAM boards.
 Also revalidate the embedded GitHub OTA TLS CA/certificate bundle against the
 current GitHub API and release-asset redirect chains, and update
 `include/GitHubTls.h` before publishing if the chain changed. Public GitHub
@@ -194,6 +201,12 @@ pause, next, previous, set_volume, set_output, start_playlist, set_shuffle,
 set_repeat and status-refresh commands. Do not send `device_type` in ESP-to-HA
 JSON payloads. Raw WAV voice upload to `/api/djconnect/voice` uses auth headers
 and `X-DJConnect-Device-ID` instead of a JSON body.
+
+Playback list commands must send safe positive integer limits. ESP queue
+requests send `{"command":"queue","limit":100}`. ESP playlist requests send
+`{"command":"playlists","limit":20}` for device responsiveness, while
+Home Assistant should default missing legacy playlist limits to `50` and clamp
+provider calls to safe maxima.
 
 Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, firmware, battery percentage, WiFi RSSI, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state, LED state and sound output. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_state`, `led_state`, `sound_output`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
 
@@ -508,7 +521,7 @@ Current web expectations:
 - Sound output selection uses a combobox/list without device type suffixes. Keep `None`/`Geen` and `iPhone` as fixed first entries before live Spotify Connect devices on both device and web UI.
 - Logs support pause/resume and copy/select-all behavior. Logs should poll only while the logs panel is visible and not paused.
 - Queue, playlist and sound-output list requests should be visibility-aware so hidden panels do not keep polling.
-- Queue state supports up to 20 Up Next items from Home Assistant. Keep the cap centralized in `QueueState::MaxItems` so the ESP stays responsive while rendering/device-web JSON remains bounded.
+- Queue state supports up to 100 queue items from Home Assistant. Keep the cap centralized in `QueueState::MaxItems` so rendering/device-web JSON remains bounded.
 - Queue rendering must de-duplicate repeated items by URI, or by title/subtitle fallback when no URI is available, so one-track queues are not shown repeatedly on device or web.
 - Highlight error-like web status messages with the alert/error status styling so long HA pairing/voice endpoint failures are obvious.
 - Root/status/log API responses should stay uncached; embedded static icon and manifest assets should keep explicit browser cache headers.

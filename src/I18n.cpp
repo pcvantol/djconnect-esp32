@@ -139,6 +139,7 @@ constexpr Entry Entries[] = {
     {"spotify_authorization_failed_sentence", "Playback authorization failed.", "Afspeelautorisatie mislukt."},
     {"spotify_client_and_refresh_required", "Playback credentials are managed in Home Assistant", "Afspeelgegevens worden beheerd in Home Assistant"},
     {"spotify_not_connected", "Playback not connected", "Afspelen niet verbonden"},
+    {"playback_backend_unavailable_hint", "Check the Spotify connection in Home Assistant.", "Controleer de Spotify-koppeling in Home Assistant."},
     {"spotify_refresh_saved_ok", "Playback credentials saved", "Afspeelgegevens opgeslagen"},
     {"spotify_select_output_first", "Select an output first", "Selecteer eerst een output"},
     {"starting_liked_proxy", "Starting default playlist", "Standaard playlist starten"},

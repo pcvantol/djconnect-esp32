@@ -9,6 +9,7 @@ bash -n scripts/cleanup_old_releases.sh
 bash -n scripts/capture_device_screens.sh
 bash -n scripts/extract_release_changelog.sh
 bash -n scripts/update_build_dependencies.sh
+python3 -m py_compile scripts/minify_webportal.py
 test -s DESIGN_DECISIONS.md
 grep -q "Technical Design Decisions" DESIGN_DECISIONS.md
 grep -q "Frameworks, Libraries And Third-Party Dependencies" DESIGN_DECISIONS.md
@@ -18,17 +19,17 @@ grep -q "GitHub OTA TLS CA/certificate bundle" AGENTS.md
 grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" README.md
 grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" AGENTS.md
 grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" DESIGN_DECISIONS.md
-grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
 grep -q "pcvantol/djconnect/PRODUCT_ROADMAP.md" README.md
 grep -q "pcvantol/djconnect/PRODUCT_ROADMAP.md" AGENTS.md
 grep -q "pcvantol/djconnect/PRODUCT_ROADMAP.md" DESIGN_DECISIONS.md
-release_notes_output="$(scripts/extract_release_changelog.sh v3.1.21 CHANGELOG.md)"
+grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
 for old_prompt in SYNC_PROMPTS.md PRODUCT_ROADMAP.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md IOS_MACOS_APP_HANDOFF.md APPLE_APP_SYNC_PROMPTS.md docs/SYNC_PROMPTS.md; do
   if [ -e "$old_prompt" ]; then
     echo "shared sync prompts/roadmap are canonical only in pcvantol/djconnect; remove $old_prompt" >&2
     exit 1
   fi
 done
+release_notes_output="$(scripts/extract_release_changelog.sh v3.1.21 CHANGELOG.md)"
 echo "$release_notes_output" | grep -q "Stability and web portal polish release"
 echo "$release_notes_output" | grep -q "Delayed automatic playback polling after boot/pairing"
 if echo "$release_notes_output" | grep -q "## v3.1.20"; then
@@ -103,6 +104,11 @@ if grep -q '^[[:space:]]*release/\*$' .github/workflows/release-firmware.yml; th
 fi
 grep -q 'scripts/extract_release_changelog.sh "$TAG" CHANGELOG.md > "$RELEASE_NOTES_FILE"' release.sh
 grep -q -- '--notes-file "$RELEASE_NOTES_FILE"' release.sh
+grep -q 'DJCONNECT_RELEASE_BUILD=1 -Os' release.sh
+grep -q 'DJCONNECT_RELEASE_BUILD=1 -Os' .github/workflows/release-firmware.yml
+grep -q 'scripts/minify_webportal.py' README.md
+grep -q 'scripts/minify_webportal.py' AGENTS.md
+grep -q 'scripts/minify_webportal.py' DESIGN_DECISIONS.md
 grep -q 'THIRD_PARTY_NOTICES.md and DESIGN_DECISIONS.md before publishing' scripts/update_build_dependencies.sh
 if grep -q 'GH_RELEASE_ARGS+=(.*"$RELEASE_DIR"/\\*)' release.sh; then
   echo "GitHub release upload must not glob every local release artifact" >&2

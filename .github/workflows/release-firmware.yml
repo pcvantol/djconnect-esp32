@@ -88,7 +88,7 @@ jobs:
         run: |
           VERSION="${{ needs.release-info.outputs.version }}"
           VERSION_TAG="${{ needs.release-info.outputs.version_tag }}"
-          export DJCONNECT_BUILD_FLAGS="-DDJCONNECT_VERSION=${VERSION} -DDJCONNECT_VERSION_TAG=${VERSION_TAG}"
+          export DJCONNECT_BUILD_FLAGS="-DDJCONNECT_VERSION=${VERSION} -DDJCONNECT_VERSION_TAG=${VERSION_TAG} -DDJCONNECT_RELEASE_BUILD=1 -Os"
           export PLATFORMIO_BUILD_DIR=".pio/build-release/${{ matrix.env }}"
           pio run -e "${{ matrix.env }}"
 

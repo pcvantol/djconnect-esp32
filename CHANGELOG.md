@@ -4,13 +4,29 @@
 
 ### Changed
 
+- Hardened Home Assistant playback response parsing for `devices`, `queue` and
+  `playlists` with additional response shapes and field aliases from the shared
+  DJConnect contract.
+- Added the `artist_name` queue response alias from the canonical Home Assistant
+  sync prompt.
+- Increased ESP queue capacity to 100 real items while keeping ESP playlist
+  browsing capped at 20 items.
+- Documented and logged playback list command limits: ESP sends queue
+  `limit=100` and playlist `limit=20`, while Home Assistant must default legacy
+  missing playlist limits to a Spotify-safe value.
+- Synced the ESP contract with DJConnect Home Assistant `v3.1.37`: status now
+  includes the compatibility `spotify_configured` hint, version mismatch remains
+  non-destructive, and playback backend-unavailable responses show localized
+  user-facing guidance instead of raw provider errors.
 - Updated syncprompt policy: this firmware repo no longer keeps a local
   `SYNC_PROMPTS.md`; the canonical cross-repo prompt source is
   `pcvantol/djconnect/SYNC_PROMPTS.md`.
 - Removed the local `PRODUCT_ROADMAP.md` copy; the canonical product roadmap now
   lives only in `pcvantol/djconnect/PRODUCT_ROADMAP.md`.
+- Minified the embedded web portal asset and made release builds explicitly use
+  `DJCONNECT_RELEASE_BUILD=1` and `-Os` to keep OTA binaries smaller.
 
-## v3.1.23
+## v3.1.24
 
 Public firmware release hygiene for OTA assets and public README metadata.
 

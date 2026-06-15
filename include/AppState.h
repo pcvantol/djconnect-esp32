@@ -126,7 +126,7 @@ struct QueueItemState {
 };
 
 struct QueueState {
-  static constexpr size_t MaxItems = 20;
+  static constexpr size_t MaxItems = 100;
   bool available = false;
   String error;
   String contextUri;

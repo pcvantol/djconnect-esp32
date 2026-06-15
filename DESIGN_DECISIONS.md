@@ -129,9 +129,10 @@ Why:
 - The same state must feed the TFT, LED ring, web portal and Home Assistant
   status payload. Snapshot structs reduce drift between these outputs.
 - Small value-like structs are easier to serialize and test than scattered state.
-- The queue snapshot deliberately caps Up Next at 20 items. This keeps the
-  Home Assistant contract useful while preserving ESP responsiveness and
-  bounding device/web JSON response size on non-PSRAM boards.
+- The queue snapshot accepts up to 100 real queue items from Home Assistant,
+  matching the shared playback contract while still bounding device/web JSON
+  response size. Playlist browsing remains capped separately at 20 items on
+  ESP32 clients for responsiveness.
 
 ### Pure Logic Extraction For Host Tests
 
@@ -214,6 +215,20 @@ Why:
 
 The ESP never stores Spotify OAuth or backend credentials. It sends generic
 commands to Home Assistant and receives generic playback state back.
+
+Queue and playlist commands carry explicit positive integer limits at the client
+boundary. ESP32 queue requests use `limit=100`; ESP32 playlist requests use
+`limit=20` to preserve device responsiveness while staying below Spotify's
+playlist API maximum. Other clients may request up to `limit=50` for playlists.
+Home Assistant owns backwards-compatible defaulting and clamping when older
+clients omit `limit`, and should keep provider-specific errors out of
+user-facing state.
+
+Home Assistant `v3.1.z` and ESP `v3.1.z` are matched by major/minor version, not
+by patch. HTTP 426 with `error:"version_mismatch"` is treated as an update
+requirement and does not clear the stored pairing token. Backend availability is
+also runtime state: `backend_available:false` maps to a localized Home Assistant
+Spotify-connection hint, while 401/403/404 mark pairing stale.
 
 Sources:
 
@@ -325,9 +340,20 @@ release section through `scripts/extract_release_changelog.sh`; missing or empty
 release sections fail the release-note preparation instead of publishing a
 generic body.
 
+Release builds also pass `DJCONNECT_RELEASE_BUILD=1` and `-Os` through
+`DJCONNECT_BUILD_FLAGS`. The embedded web portal remains a C++ PROGMEM raw
+literal for zero-runtime-dependency serving, but `scripts/minify_webportal.py`
+removes indentation-heavy HTML/CSS/JS whitespace after portal edits. JavaScript
+newlines are intentionally preserved by the minifier to avoid changing browser
+automatic-semicolon-insertion behavior.
+Link-time optimization is intentionally disabled for now: the current Arduino
+ESP32 / ESP-IDF 5.3 toolchain emits LTO objects but fails the final link with
+missing linker-plugin handling and an `app_main` reference error.
+
 Sources:
 
 - `release.sh`
+- `scripts/minify_webportal.py`
 - `scripts/extract_release_changelog.sh`
 - `test/native/test_release.sh`
 - `platformio.ini`

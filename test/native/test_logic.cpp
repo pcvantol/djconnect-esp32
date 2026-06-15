@@ -121,6 +121,8 @@ static void testHomeAssistantStatusAliasContractNames() {
       "ota_state",
       "update_state",
       "sound_output",
+      "playback_configured",
+      "spotify_configured",
   };
   for (const char *alias : aliases) {
     assert(alias != nullptr);
@@ -781,14 +783,14 @@ static void testNetworkActivityLogicWithFakeHttp() {
 }
 
 static void testEspListLengthContracts() {
-  static_assert(QueueState::MaxItems == 20, "DJConnect ESP queue capacity must stay capped for device responsiveness");
+  static_assert(QueueState::MaxItems == 100, "DJConnect ESP queue capacity must support the playback contract");
   static_assert(PlaylistListState::MaxItems == 20,
                 "DJConnect ESP playlist capacity must stay capped for device responsiveness");
   QueueState queue;
   PlaylistListState playlists;
   assert(queue.count == 0);
   assert(playlists.count == 0);
-  assert(QueueState::MaxItems == 20);
+  assert(QueueState::MaxItems == 100);
   assert(PlaylistListState::MaxItems == 20);
 }
 

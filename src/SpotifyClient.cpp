@@ -20,7 +20,7 @@
 #endif
 
 namespace {
-constexpr size_t MaxLargePlaybackPayloadBytes = 32768;
+constexpr size_t MaxLargePlaybackPayloadBytes = 65536;
 
 bool isLargePlaybackCommand(const String &command) {
   return command == "queue" || command == "playlists";
@@ -148,6 +148,9 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
 
   String body;
   addCommandIdentityFields(doc);
+  if (isLargePlaybackCommand(command)) {
+    AppLog.line("HA playback request command=" + command + " limit=" + String(doc["limit"] | 0));
+  }
   serializeJson(doc, body);
 
   RequestGuard guard(requestMutex_, 1000);
@@ -198,8 +201,12 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
   lastProxyFailureAt_ = 0;
   if (response != nullptr) {
     if (payload.isEmpty()) {
+      AppLog.line("HA playback empty response command=" + command + " http=" + String(code));
       setProxyError("HA playback empty response");
       return false;
+    }
+    if (isLargePlaybackCommand(command)) {
+      AppLog.line("HA playback response command=" + command + " bytes=" + String(payload.length()));
     }
     if (isLargePlaybackCommand(command) && payload.length() > MaxLargePlaybackPayloadBytes) {
       AppLog.line("HA playback response too large for " + command + " len=" + String(payload.length()));
@@ -229,7 +236,8 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
         if (!isStatusCommand) {
           lastProxyFailureAt_ = millis();
         }
-        setProxyError("HA playback backend unavailable");
+        AppLog.println("HA playback backend unavailable");
+        setProxyError(I18n::text("playback_backend_unavailable_hint"));
       } else {
         setProxyError((*response)["message"] | (*response)["error"] | "HA playback failed");
       }
@@ -347,15 +355,32 @@ void SpotifyClient::applyDeviceList(JsonVariantConst source, DeviceListState &de
   devices.available = false;
   devices.error = "";
   devices.count = 0;
-  JsonArrayConst items = source["devices"].is<JsonArrayConst>()
-                             ? source["devices"].as<JsonArrayConst>()
-                             : source["outputs"].as<JsonArrayConst>();
+  JsonArrayConst items;
+  if (source["devices"].is<JsonArrayConst>()) {
+    items = source["devices"].as<JsonArrayConst>();
+  } else if (source["items"].is<JsonArrayConst>()) {
+    items = source["items"].as<JsonArrayConst>();
+  } else if (source["outputs"].is<JsonArrayConst>()) {
+    items = source["outputs"].as<JsonArrayConst>();
+  } else if (source["data"]["devices"].is<JsonArrayConst>()) {
+    items = source["data"]["devices"].as<JsonArrayConst>();
+  } else if (source["data"]["items"].is<JsonArrayConst>()) {
+    items = source["data"]["items"].as<JsonArrayConst>();
+  } else if (source["data"]["outputs"].is<JsonArrayConst>()) {
+    items = source["data"]["outputs"].as<JsonArrayConst>();
+  } else if (source["result"]["devices"].is<JsonArrayConst>()) {
+    items = source["result"]["devices"].as<JsonArrayConst>();
+  } else if (source["result"]["items"].is<JsonArrayConst>()) {
+    items = source["result"]["items"].as<JsonArrayConst>();
+  } else if (source["result"]["outputs"].is<JsonArrayConst>()) {
+    items = source["result"]["outputs"].as<JsonArrayConst>();
+  }
   for (JsonVariantConst item : items) {
     if (devices.count >= 8) {
       break;
     }
     SpotifyDeviceState &target = devices.devices[devices.count];
-    target.id = item["id"] | item["device_id"] | "";
+    target.id = item["id"] | item["device_id"] | item["value"] | "";
     target.name = item["name"] | "";
     target.type = item["type"] | "";
     target.active = item["active"] | item["is_active"] | false;
@@ -379,18 +404,40 @@ void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {
     }
   }
   queue.count = 0;
-  JsonArrayConst items = source["queue"].is<JsonArrayConst>()
-                             ? source["queue"].as<JsonArrayConst>()
-                             : source["items"].as<JsonArrayConst>();
+  JsonArrayConst items;
+  if (source["queue"].is<JsonArrayConst>()) {
+    items = source["queue"].as<JsonArrayConst>();
+  } else if (source["items"].is<JsonArrayConst>()) {
+    items = source["items"].as<JsonArrayConst>();
+  } else if (source["queue"]["items"].is<JsonArrayConst>()) {
+    items = source["queue"]["items"].as<JsonArrayConst>();
+  } else if (source["data"]["queue"].is<JsonArrayConst>()) {
+    items = source["data"]["queue"].as<JsonArrayConst>();
+  } else if (source["data"]["items"].is<JsonArrayConst>()) {
+    items = source["data"]["items"].as<JsonArrayConst>();
+  } else if (source["data"]["queue"]["items"].is<JsonArrayConst>()) {
+    items = source["data"]["queue"]["items"].as<JsonArrayConst>();
+  } else if (source["result"]["queue"].is<JsonArrayConst>()) {
+    items = source["result"]["queue"].as<JsonArrayConst>();
+  } else if (source["result"]["items"].is<JsonArrayConst>()) {
+    items = source["result"]["items"].as<JsonArrayConst>();
+  } else if (source["result"]["queue"]["items"].is<JsonArrayConst>()) {
+    items = source["result"]["queue"]["items"].as<JsonArrayConst>();
+  }
   for (JsonVariantConst item : items) {
     if (queue.count >= QueueState::MaxItems) {
       break;
     }
     QueueItemState candidate;
-    candidate.title = item["title"] | item["name"] | "";
-    candidate.subtitle = item["subtitle"] | item["artist"] | item["artists"] | "";
-    candidate.uri = item["uri"] | item["track_uri"] | "";
-    candidate.imageUrl = item["album_image_url"] | item["albumImageUrl"] | item["image_url"] | item["imageUrl"] | item["thumbnail_url"] | "";
+    candidate.title = item["title"] | item["name"] | item["track_name"] | "";
+    candidate.subtitle =
+        item["subtitle"] | item["artist"] | item["artist_name"] | item["artists"] |
+        item["album"] | "";
+    candidate.uri = item["uri"] | item["track_uri"] | item["id"] | item["value"] | "";
+    candidate.imageUrl =
+        item["album_image_url"] | item["albumImageUrl"] | item["album_art_url"] |
+        item["image_url"] | item["imageUrl"] | item["media_image_url"] |
+        item["entity_picture"] | item["thumbnail_url"] | "";
     if (candidate.title.isEmpty()) {
       continue;
     }
@@ -428,6 +475,8 @@ void SpotifyClient::applyPlaylists(JsonVariantConst source, PlaylistListState &p
     items = source["playlists"]["items"].as<JsonArrayConst>();
   } else if (source["data"].is<JsonArrayConst>()) {
     items = source["data"].as<JsonArrayConst>();
+  } else if (source["data"]["playlists"].is<JsonArrayConst>()) {
+    items = source["data"]["playlists"].as<JsonArrayConst>();
   } else if (source["data"]["items"].is<JsonArrayConst>()) {
     items = source["data"]["items"].as<JsonArrayConst>();
   } else if (source["result"].is<JsonArrayConst>()) {
@@ -444,12 +493,15 @@ void SpotifyClient::applyPlaylists(JsonVariantConst source, PlaylistListState &p
       break;
     }
     PlaylistItemState &target = playlists.items[playlists.count];
-    target.name = item["name"] | item["title"] | "";
-    target.owner = item["owner"] | item["owner_name"] | item["subtitle"] | "";
-    target.uri = item["uri"] | item["id"] | item["playlist_uri"] | "";
+    target.name = item["name"] | item["title"] | item["display_title"] | "";
+    target.owner =
+        item["owner"] | item["owner_name"] | item["description"] | item["artist"] |
+        item["artists"] | item["subtitle"] | item["album"] | "";
+    target.uri = item["uri"] | item["id"] | item["value"] | item["playlist_uri"] | "";
     target.imageUrl =
         item["image_url"] | item["imageUrl"] | item["album_image_url"] | item["albumImageUrl"] |
-        item["media_image_url"] | item["entity_picture"] | "";
+        item["album_art_url"] | item["media_image_url"] | item["entity_picture"] |
+        item["thumbnail_url"] | "";
     if (target.name.isEmpty() || target.uri.isEmpty()) {
       continue;
     }
@@ -511,6 +563,7 @@ bool SpotifyClient::refreshDevices(DeviceListState &devices) {
     return false;
   }
   applyDeviceList(response.as<JsonVariantConst>(), devices);
+  AppLog.line("Playback: devices decoded count=" + String(devices.count));
   return true;
 }
 
@@ -527,6 +580,7 @@ bool SpotifyClient::refreshQueue(QueueState &queue) {
     return false;
   }
   applyQueue(response.as<JsonVariantConst>(), queue);
+  AppLog.line("Playback: queue decoded count=" + String(queue.count) + " limit=" + String(QueueState::MaxItems));
   return true;
 }
 
@@ -551,6 +605,8 @@ bool SpotifyClient::refreshPlaylists(PlaylistListState &playlists) {
     return false;
   }
   applyPlaylists(response.as<JsonVariantConst>(), playlists);
+  AppLog.line("Playback: playlists decoded count=" + String(playlists.count) +
+              " limit=" + String(PlaylistListState::MaxItems));
   if (playlists.count == 0) {
     String body;
     serializeJson(response, body);

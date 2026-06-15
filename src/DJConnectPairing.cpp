@@ -214,6 +214,7 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   JsonObject ledObject = request["led"].to<JsonObject>();
   ledObject["state"] = visualState.ledOn ? "on" : "off";
   request["playback_configured"] = playbackConfigured;
+  request["spotify_configured"] = playbackConfigured;
   request["free_heap"] = ESP.getFreeHeap();
   request["uptime"] = millis();
   request["uptime_ms"] = millis();
