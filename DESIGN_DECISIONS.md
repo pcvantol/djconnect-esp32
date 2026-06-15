@@ -533,4 +533,7 @@ Release hygiene should update this file together with `README.md`,
 collections and tests when relevant. Cross-repo sync prompts are maintained
 only in `pcvantol/djconnect/SYNC_PROMPTS.md`; when an ESP firmware change
 updates a shared contract, make a follow-up change in `pcvantol/djconnect`
-instead of adding a local prompt copy.
+instead of adding a local prompt copy. Product roadmap content is maintained
+only in `pcvantol/djconnect/PRODUCT_ROADMAP.md`; when firmware work changes
+roadmap-relevant scope, update the Home Assistant integration repo separately
+instead of adding a local roadmap copy.

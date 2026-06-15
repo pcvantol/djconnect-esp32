@@ -19,10 +19,13 @@ grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" README.md
 grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" AGENTS.md
 grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" DESIGN_DECISIONS.md
 grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
+grep -q "pcvantol/djconnect/PRODUCT_ROADMAP.md" README.md
+grep -q "pcvantol/djconnect/PRODUCT_ROADMAP.md" AGENTS.md
+grep -q "pcvantol/djconnect/PRODUCT_ROADMAP.md" DESIGN_DECISIONS.md
 release_notes_output="$(scripts/extract_release_changelog.sh v3.1.21 CHANGELOG.md)"
-for old_prompt in SYNC_PROMPTS.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md IOS_MACOS_APP_HANDOFF.md APPLE_APP_SYNC_PROMPTS.md docs/SYNC_PROMPTS.md; do
+for old_prompt in SYNC_PROMPTS.md PRODUCT_ROADMAP.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md IOS_MACOS_APP_HANDOFF.md APPLE_APP_SYNC_PROMPTS.md docs/SYNC_PROMPTS.md; do
   if [ -e "$old_prompt" ]; then
-    echo "sync prompts are canonical only in pcvantol/djconnect/SYNC_PROMPTS.md; remove $old_prompt" >&2
+    echo "shared sync prompts/roadmap are canonical only in pcvantol/djconnect; remove $old_prompt" >&2
     exit 1
   fi
 done
@@ -32,11 +35,6 @@ if echo "$release_notes_output" | grep -q "## v3.1.20"; then
   echo "release changelog extraction included the next release heading" >&2
   exit 1
 fi
-test -s PRODUCT_ROADMAP.md
-grep -q "Release Cycle Rule" PRODUCT_ROADMAP.md
-grep -q "Production Release Must-Haves" PRODUCT_ROADMAP.md
-grep -q "Killer Features" PRODUCT_ROADMAP.md
-grep -q "Premium / Paid Feature Candidates" PRODUCT_ROADMAP.md
 grep -q 'DefaultHomeAssistantUrl = "http://homeassistant.local:8123"' include/Config.h
 grep -q "DefaultHomeAssistantUrl" src/DisplayManager.cpp
 grep -q "http://homeassistant.local:8123" README.md

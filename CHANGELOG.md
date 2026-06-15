@@ -7,6 +7,8 @@
 - Updated syncprompt policy: this firmware repo no longer keeps a local
   `SYNC_PROMPTS.md`; the canonical cross-repo prompt source is
   `pcvantol/djconnect/SYNC_PROMPTS.md`.
+- Removed the local `PRODUCT_ROADMAP.md` copy; the canonical product roadmap now
+  lives only in `pcvantol/djconnect/PRODUCT_ROADMAP.md`.
 
 ## v3.1.23
 

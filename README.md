@@ -79,9 +79,10 @@ dependencies change.
 ## Product Roadmap
 
 Product ideas, killer features, production-release must-haves and premium
-feature candidates live in [`PRODUCT_ROADMAP.md`](PRODUCT_ROADMAP.md). Keep it
-byte-for-byte synchronized across DJConnect repos. Every release should mark
-implemented roadmap items as checked with the implementing major.minor version.
+feature candidates live only in `pcvantol/djconnect/PRODUCT_ROADMAP.md`. This
+firmware repo intentionally does not keep a local copy. When an ESP firmware
+change introduces roadmap-relevant product scope, make a follow-up change in
+`pcvantol/djconnect`.
 
 ## License
 

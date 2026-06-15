@@ -69,11 +69,11 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `include/SoundManager.h`, `src/SoundManager.cpp`: generated built-in speaker cues and cue volume scaling.
 - `README.md`: user-facing English project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
 - `DESIGN_DECISIONS.md`: reverse-engineered technical design decisions, code-level patterns, coding conventions and full dependency inventory. Keep it in sync for every release when architecture, style, board support, APIs, release flow or dependencies change.
-- `PRODUCT_ROADMAP.md`: canonical cross-repo product roadmap for feature ideas,
-  killer features, production-release must-haves and premium feature candidates.
-  Keep it byte-for-byte synchronized across DJConnect repos. During every
-  release, review implemented items and mark them checked with the implementing
-  major.minor version.
+- Cross-repo product roadmap content is canonical only in
+  `pcvantol/djconnect/PRODUCT_ROADMAP.md`. Do not add a local
+  `PRODUCT_ROADMAP.md` copy to this firmware repo. If a firmware change updates
+  roadmap-relevant product scope, update this repo and make a follow-up change
+  in `pcvantol/djconnect`.
 - Cross-repo sync prompts are canonical only in `pcvantol/djconnect/SYNC_PROMPTS.md`.
   Do not add a local `SYNC_PROMPTS.md` copy to this firmware repo. If a firmware
   change updates a shared contract, update this repo and make a follow-up
