@@ -207,6 +207,11 @@ with a `screen` query/body value so development tooling can open known device
 screens before capturing screenshots. Release firmware requires the paired
 device token for this route. Use `scripts/capture_device_screens.sh` to capture
 all known screens locally or through an SSH jump host on the same LAN.
+Release visual checks should overwrite the committed screenshot baselines under
+`docs/screenshots/device/` and `docs/screenshots/web/` so UI diffs are visible
+in the release commit. Device screenshots come from the ESP debug screenshot
+API; web portal screenshots should be captured from the live local portal when
+the device is reachable.
 
 Playback credentials live in Home Assistant and are never accepted or stored by the ESP.
 

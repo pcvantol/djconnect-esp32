@@ -562,4 +562,7 @@ Before finalizing firmware changes:
 rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_REFRESH_TOKEN|WIFI_SSID|WIFI_PASSWORD|client_secret|wifi144iot|verbindmet|AQB|5ea462" include src test -S
 ```
 
-5. If release cleanup tooling changed, run `bash -n scripts/cleanup_old_releases.sh`.
+5. For release/UI work, refresh committed screenshot baselines under
+   `docs/screenshots/device/` and `docs/screenshots/web/` when the device/web
+   portal is reachable. Overwrite existing files so visual diffs stay reviewable.
+6. If release cleanup tooling changed, run `bash -n scripts/cleanup_old_releases.sh`.
