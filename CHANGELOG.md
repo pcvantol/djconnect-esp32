@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v3.1.23
+
+Public firmware release hygiene for OTA assets and public README metadata.
+
 ### Fixed
 
 - Limited public firmware GitHub Release uploads to OTA binaries, SHA256 files
