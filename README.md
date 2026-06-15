@@ -66,7 +66,7 @@ Arduino ESP32 2.x / ESP-IDF 4.x compatibility is not maintained.
 
 ## Cross-Repo Sync Prompts
 
-Canonical prompts for syncing this firmware repo with the Home Assistant integration, Apple app, Raspberry Pi client and website/docs repos live in [`SYNC_PROMPTS.md`](SYNC_PROMPTS.md).
+Canonical prompts for syncing this firmware repo with the Home Assistant integration, Apple app, Raspberry Pi client and website/docs repos live only in `pcvantol/djconnect/SYNC_PROMPTS.md`. This firmware repo intentionally does not keep a local copy. When an ESP firmware change updates a cross-repo contract, make a follow-up change in `pcvantol/djconnect`.
 
 ## Technical Design Decisions
 

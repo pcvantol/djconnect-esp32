@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- Updated syncprompt policy: this firmware repo no longer keeps a local
+  `SYNC_PROMPTS.md`; the canonical cross-repo prompt source is
+  `pcvantol/djconnect/SYNC_PROMPTS.md`.
+
 ## v3.1.23
 
 Public firmware release hygiene for OTA assets and public README metadata.

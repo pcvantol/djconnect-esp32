@@ -141,4 +141,4 @@ Recommended next work:
 
 ## Cross-Repo Sync Prompts
 
-The canonical copy/paste prompts for syncing the Home Assistant integration, Apple app and ESP firmware are maintained in `SYNC_PROMPTS.md`. This file is copied byte-for-byte between the DJConnect repos.
+The canonical copy/paste prompts for syncing the Home Assistant integration, Apple app, ESP firmware, Raspberry Pi client and website/docs repos are maintained only in `pcvantol/djconnect/SYNC_PROMPTS.md`. This firmware repo intentionally does not keep a local copy. When a firmware change updates a shared contract, make a follow-up change in `pcvantol/djconnect`.

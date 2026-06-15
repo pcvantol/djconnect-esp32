@@ -15,9 +15,17 @@ grep -q "Frameworks, Libraries And Third-Party Dependencies" DESIGN_DECISIONS.md
 grep -q "Release Maintenance Rule" DESIGN_DECISIONS.md
 grep -q "embedded OTA TLS CA/certificate" README.md
 grep -q "GitHub OTA TLS CA/certificate bundle" AGENTS.md
-grep -q "CA/certificate bundles" SYNC_PROMPTS.md
+grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" README.md
+grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" AGENTS.md
+grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" DESIGN_DECISIONS.md
 grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
 release_notes_output="$(scripts/extract_release_changelog.sh v3.1.21 CHANGELOG.md)"
+for old_prompt in SYNC_PROMPTS.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md IOS_MACOS_APP_HANDOFF.md APPLE_APP_SYNC_PROMPTS.md docs/SYNC_PROMPTS.md; do
+  if [ -e "$old_prompt" ]; then
+    echo "sync prompts are canonical only in pcvantol/djconnect/SYNC_PROMPTS.md; remove $old_prompt" >&2
+    exit 1
+  fi
+done
 echo "$release_notes_output" | grep -q "Stability and web portal polish release"
 echo "$release_notes_output" | grep -q "Delayed automatic playback polling after boot/pairing"
 if echo "$release_notes_output" | grep -q "## v3.1.20"; then
@@ -50,19 +58,19 @@ echo "34e667173f5fe834f9282d11ab5a1f4f5fa2225010388f50a6f5bf7d72e2d460  assets/w
 
 # The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
 if rg -n --glob "!test/native/test_release.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
-  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old product/endpoint reference found" >&2
   exit 1
 fi
 
 if rg -n --glob "!test/native/test_release.sh" "spotifydj-device|releases/download/v2\.[0-9]+\.[0-9]+|tag/v2\.[0-9]+\.[0-9]+|Release .*v2\.[0-9]+\.[0-9]+|firmware v2\.[0-9]+\.[0-9]+" \
-  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old 2.x firmware release reference found" >&2
   exit 1
 fi
 
 if rg -n --glob "!test/native/test_release.sh" "djconnect-device-v|djconnect-device-esp32-s3-box-3|\"asset\": \"djconnect-device|\"url\": \"https://github.com/pcvantol/djconnect-firmware/releases/download/.*/djconnect-device" \
-  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md SYNC_PROMPTS.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old single-device firmware asset reference found" >&2
   exit 1
 fi

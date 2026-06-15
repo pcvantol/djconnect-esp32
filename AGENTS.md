@@ -74,6 +74,10 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
   Keep it byte-for-byte synchronized across DJConnect repos. During every
   release, review implemented items and mark them checked with the implementing
   major.minor version.
+- Cross-repo sync prompts are canonical only in `pcvantol/djconnect/SYNC_PROMPTS.md`.
+  Do not add a local `SYNC_PROMPTS.md` copy to this firmware repo. If a firmware
+  change updates a shared contract, update this repo and make a follow-up
+  change in `pcvantol/djconnect`.
 - `THIRD_PARTY_NOTICES.md`: third-party dependency notices for firmware libraries and frameworks.
 
 ## Build And Test Commands

@@ -529,5 +529,8 @@ For every future release, update this document when any of the following change:
 - embedded HTTPS trust material such as the GitHub OTA CA/certificate bundle.
 
 Release hygiene should update this file together with `README.md`,
-`CHANGELOG.md`, `HANDOFF.md`, `TODO.md`, `SYNC_PROMPTS.md`,
-`THIRD_PARTY_NOTICES.md`, Postman collections and tests when relevant.
+`CHANGELOG.md`, `HANDOFF.md`, `TODO.md`, `THIRD_PARTY_NOTICES.md`, Postman
+collections and tests when relevant. Cross-repo sync prompts are maintained
+only in `pcvantol/djconnect/SYNC_PROMPTS.md`; when an ESP firmware change
+updates a shared contract, make a follow-up change in `pcvantol/djconnect`
+instead of adding a local prompt copy.

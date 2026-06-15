@@ -38,8 +38,9 @@ Every release must review this roadmap.
   `[x] ESP32 screenshot endpoint (3.1, ESP32)`.
 - Do not remove shipped ideas immediately; keep checked items as product memory
   until a later roadmap cleanup.
-- Update README, changelog, handoff, sync prompts, tests and design decisions
-  when a roadmap item changes product behavior or public contract.
+- Update README, changelog, handoff, tests and design decisions when a roadmap
+  item changes product behavior or public contract. Cross-repo sync prompt
+  changes belong only in `pcvantol/djconnect/SYNC_PROMPTS.md`.
 
 ## Production Release Must-Haves
 
@@ -51,9 +52,9 @@ Every release must review this roadmap.
   WiFi passwords, Home Assistant tokens or temporary media URLs.
 - [ ] Clear error states for unpaired, stale token, backend unavailable, version
   mismatch, Home Assistant unreachable, STT failed and TTS failed.
-- [ ] Release hygiene across all repos: docs, changelog, handoff, sync prompts,
-  technical design decisions, roadmap, tests and cleanup reviewed before every
-  release.
+- [ ] Release hygiene across all repos: docs, changelog, handoff, technical
+  design decisions, roadmap, tests and cleanup reviewed before every release;
+  cross-repo sync prompts are reviewed in `pcvantol/djconnect/SYNC_PROMPTS.md`.
 - [ ] Public download/update path for every released client.
 - [ ] Manual smoke checklist for website, Home Assistant integration, ESP32,
   Apple clients and Raspberry Pi client.
