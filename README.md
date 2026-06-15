@@ -404,6 +404,9 @@ Dependency updates write `release/build-dependencies-before.txt`,
 locally, and equivalent per-board reports in GitHub Actions artifacts. If the
 diff shows upgraded frameworks, libraries or tools, update
 `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing the release.
+These dependency reports are review/audit artifacts only; the public GitHub
+firmware release must publish only board firmware binaries, their `.sha256`
+files and the firmware manifest.
 Before publishing firmware, also revalidate the embedded OTA TLS CA/certificate
 bundle in `include/GitHubTls.h` against the current GitHub API and release-asset
 redirect certificate chains.

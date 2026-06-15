@@ -220,6 +220,10 @@ jobs:
           prerelease: ${{ needs.release-info.outputs.channel == 'beta' }}
           body_path: release-notes.md
           files: |
-            release/*
+            release/${{ needs.release-info.outputs.lilygo_bin }}
+            release/${{ needs.release-info.outputs.lilygo_bin }}.sha256
+            release/${{ needs.release-info.outputs.box3_bin }}
+            release/${{ needs.release-info.outputs.box3_bin }}.sha256
+            release/${{ needs.release-info.outputs.manifest }}
         env:
           GITHUB_TOKEN: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}

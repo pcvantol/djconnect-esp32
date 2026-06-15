@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+
+- Limited public firmware GitHub Release uploads to OTA binaries, SHA256 files
+  and the manifest so internal build-dependency audit reports no longer appear
+  as downloadable release assets.
+
 ## v3.1.22
 
 Release-flow and Home Assistant discovery cleanup for setup-only mDNS and changelog-based public release notes.

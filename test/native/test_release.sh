@@ -88,6 +88,13 @@ grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.
 grep -q 'scripts/update_build_dependencies.sh "${{ matrix.env }}"' .github/workflows/release-firmware.yml
 grep -q 'scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md' .github/workflows/release-firmware.yml
 grep -q 'body_path: release-notes.md' .github/workflows/release-firmware.yml
+grep -q 'release/${{ needs.release-info.outputs.lilygo_bin }}' .github/workflows/release-firmware.yml
+grep -q 'release/${{ needs.release-info.outputs.box3_bin }}' .github/workflows/release-firmware.yml
+grep -q 'release/${{ needs.release-info.outputs.manifest }}' .github/workflows/release-firmware.yml
+if grep -q '^[[:space:]]*release/\*$' .github/workflows/release-firmware.yml; then
+  echo "GitHub release workflow must not publish every generated release artifact" >&2
+  exit 1
+fi
 grep -q 'scripts/extract_release_changelog.sh "$TAG" CHANGELOG.md > "$RELEASE_NOTES_FILE"' release.sh
 grep -q -- '--notes-file "$RELEASE_NOTES_FILE"' release.sh
 grep -q 'THIRD_PARTY_NOTICES.md and DESIGN_DECISIONS.md before publishing' scripts/update_build_dependencies.sh
