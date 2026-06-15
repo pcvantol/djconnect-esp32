@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## v3.1.22
+
+Release-flow and Home Assistant discovery cleanup for setup-only mDNS and changelog-based public release notes.
+
+### Changed
+
+- GitHub firmware releases now use the matching `CHANGELOG.md` release section as the public release body instead of a generic generated device/binary summary.
+
+### Fixed
+
+- Stopped `_djconnect._tcp` mDNS discovery as soon as Home Assistant pairing is stored, so already-paired ESP devices no longer keep advertising for discovery until pairing is reset.
+
 ## v3.1.21
 
 Stability and web portal polish release for LilyGO playback polling, web DJ-announcement tests and queue/playlist layout.

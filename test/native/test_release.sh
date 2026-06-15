@@ -7,6 +7,7 @@ cd "$ROOT"
 bash -n release.sh
 bash -n scripts/cleanup_old_releases.sh
 bash -n scripts/capture_device_screens.sh
+bash -n scripts/extract_release_changelog.sh
 bash -n scripts/update_build_dependencies.sh
 test -s DESIGN_DECISIONS.md
 grep -q "Technical Design Decisions" DESIGN_DECISIONS.md
@@ -16,6 +17,13 @@ grep -q "embedded OTA TLS CA/certificate" README.md
 grep -q "GitHub OTA TLS CA/certificate bundle" AGENTS.md
 grep -q "CA/certificate bundles" SYNC_PROMPTS.md
 grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
+release_notes_output="$(scripts/extract_release_changelog.sh v3.1.21 CHANGELOG.md)"
+echo "$release_notes_output" | grep -q "Stability and web portal polish release"
+echo "$release_notes_output" | grep -q "Delayed automatic playback polling after boot/pairing"
+if echo "$release_notes_output" | grep -q "## v3.1.20"; then
+  echo "release changelog extraction included the next release heading" >&2
+  exit 1
+fi
 test -s PRODUCT_ROADMAP.md
 grep -q "Release Cycle Rule" PRODUCT_ROADMAP.md
 grep -q "Production Release Must-Haves" PRODUCT_ROADMAP.md
@@ -78,6 +86,10 @@ grep -q '"$RELEASE_DIR/$BOX3_ASSET"' release.sh
 grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${{ matrix.env }}"' .github/workflows/release-firmware.yml
+grep -q 'scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md' .github/workflows/release-firmware.yml
+grep -q 'body_path: release-notes.md' .github/workflows/release-firmware.yml
+grep -q 'scripts/extract_release_changelog.sh "$TAG" CHANGELOG.md > "$RELEASE_NOTES_FILE"' release.sh
+grep -q -- '--notes-file "$RELEASE_NOTES_FILE"' release.sh
 grep -q 'THIRD_PARTY_NOTICES.md and DESIGN_DECISIONS.md before publishing' scripts/update_build_dependencies.sh
 if grep -q 'GH_RELEASE_ARGS+=(.*"$RELEASE_DIR"/\\*)' release.sh; then
   echo "GitHub release upload must not glob every local release artifact" >&2

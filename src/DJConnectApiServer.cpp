@@ -227,6 +227,9 @@ void DJConnectApiServer::handlePair() {
   } else {
     AppLog.println("Home Assistant direct pairing stored: device_token=present");
   }
+  if (discovery_ != nullptr) {
+    discovery_->updateTxtRecords();
+  }
   if (!samePairing && directPairCallback_ != nullptr) {
     directPairCallback_(callbackContext_);
   }

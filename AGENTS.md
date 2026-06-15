@@ -138,7 +138,10 @@ generated build-dependency diff; if framework, library or tool versions changed,
 update `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing.
 Also revalidate the embedded GitHub OTA TLS CA/certificate bundle against the
 current GitHub API and release-asset redirect chains, and update
-`include/GitHubTls.h` before publishing if the chain changed.
+`include/GitHubTls.h` before publishing if the chain changed. Public GitHub
+release notes must come from the matching `CHANGELOG.md` release section via
+`scripts/extract_release_changelog.sh`; do not publish generic release bodies
+when a version changelog entry is missing.
 
 Expected recurring third-party warnings:
 
@@ -225,6 +228,10 @@ Do not store Spotify OAuth credentials, Sonos credentials or any playback-backen
 
 mDNS:
 
+- Discovery is setup-only. Advertise `_djconnect._tcp` while unpaired/setup or
+  waiting for Home Assistant pairing, and stop mDNS advertising as soon as
+  pairing is stored. Start it again only after pairing is reset or setup/pairing
+  mode resumes.
 - Hostname: `djconnect-<device-model>-XXXXXXXXXXXX`
 - Service: `_djconnect._tcp`
 - URL: `http://djconnect-<device-model>-XXXXXXXXXXXX.local`

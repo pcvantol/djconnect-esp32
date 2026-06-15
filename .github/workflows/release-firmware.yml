@@ -140,6 +140,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
       - name: Download firmware artifacts
         uses: actions/download-artifact@v4
         with:
@@ -203,6 +206,10 @@ jobs:
           }
           EOF
 
+      - name: Prepare release notes
+        run: |
+          scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md
+
       - name: Publish GitHub Release to public firmware repo
         uses: softprops/action-gh-release@v2
         with:
@@ -211,15 +218,7 @@ jobs:
           tag_name: ${{ needs.release-info.outputs.version_tag }}
           name: DJConnect Firmware ${{ needs.release-info.outputs.version_tag }}
           prerelease: ${{ needs.release-info.outputs.channel == 'beta' }}
-          body: |
-            DJConnect firmware ${{ needs.release-info.outputs.version_tag }}
-
-            Devices: `lilygo-t-embed-s3`, `esp32-s3-box-3`
-            Channel: `${{ needs.release-info.outputs.channel }}`
-
-            Binaries:
-            `${{ needs.release-info.outputs.lilygo_bin }}`
-            `${{ needs.release-info.outputs.box3_bin }}`
+          body_path: release-notes.md
           files: |
             release/*
         env:

@@ -403,6 +403,11 @@ if [[ "$GH_RELEASE" == "true" ]]; then
     if [[ "$CHANNEL" == "beta" ]]; then
       GH_RELEASE_ARGS+=(--prerelease)
     fi
+    RELEASE_NOTES_FILE="$RELEASE_DIR/release-notes.md"
+    if [[ "$DRY_RUN" == "false" ]]; then
+      scripts/extract_release_changelog.sh "$TAG" CHANGELOG.md > "$RELEASE_NOTES_FILE"
+    fi
+    GH_RELEASE_ARGS+=(--notes-file "$RELEASE_NOTES_FILE")
     GH_RELEASE_ARGS+=(
       "$RELEASE_DIR/$LILYGO_ASSET"
       "$RELEASE_DIR/$LILYGO_ASSET.sha256"

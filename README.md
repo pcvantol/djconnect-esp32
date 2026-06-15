@@ -162,7 +162,7 @@ When WiFi is configured but Home Assistant is not paired, the device enters pair
 
 ### mDNS Discovery
 
-After WiFi connect, the device advertises `_djconnect._tcp`.
+After WiFi connect, an unpaired device advertises `_djconnect._tcp` so Home Assistant can discover it for setup. The ESP stops the mDNS discovery service as soon as Home Assistant pairing is stored, and starts advertising again only after pairing is reset or the device returns to setup/pairing mode.
 
 Hostname format:
 
@@ -397,7 +397,7 @@ During normal boot, the display shows the DJConnect tagline `Muziekbediening met
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, `release/djconnect-esp32-s3-box-3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. The pushed git tag then triggers the GitHub Action, which performs the same dependency update step, builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that both compiled firmware images contain the expected `vX.Y.Z` version tag before publishing both OTA assets and their `.sha256` files.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, `release/djconnect-esp32-s3-box-3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. The pushed git tag then triggers the GitHub Action, which performs the same dependency update step, builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that both compiled firmware images contain the expected `vX.Y.Z` version tag before publishing both OTA assets and their `.sha256` files. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
 
 Dependency updates write `release/build-dependencies-before.txt`,
 `release/build-dependencies-after.txt` and `release/build-dependencies.diff`

@@ -191,6 +191,25 @@ Why:
   reset, commands, DJ responses and screenshots reveal/control device state and
   therefore require the paired device token.
 
+### Setup-Only mDNS Discovery Pattern
+
+`DJConnectDiscovery` advertises `_djconnect._tcp` only while the ESP is unpaired.
+Once Home Assistant pairing is stored, the firmware stops ESPmDNS advertising;
+paired runtime traffic uses the stored LAN `ha_local_url` and authenticated local
+ESP endpoints instead of continuing to appear as a discoverable setup candidate.
+Resetting pairing or returning to setup/pairing mode starts discovery again.
+
+Sources:
+
+- `src/DJConnectDiscovery.cpp`
+- `src/DJConnectApp.cpp`
+- `README.md` mDNS Discovery
+
+Why:
+
+- Keeps Home Assistant discovery focused on devices that still need pairing.
+- Avoids already-paired devices repeatedly appearing as new discovery candidates.
+
 ### HA Boundary / Backend-Agnostic Playback Pattern
 
 The ESP never stores Spotify OAuth or backend credentials. It sends generic
@@ -301,9 +320,15 @@ board environments. The script writes before/after package lists and a diff into
 the release artifact directory so dependency version changes are visible during
 release review.
 
+Public GitHub release notes are extracted from the matching `CHANGELOG.md`
+release section through `scripts/extract_release_changelog.sh`; missing or empty
+release sections fail the release-note preparation instead of publishing a
+generic body.
+
 Sources:
 
 - `release.sh`
+- `scripts/extract_release_changelog.sh`
 - `test/native/test_release.sh`
 - `platformio.ini`
 - `README.md` OTA sections
@@ -317,6 +342,8 @@ Why:
 - Updating build dependencies before release reduces stale framework/tool risk,
   while the generated dependency diff makes third-party notice and dependency
   inventory updates explicit instead of relying on memory.
+- Reusing the changelog section for GitHub Releases keeps public release notes,
+  OTA release metadata and repository history aligned.
 
 ## Coding Style And Conventions
 

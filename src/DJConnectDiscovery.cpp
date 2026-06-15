@@ -8,6 +8,15 @@
 
 bool DJConnectDiscovery::begin(DJConnectDevice &device) {
   device_ = &device;
+  if (device.isPaired()) {
+    end();
+    if (!pairedSuppressedLogged_) {
+      AppLog.println("mDNS discovery disabled: Home Assistant paired");
+      pairedSuppressedLogged_ = true;
+    }
+    return false;
+  }
+  pairedSuppressedLogged_ = false;
   if (running_) {
     updateTxtRecords();
     return true;
@@ -31,8 +40,21 @@ bool DJConnectDiscovery::begin(DJConnectDevice &device) {
   return true;
 }
 
+void DJConnectDiscovery::end() {
+  if (!running_) {
+    return;
+  }
+  MDNS.end();
+  running_ = false;
+  AppLog.println("mDNS discovery stopped");
+}
+
 void DJConnectDiscovery::updateTxtRecords() {
   if (!running_ || device_ == nullptr) {
+    return;
+  }
+  if (device_->isPaired()) {
+    end();
     return;
   }
 

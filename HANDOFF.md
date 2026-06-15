@@ -6,7 +6,7 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release target from this repo: `v3.1.21`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should be cleaned after release so the remote stable semver tag/release set keeps only the latest stable release; generated `release/` artifacts are ignored in source.
+- Latest firmware release target from this repo: `v3.1.22`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should be cleaned after release so the remote stable semver tag/release set keeps only the latest stable release; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, board-specific OTA, DJ response and status updates.
 - Board profiles are split through `BoardProfile.h`. The production LilyGO build is `t_embed_cc1101` / `lilygo-t-embed-s3`; ESP32-S3-BOX-3 bring-up is `esp32_s3_box3` / `esp32-s3-box-3`.
@@ -25,7 +25,7 @@ Current repo state includes:
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
 - Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
 - HA should treat pairing as pending until the ESP confirms token storage and a successful LAN status post. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token`, required LAN `ha_local_url`, and lightweight settings, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/status`. Automatic playback polling is delayed briefly after boot/pairing to avoid stacking HA status, playback proxy and wake-word startup work on no-PSRAM LilyGO hardware.
-- Device IDs and mDNS hostnames are board-model specific. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`. Home Assistant should use the `model` field/TXT record for device-type routing instead of parsing the old `djconnect-lilygo-` prefix. ESP mDNS TXT records include `client_type=esp32` alongside `name`, `device_id`, `version`, `paired`, `api` and `model`.
+- Device IDs and mDNS hostnames are board-model specific. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`. Home Assistant should use the `model` field/TXT record for device-type routing instead of parsing the old `djconnect-lilygo-` prefix. ESP mDNS discovery is setup-only: unpaired devices advertise `_djconnect._tcp` with `client_type=esp32` alongside `name`, `device_id`, `version`, `paired`, `api` and `model`, and paired devices stop advertising until pairing is reset.
 - The ESP rejects persistent legacy IDs such as `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` and `djconnect-[six-digit-code]`; the six-digit value is only `pair_code` in pairing-info/pairing UI.
 - The ESP requires a real LAN `ha_local_url` for normal status, playback proxy commands and voice calls. If Home Assistant sends a Nabu Casa `.ui.nabu.casa` URL as `ha_local_url`, firmware rejects the pairing callback instead of entering a half-paired state. Playback fails clearly with `HA playback command unavailable: local HA URL missing` when local is absent. Cloud/Nabu Casa URLs are not accepted, stored, reported, or used by the ESP runtime.
 - Direct pairing during the pairing screen leaves pairing mode first so BLE can shut down before the Okay Nabu TensorFlow runtime allocates its arena.
@@ -37,7 +37,7 @@ Current repo state includes:
 - Backend credentials are never accepted by ESP firmware.
 - Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Freshly provisioned unpaired release firmware performs a graceful pre-pairing bootstrap update check after WiFi connects. It skips local `dev`/`vdev` builds and continues to pairing silently if the check fails.
-- Release tooling runs `scripts/update_build_dependencies.sh` before compiling firmware. It upgrades PlatformIO Core, updates global/project PlatformIO packages for both board environments, and writes a dependency diff so `THIRD_PARTY_NOTICES.md` plus `DESIGN_DECISIONS.md` can be refreshed whenever frameworks, libraries or tools changed.
+- Release tooling runs `scripts/update_build_dependencies.sh` before compiling firmware. It upgrades PlatformIO Core, updates global/project PlatformIO packages for both board environments, writes a dependency diff so `THIRD_PARTY_NOTICES.md` plus `DESIGN_DECISIONS.md` can be refreshed whenever frameworks, libraries or tools changed, and publishes GitHub release notes from the matching `CHANGELOG.md` version section.
 
 Latest validated commands:
 
@@ -48,7 +48,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e esp32_s3_box3
 ```
 
-The native logic test, release-script test and local LilyGO build passed during `v3.1.21` preparation. The release flow builds both `djconnect-lilygo-t-embed-s3-v3.1.21.bin` and `djconnect-esp32-s3-box-3-v3.1.21.bin`, both `.sha256` files and `firmware_manifest.json` for `pcvantol/djconnect-firmware`.
+The native logic test, release-script test and local LilyGO/BOX-3 builds passed during `v3.1.22` preparation. The release flow builds both `djconnect-lilygo-t-embed-s3-v3.1.22.bin` and `djconnect-esp32-s3-box-3-v3.1.22.bin`, both `.sha256` files and `firmware_manifest.json` for `pcvantol/djconnect-firmware`.
 
 ## Architecture
 
