@@ -2,7 +2,13 @@
 
 ## Unreleased
 
-## v3.1.27
+### Fixed
+
+- Made ESP playlist response parsing accept additional Home Assistant wrappers
+  and media-player aliases so valid playlist responses no longer decode as an
+  empty list on the device/web portal.
+
+## v3.1.28
 
 ### Added
 

@@ -25,6 +25,78 @@ constexpr size_t MaxLargePlaybackPayloadBytes = 65536;
 bool isLargePlaybackCommand(const String &command) {
   return command == "queue" || command == "playlists";
 }
+
+JsonArrayConst firstPlaylistArray(JsonVariantConst source) {
+  if (source["playlists"].is<JsonArrayConst>()) {
+    return source["playlists"].as<JsonArrayConst>();
+  }
+  if (source["items"].is<JsonArrayConst>()) {
+    return source["items"].as<JsonArrayConst>();
+  }
+  if (source["playlist"].is<JsonArrayConst>()) {
+    return source["playlist"].as<JsonArrayConst>();
+  }
+  if (source["media"].is<JsonArrayConst>()) {
+    return source["media"].as<JsonArrayConst>();
+  }
+  if (source["playlists"]["items"].is<JsonArrayConst>()) {
+    return source["playlists"]["items"].as<JsonArrayConst>();
+  }
+  if (source["playlist"]["items"].is<JsonArrayConst>()) {
+    return source["playlist"]["items"].as<JsonArrayConst>();
+  }
+  return JsonArrayConst();
+}
+
+JsonArrayConst playlistArrayFromResponse(JsonVariantConst source) {
+  JsonArrayConst items = firstPlaylistArray(source);
+  if (!items.isNull()) {
+    return items;
+  }
+
+  const char *wrappers[] = {"data", "result", "response", "payload", "body", "message"};
+  for (const char *wrapper : wrappers) {
+    JsonVariantConst nested = source[wrapper];
+    if (nested.isNull()) {
+      continue;
+    }
+    items = firstPlaylistArray(nested);
+    if (!items.isNull()) {
+      return items;
+    }
+    JsonVariantConst nestedResult = nested["result"];
+    if (!nestedResult.isNull()) {
+      items = firstPlaylistArray(nestedResult);
+      if (!items.isNull()) {
+        return items;
+      }
+    }
+  }
+
+  return JsonArrayConst();
+}
+
+String playlistImageUrl(JsonVariantConst item) {
+  String url =
+      item["image_url"] | item["imageUrl"] | item["album_image_url"] | item["albumImageUrl"] |
+      item["album_art_url"] | item["media_image_url"] | item["mediaImageUrl"] |
+      item["entity_picture"] | item["thumbnail_url"] | item["thumbnailUrl"] |
+      item["artwork_url"] | item["artworkUrl"] | "";
+  if (!url.isEmpty()) {
+    return url;
+  }
+
+  JsonArrayConst images = item["images"];
+  if (!images.isNull()) {
+    for (JsonVariantConst image : images) {
+      url = image["url"] | "";
+      if (!url.isEmpty()) {
+        return url;
+      }
+    }
+  }
+  return "";
+}
 }  // namespace
 
 SpotifyClient::RequestGuard::RequestGuard(SemaphoreHandle_t mutex, uint32_t waitMs)
@@ -466,42 +538,23 @@ void SpotifyClient::applyPlaylists(JsonVariantConst source, PlaylistListState &p
   playlists.available = false;
   playlists.error = "";
   playlists.count = 0;
-  JsonArrayConst items;
-  if (source["playlists"].is<JsonArrayConst>()) {
-    items = source["playlists"].as<JsonArrayConst>();
-  } else if (source["items"].is<JsonArrayConst>()) {
-    items = source["items"].as<JsonArrayConst>();
-  } else if (source["playlists"]["items"].is<JsonArrayConst>()) {
-    items = source["playlists"]["items"].as<JsonArrayConst>();
-  } else if (source["data"].is<JsonArrayConst>()) {
-    items = source["data"].as<JsonArrayConst>();
-  } else if (source["data"]["playlists"].is<JsonArrayConst>()) {
-    items = source["data"]["playlists"].as<JsonArrayConst>();
-  } else if (source["data"]["items"].is<JsonArrayConst>()) {
-    items = source["data"]["items"].as<JsonArrayConst>();
-  } else if (source["result"].is<JsonArrayConst>()) {
-    items = source["result"].as<JsonArrayConst>();
-  } else if (source["result"]["items"].is<JsonArrayConst>()) {
-    items = source["result"]["items"].as<JsonArrayConst>();
-  } else if (source["result"]["playlists"].is<JsonArrayConst>()) {
-    items = source["result"]["playlists"].as<JsonArrayConst>();
-  } else if (source["result"]["playlists"]["items"].is<JsonArrayConst>()) {
-    items = source["result"]["playlists"]["items"].as<JsonArrayConst>();
-  }
+  JsonArrayConst items = playlistArrayFromResponse(source);
   for (JsonVariantConst item : items) {
     if (playlists.count >= PlaylistListState::MaxItems) {
       break;
     }
     PlaylistItemState &target = playlists.items[playlists.count];
-    target.name = item["name"] | item["title"] | item["display_title"] | "";
+    target.name =
+        item["name"] | item["title"] | item["display_title"] | item["displayTitle"] |
+        item["media_title"] | item["mediaTitle"] | "";
     target.owner =
         item["owner"] | item["owner_name"] | item["description"] | item["artist"] |
-        item["artists"] | item["subtitle"] | item["album"] | "";
-    target.uri = item["uri"] | item["id"] | item["value"] | item["playlist_uri"] | "";
-    target.imageUrl =
-        item["image_url"] | item["imageUrl"] | item["album_image_url"] | item["albumImageUrl"] |
-        item["album_art_url"] | item["media_image_url"] | item["entity_picture"] |
-        item["thumbnail_url"] | "";
+        item["artists"] | item["subtitle"] | item["album"] | item["creator"] | "";
+    target.uri =
+        item["uri"] | item["playlist_uri"] | item["playlistUri"] | item["media_content_id"] |
+        item["mediaContentId"] | item["content_id"] | item["contentId"] | item["value"] |
+        item["id"] | "";
+    target.imageUrl = playlistImageUrl(item);
     if (target.name.isEmpty() || target.uri.isEmpty()) {
       continue;
     }
