@@ -29,6 +29,7 @@ enum class DeviceCommandType {
   Language,
   Theme,
   LogLevel,
+  WakeWord,
 };
 
 struct DeviceCommand {

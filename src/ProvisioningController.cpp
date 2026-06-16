@@ -32,6 +32,7 @@ ProvisioningSettings ProvisioningController::load() const {
   settings.language = I18n::languageFromCode(preferences.getString("language", "en"));
   settings.themeCode = normalizedTheme(preferences.getString("theme", "dark"));
   settings.logLevel = normalizedLogLevel(preferences.getString("log_level", "info"));
+  settings.wakeWordEnabled = preferences.getBool("wake_word", false);
   settings.speakerVolumePercent = constrain(preferences.getUInt("speaker_volume", 100), 25UL, 100UL);
   settings.volumeFeedbackEnabled = preferences.getBool("volume_feedback", true);
   settings.pongHighScore = preferences.getUInt("pong_hi", 0);
@@ -52,6 +53,7 @@ void ProvisioningController::saveDisplaySettings(
     const String &themeCode,
     const String &logLevel,
     uint8_t speakerVolumePercent,
+    bool wakeWordEnabled,
     bool volumeFeedbackEnabled) const {
   Preferences provision;
   provision.begin("provision", false);
@@ -62,6 +64,7 @@ void ProvisioningController::saveDisplaySettings(
   provision.putString("theme", normalizedTheme(themeCode));
   provision.putString("log_level", normalizedLogLevel(logLevel));
   provision.putUInt("speaker_volume", speakerVolumePercent);
+  provision.putBool("wake_word", wakeWordEnabled);
   provision.putBool("volume_feedback", volumeFeedbackEnabled);
   provision.end();
 }

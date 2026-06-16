@@ -137,6 +137,12 @@ inline DeviceCommand parse(JsonVariantConst payload) {
   } else if (commandNameEquals(name, "log_level") || commandNameEquals(name, "set_log_level")) {
     command.type = DeviceCommandType::LogLevel;
     command.value = firstString(payload, "value", "log_level");
+  } else if (commandNameEquals(name, "wake_word") ||
+             commandNameEquals(name, "set_wake_word") ||
+             commandNameEquals(name, "wake_word_enabled") ||
+             commandNameEquals(name, "set_wake_word_enabled")) {
+    command.type = DeviceCommandType::WakeWord;
+    command.numericValue = firstBool(payload, "value", "enabled", false) ? 1 : 0;
   }
   return command;
 }

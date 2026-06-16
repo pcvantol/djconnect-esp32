@@ -78,6 +78,7 @@ private:
 
   // Applies selected on-board speaker cue volume and persists it to NVS.
   void applySpeakerVolumeSelection();
+  void applyWakeWordEnabled(bool enabled, bool notify);
 
   // Applies selected playback shuffle state through the Home Assistant proxy.
   void applyShuffleSelection();
@@ -140,6 +141,7 @@ private:
   void goToPreviousTrack();
   void refreshPlaybackAndBattery();
   void openAlbumArtScreen();
+  void requestAlbumArtWithWakeWordPaused();
   void openQueueScreen();
   void startSelectedQueueItem();
   void startSelectedPlaylist();
@@ -180,7 +182,7 @@ private:
   void enterDeepSleepWithoutDisplay();
   void recordLoopMetrics(uint32_t loopStartedAt);
   // Applies settings posted from the web dashboard and persists them.
-  void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode, const String &logLevel);
+  void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode, const String &logLevel, bool wakeWordEnabled);
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
 
@@ -204,7 +206,8 @@ private:
       uint8_t speakerVolumePercent,
       const String &languageCode,
       const String &themeCode,
-      const String &logLevel);
+      const String &logLevel,
+      bool wakeWordEnabled);
   static void applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password);
   static bool sendWebVoiceTextCallback(void *context, const String &text, String &message, String &audioUrl);
   static void wakeWordDetectedCallback(void *context);
@@ -323,6 +326,7 @@ private:
   String languageCode_ = "en";
   String themeCode_ = "dark";
   String logLevel_ = "info";
+  bool wakeWordEnabled_ = false;
   bool homeAssistantPaired_ = false;
   String wifiSsid_;
   String wifiPassword_;

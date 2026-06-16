@@ -13,6 +13,34 @@
 #include "SoundManager.h"
 
 namespace {
+String audioUrlOriginForLog(const String &url) {
+  const int scheme = url.indexOf("://");
+  if (scheme < 0) {
+    return url.startsWith("/") ? "relative" : "unknown";
+  }
+  const int hostStart = scheme + 3;
+  const int pathStart = url.indexOf('/', hostStart);
+  return pathStart > hostStart ? url.substring(0, pathStart) : url;
+}
+
+void logDebugAudioUrl(const String &url) {
+  static constexpr size_t ChunkSize = 96;
+  if (url.isEmpty()) {
+    AppLog.println("[dbg] DJ response audio URL: none");
+    return;
+  }
+  const size_t total = (url.length() + ChunkSize - 1) / ChunkSize;
+  for (size_t chunk = 0; chunk < total; ++chunk) {
+    const size_t start = chunk * ChunkSize;
+    AppLog.print("[dbg] DJ response audio URL ");
+    AppLog.print(chunk + 1);
+    AppLog.print("/");
+    AppLog.print(total);
+    AppLog.print(": ");
+    AppLog.println(url.substring(start, min(start + ChunkSize, url.length())));
+  }
+}
+
 class PrefixStream : public Stream {
 public:
   PrefixStream(const uint8_t *prefix, size_t prefixLength, Stream &inner)
@@ -98,8 +126,9 @@ DjResponseAudioResult DjResponseAudioPlayer::play(const String &audioUrl) {
   }
 
   AppLog.println("DJ response audio download");
-  AppLog.print("DJ response audio URL: ");
-  AppLog.println(audioUrl);
+  AppLog.print("DJ response audio origin: ");
+  AppLog.println(audioUrlOriginForLog(audioUrl));
+  logDebugAudioUrl(audioUrl);
   static const char *headers[] = {"Content-Type"};
   http.collectHeaders(headers, 1);
   const int code = http.GET();

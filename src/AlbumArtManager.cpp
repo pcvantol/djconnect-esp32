@@ -4,6 +4,7 @@
 #include <HTTPClient.h>
 #include <LittleFS.h>
 #include <WiFi.h>
+#include <WiFiClient.h>
 #include <esp_heap_caps.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
@@ -14,6 +15,10 @@
 
 static constexpr uint32_t CacheTtlSeconds = 24UL * 60UL * 60UL;
 static constexpr uint32_t CleanupIntervalMs = 30UL * 60UL * 1000UL;
+static constexpr uint32_t FailureRetryBackoffMs = 30000UL;
+static constexpr uint32_t AttemptCooldownMs = 15000UL;
+static constexpr uint32_t AlbumConnectTimeoutMs = 2500UL;
+static constexpr uint32_t AlbumReadTimeoutMs = 4500UL;
 static constexpr size_t MaxImageBytes = 220 * 1024;
 static const char *const AlbumCachePrefix = "/album2_";
 
@@ -27,6 +32,10 @@ void AlbumArtManager::requestCurrentSongArt(const SpotifyState &playback) {
     status_ = "Album cache unavailable";
     return;
   }
+  if (downloadInProgress_) {
+    status_ = "Album art download busy";
+    return;
+  }
   if (playback.albumImageUrl.isEmpty()) {
     currentUrl_ = "";
     currentPath_ = "";
@@ -37,6 +46,21 @@ void AlbumArtManager::requestCurrentSongArt(const SpotifyState &playback) {
 
   currentUrl_ = playback.albumImageUrl;
   currentPath_ = cachePathForUrl(currentUrl_);
+  const uint32_t now = millis();
+  if (lastAttemptUrl_ == currentUrl_ && now - lastAttemptAt_ < AttemptCooldownMs) {
+    status_ = "Album art attempt cooling down";
+    AppLog.println("Album art: attempt cooling down");
+    if (!isCacheFresh(currentPath_)) {
+      currentPath_ = "";
+    }
+    return;
+  }
+  if (lastFailedUrl_ == currentUrl_ && millis() - lastFailureAt_ < FailureRetryBackoffMs) {
+    status_ = "Album art retry cooling down";
+    AppLog.println("Album art: retry cooling down");
+    currentPath_ = "";
+    return;
+  }
   if (isCacheFresh(currentPath_)) {
     status_ = "Album art cached";
     AppLog.print("Album art: cached ");
@@ -49,14 +73,23 @@ void AlbumArtManager::requestCurrentSongArt(const SpotifyState &playback) {
   AppLog.print(heap_caps_get_free_size(MALLOC_CAP_8BIT));
   AppLog.print(" largest=");
   AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+  AppLog.print("Album art URL origin: ");
+  AppLog.println(urlOriginForLog(currentUrl_));
+  lastAttemptUrl_ = currentUrl_;
+  lastAttemptAt_ = now;
+  downloadInProgress_ = true;
   if (downloadImage(currentUrl_, currentPath_)) {
+    downloadInProgress_ = false;
     writeTimestamp(currentPath_);
     status_ = "Album art ready";
     AppLog.print("Album art: ready ");
     AppLog.println(currentPath_);
   } else {
+    downloadInProgress_ = false;
     AppLog.print("Album art: failed ");
     AppLog.println(status_);
+    lastFailedUrl_ = currentUrl_;
+    lastFailureAt_ = millis();
     currentPath_ = "";
   }
 }
@@ -124,14 +157,26 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
     return false;
   }
 
-  WiFiClientSecure client;
-  client.setInsecure();
-  client.setTimeout(Config::HttpLongIoTimeoutMs);
+  const bool isHttps = url.startsWith("https://");
+  const bool isHttp = url.startsWith("http://");
+  if (!isHttps && !isHttp) {
+    status_ = "Album URL unsupported";
+    return false;
+  }
+
+  WiFiClientSecure secureClient;
+  if (isHttps) {
+    secureClient.setInsecure();
+    secureClient.setTimeout(AlbumReadTimeoutMs);
+  }
 
   HTTPClient http;
-  NetworkActivity activity("album_art_download", Config::HttpLongIoTimeoutMs);
-  NetworkActivity::configureLongHttp(http);
-  if (!http.begin(client, url)) {
+  NetworkActivity activity("album_art_download", AlbumReadTimeoutMs);
+  http.setConnectTimeout(AlbumConnectTimeoutMs);
+  http.setTimeout(AlbumReadTimeoutMs);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  const bool begun = isHttps ? http.begin(secureClient, url) : http.begin(url);
+  if (!begun) {
     status_ = "Album HTTP begin failed";
     activity.finishError("begin failed");
     return false;
@@ -140,6 +185,10 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
   const int code = http.GET();
   if (code != 200) {
     status_ = "Album HTTP " + String(code);
+    if (code < 0) {
+      AppLog.print("Album art transport: ");
+      AppLog.println(HTTPClient::errorToString(code));
+    }
     http.end();
     activity.finish(code);
     return false;
@@ -155,7 +204,7 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
   }
 
   WiFiClient *stream = http.getStreamPtr();
-  uint8_t buffer[1024];
+  uint8_t buffer[512];
   size_t totalBytes = 0;
   uint32_t lastDataAt = millis();
   bool timedOut = false;
@@ -192,6 +241,7 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
       return false;
     }
     file.write(buffer, readBytes);
+    delay(1);
   }
 
   file.close();
@@ -215,6 +265,24 @@ bool AlbumArtManager::downloadImage(const String &url, const String &imagePath) 
   }
   activity.finish(code, "cached");
   return true;
+}
+
+String AlbumArtManager::urlOriginForLog(const String &url) const {
+  const int schemeEnd = url.indexOf("://");
+  if (schemeEnd < 0) {
+    return "unsupported";
+  }
+  const int hostStart = schemeEnd + 3;
+  int hostEnd = url.indexOf('/', hostStart);
+  if (hostEnd < 0) {
+    hostEnd = url.length();
+  }
+  String origin = url.substring(0, hostEnd);
+  const int queryStart = origin.indexOf('?');
+  if (queryStart >= 0) {
+    origin = origin.substring(0, queryStart);
+  }
+  return origin;
 }
 
 void AlbumArtManager::writeTimestamp(const String &imagePath) {

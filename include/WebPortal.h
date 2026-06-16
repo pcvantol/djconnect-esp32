@@ -20,7 +20,8 @@ public:
       uint8_t speakerVolumePercent,
       const String &languageCode,
       const String &themeCode,
-      const String &logLevel);
+      const String &logLevel,
+      bool wakeWordEnabled);
   using WifiSettingsCallback = void (*)(void *context, const String &ssid, const String &password);
   using VoiceTextCallback = bool (*)(void *context, const String &text, String &message, String &audioUrl);
   using SimpleCallback = void (*)(void *context);
@@ -41,6 +42,7 @@ public:
       const String &languageCode,
       const String &themeCode,
       const String &logLevel,
+      const bool &wakeWordEnabled,
       const uint32_t &screenOffTimeoutMs,
       const uint32_t &deviceSleepTimeoutMs,
       void *callbackContext,
@@ -117,6 +119,7 @@ private:
   const String *languageCode_ = nullptr;
   const String *themeCode_ = nullptr;
   const String *logLevel_ = nullptr;
+  const bool *wakeWordEnabled_ = nullptr;
   const uint32_t *screenOffTimeoutMs_ = nullptr;
   const uint32_t *deviceSleepTimeoutMs_ = nullptr;
   void *callbackContext_ = nullptr;

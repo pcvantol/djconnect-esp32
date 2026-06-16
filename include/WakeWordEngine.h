@@ -27,7 +27,7 @@ private:
   Callback callback_ = nullptr;
   void *callbackContext_ = nullptr;
   bool available_ = false;
-  bool enabled_ = true;
+  bool enabled_ = false;
   uint32_t lastPollAt_ = 0;
   uint32_t lastMonitorLogAt_ = 0;
   uint32_t lastEmptyLogAt_ = 0;

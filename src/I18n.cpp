@@ -159,6 +159,7 @@ constexpr Entry Entries[] = {
     {"voice_response_audio_failed", "Voice response audio failed", "Voice response audio mislukt"},
     {"voice_response_played", "Voice response played", "Voice response afgespeeld"},
     {"web_settings_saved", "Web settings saved", "Webinstellingen opgeslagen"},
+    {"wake_word", "Wake word", "Wakeword"},
     {"theme", "Theme", "Thema"},
     {"theme_auto", "Auto", "Auto"},
     {"theme_dark", "Dark", "Donker"},

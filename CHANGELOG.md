@@ -2,7 +2,27 @@
 
 ## Unreleased
 
-No unreleased changes yet.
+## v3.1.27
+
+### Added
+
+- Added a persisted wake-word enable setting to the device Settings menu, web
+  portal settings and Home Assistant status/command contract. Wake word now
+  defaults to off and must be explicitly enabled after pairing.
+
+### Fixed
+
+- Added album-art retry cooldown and wake-word runtime release around album-art
+  downloads to avoid repeated open/close cover download failures from starving
+  the loop on no-PSRAM boards.
+- Made the on-device album-art screen request cover art only on screen open or
+  explicit refresh, with short album-art HTTP timeouts, smaller stream buffers
+  and origin-only URL diagnostics for failed cover downloads.
+- Made PTT DJ-announcement display time scale with response length and made HA
+  voice response parsing accept audio URL aliases/nested fields with response
+  byte-count diagnostics.
+- Made PTT voice response parsing detect nested TTS/audio URLs by URL shape and
+  log whether Home Assistant actually returned playable DJ-announcement audio.
 
 ## v3.1.26
 

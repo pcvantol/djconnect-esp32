@@ -16,6 +16,7 @@ struct ProvisioningSettings {
   Language language = Language::English;
   String themeCode = "dark";
   String logLevel = "info";
+  bool wakeWordEnabled = false;
   bool volumeFeedbackEnabled = true;
   uint32_t pongHighScore = 0;
   uint32_t asteroidsHighScore = 0;
@@ -38,6 +39,7 @@ public:
       const String &themeCode,
       const String &logLevel,
       uint8_t speakerVolumePercent,
+      bool wakeWordEnabled,
       bool volumeFeedbackEnabled) const;
 
   void saveWifiCredentials(const String &ssid, const String &password) const;

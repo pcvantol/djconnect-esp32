@@ -34,6 +34,34 @@ inline void logDjResponseDebugText(const String &source, const String &text, con
   AppLog.println("\"");
 }
 
+inline void logDjResponseFullText(const String &source, const String &text) {
+  static constexpr size_t ChunkSize = 96;
+  if (text.isEmpty()) {
+    AppLog.print("DJ response text: source=");
+    AppLog.print(source);
+    AppLog.println(" empty");
+    return;
+  }
+
+  const size_t total = (text.length() + ChunkSize - 1) / ChunkSize;
+  for (size_t chunk = 0; chunk < total; ++chunk) {
+    const size_t start = chunk * ChunkSize;
+    String part = text.substring(start, min(start + ChunkSize, text.length()));
+    part.replace("\r", " ");
+    part.replace("\n", " ");
+    part.replace("\t", " ");
+    part.trim();
+    AppLog.print("DJ response text ");
+    AppLog.print(chunk + 1);
+    AppLog.print("/");
+    AppLog.print(total);
+    AppLog.print(" source=");
+    AppLog.print(source);
+    AppLog.print(": ");
+    AppLog.println(part);
+  }
+}
+
 inline void logDjResponseDebugAudio(const String &source, const String &audioType, int contentLength, bool played) {
   AppLog.print("DJ response debug: source=");
   AppLog.print(source);

@@ -190,4 +190,5 @@ struct DeviceSettingsStatus {
   String language = "en";
   String theme = "dark";
   String logLevel = "info";
+  bool wakeWordEnabled = false;
 };

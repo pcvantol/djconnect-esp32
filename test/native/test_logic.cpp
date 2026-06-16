@@ -91,6 +91,7 @@ static void testHomeAssistantStatusMirroredSettingsDefaults() {
   assert(settings.language == "en");
   assert(settings.theme == "dark");
   assert(settings.logLevel == "info");
+  assert(!settings.wakeWordEnabled);
 
   VisualState visual;
   assert(visual.screenOn);
@@ -118,6 +119,8 @@ static void testHomeAssistantStatusAliasContractNames() {
       "language",
       "theme",
       "log_level",
+      "wake_word_enabled",
+      "wake_word",
       "ota_state",
       "update_state",
       "sound_output",
@@ -661,6 +664,18 @@ static void testDeviceCommandParserSettings() {
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::LogLevel);
   assert(command.value == "debug");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"set_wake_word_enabled\",\"enabled\":true}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::WakeWord);
+  assert(command.numericValue == 1);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"wake_word\",\"value\":\"off\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::WakeWord);
+  assert(command.numericValue == 0);
 }
 
 static void testDeviceCommandParserDjResponseAndUnknown() {
@@ -714,7 +729,7 @@ static void testDJConnectMenuItemCounts() {
   assert(DJConnectMenuModel::itemCount(UiScreen::Help, input) == DJConnectMenuModel::HelpItemCount);
   assert(DJConnectMenuModel::HelpItemCount == 8);
   assert(DJConnectMenuModel::itemCount(UiScreen::Settings, input) == DJConnectMenuModel::SettingsItemCount);
-  assert(DJConnectMenuModel::SettingsItemCount == 14);
+  assert(DJConnectMenuModel::SettingsItemCount == 15);
   assert(DJConnectMenuModel::itemCount(UiScreen::About, input) == DJConnectMenuModel::AboutItemCount);
   assert(DJConnectMenuModel::itemCount(UiScreen::Playlists, input) == 1);
   assert(DJConnectMenuModel::itemCount(UiScreen::SoundOutputs, input) == 1);

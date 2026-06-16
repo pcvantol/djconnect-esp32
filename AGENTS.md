@@ -54,7 +54,7 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `include/AppState.h`: shared state structs.
 - `include/LogicHelpers.h`: pure helper functions with native unit tests.
 - `include/DJConnectMenuModel.h`: pure menu counts/options with native unit tests.
-- `include/ProvisioningController.h`, `src/ProvisioningController.cpp`: NVS provisioning keys for WiFi, setup mode, display settings, language/theme/log-level and cue volume.
+- `include/ProvisioningController.h`, `src/ProvisioningController.cpp`: NVS provisioning keys for WiFi, setup mode, display settings, language/theme/log-level, cue volume and wake-word enablement.
 - `include/DeviceCommandParser.h`: host-testable parser for Home Assistant native `/api/device/command` payloads.
 - `include/PowerController.h`, `src/PowerController.cpp`: charger policy, deep-sleep wake policy and watchdog setup/feed.
 - `include/NetworkActivityLogic.h`: testable network-timeout helper used by `NetworkActivity`.
@@ -208,7 +208,7 @@ requests send `{"command":"queue","limit":100}`. ESP playlist requests send
 Home Assistant should default missing legacy playlist limits to `50` and clamp
 provider calls to safe maxima.
 
-Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, firmware, battery percentage, WiFi RSSI, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, OTA/update state, screen state, LED state and sound output. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_state`, `led_state`, `sound_output`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `ota_state` and `update_state`.
+Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, firmware, battery percentage, WiFi RSSI, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, wake-word enabled state, OTA/update state, screen state, LED state and sound output. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_state`, `led_state`, `sound_output`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `wake_word_enabled`/`wake_word`, `ota_state` and `update_state`.
 
 For `/api/djconnect/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404 means stale pairing. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
 
@@ -229,6 +229,10 @@ DJ response playback rules:
 - Required JSON field: `text`.
 - Optional JSON field: `audio_url`.
 - `audio_url` may point to PCM WAV or MP3 audio. Detect by `Content-Type` first and magic bytes as fallback.
+- If ESP logs show `audio_url=none`, Home Assistant returned a text-only DJ
+  announcement. The ESP must display the text but cannot play speaker audio
+  without an HA-provided audio URL. At debug log level, log the full audio URL
+  the ESP calls in chunked lines so long URLs are not truncated by the logger.
 - WAV stays on `SoundManager::playWavStream()`; MP3 stays on `SoundManager::playMp3Stream()`. Do not rewrite the WAV pipeline when changing MP3 support.
 - If no playable audio is supplied, return success with `spoken:false` and still display the text.
 - `POST /api/device/ota`
@@ -334,7 +338,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It displays returned DJ text on the device and must return the voice/PTT state to idle after completion. It intentionally must not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block physical encoder PTT. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/djconnect/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
 - Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
-- Wake-word support uses the bundled ESPHome `Okay Nabu` model through TensorFlow Lite Micro plus the TensorFlow micro_speech frontend. It must stay local-only and must not perform network I/O from the audio poll path. The legacy `djconnect_micro_wake_word_detect` hook remains supported only as a compatibility fallback.
+- Wake-word support uses the bundled ESPHome `Okay Nabu` model through TensorFlow Lite Micro plus the TensorFlow micro_speech frontend. It defaults to off and must be explicitly enabled by the user from device settings, web settings or the HA entity after pairing. It must stay local-only and must not perform network I/O from the audio poll path. The legacy `djconnect_micro_wake_word_detect` hook remains supported only as a compatibility fallback.
 - Do not call OpenAI directly from ESP firmware.
 - Keep `DJCONNECT_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.
 
@@ -372,7 +376,7 @@ Important current UI details:
 
 - App name is `DJConnect`.
 - Default device/web theme is `dark`. `Light` uses TFT inversion/high contrast on the device. `Auto` is mainly useful for the web portal, where it follows browser/device preference.
-- Changing brightness, timeouts, cue volume, language, theme or log level from the device, web settings or HA commands applies live and saves to NVS. Do not restart for these settings; restart only for flows that explicitly require it such as WiFi changes, reset, OTA or user-requested reboot.
+- Changing brightness, timeouts, cue volume, wake-word enablement, language, theme or log level from the device, web settings or HA commands applies live and saves to NVS. Do not restart for these settings; restart only for flows that explicitly require it such as WiFi changes, reset, OTA or user-requested reboot.
 - Now-playing title color is bright yellow.
 - Artist/show text is light grey.
 - Track progress bar is green.

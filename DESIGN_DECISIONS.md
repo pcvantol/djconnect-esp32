@@ -260,6 +260,10 @@ Why:
 - ESP32-S3 UI, audio, microphone, HTTP and wake-word inference share limited
   heap and CPU time. Blocking calls can freeze input or trip the task watchdog.
 - The code prefers controlled failure and diagnostic logs over indefinite waits.
+- Wake-word inference defaults to off and is a persisted user setting because
+  its TFLite arena competes with TLS, album-art and audio flows on no-PSRAM
+  boards. Enabling it is explicit from device settings, web settings or Home
+  Assistant after pairing.
 
 ### Render-To-Sprite / Framebuffer Pattern
 
@@ -291,9 +295,16 @@ Setup, WiFi failure, HA pairing, low battery, critical battery, OTA, games,
 voice processing and DJ announcement screens are treated as modal states that
 block normal playback/menu input.
 
+The ESP treats `audio_url` as the sole playback contract for DJ-announcement
+audio returned by Home Assistant. Text-only responses remain valid and are
+displayed, but `audio_url=none` is deliberately not retried as speaker playback;
+that indicates the Home Assistant voice/TTS path did not provide audio.
+
 Sources:
 
 - `src/DJConnectApp.cpp`
+- `src/VoiceHttpClient.cpp`
+- `src/DjResponseAudioPlayer.cpp`
 - `README.md` setup, pairing, battery and voice sections
 
 Why:

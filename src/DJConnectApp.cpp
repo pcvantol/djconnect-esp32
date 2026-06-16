@@ -100,6 +100,7 @@ void DJConnectApp::begin() {
   voiceClient_.setActivityCallback(voiceActivityCallback, this);
   homeAssistantPaired_ = false;
   loadProvisioning();
+  wakeWord_.setEnabled(wakeWordEnabled_);
   sound_.playStartup();
   spotify_.setHomeAssistantDevice(haDevice_);
   spotify_.begin();
@@ -236,16 +237,25 @@ void DJConnectApp::loop() {
       }
     }
   }
-  if (!voiceRecording_ && voiceState_ == VoiceState::Idle && !djResponseOverlayVisible_ && homeAssistantPaired_) {
+  if (!voiceRecording_ &&
+      wakeWordEnabled_ &&
+      voiceState_ == VoiceState::Idle &&
+      !djResponseOverlayVisible_ &&
+      activeScreen_ != UiScreen::AlbumArt &&
+      homeAssistantPaired_) {
     wakeWord_.loop(voiceRecorder_);
   } else if (wakeWord_.available() && millis() - lastWakeWordGateLogAt_ > 5000) {
     String reason;
-    if (voiceRecording_) {
+    if (!wakeWordEnabled_) {
+      reason = "disabled";
+    } else if (voiceRecording_) {
       reason = "recording active";
     } else if (voiceState_ != VoiceState::Idle) {
       reason = String("voice state ") + String(static_cast<int>(voiceState_));
     } else if (djResponseOverlayVisible_) {
       reason = "DJ announcement active";
+    } else if (activeScreen_ == UiScreen::AlbumArt) {
+      reason = "album art active";
     } else if (!homeAssistantPaired_) {
       reason = "HA not paired";
     } else {
@@ -316,6 +326,7 @@ void DJConnectApp::loadProvisioning() {
   themeCode_ = settings.themeCode;
   logLevel_ = settings.logLevel;
   AppLog.setLevel(logLevel_);
+  wakeWordEnabled_ = settings.wakeWordEnabled;
   speakerVolumePercent_ = settings.speakerVolumePercent;
   volumeFeedbackEnabled_ = settings.volumeFeedbackEnabled;
   pongHighScore_ = static_cast<int>(min(settings.pongHighScore, static_cast<uint32_t>(INT_MAX)));
@@ -559,6 +570,7 @@ void DJConnectApp::startWebPortalIfNeeded() {
       languageCode_,
       themeCode_,
       logLevel_,
+      wakeWordEnabled_,
       screenOffTimeoutMs_,
       deviceSleepTimeoutMs_,
       this,
@@ -1306,25 +1318,27 @@ void DJConnectApp::selectCurrentMenuItem() {
         showNotice(String(I18n::text("audio_feedback")) + " " + I18n::onOff(volumeFeedbackEnabled_), 1600);
         renderNow();
       } else if (settingsSelection_ == 7) {
-        openScreen(UiScreen::SpeakerVolume);
+        applyWakeWordEnabled(!wakeWordEnabled_, true);
       } else if (settingsSelection_ == 8) {
-        toggleStressTest();
+        openScreen(UiScreen::SpeakerVolume);
       } else if (settingsSelection_ == 9) {
+        toggleStressTest();
+      } else if (settingsSelection_ == 10) {
         display_.showBootMessage(I18n::text("turning_off"), battery_);
         responsiveDelay(250);
         enterDeepSleep();
-      } else if (settingsSelection_ == 10) {
+      } else if (settingsSelection_ == 11) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::ChangeWifiConfirm);
-      } else if (settingsSelection_ == 11) {
+      } else if (settingsSelection_ == 12) {
         sound_.playHardReset();
         display_.showBootMessage(I18n::text("restarting"), battery_);
         responsiveDelay(320);
         ESP.restart();
-      } else if (settingsSelection_ == 12) {
+      } else if (settingsSelection_ == 13) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::ResetPairingConfirm);
-      } else if (settingsSelection_ == 13) {
+      } else if (settingsSelection_ == 14) {
         hardResetSelection_ = 0;
         openScreen(UiScreen::HardResetConfirm);
       }
@@ -1448,6 +1462,22 @@ void DJConnectApp::applySpeakerVolumeSelection() {
   renderNow();
 }
 
+void DJConnectApp::applyWakeWordEnabled(bool enabled, bool notify) {
+  wakeWordEnabled_ = enabled;
+  wakeWord_.setEnabled(wakeWordEnabled_);
+  if (!wakeWordEnabled_) {
+    wakeWord_.releaseResources();
+  }
+  saveDisplaySettings();
+  AppLog.print("Settings: wake word ");
+  AppLog.println(wakeWordEnabled_ ? "enabled" : "disabled");
+  if (notify) {
+    showNotice(String(I18n::text("wake_word")) + " " + I18n::onOff(wakeWordEnabled_), 1800);
+  }
+  renderNow();
+  sendHomeAssistantStatusIfDue(true);
+}
+
 void DJConnectApp::applyLogLevelSelection() {
   logLevel_ = logLevelValue(logLevelSelection_);
   saveDisplaySettings();
@@ -1515,6 +1545,7 @@ void DJConnectApp::saveDisplaySettings() {
       themeCode_,
       logLevel_,
       speakerVolumePercent_,
+      wakeWordEnabled_,
       volumeFeedbackEnabled_);
 }
 
@@ -2298,6 +2329,11 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     message = "Log level updated";
     return true;
   }
+  if (command.type == DeviceCommandType::WakeWord) {
+    applyWakeWordEnabled(command.numericValue != 0, true);
+    message = "Wake word updated";
+    return true;
+  }
 
   if (!playbackProxyReady()) {
     AppLog.println("Device command ignored: playback not connected");
@@ -2354,6 +2390,7 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     case DeviceCommandType::Language:
     case DeviceCommandType::Theme:
     case DeviceCommandType::LogLevel:
+    case DeviceCommandType::WakeWord:
       break;
 
     case DeviceCommandType::Shuffle:
@@ -2967,9 +3004,6 @@ void DJConnectApp::refreshPlaybackAndBattery() {
     playback_.error = I18n::text("ha_pairing_invalid");
     showNotice(playback_.error, 2500);
   }
-  if (activeScreen_ == UiScreen::AlbumArt) {
-    albumArt_.requestCurrentSongArt(playback_);
-  }
   lastBatteryPollAt_ = millis();
   lastPlaybackPollAt_ = millis();
   renderNow();
@@ -3026,9 +3060,6 @@ void DJConnectApp::pollPlaybackIfDue() {
     markHomeAssistantPairingInvalid(I18n::text("ha_pairing_invalid"));
     return;
   }
-  if (activeScreen_ == UiScreen::AlbumArt) {
-    albumArt_.requestCurrentSongArt(playback_);
-  }
   renderNow();
 }
 
@@ -3043,8 +3074,18 @@ void DJConnectApp::openAlbumArtScreen() {
   display_.resetAlbumArtRenderCache();
   showNotice(I18n::text("current_song"), 900);
   renderNow();
-  albumArt_.requestCurrentSongArt(playback_);
+  requestAlbumArtWithWakeWordPaused();
   renderNow();
+}
+
+void DJConnectApp::requestAlbumArtWithWakeWordPaused() {
+  if (wakeWord_.available()) {
+    AppLog.println("Album art: releasing wake-word runtime for download");
+    wakeWord_.releaseResources();
+  }
+  albumArt_.requestCurrentSongArt(playback_);
+  serviceWatchdog();
+  yield();
 }
 
 void DJConnectApp::openQueueScreen() {
@@ -3600,7 +3641,8 @@ void DJConnectApp::applyWebSettings(
     uint8_t speakerVolumePercent,
     const String &languageCode,
     const String &themeCode,
-    const String &logLevel) {
+    const String &logLevel,
+    bool wakeWordEnabled) {
   screenBrightnessPercent_ = constrain(brightnessPercent, 25, 100);
   screenOffTimeoutMs_ = constrain(offTimeoutMs, 30000UL, 240000UL);
   deviceSleepTimeoutMs_ = constrain(sleepTimeoutMs, 300000UL, 3600000UL);
@@ -3618,6 +3660,11 @@ void DJConnectApp::applyWebSettings(
   logLevel_.toLowerCase();
   if (logLevel_ != "debug" && logLevel_ != "warning" && logLevel_ != "error") {
     logLevel_ = "info";
+  }
+  wakeWordEnabled_ = wakeWordEnabled;
+  wakeWord_.setEnabled(wakeWordEnabled_);
+  if (!wakeWordEnabled_) {
+    wakeWord_.releaseResources();
   }
   for (size_t index = 0; index < ThemeOptionCount; index++) {
     if (themeValue(index) == themeCode_) {
@@ -3931,6 +3978,7 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
   settings.language = languageCode_;
   settings.theme = themeCode_;
   settings.logLevel = logLevel_;
+  settings.wakeWordEnabled = wakeWordEnabled_;
   const String soundOutput = playback_.deviceName.isEmpty() ? "" : playback_.deviceName;
   const DJConnectPairing::StatusResult result =
       haPairing_.sendStatusToHA(battery_, playbackProxyUsable, settings, visualState_, soundOutput);
@@ -4062,7 +4110,8 @@ void DJConnectApp::applyWebSettingsCallback(
     uint8_t speakerVolumePercent,
     const String &languageCode,
     const String &themeCode,
-    const String &logLevel) {
+    const String &logLevel,
+    bool wakeWordEnabled) {
   static_cast<DJConnectApp *>(context)->applyWebSettings(
       brightnessPercent,
       offTimeoutMs,
@@ -4070,7 +4119,8 @@ void DJConnectApp::applyWebSettingsCallback(
       speakerVolumePercent,
       languageCode,
       themeCode,
-      logLevel);
+      logLevel,
+      wakeWordEnabled);
 }
 
 void DJConnectApp::applyWebWifiSettingsCallback(void *context, const String &ssid, const String &password) {
@@ -4364,13 +4414,14 @@ bool DJConnectApp::handleDjResponseText(const String &text, const String &audioU
 }
 
 void DJConnectApp::showDjResponseOverlay(const String &title, const String &text, uint32_t ttlMs) {
+  const uint32_t readingMs = min<uint32_t>(30000UL, max<uint32_t>(ttlMs, 6000UL + (text.length() * 55UL)));
   diagnostics_.lastDjText = text;
   djResponseOverlayTitle_ = title;
   display_.resetDjResponseOverlayCache();
   djResponseOverlayVisible_ = true;
-  djResponseOverlayUntil_ = millis() + ttlMs;
+  djResponseOverlayUntil_ = millis() + readingMs;
   display_.wakeForUserActivity();
-  showNotice(text, ttlMs);
+  showNotice(text, readingMs);
   renderNow();
 }
 
@@ -4542,6 +4593,7 @@ void DJConnectApp::renderMenuNow() {
           {String(I18n::text("theme")) + " " + themeLabel(themeCode_)},
           {String(I18n::text("log_level")) + " " + logLevelLabel(logLevel_)},
           {String(I18n::text("audio_feedback")) + " " + I18n::onOff(volumeFeedbackEnabled_)},
+          {String(I18n::text("wake_word")) + " " + I18n::onOff(wakeWordEnabled_)},
           {String(I18n::text("speaker_volume")) + " " + String(speakerVolumePercent_) + "%"},
           {String(I18n::text("stress_test")) + " " + I18n::onOff(stressTestActive_)},
           {I18n::text("turn_off_device")},

@@ -162,7 +162,8 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <select id="speakerVolume"><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label><label data-i18n-label="language">Language
 <select id="language"><option value="en" data-i18n="languageEnglish">English</option><option value="nl" data-i18n="languageDutch">Dutch</option></select></label><label data-i18n-label="theme">Theme
 <select id="theme"><option value="dark" data-i18n="themeDark">Dark</option><option value="light" data-i18n="themeLight">Light</option><option value="auto" data-i18n="themeAuto">Auto</option></select></label><label data-i18n-label="logLevel">Log level
-<select id="logLevel"><option value="debug" data-i18n="logLevelDebug">Debug</option><option value="info" data-i18n="logLevelInfo">Info</option><option value="warning" data-i18n="logLevelWarning">Warning</option><option value="error" data-i18n="logLevelError">Error</option></select></label><button data-i18n="saveSettings" type="submit">Save settings</button></form><div id="settingsStatus" class="status"></div></section><section class="panel"><h2 data-i18n="wifi">WiFi</h2><div class="grid wifi-grid"><div class="row"><span class="key" data-i18n="state">State</span><span id="wifiConnected" class="value">-</span></div><div class="row"><span class="key">IP</span><span id="wifiIp" class="value mono">-</span></div><div class="row"><span class="key">SSID</span><span id="wifiSsid" class="value">-</span></div><div class="row"><span class="key">RSSI</span><span class="value"><span id="wifiSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="wifiRssi">-</span></span></div><div class="row"><span class="key">MAC</span><span id="wifiMac" class="value">-</span></div></div><form id="wifiForm" class="controls"><label data-i18n-label="newWifiSsid">New WiFi SSID
+<select id="logLevel"><option value="debug" data-i18n="logLevelDebug">Debug</option><option value="info" data-i18n="logLevelInfo">Info</option><option value="warning" data-i18n="logLevelWarning">Warning</option><option value="error" data-i18n="logLevelError">Error</option></select></label><label data-i18n-label="wakeWord">Wake word
+<select id="wakeWordEnabled"><option value="0" data-i18n="off">Off</option><option value="1" data-i18n="on">On</option></select></label><button data-i18n="saveSettings" type="submit">Save settings</button></form><div id="settingsStatus" class="status"></div></section><section class="panel"><h2 data-i18n="wifi">WiFi</h2><div class="grid wifi-grid"><div class="row"><span class="key" data-i18n="state">State</span><span id="wifiConnected" class="value">-</span></div><div class="row"><span class="key">IP</span><span id="wifiIp" class="value mono">-</span></div><div class="row"><span class="key">SSID</span><span id="wifiSsid" class="value">-</span></div><div class="row"><span class="key">RSSI</span><span class="value"><span id="wifiSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="wifiRssi">-</span></span></div><div class="row"><span class="key">MAC</span><span id="wifiMac" class="value">-</span></div></div><form id="wifiForm" class="controls"><label data-i18n-label="newWifiSsid">New WiFi SSID
 <input id="wifiNewSsid" name="ssid" autocomplete="off" required></label><label data-i18n-label="newWifiPassword">New WiFi password
 <input id="wifiNewPassword" name="password" type="password" autocomplete="new-password" data-i18n-placeholder="wifiPasswordPlaceholder" placeholder="leave blank to keep current"></label><button data-i18n="wifiButton" type="submit">Test WiFi &amp; restart device</button></form><div class="fine" data-i18n="wifiFine">The device tests the new WiFi after this page responds. If it connects, credentials are saved and the device restarts automatically.</div><div id="wifiSettingsStatus" class="status"></div></section><section class="panel"><h2 data-i18n="ha">Home Assistant</h2><div class="grid"><div class="row"><span class="key" data-i18n="pairing">Pairing</span><span id="haPaired" class="value">-</span></div><div class="row"><span class="key" data-i18n="pairCode">Pair code</span><span id="haPairCode" class="value mono">-</span></div><div class="row"><span class="key">Device ID</span><span id="haDeviceId" class="value mono">-</span></div><div class="row"><span class="key">mDNS URL</span><span id="haMdnsUrl" class="value mono">-</span></div><div class="row"><span class="key">mDNS service</span><span id="haMdnsService" class="value mono">_djconnect._tcp</span></div><div class="row"><span class="key" data-i18n="firmware">Firmware</span><span id="haFirmware" class="value">-</span></div><div class="row"><span class="key" data-i18n="model">Model</span><span id="haModel" class="value">-</span></div><div class="row"><span class="key">URL</span><span id="haUrl" class="value mono">-</span></div></div><button id="resetPairingButton" data-i18n="resetPairing" class="warning section-action" type="button">Reset pairing</button><div id="haStatus" class="status"></div></section><section class="panel"><h2 data-i18n="playback">Music</h2><div class="grid"><div class="row"><span class="key" data-i18n="musicStatus">Status</span><span id="spotifyState" class="value">-</span></div><div class="row"><span class="key" data-i18n="musicLastIssue">Last issue</span><span id="spotifyError" class="value">-</span></div></div><button id="refreshButton" data-i18n="refreshPlayback" class="section-action" type="button">Refresh music status</button><div id="refreshStatus" class="status"></div></section><section class="panel"><h2 data-i18n="diagnostics">Diagnostics</h2><div class="grid"><div class="row"><span class="key" data-i18n="screen">Screen</span><span id="screenState" class="value">-</span></div><div class="row"><span class="key" data-i18n="ledRing">LED ring</span><span id="ledState" class="value">-</span></div><div class="row"><span class="key" data-i18n="uptime">Uptime</span><span id="uptime" class="value">-</span></div><div class="row"><span class="key" data-i18n="loopLoad">Loop load</span><span id="cpu" class="value">-</span></div><div class="row"><span class="key" data-i18n="heap">Heap</span><span id="heap" class="value">-</span></div><div class="row"><span class="key" data-i18n="storage">Storage</span><span id="storage" class="value">-</span></div><div class="row"><span class="key" data-i18n="sketch">Sketch</span><span id="sketch" class="value">-</span></div></div><button id="rebootButton" data-i18n="restart" class="warning section-action" type="button">Restart device</button></section><section id="logsPanel" class="panel wide"><h2 data-i18n="logs">Logs</h2><div class="two"><button id="pauseLogsButton" data-i18n="pauseLogs" class="secondary" type="button">Pause logs</button><button id="copyLogsButton" data-i18n="selectAll" class="secondary" type="button">Select all</button></div><div id="logsStatus" class="status"></div><pre id="logs" class="logs">Loading logs...</pre></section><section class="panel"><h2 data-i18n="firmwareOta">Firmware OTA</h2><form id="otaForm" class="controls"><input id="firmware" name="firmware" type="file" accept=".bin" required><button data-i18n="uploadFirmware" class="firmware" type="submit">Upload firmware</button></form><div class="fine" data-i18n="firmwareFine">Firmware updates run automatically when DJConnect is paired with Home Assistant.</div><div id="otaStatus" class="status"></div><button id="hardResetButton" data-i18n="factoryReset" class="danger" type="button">Factory reset</button></section><section class="panel"><h2 data-i18n="legal">Legal</h2><div class="fine" data-i18n="copyrightNotice">Copyright (c) 2026 Peter van Tol. All rights reserved. DJConnect firmware is proprietary software.</div><div class="fine" data-i18n="trademarkNotice">Spotify is a trademark of Spotify AB. DJConnect is not affiliated with, endorsed by, or sponsored by Spotify AB.</div><div class="fine" data-i18n="ossNotice">This firmware includes open-source software components. Their licenses remain with their respective authors.</div></section></main><div id="albumArtPopover" class="art-popover" role="dialog" aria-modal="true" aria-label="Album art"><div class="art-popover-inner"><img id="albumArtLarge" alt="Album art"><button id="albumArtClose" class="art-popover-close" type="button" aria-label="Close album art" title="Close album art">&times;</button></div></div><script>
 const $ = id => document.getElementById(id);
@@ -212,7 +213,7 @@ webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect annou
 spotifyUnavailable:"Playback not connected",
 output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Queue", refreshUpNext:"Refresh queue", refreshPlaylists:"Refresh playlists", loadingQueue:"Loading queue...",
 playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", games:"Games", settings:"Settings",
-brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume",
+brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume", wakeWord:"Wake word",
 language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error",
 timeout30s:"30 seconds", timeout1m:"1 minute", timeout2m:"2 minutes", timeout4m:"4 minutes", timeout5m:"5 minutes", timeout15m:"15 minutes", timeout30m:"30 minutes", timeout60m:"60 minutes",
 shuffle:"Shuffle", shuffleOff:"Shuffle off", shuffleOn:"Shuffle on", repeat:"Repeat", repeatOff:"Repeat off", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", saveSettings:"Save settings", settingsFine:"Screen turns off after the selected idle timeout. LED ring follows the screen power state.",
@@ -226,7 +227,7 @@ ledRing:"LED ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:
 logs:"Logs", pauseLogs:"Pause logs", selectAll:"Select all", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
 firmwareFine:"Firmware updates run automatically when DJConnect is paired with Home Assistant.", factoryReset:"Factory reset",
 loading:"Loading", playing:"Playing", paused:"Paused", noPlayback:"No playback", connected:"Connected", disconnected:"Disconnected",
-authorized:"Authorized", notAuthorized:"Not authorized", tokenSecondsLeft:"s left", disabled:"Disabled", charging:"charging", full:"full",
+authorized:"Authorized", notAuthorized:"Not authorized", tokenSecondsLeft:"s left", disabled:"Disabled", on:"On", off:"Off", charging:"charging", full:"full",
 discharging:"discharging", paired:"Paired", pairingMode:"Pairing mode", pairingUnavailable:"Pairing info unavailable",
 none:"None", noOutputs:"No sound outputs", outputsFailed:"Sound outputs failed", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
 playlistsFailed:"Playlists failed", noLogs:"No logs yet", switchingOutput:"Switching output...", skipping:"Skipping...",
@@ -249,7 +250,7 @@ webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect aanko
 spotifyUnavailable:"Afspelen niet verbonden",
 output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Wachtrij", refreshUpNext:"Wachtrij verversen", refreshPlaylists:"Afspeellijsten verversen", loadingQueue:"Wachtrij laden...",
 playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", games:"Games", settings:"Instellingen",
-brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume",
+brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume", wakeWord:"Wakeword",
 language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout",
 timeout30s:"30 seconden", timeout1m:"1 minuut", timeout2m:"2 minuten", timeout4m:"4 minuten", timeout5m:"5 minuten", timeout15m:"15 minuten", timeout30m:"30 minuten", timeout60m:"60 minuten",
 shuffle:"Shuffle", shuffleOff:"Shuffle uit", shuffleOn:"Shuffle aan", repeat:"Herhalen", repeatOff:"Herhalen uit", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", saveSettings:"Instellingen opslaan", settingsFine:"Scherm gaat uit na de ingestelde inactiviteit. LED-ring volgt de schermstatus.",
@@ -263,7 +264,7 @@ ledRing:"LED-ring", uptime:"Uptime", loopLoad:"Loop load", heap:"Heap", storage:
 logs:"Logs", pauseLogs:"Pauzeer logs", selectAll:"Selecteer alles", firmwareOta:"Firmware OTA", uploadFirmware:"Upload firmware",
 firmwareFine:"Firmware update wordt automatisch uitgevoerd indien DJConnect is gekoppeld aan Home Assistant.", factoryReset:"Fabrieksreset",
 loading:"Laden", playing:"Speelt", paused:"Gepauzeerd", noPlayback:"Geen playback", connected:"Verbonden", disconnected:"Niet verbonden",
-authorized:"Geautoriseerd", notAuthorized:"Niet geautoriseerd", tokenSecondsLeft:"s over", disabled:"Uitgeschakeld", charging:"laden", full:"vol",
+authorized:"Geautoriseerd", notAuthorized:"Niet geautoriseerd", tokenSecondsLeft:"s over", disabled:"Uitgeschakeld", on:"Aan", off:"Uit", charging:"laden", full:"vol",
 discharging:"ontladen", paired:"Gekoppeld", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformatie niet beschikbaar",
 none:"Geen", noOutputs:"Geen geluidsuitgangen", outputsFailed:"Geluidsuitgangen mislukt", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
 playlistsFailed:"Afspeellijsten mislukt", noLogs:"Nog geen logs", switchingOutput:"Output wisselen...", skipping:"Overslaan...",
@@ -325,7 +326,7 @@ $("repeatOneMark").style.display = repeatState === "track" ? "block" : "none";
 updatePlaybackButtonLabels();
 }
 const dirtyInputs = new Set();
-const settingsInputIds = ["brightness", "offTimeout", "sleepTimeout", "speakerVolume", "language", "theme", "logLevel"];
+const settingsInputIds = ["brightness", "offTimeout", "sleepTimeout", "speakerVolume", "language", "theme", "logLevel", "wakeWordEnabled"];
 const userEditableInputIds = [...settingsInputIds, "wifiNewSsid", "wifiNewPassword"];
 function setInput(id, value) {
 const el = $(id);
@@ -755,6 +756,7 @@ setInput("speakerVolume", String(data.settings.speakerVolumePercent));
 setInput("language", currentLanguage);
 setInput("theme", data.settings.theme || "dark");
 setInput("logLevel", data.settings.logLevel || "info");
+setInput("wakeWordEnabled", data.settings.wakeWordEnabled ? "1" : "0");
 }
 async function refresh() {
 const response = await fetch("/api/status", { cache: "no-store" });
@@ -1047,7 +1049,8 @@ sleepTimeoutMs: $("sleepTimeout").value,
 speakerVolume: $("speakerVolume").value,
 language: $("language").value,
 theme: $("theme").value,
-logLevel: $("logLevel").value
+logLevel: $("logLevel").value,
+wakeWordEnabled: $("wakeWordEnabled").value
 });
 const response = await fetch("/api/settings", { method:"POST", body });
 $("settingsStatus").textContent = await response.text();
@@ -1139,6 +1142,7 @@ void WebPortal::begin(
     const String &languageCode,
     const String &themeCode,
     const String &logLevel,
+    const bool &wakeWordEnabled,
     const uint32_t &screenOffTimeoutMs,
     const uint32_t &deviceSleepTimeoutMs,
     void *callbackContext,
@@ -1162,6 +1166,7 @@ void WebPortal::begin(
   languageCode_ = &languageCode;
   themeCode_ = &themeCode;
   logLevel_ = &logLevel;
+  wakeWordEnabled_ = &wakeWordEnabled;
   screenOffTimeoutMs_ = &screenOffTimeoutMs;
   deviceSleepTimeoutMs_ = &deviceSleepTimeoutMs;
   callbackContext_ = callbackContext;
@@ -1316,6 +1321,7 @@ void WebPortal::handleStatusJson() {
   settings["language"] = languageCode_ == nullptr ? "en" : *languageCode_;
   settings["theme"] = themeCode_ == nullptr ? "dark" : *themeCode_;
   settings["logLevel"] = logLevel_ == nullptr ? "info" : *logLevel_;
+  settings["wakeWordEnabled"] = wakeWordEnabled_ != nullptr && *wakeWordEnabled_;
   settings["screenOffTimeoutMs"] = *screenOffTimeoutMs_;
   settings["screenDimStartAfterMs"] = Config::DisplayDimStartAfterMs;
   settings["deviceSleepTimeoutMs"] = deviceSleepTimeoutMs_ == nullptr ? Config::DeviceSleepAfterMs : *deviceSleepTimeoutMs_;
@@ -1417,6 +1423,7 @@ void WebPortal::handleSettingsPost() {
   if (logLevel != "debug" && logLevel != "warning" && logLevel != "error") {
     logLevel = "info";
   }
+  const bool wakeWordEnabled = server_.hasArg("wakeWordEnabled") && server_.arg("wakeWordEnabled") == "1";
   AppLog.print("Web settings: brightness=");
   AppLog.print(brightness);
   AppLog.print("% dim=");
@@ -1427,9 +1434,11 @@ void WebPortal::handleSettingsPost() {
   AppLog.print(speakerVolume);
   AppLog.print("% log_level=");
   AppLog.print(logLevel);
+  AppLog.print(" wake_word=");
+  AppLog.print(wakeWordEnabled ? "on" : "off");
   AppLog.println();
   if (settingsCallback_ != nullptr) {
-    settingsCallback_(callbackContext_, brightness, offTimeoutMs, sleepTimeoutMs, speakerVolume, language, theme, logLevel);
+    settingsCallback_(callbackContext_, brightness, offTimeoutMs, sleepTimeoutMs, speakerVolume, language, theme, logLevel, wakeWordEnabled);
   }
 
   server_.send(200, "text/plain", "Settings saved");

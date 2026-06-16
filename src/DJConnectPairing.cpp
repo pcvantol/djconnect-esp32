@@ -191,6 +191,8 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   request["cue_volume"] = settings.speakerVolumePercent;
   request["speaker_volume"] = settings.speakerVolumePercent;
   request["speaker_volume_percent"] = settings.speakerVolumePercent;
+  request["wake_word_enabled"] = settings.wakeWordEnabled;
+  request["wake_word"] = settings.wakeWordEnabled;
   request["screen_state"] = visualState.screenOn ? "on" : "off";
   request["screen_brightness_level"] = visualState.screenBrightnessLevel;
   request["led_state"] = visualState.ledOn ? "on" : "off";
@@ -208,6 +210,8 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   settingsObject["language"] = settings.language;
   settingsObject["theme"] = settings.theme;
   settingsObject["log_level"] = settings.logLevel;
+  settingsObject["wake_word_enabled"] = settings.wakeWordEnabled;
+  settingsObject["wake_word"] = settings.wakeWordEnabled;
   JsonObject screenObject = request["screen"].to<JsonObject>();
   screenObject["state"] = visualState.screenOn ? "on" : "off";
   screenObject["brightness_level"] = visualState.screenBrightnessLevel;

@@ -258,6 +258,8 @@ Physical PTT, from the Now Playing screen:
 7. The ESP displays the DJ text briefly, detects the audio type from `Content-Type` or magic bytes, and plays compatible WAV/MP3 audio through the built-in speaker.
 8. The UI returns to Now Playing.
 
+If the ESP log shows `audio_url=none`, the Home Assistant integration returned a text-only DJ announcement. In that case the ESP has no audio URL to fetch and cannot play speaker audio; the fix belongs in the Home Assistant voice/TTS response path. At debug log level, the ESP logs the full audio URL it calls in chunked `DJ response audio URL` lines.
+
 While the device is processing the PTT request or showing the DJ announcement screen, pressing the middle encoder button cancels the rest of the PTT/DJ-announcement flow as soon as possible. If an HA HTTP request is already in flight, the firmware ignores the result when it returns; response audio playback receives a stop request and exits on the next stream loop.
 
 The Current song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
@@ -280,15 +282,18 @@ window reaches the configured cutoff. The LilyGO T-Embed-CC1101 keeps the more
 conservative `0.90` cutoff; ESP32-S3-BOX-3 uses `0.86` to compensate for the
 different microphone/acoustic path.
 
-Wake-word monitoring is enabled only while the device is in normal mode, not
-already recording voice, and Home Assistant pairing is confirmed. It does not
-require an active music playback session, so the user can request music while
-playback is idle or paused. Direct pairing exits the BLE/pairing screen before
-the wake-word runtime starts so the TensorFlow arena is allocated after the
-pairing heap pressure has dropped. On detection, the device starts the same
-local PTT WAV upload flow as an encoder-button voice request; no wake-word audio
-leaves the device until the wake phrase has been detected and the normal PTT
-recording starts.
+Wake-word monitoring is available only while the device is in normal mode, not
+already recording voice, and Home Assistant pairing is confirmed. It is stored
+as a user setting and defaults to off after factory reset/pairing; it can be
+enabled from the device Settings menu, the web portal settings panel or the
+Home Assistant wake-word entity. It does not require an active music playback
+session, so the user can request music while playback is idle or paused. Direct
+pairing exits the BLE/pairing screen before any wake-word runtime can start, so
+the TensorFlow arena is allocated only after the user has explicitly enabled the
+feature and pairing heap pressure has dropped. On detection, the device starts
+the same local PTT WAV upload flow as an encoder-button voice request; no
+wake-word audio leaves the device until the wake phrase has been detected and
+the normal PTT recording starts.
 
 Wake-word-started recordings stop automatically after the minimum listen window
 when microphone RMS stays below the silence threshold for 1.2 seconds, and all
@@ -340,7 +345,7 @@ Supported command payloads:
 
 Status is still posted periodically to the Home Assistant integration through `/api/djconnect/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. Every ESP-to-Home Assistant JSON payload for `/api/djconnect/status` and `/api/djconnect/command` includes top-level `device_id` and `client_type:"esp32"`; the firmware does not send `device_type` in those payloads. Playback command payloads stay identity-only and must not carry partial device-status snapshots; `/api/djconnect/status` is the authoritative source for battery, firmware, RSSI, pairing, screen, LED, settings and sound-output sensor values. Raw WAV uploads to `/api/djconnect/voice` use the bearer token and `X-DJConnect-Device-ID` headers instead of a JSON body.
 
-The status payload mirrors user device settings both top-level and under `settings`, including `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `ota_state`, `update_state`, `sound_output` and `playback_configured`. It also sends the compatibility hint `spotify_configured` as the same boolean without exposing credentials. The payload includes `screen_state`, `led_state`, `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to unknown or minimum values.
+The status payload mirrors user device settings both top-level and under `settings`, including `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `wake_word_enabled`/`wake_word`, `ota_state`, `update_state`, `sound_output` and `playback_configured`. It also sends the compatibility hint `spotify_configured` as the same boolean without exposing credentials. The payload includes `screen_state`, `led_state`, `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to unknown or minimum values.
 
 Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing and shows a localized Home Assistant Spotify-connection hint instead of raw provider errors. If HA returns `{"success":false,"error":"invalid_client_type"}` or an HTTP error body with `error:"invalid_client_type"`, the ESP logs `HA rejected payload: missing client_type=esp32`, treats it as a firmware/HA contract problem and does not clear NVS pairing or the device token. HTTP 426 with `error:"version_mismatch"` requires a firmware/integration update and also keeps pairing/token intact.
 
@@ -364,7 +369,7 @@ Queue, playlist and output data are supplied by the Home Assistant integration. 
 
 `DJConnectApp` is the top-level coordinator for setup, loop timing, input routing and screen transitions. Storage and hardware policy are kept in smaller modules so production issues can be isolated more easily:
 
-- `ProvisioningController` owns NVS provisioning keys for WiFi, setup mode, display settings, language, theme, log level and speaker cue volume.
+- `ProvisioningController` owns NVS provisioning keys for WiFi, setup mode, display settings, language, theme, log level, speaker cue volume and the wake-word enable flag.
 - `PowerController` owns charger detection policy, timer-wake sleep decisions, button wake masks and watchdog setup/feed.
 - `DJConnectMenuModel` contains host-testable menu counts and option values; `DJConnectMenu` adapts that model to Arduino strings and display labels.
 - `NetworkActivity` applies bounded HTTP timeout policy and logs duration/result for long network flows such as Home Assistant playback proxy calls, status, OTA, album art and DJ response audio. Playback proxy controls use short waits plus a transient-failure cooldown so repeated HA 5xx/-1 responses cannot stack blocking commands.

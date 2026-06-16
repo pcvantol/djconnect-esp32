@@ -148,6 +148,144 @@ void logVoiceHttpClientError(const String &context, int code) {
   AppLog.println(HTTPClient::errorToString(code));
 }
 
+String firstStringValue(JsonVariantConst value,
+                        const char *key1,
+                        const char *key2 = nullptr,
+                        const char *key3 = nullptr,
+                        const char *key4 = nullptr) {
+  if (value.isNull()) {
+    return "";
+  }
+
+  if (value.is<JsonObjectConst>()) {
+    JsonObjectConst object = value.as<JsonObjectConst>();
+    const char *keys[] = {key1, key2, key3, key4};
+    for (const char *key : keys) {
+      if (key == nullptr) {
+        continue;
+      }
+      const char *direct = object[key] | "";
+      if (strlen(direct) > 0) {
+        return String(direct);
+      }
+    }
+    for (JsonPairConst pair : object) {
+      const String nested = firstStringValue(pair.value(), key1, key2, key3, key4);
+      if (!nested.isEmpty()) {
+        return nested;
+      }
+    }
+  } else if (value.is<JsonArrayConst>()) {
+    for (JsonVariantConst item : value.as<JsonArrayConst>()) {
+      const String nested = firstStringValue(item, key1, key2, key3, key4);
+      if (!nested.isEmpty()) {
+        return nested;
+      }
+    }
+  }
+
+  return "";
+}
+
+bool looksLikeDjAudioUrl(const String &value) {
+  if (value.isEmpty()) {
+    return false;
+  }
+  String lower = value;
+  lower.toLowerCase();
+  if (!(lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/api/"))) {
+    return false;
+  }
+  return lower.indexOf("/api/djconnect/tts/") >= 0 ||
+         lower.indexOf("/api/tts") >= 0 ||
+         lower.endsWith(".mp3") ||
+         lower.endsWith(".wav") ||
+         lower.indexOf(".mp3?") >= 0 ||
+         lower.indexOf(".wav?") >= 0;
+}
+
+String firstDjAudioLikeUrl(JsonVariantConst value) {
+  if (value.isNull()) {
+    return "";
+  }
+
+  if (value.is<const char *>()) {
+    String candidate = value.as<const char *>();
+    candidate.trim();
+    return looksLikeDjAudioUrl(candidate) ? candidate : "";
+  }
+
+  if (value.is<String>()) {
+    String candidate = value.as<String>();
+    candidate.trim();
+    return looksLikeDjAudioUrl(candidate) ? candidate : "";
+  }
+
+  if (value.is<JsonObjectConst>()) {
+    for (JsonPairConst pair : value.as<JsonObjectConst>()) {
+      const String nested = firstDjAudioLikeUrl(pair.value());
+      if (!nested.isEmpty()) {
+        return nested;
+      }
+    }
+  } else if (value.is<JsonArrayConst>()) {
+    for (JsonVariantConst item : value.as<JsonArrayConst>()) {
+      const String nested = firstDjAudioLikeUrl(item);
+      if (!nested.isEmpty()) {
+        return nested;
+      }
+    }
+  }
+
+  return "";
+}
+
+void logVoiceResponseSummary(const String &source, const String &text, const String &audioUrl) {
+  AppLog.print(source);
+  AppLog.print(" DJ response: text_chars=");
+  AppLog.print(text.length());
+  AppLog.print(" audio_url=");
+  AppLog.println(audioUrl.isEmpty() ? "none" : "present");
+  if (audioUrl.isEmpty()) {
+    AppLog.println("HA returned no DJ response audio URL");
+  }
+}
+
+String firstDjResponseText(JsonDocument &doc) {
+  return firstStringValue(doc.as<JsonVariantConst>(),
+                          "text",
+                          "dj_text",
+                          "djText",
+                          "message");
+}
+
+String firstDjResponseAudioUrl(JsonDocument &doc) {
+  String audioUrl = firstStringValue(doc.as<JsonVariantConst>(),
+                                    "audio_url",
+                                    "audioUrl",
+                                    "tts_url",
+                                    "ttsUrl");
+  if (audioUrl.isEmpty()) {
+    audioUrl = firstStringValue(doc.as<JsonVariantConst>(),
+                                "tts",
+                                "audio",
+                                "speech_url",
+                                "speechUrl");
+  }
+  if (audioUrl.isEmpty()) {
+    audioUrl = firstStringValue(doc.as<JsonVariantConst>(),
+                                "media_url",
+                                "mediaUrl",
+                                "voice_url",
+                                "voiceUrl");
+  }
+  if (audioUrl.isEmpty()) {
+    audioUrl = firstDjAudioLikeUrl(doc.as<JsonVariantConst>());
+  }
+  audioUrl.trim();
+  return audioUrl;
+}
+
 static constexpr uint8_t HaNotFoundInvalidationThreshold = 3;
 static constexpr uint32_t HaNotFoundInvalidationWindowMs = 60000;
 }  // namespace
@@ -227,6 +365,8 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   AppLog.println(code);
   logVoiceHttpClientError("Voice command client error", code);
   const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs, activityCallback_, activityContext_);
+  AppLog.print("Voice command response bytes=");
+  AppLog.println(response.length());
   http.end();
   activity.finish(code);
   if (code < 200 || code >= 300) {
@@ -255,18 +395,26 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   }
 
   JsonDocument responseDoc;
-  if (!response.isEmpty() && !deserializeJson(responseDoc, response)) {
-    const char *responseText = responseDoc["text"] | responseDoc["dj_text"] | "";
-    const char *responseAudioUrl = responseDoc["audio_url"] | "";
-    if (audioUrl != nullptr) {
-      *audioUrl = responseAudioUrl;
-    }
-    if (strlen(responseText) > 0 || strlen(responseAudioUrl) > 0) {
-      logDjResponseDebugText("voice_text", responseText, responseAudioUrl);
-    }
-    if (strlen(responseText) > 0) {
-      message = responseText;
-      return true;
+  if (!response.isEmpty()) {
+    const DeserializationError jsonError = deserializeJson(responseDoc, response);
+    if (jsonError) {
+      AppLog.print("Voice command JSON parse failed: ");
+      AppLog.println(jsonError.c_str());
+    } else {
+      const String responseText = firstDjResponseText(responseDoc);
+      const String responseAudioUrl = firstDjResponseAudioUrl(responseDoc);
+      if (audioUrl != nullptr) {
+        *audioUrl = responseAudioUrl;
+      }
+      logVoiceResponseSummary("Voice command", responseText, responseAudioUrl);
+      if (!responseText.isEmpty() || !responseAudioUrl.isEmpty()) {
+        logDjResponseDebugText("voice_text", responseText, responseAudioUrl);
+        logDjResponseFullText("voice_text", responseText);
+      }
+      if (!responseText.isEmpty()) {
+        message = responseText;
+        return true;
+      }
     }
   }
   message = "Voice command sent";
@@ -333,6 +481,8 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   AppLog.println(code);
   logVoiceHttpClientError("Voice WAV client error", code);
   const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs, activityCallback_, activityContext_);
+  AppLog.print("Voice WAV response bytes=");
+  AppLog.println(response.length());
   http.end();
   activity.finish(code);
 
@@ -362,18 +512,26 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   }
 
   JsonDocument responseDoc;
-  if (!response.isEmpty() && !deserializeJson(responseDoc, response)) {
-    const char *responseText = responseDoc["text"] | responseDoc["dj_text"] | "";
-    const char *responseAudioUrl = responseDoc["audio_url"] | "";
-    if (audioUrl != nullptr) {
-      *audioUrl = responseAudioUrl;
-    }
-    if (strlen(responseText) > 0 || strlen(responseAudioUrl) > 0) {
-      logDjResponseDebugText("voice_wav", responseText, responseAudioUrl);
-    }
-    if (strlen(responseText) > 0) {
-      message = responseText;
-      return true;
+  if (!response.isEmpty()) {
+    const DeserializationError jsonError = deserializeJson(responseDoc, response);
+    if (jsonError) {
+      AppLog.print("Voice WAV JSON parse failed: ");
+      AppLog.println(jsonError.c_str());
+    } else {
+      const String responseText = firstDjResponseText(responseDoc);
+      const String responseAudioUrl = firstDjResponseAudioUrl(responseDoc);
+      if (audioUrl != nullptr) {
+        *audioUrl = responseAudioUrl;
+      }
+      logVoiceResponseSummary("Voice WAV", responseText, responseAudioUrl);
+      if (!responseText.isEmpty() || !responseAudioUrl.isEmpty()) {
+        logDjResponseDebugText("voice_wav", responseText, responseAudioUrl);
+        logDjResponseFullText("voice_wav", responseText);
+      }
+      if (!responseText.isEmpty()) {
+        message = responseText;
+        return true;
+      }
     }
   }
   message = "Voice command sent";
