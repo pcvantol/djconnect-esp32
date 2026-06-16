@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+No unreleased changes yet.
+
+## v3.1.25
+
+Project hygiene and Home Assistant contract sync release.
+
 ### Changed
 
 - Hardened Home Assistant playback response parsing for `devices`, `queue` and

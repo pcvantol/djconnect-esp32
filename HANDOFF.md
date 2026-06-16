@@ -6,7 +6,7 @@ DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is 
 
 Current repo state includes:
 
-- Latest firmware release target from this repo: `v3.1.22`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should be cleaned after release so the remote stable semver tag/release set keeps only the latest stable release; generated `release/` artifacts are ignored in source.
+- Latest firmware release target from this repo: `v3.1.24`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` should be cleaned after release so the remote stable semver tag/release set keeps only the latest stable release; generated `release/` artifacts are ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, board-specific OTA, DJ response and status updates.
 - Board profiles are split through `BoardProfile.h`. The production LilyGO build is `t_embed_cc1101` / `lilygo-t-embed-s3`; ESP32-S3-BOX-3 bring-up is `esp32_s3_box3` / `esp32-s3-box-3`.
@@ -48,7 +48,7 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e esp32_s3_box3
 ```
 
-The native logic test, release-script test and local LilyGO/BOX-3 builds passed during `v3.1.22` preparation. The release flow builds both `djconnect-lilygo-t-embed-s3-v3.1.22.bin` and `djconnect-esp32-s3-box-3-v3.1.22.bin`, both `.sha256` files and `firmware_manifest.json` for `pcvantol/djconnect-firmware`.
+The native logic test, release-script test and local LilyGO/BOX-3 builds passed during `v3.1.24` preparation. The release flow builds both `djconnect-lilygo-t-embed-s3-v3.1.24.bin` and `djconnect-esp32-s3-box-3-v3.1.24.bin`, both `.sha256` files and `firmware_manifest.json` for `pcvantol/djconnect-firmware`.
 
 ## Architecture
 

@@ -449,7 +449,7 @@ Current native command scope includes:
 
 Do not perform unbounded blocking Spotify HTTPS work inside the HTTP route itself. Parse and validate in `DJConnectApiServer`, then route through `DJConnectApp::handleDeviceCommand()` with existing timeout-aware Spotify helpers.
 
-HA/Spotify status indicators:
+Home Assistant/playback status indicators:
 
 - Device statusbar: `H`, playback music-note icon.
 - Web header mirrors the same indicators.
