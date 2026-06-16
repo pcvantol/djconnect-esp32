@@ -4,6 +4,15 @@
 
 No unreleased changes yet.
 
+## v3.1.26
+
+Release workflow maintenance.
+
+### Changed
+
+- GitHub Actions release builds now use workflow-level concurrency so starting a
+  new firmware release automatically cancels any older in-progress release run.
+
 ## v3.1.25
 
 Project hygiene and Home Assistant contract sync release.

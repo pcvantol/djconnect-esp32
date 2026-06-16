@@ -6,6 +6,10 @@ on:
       - "v*.*.*"
       - "v*.*.*-beta"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.repository }}
+  cancel-in-progress: true
+
 jobs:
   release-info:
     runs-on: ubuntu-latest
