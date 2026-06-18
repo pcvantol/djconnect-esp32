@@ -137,6 +137,9 @@ run `scripts/update_build_dependencies.sh` to upgrade PlatformIO Core and update
 global/project PlatformIO packages for both board environments. Review the
 generated build-dependency diff; if framework, library or tool versions changed,
 update `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing.
+Release-cycle documentation updates must also refresh `NEW_CHAT_PROMPT.md` so a
+fresh Codex chat starts with the current release, handoff and verification
+context.
 Release builds must also set `DJCONNECT_RELEASE_BUILD=1` and keep the explicit
 size-oriented `-Os` flag in both `release.sh` and the GitHub workflow. Do not
 enable `-flto` in the current Arduino ESP32 / ESP-IDF 5.3 toolchain unless a
