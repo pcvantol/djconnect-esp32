@@ -6,11 +6,20 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is
 
 Current repo state includes:
 
-- Latest firmware release target from this repo: `v3.1.31`. Source repo `pcvantol/djconnect-esp32` and public firmware repo `pcvantol/djconnect-firmware` were cleaned after release so the remote stable semver tag/release set keeps only `v3.1.31`; generated `release/` artifacts are ignored in source.
+- Latest firmware release target from this repo: `v3.1.33`. Source repo
+  `pcvantol/djconnect-esp32` and public firmware repo
+  `pcvantol/djconnect-firmware` both have pushed `v3.1.33` tags. The public
+  firmware GitHub release is `DJConnect Firmware v3.1.33` and contains only the
+  LilyGO binary, matching `.sha256`, and `firmware_manifest.json`; generated
+  local `release/` artifacts remain ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, board-specific OTA, DJ response and status updates.
 - Board profiles are split through `BoardProfile.h`. The supported PlatformIO build is the LilyGO `t_embed_cc1101` / `lilygo-t-embed-s3` target.
-- The ESP32-S3-BOX-3 PlatformIO build target, release artifact and GitHub Actions matrix entry were removed in `v3.1.31`. The LilyGO env remains on the existing no-PSRAM `esp32-s3-devkitc-1` definition until a specific PSRAM-equipped T-Embed-CC1101 variant is verified.
+- The ESP32-S3-BOX-3 PlatformIO build target, release artifact and GitHub
+  Actions matrix entry were removed in `v3.1.31` and remain absent in
+  `v3.1.33`. The LilyGO env remains on the existing no-PSRAM
+  `esp32-s3-devkitc-1` definition until a specific PSRAM-equipped
+  T-Embed-CC1101 variant is verified.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
 - New client setup/settings flows must not show or expect legacy playback
   source/default-playlist override options. Home Assistant owns those playback
@@ -42,7 +51,12 @@ Current repo state includes:
 - Normal idle turn-off sleep is battery-only. When USB-C/external power is detected, Now Playing may still dim or turn the screen off, but the ESP stays awake and logs that idle sleep was suppressed. Boot logs include reset reason and wakeup cause so true panic/watchdog/brownout resets are distinguishable from deep sleep.
 - Freshly provisioned unpaired release firmware performs a graceful pre-pairing bootstrap update check after WiFi connects. It skips local `dev`/`vdev` builds and continues to pairing silently if the check fails.
 - Release tooling runs `scripts/update_build_dependencies.sh` before compiling firmware. It upgrades PlatformIO Core, updates global/project PlatformIO packages for the LilyGO environment, writes a dependency diff so `THIRD_PARTY_NOTICES.md` plus `DESIGN_DECISIONS.md` can be refreshed whenever frameworks, libraries or tools changed, and publishes GitHub release notes from the matching `CHANGELOG.md` version section.
-- Community/security hygiene now includes `CODE_OF_CONDUCT.md`, `SECURITY.md` with `security@djconnect.dev`, and CONTRIBUTING guidance for AI-assisted development. Do not put secrets, private data or proprietary third-party material in prompts, agent logs, screenshots, issues or fixtures.
+- Community/security hygiene now includes `CODE_OF_CONDUCT.md`, `SECURITY.md`
+  with `security@djconnect.dev`, CONTRIBUTING guidance for AI-assisted
+  development, and GitHub repo protections for this public repo: secret
+  scanning, push protection, Dependabot alerts and branch protection on `main`.
+  Do not put secrets, private data or proprietary third-party material in
+  prompts, agent logs, screenshots, issues or fixtures.
 
 Latest validated commands:
 
@@ -52,7 +66,17 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-The release-script test, local LilyGO build/upload and GitHub Actions LilyGO release flow passed during `v3.1.31` preparation. The public firmware release contains only `djconnect-lilygo-t-embed-s3-v3.1.31.bin`, its `.sha256` file and `firmware_manifest.json` for `pcvantol/djconnect-firmware`.
+Latest release verification for `v3.1.33`:
+
+- `./release.sh 3.1.33 --publish-firmware-repo ../djconnect-firmware` completed
+  a clean LilyGO release build with unchanged PlatformIO dependency versions.
+- The source repo tag and public firmware repo tag `v3.1.33` were pushed.
+- The public firmware GitHub release was created and verified as Latest with
+  only `djconnect-lilygo-t-embed-s3-v3.1.33.bin`,
+  `djconnect-lilygo-t-embed-s3-v3.1.33.bin.sha256` and
+  `firmware_manifest.json`.
+- Branch protection/admin enforcement on `pcvantol/djconnect-esp32/main` was
+  restored after the controlled maintainer release window.
 
 ## Architecture
 

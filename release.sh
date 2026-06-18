@@ -258,7 +258,12 @@ if [[ "$DRY_RUN" == "true" ]]; then
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
     echo "Would publish assets to firmware repo path: $PUBLISH_FIRMWARE_REPO."
   fi
-  echo "Would push tag $TAG; GitHub Actions will build/publish the public firmware release."
+  echo "Would push tag $TAG."
+  if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
+    echo "Would update the public firmware repo; verify or create the GitHub firmware release after publish."
+  else
+    echo "If GitHub Actions release publishing is configured, the pushed tag may publish public firmware assets."
+  fi
   if [[ "$GH_RELEASE" == "true" ]]; then
     echo "Would also create GitHub release in $FIRMWARE_RELEASE_REPO locally because --gh-release was passed."
     if [[ "$CHANNEL" == "beta" ]]; then
@@ -394,7 +399,11 @@ if [[ "$GH_RELEASE" == "true" ]]; then
     echo "gh not found; skipping GitHub release creation"
   fi
 else
-  echo "Skipping local GitHub release creation; pushed tag $TAG will let GitHub Actions publish firmware assets."
+  if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
+    echo "Skipping local GitHub release creation; public firmware repo assets were pushed. Verify or create the GitHub firmware release."
+  else
+    echo "Skipping local GitHub release creation. If GitHub Actions release publishing is configured, verify that the pushed tag published firmware assets."
+  fi
 fi
 
 echo "Release prepared: $TAG"

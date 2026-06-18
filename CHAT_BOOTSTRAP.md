@@ -15,11 +15,22 @@ Lees eerst:
 Context:
 - DJConnect ESP32-S3 firmware repo.
 - Huidige licentie is MIT.
-- Laatste release is v3.1.31, commit 5865621.
-- v3.1.31 verwijdert de ESP32-S3-BOX-3 PlatformIO/release/CI target en
-  publiceert alleen het LilyGO T-Embed S3 firmware asset.
-- v3.1.31 bevat community/security-documentatie en security-contact
+- Laatste release is v3.1.33, commit e70eb0a.
+- v3.1.33 publiceert alleen het LilyGO T-Embed S3 firmware asset:
+  `djconnect-lilygo-t-embed-s3-v3.1.33.bin`, `.sha256` en
+  `firmware_manifest.json`.
+- De ESP32-S3-BOX-3 PlatformIO/release/CI target is verwijderd; niet opnieuw
+  toevoegen tenzij de gebruiker expliciet nieuwe board support vraagt.
+- Community/security-documentatie en security-contact blijven actueel:
   `security@djconnect.dev`.
+- GitHub repo hygiene: secret scanning, push protection, Dependabot alerts en
+  branch protection op `main` staan aan. Voor maintainer-run releases kan admin
+  enforcement kort gecontroleerd uit, release push, en direct weer aan.
+- Publieke OTA assets staan in `pcvantol/djconnect-firmware`. Als de source
+  GitHub Action niet publiceert of expliciete lokale publicatie gewenst is,
+  gebruik `./release.sh X.Y.Z --publish-firmware-repo ../djconnect-firmware`
+  en maak/verifieer daarna de public firmware GitHub release met alleen de
+  LilyGO `.bin`, `.sha256` en manifest assets.
 - Werkmap zou schoon moeten zijn; controleer met `git status --short`.
 - Houd cross-repo contracten met `pcvantol/djconnect` actueel als protocol, HA integration, OTA, Assist/STT/TTS, Spotify playback, branding of roadmap geraakt wordt.
 

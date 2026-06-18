@@ -4,12 +4,24 @@
 
 ### Changed
 
-- Added AI-assisted development hygiene guidance for contributors and security
-  reports.
-- Added `DEVELOPMENT_ENVIRONMENT.md` for local setup, build, upload and release
-  workflow guidance.
+- Refreshed release handoff/bootstrap documentation for `v3.1.33`, the
+  LilyGO-only public firmware release assets and protected-branch maintainer
+  release flow.
+- Clarified release tooling output so maintainer-run releases explicitly verify
+  or create the public firmware GitHub release after pushing assets to
+  `pcvantol/djconnect-firmware`.
 
 ## v3.1.33
+
+### Changed
+
+- Published the LilyGO-only firmware release `v3.1.33` after repository hygiene
+  updates, with `firmware_manifest.json`, the LilyGO binary and matching
+  `.sha256` as the only public OTA assets.
+- Verified protected-branch maintainer release handling by restoring admin
+  enforcement on `main` after the controlled release window.
+
+## v3.1.32
 
 ### Changed
 
@@ -19,6 +31,10 @@
   future Codex sessions.
 - Added community and security documentation, including private vulnerability
   reporting through `security@djconnect.dev`.
+- Added AI-assisted development hygiene guidance for contributors and security
+  reports.
+- Added `DEVELOPMENT_ENVIRONMENT.md` for local setup, build, upload and release
+  workflow guidance.
 
 ## v3.1.30
 

@@ -90,7 +90,11 @@ echo "$dry_run_output" | grep -q "Would write release/build-dependencies.diff an
 echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 with isolated PLATFORMIO_BUILD_DIR root"
 echo "$dry_run_output" | grep -q "DJCONNECT_VERSION=98.76.54 / DJCONNECT_VERSION_TAG=v98.76.54"
 echo "$dry_run_output" | grep -q "Would commit, tag and push source repo"
-echo "$dry_run_output" | grep -q "GitHub Actions will build/publish"
+echo "$dry_run_output" | grep -q "If GitHub Actions release publishing is configured, the pushed tag may publish public firmware assets."
+
+publish_dry_run_output="$(./release.sh 98.76.59 --publish-firmware-repo ../djconnect-firmware --dry-run)"
+echo "$publish_dry_run_output" | grep -q "Would publish assets to firmware repo path: ../djconnect-firmware."
+echo "$publish_dry_run_output" | grep -q "Would update the public firmware repo; verify or create the GitHub firmware release after publish."
 grep -q '"$RELEASE_DIR/$LILYGO_ASSET"' release.sh
 grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.sh

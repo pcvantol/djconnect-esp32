@@ -113,8 +113,12 @@ firmware_manifest.json
 
 Release tooling updates PlatformIO Core and project packages for
 `t_embed_cc1101`, writes dependency reports under `release/`, builds firmware,
-creates the source tag and pushes it. The GitHub Actions release workflow then
-publishes the public OTA assets to `pcvantol/djconnect-firmware`.
+creates the source tag and pushes it. Public OTA assets live in
+`pcvantol/djconnect-firmware`; maintainer-run releases should use
+`--publish-firmware-repo ../djconnect-firmware` and then verify or create the
+public GitHub firmware release with only the LilyGO binary, its `.sha256` file
+and `firmware_manifest.json`. If the source GitHub Actions release workflow is
+used, verify that it published the same LilyGO-only asset set.
 
 Before publishing, keep `README.md`, `CHANGELOG.md`, `HANDOFF.md`,
 `CHAT_BOOTSTRAP.md`, `DESIGN_DECISIONS.md`, `THIRD_PARTY_NOTICES.md` and tests

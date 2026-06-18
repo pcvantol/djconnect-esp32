@@ -409,7 +409,7 @@ During normal boot, the display shows the DJConnect tagline `Muziekbediening met
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. The pushed git tag then triggers the GitHub Action, which performs the same dependency update step, builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that the compiled firmware image contains the expected `vX.Y.Z` version tag before publishing the OTA asset and its `.sha256` file. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. Public OTA assets live in `pcvantol/djconnect-firmware`; publish them with `--publish-firmware-repo ../djconnect-firmware` and create/verify the public GitHub release with only the LilyGO `.bin`, `.sha256` and manifest assets. If the source GitHub Action is configured and has release credentials, the pushed tag can also build and publish the public firmware release, but maintainer-run releases should verify the public release explicitly. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
 
 The embedded web portal lives in `src/WebPortal.cpp` as a PROGMEM raw literal.
 Run `python3 scripts/minify_webportal.py` after changing the portal markup,
@@ -418,8 +418,9 @@ decompression to the no-PSRAM LilyGO path.
 
 Dependency updates write `release/build-dependencies-before.txt`,
 `release/build-dependencies-after.txt` and `release/build-dependencies.diff`
-locally, and equivalent per-board reports in GitHub Actions artifacts. If the
-diff shows upgraded frameworks, libraries or tools, update
+locally. GitHub Actions release builds, when used, also publish equivalent
+per-board reports in workflow artifacts. If the diff shows upgraded frameworks,
+libraries or tools, update
 `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing the release.
 These dependency reports are review/audit artifacts only; the public GitHub
 firmware release must publish only board firmware binaries, their `.sha256`
@@ -464,7 +465,8 @@ Publish the generated firmware asset and manifest into the public firmware relea
 ./release.sh X.Y.Z --publish-firmware-repo ../djconnect-firmware
 ```
 
-Create the public GitHub release locally instead of waiting for GitHub Actions only when you explicitly need that fallback:
+Create the public GitHub release locally when running a maintainer-controlled
+release or when GitHub Actions is unavailable:
 
 ```bash
 ./release.sh X.Y.Z --gh-release
