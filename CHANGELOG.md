@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## v3.1.30
+
+### Changed
+
+- Changed the firmware repository license to MIT and updated user-facing legal
+  copy plus project documentation accordingly.
+- Added contributor guidelines aligned with the project-wide MIT licensing,
+  secret-handling rules and cross-repository contract workflow.
 
 ## v3.1.29
 

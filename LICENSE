@@ -1,80 +1,21 @@
-DJConnect Firmware Proprietary License
+MIT License
 
-Copyright (c) 2026 Peter van Tol. All rights reserved.
+Copyright (c) 2026 Peter van Tol
 
-This license applies to the DJConnect ESP firmware source code, firmware
-binaries, embedded assets, build scripts, and documentation in this repository,
-unless a file explicitly states a different license.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. Ownership
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-The DJConnect firmware is proprietary software. All intellectual property
-rights in the firmware remain owned by the copyright holder.
-
-2. Permitted Use
-
-The copyright holder may build, install, distribute, sell, lease, or otherwise
-commercialize physical DJConnect devices that include this firmware.
-
-End users who purchase or receive a DJConnect device receive a limited,
-non-exclusive, non-transferable right to use the firmware only as installed on
-that physical device.
-
-3. Restrictions
-
-Except with prior written permission from the copyright holder, no person or
-entity may:
-
-- copy, publish, sublicense, sell, rent, lease, or redistribute this firmware or
-  its source code;
-- modify, adapt, translate, merge, or create derivative works of this firmware;
-- extract, clone, dump, or redistribute firmware binaries from a device;
-- reverse engineer, decompile, disassemble, or otherwise attempt to derive the
-  source code, protocols, or internal implementation of this firmware, except
-  where such restriction is prohibited by applicable law;
-- remove or alter copyright, trademark, attribution, or license notices;
-- use this firmware to manufacture or sell unauthorized compatible devices.
-
-4. Hardware Distribution
-
-This license does not restrict the purchase, resale, branding, or whitelabeling
-of hardware by the copyright holder. Hardware may be sourced from third-party
-manufacturers and sold with DJConnect firmware preinstalled.
-
-5. Home Assistant Integration
-
-The DJConnect Home Assistant integration may be offered to customers free of
-charge. That integration is separate from this firmware and is governed by its
-own license, if any. Free use of the Home Assistant integration does not grant
-rights to copy, modify, or redistribute this firmware.
-
-6. Third-Party Software
-
-This firmware may be built with or link to third-party libraries, frameworks,
-and tools. Those components remain subject to their own licenses. This license
-does not override any rights or obligations imposed by third-party licenses.
-
-7. Updates
-
-Firmware updates may be provided at the copyright holder's discretion. No
-person is granted a right to receive source code, build artifacts, signing keys,
-or update infrastructure access.
-
-8. Warranty Disclaimer
-
-The firmware is provided "as is" without warranty of any kind, express or
-implied, including but not limited to warranties of merchantability, fitness for
-a particular purpose, and non-infringement.
-
-9. Limitation of Liability
-
-To the maximum extent permitted by applicable law, the copyright holder is not
-liable for any indirect, incidental, special, consequential, or punitive damages,
-or for loss of profits, revenue, data, or device availability arising from use
-of the firmware.
-
-10. Commercial Licensing
-
-Any rights not expressly granted in this license are reserved. Commercial,
-manufacturing, distribution, or integration rights beyond the permitted use
-above require written permission from the copyright holder.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

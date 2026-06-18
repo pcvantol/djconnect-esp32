@@ -1,6 +1,6 @@
 # Technical Design Decisions
 
-DJConnect firmware is proprietary embedded firmware for ESP32-S3 devices. This
+DJConnect firmware is MIT-licensed embedded firmware for ESP32-S3 devices. This
 document records the design decisions that can be deduced from the codebase,
 with source references to the files that currently implement or document those
 decisions.
@@ -540,7 +540,7 @@ These are not listed in `lib_deps`; they are supplied by
 | Asset | Version / identity | License | Source URL | Use |
 | --- | --- | --- | --- | --- |
 | ESPHome micro-wake-word `Okay Nabu` model | Vendored TFLite, SHA256 `0689abe1912a95a3318a0d8cb2e67bad0cbcfe3e24dd6e050c75debddfb6f891` | Apache-2.0 | `https://github.com/esphome/micro-wake-word-models` | Local wake-word model |
-| DJConnect display/web assets | Repository-owned | DJConnect proprietary license unless otherwise stated | This repository | Boot/logo/web icons and embedded RGB565 assets |
+| DJConnect display/web assets | Repository-owned | MIT unless otherwise stated | This repository | Boot/logo/web icons and embedded RGB565 assets |
 
 ### Tooling Packages Used By PlatformIO
 

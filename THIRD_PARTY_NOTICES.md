@@ -1,11 +1,11 @@
 # Third-Party Notices
 
-DJConnect firmware is proprietary software. This file lists third-party software
-components used by the firmware build. Their licenses and copyrights remain with
-their respective authors.
+DJConnect firmware is MIT-licensed open-source software. This file lists
+third-party software components used by the firmware build. Their licenses and
+copyrights remain with their respective authors.
 
 This notice is provided for attribution and license-awareness purposes. It does
-not grant additional rights to the DJConnect firmware itself.
+not replace the third-party license texts.
 
 ## Firmware Frameworks And Libraries
 

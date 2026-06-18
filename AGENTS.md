@@ -25,18 +25,15 @@ fallback code unless the user explicitly changes the supported toolchain.
 
 ## Licensing
 
-This firmware repository is proprietary closed-source software under `LICENSE`.
-Do not add open-source license headers or wording that grants redistribution,
-modification, reverse-engineering, or source-code rights for the firmware unless
-the user explicitly changes the licensing model. The Home Assistant integration
-may be offered free of charge separately, but that does not change the firmware
-license.
+This firmware repository is MIT-licensed open-source software under `LICENSE`.
+Do not add incompatible licensing terms or wording that conflicts with the MIT
+License unless the user explicitly changes the licensing model.
 
 Legal/trademark copy must stay consistent across README, web portal, device About
 screen and third-party notices:
 
-- `Copyright (c) 2026 Peter van Tol. All rights reserved.`
-- `DJConnect firmware is proprietary software.`
+- `Copyright (c) 2026 Peter van Tol.`
+- `DJConnect firmware is MIT-licensed open-source software.`
 - `Spotify is a trademark of Spotify AB. DJConnect is not affiliated with,
   endorsed by, or sponsored by Spotify AB.`
 - Open-source dependency notices belong in `THIRD_PARTY_NOTICES.md`; dependency
@@ -313,7 +310,7 @@ The public ESP API Postman collection lives at `postman/DJConnect ESP API.postma
 - Pairing validity is runtime state. On HA 401/403/404, mark Home Assistant as stale/red and disable PTT, but do not erase NVS pairing automatically.
 - Keep external JSON payload names compatible with HA, but keep internal ESP32 Preferences keys at 15 characters or less.
 - Route slow network operations through explicit timeout/backoff policy and avoid making input/display responsiveness depend on an unbounded HTTP call.
-- Keep release binaries/manifests separate from the closed-source firmware source repo workflow.
+- Keep generated release binaries/manifests out of the firmware source repo workflow unless explicitly publishing release artifacts.
 - Device stress/monkey testing must stay local and non-destructive: render/navigation only, no OTA, factory reset, WiFi changes, playback mutations or credential changes.
 
 Never log:
@@ -461,7 +458,7 @@ Home Assistant/playback status indicators:
 - Device statusbar: `H`, playback music-note icon.
 - Web header mirrors the same indicators.
 - LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup/pairing animations.
-- Boot shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.dev` for at least three seconds, then uses a calm startup rainbow lap. The About screen also shows the website URL and keeps legal notices compact without a separate proprietary firmware row. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
+- Boot shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.dev` for at least three seconds, then uses a calm startup rainbow lap. The About screen also shows the website URL and keeps legal notices compact. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
 
 ## Volume Rules
 
@@ -545,7 +542,7 @@ Current web expectations:
 
 Keep these surfaces aligned:
 
-- `LICENSE`: proprietary firmware license.
+- `LICENSE`: MIT firmware license.
 - `README.md`: legal/trademark section and security checklist.
 - `THIRD_PARTY_NOTICES.md`: dependency notices.
 - Device About screen: compact website/copyright/trademark/not-affiliated/OSS notice rows.

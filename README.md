@@ -2,7 +2,7 @@
 
 DJConnect. Muziekbediening met karakter.
 
-DJConnect is proprietary ESP32-S3 firmware for the LilyGO T-Embed-CC1101, with an early ESP32-S3-BOX-3 bring-up environment. The device is a Home Assistant paired playback remote with a display, rotary encoder, top button, LED ring, web portal and Home Assistant device integration.
+DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101, with an early ESP32-S3-BOX-3 bring-up environment. The device is a Home Assistant paired playback remote with a display, rotary encoder, top button, LED ring, web portal and Home Assistant device integration.
 
 DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotify OAuth credentials or call the Spotify Web API directly. Playback commands are sent to the Home Assistant integration as generic backend-agnostic commands, so Home Assistant can proxy them to Spotify today or another playback backend such as Sonos or `media_player` later.
 
@@ -86,9 +86,7 @@ change introduces roadmap-relevant product scope, make a follow-up change in
 
 ## License
 
-DJConnect firmware is closed-source proprietary firmware. See [LICENSE](LICENSE).
-
-The license is intended for commercial devices that ship with DJConnect firmware preinstalled. End users may use the firmware on the purchased device. The firmware, source code and firmware binaries may not be copied, modified, reverse engineered, extracted or redistributed without permission. The Home Assistant integration may be provided to customers for free, but it does not grant rights to the firmware.
+DJConnect firmware is open-source software licensed under the MIT License. See [LICENSE](LICENSE).
 
 ## Secrets and Provisioning
 
@@ -390,7 +388,7 @@ The ESP32-S3-BOX-3 PlatformIO environment uses the Espressif `esp32s3box` board 
 - Pre-pairing bootstrap OTA is a safety net for freshly provisioned devices: after WiFi connects but before Home Assistant pairing, release firmware checks the public GitHub firmware release manifest and updates itself if a newer release exists. Local `dev` / `vdev` firmware is intentionally excluded from this automatic path.
 - Web portal polling is visibility-aware for logs, queue, playlist and sound-output data. Keep root/status/log API responses uncached, but cache embedded static assets with explicit cache headers.
 - The public ESP API is documented as a Postman collection with variables only. Do not commit real device tokens or private HA URLs.
-- Product firmware is proprietary/closed-source, while release binaries and manifests are published separately for Home Assistant OTA distribution.
+- Product firmware is MIT-licensed open-source software, while release binaries and manifests are published separately for Home Assistant OTA distribution.
 
 ## Battery, Charging and Turn Off
 
@@ -408,7 +406,7 @@ Local development builds still show `vdev` on the device, but the Home Assistant
 
 Freshly provisioned, unpaired release firmware also performs a pre-pairing bootstrap update check after WiFi connects. It uses the GitHub Releases API for `pcvantol/djconnect-firmware`, follows the normal OTA screen/LED/sound/write flow when a newer release is available, and continues silently into pairing if the check fails. Dev builds are skipped so local development firmware is not replaced automatically.
 
-During normal boot, the display shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.dev` for at least three seconds before WiFi, setup/AP, charging or playback states take over. When the screen wakes from backlight-off normal mode, the first physical input shows the DJConnect splash briefly and then restores the active UI without executing the underlying action. The About screen also shows the website URL and keeps legal notices compact without a separate proprietary firmware row. The LED ring then plays one calm rainbow startup lap. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. Before HA-triggered or bootstrap OTA download starts, the firmware releases wake-word/TFLite and active voice/audio resources so GitHub TLS has a large enough free heap block on non-PSRAM boards. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot. OTA downloads tolerate slow GitHub/CDN bursts with a longer idle window while still aborting controlled when the stream genuinely stalls.
+During normal boot, the display shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.dev` for at least three seconds before WiFi, setup/AP, charging or playback states take over. When the screen wakes from backlight-off normal mode, the first physical input shows the DJConnect splash briefly and then restores the active UI without executing the underlying action. The About screen also shows the website URL and keeps legal notices compact. The LED ring then plays one calm rainbow startup lap. During WiFi connect the LED ring shows a green chase animation; during Home Assistant pairing it breathes blue; during setup/AP it breathes rainbow. Turn-off/deep-sleep always plays a rainbow fade-out, while top-button soft reset plays a dedicated cue and two bright white LED flashes before reboot. During firmware write, the display shows `Firmware update in progress..`, the LED ring runs a fast purple animation and the device plays start, progress, complete or failure cues through the built-in speaker. Manual web uploads use the same on-device update screen and feedback. Before HA-triggered or bootstrap OTA download starts, the firmware releases wake-word/TFLite and active voice/audio resources so GitHub TLS has a large enough free heap block on non-PSRAM boards. The manifest `sha256` is required and verified while streaming for Home Assistant OTA; mismatches abort the update before reboot. OTA downloads tolerate slow GitHub/CDN bursts with a longer idle window while still aborting controlled when the stream genuinely stalls.
 
 ## GitHub Firmware Release
 
