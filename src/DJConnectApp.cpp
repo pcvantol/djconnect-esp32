@@ -297,11 +297,9 @@ void DJConnectApp::loop() {
       activeScreen_ != UiScreen::AlbumArt &&
       homeAssistantPaired_) {
     wakeWord_.loop(voiceRecorder_);
-  } else if (wakeWord_.available() && millis() - lastWakeWordGateLogAt_ > 5000) {
+  } else if (wakeWord_.available() && wakeWordEnabled_ && millis() - lastWakeWordGateLogAt_ > 5000) {
     String reason;
-    if (!wakeWordEnabled_) {
-      reason = "disabled";
-    } else if (voiceRecording_) {
+    if (voiceRecording_) {
       reason = "recording active";
     } else if (voiceState_ != VoiceState::Idle) {
       reason = String("voice state ") + String(static_cast<int>(voiceState_));
