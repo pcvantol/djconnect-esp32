@@ -60,16 +60,16 @@ public:
   void renderLogsScreen(const String *lines, size_t lineCount, const StatusNotice &notice);
 
   // Renders the Paddle Rally mini game screen.
-  void renderPongScreen(int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice);
+  void renderPongScreen(int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, bool paddleFlash, bool wallFlash, const StatusNotice &notice);
 
   // Renders the local Meteor Run mini game.
-  void renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
+  void renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int asteroidSize, int asteroidShape, int explodeX, int explodeY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, bool explodeFlash, const StatusNotice &notice);
 
   // Renders the local Sky Dash mini game.
-  void renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
+  void renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int obstacleShape, int obstacleColor, int explodeX, int explodeY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, bool explodeFlash, const StatusNotice &notice);
 
   // Renders the local maze chase mini game.
-  void renderMazeChaseScreen(int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool ghostVulnerable, bool hitFlash, const StatusNotice &notice);
+  void renderMazeChaseScreen(int playerX, int playerLane, int playerDirX, int playerDirY, int ghostX, int ghostLane, int pelletX, int pelletLane, uint8_t powerPellets, int score, int highScore, bool ghostVulnerable, bool hitFlash, bool deathFlash, const StatusNotice &notice);
 
   // Renders the 160x160 current-song album art view.
   void renderAlbumArtScreen(
@@ -174,13 +174,13 @@ private:
   void renderLogs(Canvas &canvas, const String *lines, size_t lineCount, const StatusNotice &notice);
 
   template <typename Canvas>
-  void renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice);
+  void renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, bool paddleFlash, bool wallFlash, const StatusNotice &notice);
   template <typename Canvas>
-  void renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
+  void renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int asteroidSize, int asteroidShape, int explodeX, int explodeY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, bool explodeFlash, const StatusNotice &notice);
   template <typename Canvas>
-  void renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice);
+  void renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int obstacleShape, int obstacleColor, int explodeX, int explodeY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, bool explodeFlash, const StatusNotice &notice);
   template <typename Canvas>
-  void renderMazeChase(Canvas &canvas, int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool ghostVulnerable, bool hitFlash, const StatusNotice &notice);
+  void renderMazeChase(Canvas &canvas, int playerX, int playerLane, int playerDirX, int playerDirY, int ghostX, int ghostLane, int pelletX, int pelletLane, uint8_t powerPellets, int score, int highScore, bool ghostVulnerable, bool hitFlash, bool deathFlash, const StatusNotice &notice);
 
   template <typename Canvas>
   String clippedText(Canvas &canvas, String text, int maxWidth, uint8_t font);

@@ -1,6 +1,6 @@
 # DJConnect Firmware Issues And Backlog
 
-Concrete issue and task list after release `v3.1.21`.
+Concrete issue and task list after release `v3.1.29`.
 
 ## Open Issues
 
@@ -8,9 +8,9 @@ Concrete issue and task list after release `v3.1.21`.
   - Backlight and display buffer initialize in logs, but earlier hardware testing showed a white screen/no text.
   - Validate TFT controller/init sequence, rotation, backlight polarity and board revision.
 - [ ] Home Assistant sensor reset issue must be verified on the current HA integration.
-  - Firmware status payload is authoritative and release `v3.1.21` still posts periodic status.
+  - Firmware status payload is authoritative and release `v3.1.29` still posts periodic status.
   - If HA sensors briefly populate and then become unknown/pending, fix integration entity refresh/coordinator behavior.
-- [ ] OTA from the physical LilyGO should be re-tested with `v3.1.21`.
+- [ ] OTA from the physical LilyGO should be re-tested with `v3.1.29`.
   - Firmware now releases wake-word/TFLite and active voice/audio resources before GitHub TLS.
   - Confirm GitHub TLS no longer fails with memory allocation errors on no-PSRAM LilyGO hardware.
 - [ ] Okay Nabu wake-word reliability still needs real-room tuning.
@@ -73,6 +73,9 @@ Concrete issue and task list after release `v3.1.21`.
 - [ ] Confirm HA reports pairing as pending until ESP confirms token storage through `/api/device/pair`.
 - [ ] Confirm playback commands stay disabled until `/api/djconnect/status` accepts the stored device token.
 - [ ] Confirm HA integration owns backend OAuth/credential refresh without sending backend tokens to the ESP.
+- [ ] Confirm new HA/client setup and options flows do not expose legacy playback
+  source/default-playlist override options and use `Client adres` for the client
+  URL label.
 - [ ] Confirm HA integration can return DJ announcement text plus WAV URL.
 - [ ] Confirm HA integration can return DJ announcement text plus MP3 URL.
 - [ ] Confirm Home Assistant status payload includes firmware version after OTA boot.
@@ -89,6 +92,8 @@ Concrete issue and task list after release `v3.1.21`.
 ## Playback Backend
 
 - [ ] Re-test playlist fallback for Up Next when the backend queue endpoint returns empty.
+- [ ] Re-test direct queue item playback for `spotify:episode:*` and `spotify:track:*` items without `context_uri`/`queue_context`.
+- [ ] Re-test queue context playback for playlist, album and show contexts to confirm context plus offset behavior still works.
 - [ ] Confirm required backend playlist scopes/configuration are handled in the HA integration.
 - [ ] Validate default playlist lookup against:
   - private playlist;
@@ -129,6 +134,11 @@ Concrete issue and task list after release `v3.1.21`.
 - [ ] Verify Safari PWA icon/home-screen behavior on iPhone.
 - [ ] Verify all user-facing labels are translated in English and Dutch.
 - [ ] Add smoke tests for key generated web HTML fragments if feasible.
+- [ ] Re-test web portal local games on touch, mouse and keyboard:
+  - Maze Chase four direction buttons and power pellets;
+  - Meteor Run straight-falling varied meteors;
+  - Sky Dash varied obstacles and moving star streaks;
+  - Paddle Rally equal-height controls and hit/miss feedback.
 - [ ] Re-test web portal speed on weak WiFi and note any remaining slow endpoints.
 
 ## Home Assistant Native Entities
@@ -152,22 +162,24 @@ Concrete issue and task list after release `v3.1.21`.
 
 - [ ] Re-test low-battery screens at `<20%` and `<10%`.
 - [ ] Re-test charger-aware wake probe.
+- [ ] Verify idle turn-off sleep is suppressed while USB-C/external power is connected and still enters deep sleep on battery after the configured timeout.
+- [ ] Verify boot logs include reset reason and wakeup cause after panic/watchdog, brownout simulation if available, manual reset and deep-sleep wake.
 - [ ] Verify battery/charging state does not briefly show false charging after reboot.
 - [ ] Add more host tests for `PowerController` wake/charger decisions.
 - [ ] Decide if production devices need calibration notes for voltage-estimated battery percentage.
 
 ## OTA / Release
 
-- [x] Confirm GitHub Action release binary contains expected `v3.1.21` marker.
-- [x] Confirm both public OTA binary assets are published for `v3.1.21`:
-  - `djconnect-lilygo-t-embed-s3-v3.1.21.bin`;
-  - `djconnect-esp32-s3-box-3-v3.1.21.bin`.
+- [x] Confirm GitHub Action release binary contains expected `v3.1.28` marker.
+- [x] Confirm both public OTA binary assets are published for `v3.1.28`:
+  - `djconnect-lilygo-t-embed-s3-v3.1.28.bin`;
+  - `djconnect-esp32-s3-box-3-v3.1.28.bin`.
 - [x] Confirm manifest is published with the release.
 - [ ] Confirm manifest uses only the `firmwares` array and no legacy top-level single-device OTA fields on every future release.
 - [ ] Confirm manifest `device` values match ESP OTA validation on every future release:
   - `lilygo-t-embed-s3`;
   - `esp32-s3-box-3`.
-- [x] Confirm `min_ha_integration` is derived from the firmware major/minor version (`3.1.21` -> `3.1.0`) and `max_ha_integration` is `<3.2.0`.
+- [x] Confirm `min_ha_integration` is derived from the firmware major/minor version (`3.1.28` -> `3.1.0`) and `max_ha_integration` is `<3.2.0`.
 - [x] Update release hygiene snapshot checksum for `assets/website/site.webmanifest` after the tagline change.
 - [ ] Confirm OTA update screen shows target version.
 - [ ] Confirm OTA start/progress/complete/failure beeps are simple and not stuttery.

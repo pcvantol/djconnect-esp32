@@ -2,11 +2,31 @@
 
 ## Unreleased
 
+## v3.1.29
+
+### Changed
+
+- Queue item playback no longer requires a queue context. ESP device and web
+  queue entries stay startable when Home Assistant returns a direct Spotify
+  track or episode URI without `context_uri`/`queue_context`.
+- Idle turn-off sleep is now suppressed while external power/USB charging is
+  detected, so development or desk use on Now Playing no longer looks like a
+  periodic crash.
+- Local ESP and web games now match the richer Apple-client behavior with
+  Maze Chase power pellets, vulnerable/death feedback, varied Meteor Run and
+  Sky Dash obstacles/backgrounds, Paddle Rally hit feedback and short 8-bit
+  game-event sounds.
+- Synced the Home Assistant contract docs with the updated config/options flow:
+  clients no longer expose or expect legacy playback override fields, and
+  user-facing setup text should use `Client adres`.
+
 ### Fixed
 
 - Made ESP playlist response parsing accept additional Home Assistant wrappers
   and media-player aliases so valid playlist responses no longer decode as an
   empty list on the device/web portal.
+- Added boot diagnostics for reset reason and wakeup cause to make watchdog,
+  panic, brownout and deep-sleep restarts distinguishable in serial logs.
 
 ## v3.1.28
 

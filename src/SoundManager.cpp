@@ -287,6 +287,26 @@ void SoundManager::playPongMiss() {
   enqueue(Event::PongMiss);
 }
 
+void SoundManager::playGamePellet() {
+  enqueue(Event::GamePellet);
+}
+
+void SoundManager::playGamePower() {
+  enqueue(Event::GamePower);
+}
+
+void SoundManager::playGameShoot() {
+  enqueue(Event::GameShoot);
+}
+
+void SoundManager::playGameBreak() {
+  enqueue(Event::GameBreak);
+}
+
+void SoundManager::playGameCrash() {
+  enqueue(Event::GameCrash);
+}
+
 void SoundManager::playMenuOpen() {
   enqueue(Event::MenuOpen);
 }
@@ -716,6 +736,27 @@ void SoundManager::runTask() {
         playTone(330, 75, 14);
         playSilence(20);
         playTone(220, 120, 14);
+        break;
+      case Event::GamePellet:
+        playTone(1175, 18, 6);
+        break;
+      case Event::GamePower:
+        playTone(880, 28, 8);
+        playSilence(14);
+        playTone(1319, 42, 8);
+        break;
+      case Event::GameShoot:
+        playTone(1568, 22, 7);
+        break;
+      case Event::GameBreak:
+        playTone(1319, 22, 8);
+        playSilence(12);
+        playTone(988, 34, 8);
+        break;
+      case Event::GameCrash:
+        playTone(262, 70, 12);
+        playSilence(18);
+        playTone(196, 90, 12);
         break;
       case Event::MenuOpen:
         playTone(1047, 36, 10);

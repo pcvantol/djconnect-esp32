@@ -246,6 +246,9 @@ Protected local endpoints must require `Authorization: Bearer <device_token>`. O
 HA may provision UI language through `device_language` with `language` as fallback. Accept only `en` and `nl`, save valid values to `provision.language`, and apply them at runtime when possible. Ignore unknown language values without changing local menu-selected language.
 
 Do not store Spotify OAuth credentials, Sonos credentials or any playback-backend secrets on the ESP. Home Assistant owns backend credentials and translates generic ESP playback commands into backend-specific actions. The web portal and captive portal must not expose refresh-token/client-id forms.
+New ESP/client setup or settings flows must not expose or expect legacy playback
+source/default-playlist override options. Home Assistant owns those decisions.
+Any user-facing setup text should use `Client adres` for the client URL label.
 
 mDNS:
 
@@ -480,8 +483,10 @@ Shuffle and repeat are separate controls:
 
 Local games are intentionally local-only:
 
-- `Games` in the root menu opens Pong, Asteroids and Fly. Device game highscores are stored in the `provision` NVS namespace through `ProvisioningController` and are cleared by factory reset.
-- The web portal includes local browser-side Pong, Asteroids and Fly games with browser-local highscores. Keep these games local-only and do not route them through Home Assistant.
+- `Games` in the root menu opens Paddle Rally, Meteor Run, Sky Dash and Maze Chase. Device game highscores are stored in the `provision` NVS namespace through `ProvisioningController` and are cleared by factory reset.
+- The web portal includes local browser-side Paddle Rally, Meteor Run, Sky Dash and Maze Chase games with browser-local highscores. Keep these games local-only and do not route them through Home Assistant.
+- Keep game controls compact: device games use encoder movement plus encoder press for fire/lane changes where applicable; the web portal uses fixed-height icon buttons, including four visible direction buttons for Maze Chase.
+- Game audio must stay as short generated 8-bit style speaker/WebAudio cues for local game events only.
 - Game input/rendering belongs in `DJConnectApp` and `DisplayManager`; do not route game state through Home Assistant.
 
 Built-in speaker cue volume is separate from Spotify volume:
@@ -500,6 +505,7 @@ Respect existing low-battery behavior:
 - Below 20%: show charge screen and block normal inputs.
 - Below 10%: critical charge flow and deep sleep.
 - Charging guard blocks normal WiFi/Spotify behavior until battery recovery threshold.
+- Normal idle turn-off sleep is battery-only; suppress it while USB-C/external power is detected so development/desk use on Now Playing does not disconnect USB.
 - Deep sleep uses button wake plus a periodic charger probe timer. Without a known VBUS RTC GPIO this is near-auto USB-C wake, not instant hardware wake.
 
 Battery percentage is always voltage-estimated using `LogicHelpers::batteryPercentFromVoltage`. Do not reintroduce BQ27220 state-of-charge as the primary displayed percentage unless the user explicitly asks.

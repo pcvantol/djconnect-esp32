@@ -68,7 +68,9 @@ Subsystem classes own concrete responsibilities:
   debug/device control.
 - `SpotifyClient`: backend-agnostic playback proxy HTTP calls to Home Assistant.
 - `ProvisioningController`: NVS provisioning/settings storage.
-- `PowerController`: charger, deep sleep and watchdog policy.
+- `PowerController`: charger, deep sleep and watchdog policy. Normal idle
+  turn-off sleep is battery-only; USB-C/external power suppresses it while still
+  allowing screen dim/off behavior.
 - `LedRing`: WS2812 ring presentation.
 - `VoiceRecorder`, `VoiceHttpClient`, `DjResponseAudioPlayer`, `WakeWordEngine`:
   voice and wake-word paths.
@@ -223,6 +225,16 @@ playlist API maximum. Other clients may request up to `limit=50` for playlists.
 Home Assistant owns backwards-compatible defaulting and clamping when older
 clients omit `limit`, and should keep provider-specific errors out of
 user-facing state.
+
+Queue item playback treats `context_uri`/`queue_context` as optional. Items with
+a direct Spotify track or episode URI remain startable without context; playlist,
+album and show contexts keep the existing context-plus-offset payload when Home
+Assistant provides them.
+
+New client setup/settings flows do not expose or expect legacy Home Assistant
+playback source/default-playlist override options. Source, device and
+default-playlist choices belong in the Home Assistant integration, and
+user-facing setup copy labels the client URL as `Client adres`.
 
 Home Assistant `v3.1.z` and ESP `v3.1.z` are matched by major/minor version, not
 by patch. HTTP 426 with `error:"version_mismatch"` is treated as an update

@@ -38,6 +38,13 @@ public:
   // Low game cue when the Pong ball is missed.
   void playPongMiss();
 
+  // Short 8-bit style game cues shared by the local mini games.
+  void playGamePellet();
+  void playGamePower();
+  void playGameShoot();
+  void playGameBreak();
+  void playGameCrash();
+
   // Single bleep when opening the menu.
   void playMenuOpen();
 
@@ -112,6 +119,11 @@ private:
     NextTrack,
     PongBounce,
     PongMiss,
+    GamePellet,
+    GamePower,
+    GameShoot,
+    GameBreak,
+    GameCrash,
     MenuOpen,
     Back,
     TurnOff,

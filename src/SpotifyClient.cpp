@@ -26,6 +26,12 @@ bool isLargePlaybackCommand(const String &command) {
   return command == "queue" || command == "playlists";
 }
 
+bool playbackContextSupportsOffset(const String &contextUri) {
+  return contextUri.startsWith("spotify:playlist:") ||
+         contextUri.startsWith("spotify:album:") ||
+         contextUri.startsWith("spotify:show:");
+}
+
 JsonArrayConst firstPlaylistArray(JsonVariantConst source) {
   if (source["playlists"].is<JsonArrayConst>()) {
     return source["playlists"].as<JsonArrayConst>();
@@ -468,11 +474,20 @@ void SpotifyClient::applyDeviceList(JsonVariantConst source, DeviceListState &de
 void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {
   queue.available = false;
   queue.error = "";
-  queue.contextUri = source["context_uri"] | source["contextUri"] | "";
+  queue.contextUri = source["context_uri"] | source["contextUri"] | source["queue_context"] |
+                     source["queueContext"] | "";
   if (queue.contextUri.isEmpty()) {
     JsonVariantConst playback = source["playback"];
     if (!playback.isNull()) {
-      queue.contextUri = playback["context_uri"] | playback["contextUri"] | "";
+      queue.contextUri = playback["context_uri"] | playback["contextUri"] |
+                         playback["queue_context"] | playback["queueContext"] | "";
+    }
+  }
+  if (queue.contextUri.isEmpty()) {
+    JsonVariantConst queuePayload = source["queue"];
+    if (!queuePayload.isNull()) {
+      queue.contextUri = queuePayload["context_uri"] | queuePayload["contextUri"] |
+                         queuePayload["queue_context"] | queuePayload["queueContext"] | "";
     }
   }
   queue.count = 0;
@@ -501,17 +516,26 @@ void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {
       break;
     }
     QueueItemState candidate;
-    candidate.title = item["title"] | item["name"] | item["track_name"] | "";
+    candidate.title =
+        item["title"] | item["name"] | item["track_name"] | item["trackName"] |
+        item["episode_name"] | item["episodeName"] | item["media_title"] |
+        item["mediaTitle"] | "";
     candidate.subtitle =
         item["subtitle"] | item["artist"] | item["artist_name"] | item["artists"] |
-        item["album"] | "";
-    candidate.uri = item["uri"] | item["track_uri"] | item["id"] | item["value"] | "";
+        item["album"] | item["show"] | item["show_name"] | item["showName"] | "";
+    candidate.uri =
+        item["uri"] | item["track_uri"] | item["trackUri"] | item["episode_uri"] |
+        item["episodeUri"] | item["media_content_id"] | item["mediaContentId"] |
+        item["content_id"] | item["contentId"] | item["id"] | item["value"] | "";
     candidate.imageUrl =
         item["album_image_url"] | item["albumImageUrl"] | item["album_art_url"] |
         item["image_url"] | item["imageUrl"] | item["media_image_url"] |
         item["entity_picture"] | item["thumbnail_url"] | "";
-    if (candidate.title.isEmpty()) {
+    if (candidate.title.isEmpty() && candidate.uri.isEmpty()) {
       continue;
+    }
+    if (candidate.title.isEmpty()) {
+      candidate.title = candidate.uri;
     }
     bool duplicate = false;
     for (size_t existing = 0; existing < queue.count; existing++) {
@@ -692,13 +716,14 @@ bool SpotifyClient::startPlaylist(const String &playlistUri) {
   return proxyCommand("start_playlist", playlistUri);
 }
 
-bool SpotifyClient::playQueueItem(const String &itemUri, const String &contextUri) {
+bool SpotifyClient::playQueueItem(
+    const String &itemUri,
+    const String &contextUri,
+    const String &title,
+    const String &artist,
+    int index) {
   if (itemUri.isEmpty()) {
     state_.error = "Queue item unavailable";
-    return false;
-  }
-  if (contextUri.isEmpty()) {
-    state_.error = "Queue context unavailable";
     return false;
   }
 
@@ -706,10 +731,26 @@ bool SpotifyClient::playQueueItem(const String &itemUri, const String &contextUr
   request["device_id"] = device_ == nullptr ? "" : device_->getDeviceId();
   request["client_type"] = device_ == nullptr ? "" : device_->getClientType();
   JsonDocument response;
-  request["command"] = "play_context_at";
+  request["command"] = (!contextUri.isEmpty() && playbackContextSupportsOffset(contextUri))
+                           ? "play_context_at"
+                           : "play_queue_item";
   JsonObject value = request["value"].to<JsonObject>();
-  value["context_uri"] = contextUri;
-  value["offset_uri"] = itemUri;
+  value["uri"] = itemUri;
+  if (!title.isEmpty()) {
+    value["title"] = title;
+  }
+  if (!artist.isEmpty()) {
+    value["artist"] = artist;
+  }
+  if (index >= 0) {
+    value["index"] = index;
+  }
+  if (!contextUri.isEmpty()) {
+    value["context_uri"] = contextUri;
+  }
+  if (!contextUri.isEmpty() && playbackContextSupportsOffset(contextUri)) {
+    value["offset_uri"] = itemUri;
+  }
   if (!proxyRequest(request, &response)) {
     return false;
   }

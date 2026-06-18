@@ -153,7 +153,7 @@ In Home Assistant pairing mode, BLE advertising remains active so a Home Assista
 
 ## Playback Backend
 
-The ESP sends generic playback commands to Home Assistant and receives generic playback state back. The firmware intentionally avoids Spotify OAuth storage and direct Spotify Web API calls. Home Assistant owns backend-specific details such as Spotify refresh tokens, Sonos entity selection, media-player services, playlist lookup and queue behavior.
+The ESP sends generic playback commands to Home Assistant and receives generic playback state back. The firmware intentionally avoids Spotify OAuth storage and direct Spotify Web API calls. Home Assistant owns backend-specific details such as Spotify refresh tokens, Sonos entity selection, media-player services, playlist lookup and queue behavior. New ESP/client setup or settings flows must not expose or expect legacy playback source/default-playlist override options; those decisions belong in the Home Assistant integration.
 
 List-style playback commands must include safe limits when a client can provide
 one. ESP32 firmware sends `{"command":"playlists","limit":20}` so the device and
@@ -170,7 +170,7 @@ responses should stay generic and JSON-shaped.
 
 The custom integration domain is `djconnect`.
 
-When WiFi is configured but Home Assistant is not paired, the device enters pairing mode. The display shows the DJConnect logo/name, battery state, the default Home Assistant URL hint `http://homeassistant.local:8123`, a large pairing code and a center-button turn-off hint. The screen stays at 100% brightness for 10 minutes and the LED ring breathes blue. Normal playback/menu input is blocked, while reset controls, BLE advertising, the web portal and the device API remain available.
+When WiFi is configured but Home Assistant is not paired, the device enters pairing mode. The display shows the DJConnect logo/name, battery state, the default Home Assistant URL hint `http://homeassistant.local:8123`, a large pairing code and a center-button turn-off hint. Home Assistant/user-facing setup text should label the device URL as `Client adres`. The screen stays at 100% brightness for 10 minutes and the LED ring breathes blue. Normal playback/menu input is blocked, while reset controls, BLE advertising, the web portal and the device API remain available.
 
 ### mDNS Discovery
 
@@ -264,7 +264,7 @@ While the device is processing the PTT request or showing the DJ announcement sc
 
 The Current song screen is a read-only detail screen for album art and scrolling metadata. It uses the same top-button back action as other menu screens and does not start push-to-talk from the encoder button.
 
-Games are local mini-games in the device menu and web portal. Paddle Rally shows score and high score in the title bar, uses the encoder for the paddle and pauses when the screen turns off. Meteor Run uses the encoder to move horizontally and shoots on encoder press. Sky Dash uses the encoder to move vertically and shoots on encoder press while flying left-to-right. Maze Chase uses the encoder for horizontal movement and center press to switch lanes; the white pellet temporarily turns the ghost into a blinking vulnerable target that can be eaten for bonus points. Device game highscores are stored in the `provision` NVS namespace and are cleared by factory reset; web game highscores are stored locally in the browser.
+Games are local mini-games in the device menu and web portal. Paddle Rally shows score and high score in the title bar, uses the encoder for the paddle, plays subtle 8-bit hit/miss cues, flashes paddle/wall hits and pauses briefly before restarting after a miss. Meteor Run uses the encoder to move horizontally and shoots on encoder press; meteors fall straight down with varied smaller shapes/speeds, a subtle star field and hit/miss sounds. Sky Dash uses the encoder to move vertically and shoots on encoder press while flying left-to-right through animated star streaks and varied obstacle shapes/colors. Maze Chase uses the encoder for horizontal movement and center press to switch lanes; four corner power pellets make the ghost temporarily vulnerable, with blinking feedback, Pacman eye direction, ghost-catch/death sounds and a short reset delay after death. Device game highscores are stored in the `provision` NVS namespace and are cleared by factory reset; web game highscores are stored locally in the browser.
 
 Web portal PTT is a simulation button for testing the DJ-announcement text path. The browser sends a fixed localized test command to `/api/voice-text`; the ESP forwards it to Home Assistant, displays the returned DJ text on the device and then returns the voice/PTT state to idle. The web simulation intentionally does not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block the physical encoder PTT flow. This requires WiFi and a successful Home Assistant pairing/device token, but it does not require playback-backend credentials on the ESP, an active playback session or browser microphone permission.
 
@@ -363,7 +363,7 @@ The web portal includes Safari/iOS home-screen metadata and an Apple touch icon.
 
 To reduce unnecessary ESP HTTP work, the portal only polls heavier panels when they are visible: logs poll only while the logs panel is visible and not paused, and queue, playlist and sound-output list refreshes run only when their related UI is on screen. Dynamic API and root page responses use `no-store` cache headers, while embedded static assets such as icons and the web manifest use browser cache headers.
 
-Queue, playlist and output data are supplied by the Home Assistant integration. The firmware accepts up to 100 queue items, then de-duplicates returned queue items by URI, or by title/subtitle when no URI is supplied, so a one-track queue is not rendered repeatedly on the device or web portal. Playlist fetching/rendering remains capped at 20 items on ESP32 clients. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
+Queue, playlist and output data are supplied by the Home Assistant integration. The firmware accepts up to 100 queue items, then de-duplicates returned queue items by URI, or by title/subtitle when no URI is supplied, so a one-track queue is not rendered repeatedly on the device or web portal. Queue items with a direct Spotify track or episode URI remain startable even when Home Assistant does not provide `context_uri` or `queue_context`; when playlist, album or show context is available, the ESP also sends context plus offset metadata for backend playback. Playlist fetching/rendering remains capped at 20 items on ESP32 clients. Backend-specific fallbacks, such as Spotify playlist queue reconstruction, belong in Home Assistant.
 
 ## Firmware Architecture
 
@@ -394,7 +394,7 @@ The ESP32-S3-BOX-3 PlatformIO environment uses the Espressif `esp32s3box` board 
 
 ## Battery, Charging and Turn Off
 
-Battery percentage is voltage-estimated. Below 20%, the device shows a charge screen and restricts normal operation. Below 10%, the device shows a short charge prompt and turns off. While charging below 20%, the device stays in a charging screen and does not connect WiFi. Turn-off sleep periodically wakes briefly to probe for USB-C charger attach.
+Battery percentage is voltage-estimated. Below 20%, the device shows a charge screen and restricts normal operation. Below 10%, the device shows a short charge prompt and turns off. While charging below 20%, the device stays in a charging screen and does not connect WiFi. Normal idle turn-off sleep is suppressed while USB-C/external charging power is detected; on battery, turn-off sleep periodically wakes briefly to probe for USB-C charger attach.
 
 ## Device Diagnostics
 

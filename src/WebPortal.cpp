@@ -449,13 +449,35 @@ if (visible && spotifyControlsEnabled) loadSoundOutputs();
 }
 const game = {
 mode:"none", visible:true, score:0, high:{ pong:0, asteroids:0, fly:0, maze:0 },
-paddleY:86, ballX:160, ballY:86, ballVX:3, ballVY:2,
-shipX:160, asteroidX:180, asteroidY:48, asteroidVX:2, asteroidVY:2, bullet:false, bulletY:0,
-planeY:86, obstacleX:300, obstacleY:86, shot:false, shotX:0,
-mazeX:52, mazeLane:1, ghostX:278, ghostLane:1, pelletX:180, pelletLane:1, mazePowerUntil:0,
-flashUntil:0, last:0
+paddleY:86, ballX:160, ballY:86, ballVX:3, ballVY:2, paddleFlashUntil:0, wallFlashUntil:0, resetAt:0,
+shipX:160, asteroidX:180, asteroidY:48, asteroidVY:2, asteroidSize:7, asteroidShape:0, bullet:false, bulletY:0, meteorBoomUntil:0, meteorBoomX:180, meteorBoomY:48,
+planeY:86, obstacleX:300, obstacleY:86, obstacleShape:0, obstacleColor:"#9a6a43", shot:false, shotX:0, flyBoomUntil:0, flyBoomX:300, flyBoomY:86,
+mazeX:52, mazeLane:1, mazeDirX:1, mazeDirY:0, ghostX:278, ghostLane:1, pelletX:180, pelletLane:1, mazePowerUntil:0, powerPellets:[],
+flashUntil:0, last:0, stars:[]
 };
 const gameNames = { pong:"Paddle Rally", asteroids:"Meteor Run", fly:"Sky Dash", maze:"Maze Chase" };
+let gameAudio = null;
+function gameSound(kind) {
+try {
+gameAudio = gameAudio || new (window.AudioContext || window.webkitAudioContext)();
+const patterns = {
+pellet:[[1175,0.018,0.018]], power:[[880,0.035,0.022],[1319,0.05,0.022]], shoot:[[1568,0.028,0.018]],
+break:[[1319,0.026,0.02],[988,0.045,0.02]], crash:[[262,0.08,0.03],[196,0.11,0.03]],
+start:[[784,0.035,0.018]], bounce:[[740,0.022,0.015]], move:[[523,0.014,0.01]]
+};
+let t = gameAudio.currentTime;
+for (const [freq, dur, gain] of patterns[kind] || []) {
+const osc = gameAudio.createOscillator();
+const amp = gameAudio.createGain();
+osc.type = "square"; osc.frequency.value = freq;
+amp.gain.setValueAtTime(gain, t);
+amp.gain.exponentialRampToValueAtTime(0.001, t + dur);
+osc.connect(amp); amp.connect(gameAudio.destination);
+osc.start(t); osc.stop(t + dur);
+t += dur + 0.014;
+}
+} catch (_) {}
+}
 function gameHighKey(mode) { return `djconnect.web.${mode}.high`; }
 function loadGameHighScores() {
 for (const mode of ["pong","asteroids","fly","maze"]) game.high[mode] = Number(localStorage.getItem(gameHighKey(mode)) || 0);
@@ -478,10 +500,20 @@ $("gameHud").style.display = active ? "" : "none";
 $("gameCanvas").style.display = active ? "" : "none";
 $("gameControls").style.display = active ? "grid" : "none";
 if (!active) return;
-const horizontal = game.mode === "asteroids" || game.mode === "maze";
+$("gameFireButton").style.display = "";
+$("gameResetButton").style.display = "";
+if (game.mode === "maze") {
+setGameButton($("gameUpButton"), "Up", "M12 5l7 8H5z");
+setGameButton($("gameDownButton"), "Down", "M12 19l-7-8h14z");
+setGameButton($("gameFireButton"), "Left", "M5 12l8-7v14z");
+setGameButton($("gameResetButton"), "Right", "M19 12l-8 7V5z");
+return;
+}
+const horizontal = game.mode === "asteroids";
 setGameButton($("gameUpButton"), horizontal ? "Left" : "Up", horizontal ? "M5 12l8-7v14z" : "M12 5l7 8H5z");
 setGameButton($("gameDownButton"), horizontal ? "Right" : "Down", horizontal ? "M19 12l-8 7V5z" : "M12 19l-7-8h14z");
-$("gameFireButton").style.display = game.mode === "pong" ? "none" : "";
+setGameButton($("gameFireButton"), "Fire", "M12 3l2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6z");
+setGameButton($("gameResetButton"), "Reset", "M4 4v6h6M20 20v-6h-6M20 9a8 8 0 0 0-13.7-3.6L4 7.7M4 15a8 8 0 0 0 13.7 3.6L20 16.3");
 }
 function setGameScore(score) {
 game.score = score;
@@ -494,16 +526,29 @@ updateGameHud();
 function resetGame() {
 game.score = 0;
 game.flashUntil = 0;
+game.resetAt = 0;
+game.paddleFlashUntil = 0;
+game.wallFlashUntil = 0;
+game.meteorBoomUntil = 0;
+game.flyBoomUntil = 0;
+if (!game.stars.length) game.stars = Array.from({length:22}, (_, i) => ({ x:(i * 47) % 320, y:42 + ((i * 31) % 112), s:1 + (i % 3) }));
 if (game.mode === "pong") {
 game.paddleY = 86; game.ballX = 160; game.ballY = 86; game.ballVX = 3; game.ballVY = 2;
 } else if (game.mode === "asteroids") {
-game.shipX = 160; game.asteroidX = 40 + Math.random() * 240; game.asteroidY = 48; game.asteroidVX = Math.random() > .5 ? 2 : -2; game.asteroidVY = 2; game.bullet = false;
+spawnMeteor(); game.shipX = 160; game.bullet = false;
 } else if (game.mode === "fly") {
-game.planeY = 86; game.obstacleX = 300; game.obstacleY = 52 + Math.random() * 92; game.shot = false;
+game.planeY = 86; spawnObstacle(); game.obstacleX = 300; game.shot = false;
 } else if (game.mode === "maze") {
-game.mazeX = 52; game.mazeLane = 1; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3); game.mazePowerUntil = 0;
+game.mazeX = 52; game.mazeLane = 1; game.mazeDirX = 1; game.mazeDirY = 0; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3); game.mazePowerUntil = 0; game.powerPellets = [{x:42,lane:0,on:true},{x:278,lane:0,on:true},{x:42,lane:2,on:true},{x:278,lane:2,on:true}];
 }
 updateGameHud();
+}
+function spawnMeteor() {
+game.asteroidX = 30 + Math.random() * 260; game.asteroidY = 44; game.asteroidVY = 1.2 + Math.random() * 1.8 + Math.min(Math.floor(game.score / 10), 2); game.asteroidSize = 5 + Math.floor(Math.random() * 7); game.asteroidShape = Math.floor(Math.random() * 3);
+}
+function spawnObstacle() {
+const colors = ["#9a6a43","#ff6ab7","#1ed760","#ff9f1a"];
+game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; game.obstacleShape = Math.floor(Math.random() * 3); game.obstacleColor = colors[Math.floor(Math.random() * colors.length)];
 }
 function selectGame(mode) {
 game.mode = mode;
@@ -515,13 +560,24 @@ focusGameCanvas();
 function moveGame(delta) {
 if (game.mode === "pong") game.paddleY = Math.max(42, Math.min(126, game.paddleY + delta * 6));
 if (game.mode === "asteroids") game.shipX = Math.max(24, Math.min(296, game.shipX + delta * 8));
-if (game.mode === "fly") game.planeY = Math.max(52, Math.min(138, game.planeY + delta * 7));
-if (game.mode === "maze") game.mazeX = Math.max(30, Math.min(290, game.mazeX + delta * 10));
+if (game.mode === "fly") { game.planeY = Math.max(52, Math.min(138, game.planeY + delta * 7)); gameSound("move"); }
+if (game.mode === "maze") moveMaze(delta, 0);
+}
+function moveMaze(dx, dy) {
+game.mazeDirX = dx; game.mazeDirY = dy;
+game.mazeX = Math.max(30, Math.min(290, game.mazeX + dx * 10));
+game.mazeLane = Math.max(0, Math.min(2, game.mazeLane + dy));
 }
 function fireGame() {
-if (game.mode === "asteroids" && !game.bullet) { game.bullet = true; game.bulletY = 120; }
-if (game.mode === "fly" && !game.shot) { game.shot = true; game.shotX = 58; }
-if (game.mode === "maze") game.mazeLane = (game.mazeLane + 1) % 3;
+if (game.mode === "asteroids" && !game.bullet) { game.bullet = true; game.bulletY = 120; gameSound("shoot"); }
+if (game.mode === "fly" && !game.shot) { game.shot = true; game.shotX = 58; gameSound("shoot"); }
+}
+function drawStars(ctx, fast) {
+ctx.fillStyle = fast ? "#87d8ff" : "#7c8590";
+for (const star of game.stars) {
+if (fast) ctx.fillRect(star.x, star.y, 3 + star.s * 2, 1);
+else ctx.fillRect(star.x, star.y, star.s === 1 ? 1 : 2, star.s === 1 ? 1 : 2);
+}
 }
 function drawGame() {
 if (game.mode === "none") return;
@@ -535,25 +591,47 @@ ctx.fillText(gameNames[game.mode] || "", 8, 20);
 ctx.fillStyle = "#f3f7f5"; ctx.textAlign = "right"; ctx.fillText(`Score ${game.score}  High ${game.high[game.mode] || 0}`, 312, 20); ctx.textAlign = "left";
 if (game.mode === "pong") {
 ctx.strokeStyle = "#30383a"; ctx.beginPath(); ctx.moveTo(160,42); ctx.lineTo(160,160); ctx.stroke();
-ctx.fillStyle = "#ff9f1a"; ctx.fillRect(18, game.paddleY, 8, 34);
+ctx.fillStyle = Date.now() < game.paddleFlashUntil ? "#ffd84f" : "#ff9f1a"; ctx.fillRect(18, game.paddleY, 8, 34);
+if (Date.now() < game.wallFlashUntil) { ctx.strokeStyle = "#1ed760"; ctx.strokeRect(9, 42, 302, 118); }
 ctx.fillStyle = "#1ed760"; ctx.beginPath(); ctx.arc(game.ballX, game.ballY, 4, 0, Math.PI * 2); ctx.fill();
 } else if (game.mode === "asteroids") {
+drawStars(ctx, false);
 ctx.strokeStyle = "#5fa7ff"; ctx.beginPath(); ctx.moveTo(game.shipX, 128); ctx.lineTo(game.shipX - 8, 146); ctx.lineTo(game.shipX + 8, 146); ctx.closePath(); ctx.stroke();
 ctx.strokeStyle = "#ff6ab7"; ctx.beginPath(); ctx.arc(game.asteroidX, game.asteroidY, 9, 0, Math.PI * 2); ctx.stroke();
+if (game.asteroidShape === 1) { ctx.beginPath(); ctx.moveTo(game.asteroidX, game.asteroidY - game.asteroidSize); ctx.lineTo(game.asteroidX - game.asteroidSize, game.asteroidY + game.asteroidSize); ctx.lineTo(game.asteroidX + game.asteroidSize, game.asteroidY + game.asteroidSize - 2); ctx.closePath(); ctx.stroke(); }
+else if (game.asteroidShape === 2) ctx.strokeRect(game.asteroidX - game.asteroidSize, game.asteroidY - game.asteroidSize, game.asteroidSize * 2, game.asteroidSize * 2);
+else { ctx.beginPath(); ctx.arc(game.asteroidX, game.asteroidY, game.asteroidSize, 0, Math.PI * 2); ctx.stroke(); }
+if (Date.now() < game.meteorBoomUntil) { ctx.strokeStyle = "#ffd84f"; ctx.beginPath(); ctx.arc(game.meteorBoomX, game.meteorBoomY, game.asteroidSize + 10, 0, Math.PI * 2); ctx.stroke(); }
 if (game.bullet) { ctx.fillStyle = "#5cccff"; ctx.fillRect(game.shipX - 2, game.bulletY, 4, 10); }
 } else if (game.mode === "fly") {
+drawStars(ctx, true);
 ctx.fillStyle = "#5cccff"; ctx.beginPath(); ctx.moveTo(60, game.planeY); ctx.lineTo(30, game.planeY - 10); ctx.lineTo(30, game.planeY + 10); ctx.closePath(); ctx.fill();
 ctx.strokeStyle = "#5cccff"; ctx.beginPath(); ctx.moveTo(38, game.planeY); ctx.lineTo(20, game.planeY - 18); ctx.moveTo(38, game.planeY); ctx.lineTo(20, game.planeY + 18); ctx.stroke();
-ctx.fillStyle = "#9a6a43"; ctx.fillRect(game.obstacleX - 8, game.obstacleY - 16, 16, 32);
+ctx.fillStyle = game.obstacleColor;
+if (game.obstacleShape === 1) { ctx.beginPath(); ctx.moveTo(game.obstacleX, game.obstacleY - 18); ctx.lineTo(game.obstacleX - 13, game.obstacleY + 16); ctx.lineTo(game.obstacleX + 13, game.obstacleY + 16); ctx.closePath(); ctx.fill(); }
+else if (game.obstacleShape === 2) { ctx.beginPath(); ctx.arc(game.obstacleX, game.obstacleY, 13, 0, Math.PI * 2); ctx.fill(); }
+else ctx.fillRect(game.obstacleX - 8, game.obstacleY - 16, 16, 32);
+if (Date.now() < game.flyBoomUntil) { ctx.strokeStyle = "#ffd84f"; ctx.beginPath(); ctx.arc(game.flyBoomX, game.flyBoomY, 22, 0, Math.PI * 2); ctx.stroke(); }
 if (game.shot) { ctx.fillStyle = "#5cccff"; ctx.fillRect(game.shotX, game.planeY - 2, 14, 4); }
 } else if (game.mode === "maze") {
 const lanes = [58, 96, 134];
 ctx.strokeStyle = "#5fa7ff";
 lanes.forEach(y => { ctx.beginPath(); ctx.moveTo(18, y); ctx.lineTo(302, y); ctx.stroke(); });
 ctx.fillStyle = "#f3f7f5"; ctx.beginPath(); ctx.arc(game.pelletX, lanes[game.pelletLane], 4, 0, Math.PI * 2); ctx.fill();
-ctx.fillStyle = "#ffd84f"; ctx.beginPath(); ctx.arc(game.mazeX, lanes[game.mazeLane], 10, 0.25 * Math.PI, 1.75 * Math.PI); ctx.lineTo(game.mazeX, lanes[game.mazeLane]); ctx.fill();
+for (const pellet of game.powerPellets) if (pellet.on) { ctx.fillStyle = "#ffd84f"; ctx.beginPath(); ctx.arc(pellet.x, lanes[pellet.lane], 7, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ff6ab7"; ctx.stroke(); }
+const py = lanes[game.mazeLane];
+if (game.resetAt) { ctx.strokeStyle = "#ff735d"; ctx.beginPath(); ctx.arc(game.mazeX, py, 14 + ((Date.now() / 70) % 5), 0, Math.PI * 2); ctx.stroke(); }
+else {
+let start = 0.25 * Math.PI, end = 1.75 * Math.PI;
+if (game.mazeDirX < 0) { start = 1.25 * Math.PI; end = 0.75 * Math.PI; }
+if (game.mazeDirY < 0) { start = 1.75 * Math.PI; end = 1.25 * Math.PI; }
+if (game.mazeDirY > 0) { start = 0.75 * Math.PI; end = 0.25 * Math.PI; }
+ctx.fillStyle = "#ffd84f"; ctx.beginPath(); ctx.arc(game.mazeX, py, 10, start, end); ctx.lineTo(game.mazeX, py); ctx.fill();
+ctx.fillStyle = "#050816"; ctx.beginPath(); ctx.arc(game.mazeX + (game.mazeDirX || .5) * 3, py + (game.mazeDirY ? game.mazeDirY * 3 : -4), 2, 0, Math.PI * 2); ctx.fill();
+}
 const vulnerable = Date.now() < game.mazePowerUntil;
 ctx.fillStyle = vulnerable ? (Math.floor(Date.now() / 180) % 2 ? "#f3f7f5" : "#5fa7ff") : "#d72ff3"; ctx.fillRect(game.ghostX - 10, lanes[game.ghostLane] - 10, 20, 20);
+if (vulnerable) { ctx.strokeStyle = "#ffd84f"; ctx.strokeRect(game.ghostX - 12, lanes[game.ghostLane] - 12, 24, 24); }
 ctx.fillStyle = "#f3f7f5"; ctx.beginPath(); ctx.arc(game.ghostX - 4, lanes[game.ghostLane] - 3, 2, 0, Math.PI * 2); ctx.arc(game.ghostX + 4, lanes[game.ghostLane] - 3, 2, 0, Math.PI * 2); ctx.fill();
 }
 if (Date.now() < game.flashUntil) { ctx.strokeStyle = "#ff735d"; ctx.lineWidth = 2; ctx.strokeRect(1, 1, 318, 168); ctx.lineWidth = 1; }
@@ -562,47 +640,57 @@ function stepGame(ts) {
 if (!game.last) game.last = ts;
 if (game.mode !== "none" && game.visible && ts - game.last > 32) {
 game.last = ts;
+for (const star of game.stars) {
+star.x -= game.mode === "fly" ? 2 + star.s : 0;
+star.y += game.mode === "asteroids" ? star.s : 0;
+if (star.x < 8) star.x = 312;
+if (star.y > 156) star.y = 42;
+}
+if (game.resetAt && Date.now() >= game.resetAt) resetGame();
+if (game.resetAt) { drawGame(); requestAnimationFrame(stepGame); return; }
 if (game.mode === "pong") {
 game.ballX += game.ballVX; game.ballY += game.ballVY;
-if (game.ballY <= 42 || game.ballY >= 156) game.ballVY *= -1;
-if (game.ballX >= 306) game.ballVX = -Math.abs(game.ballVX);
+if (game.ballY <= 42 || game.ballY >= 156) { game.ballVY *= -1; game.wallFlashUntil = Date.now() + 120; gameSound("bounce"); }
+if (game.ballX >= 306) { game.ballVX = -Math.abs(game.ballVX); game.wallFlashUntil = Date.now() + 120; gameSound("bounce"); }
 if (game.ballX <= 30) {
-if (game.ballY >= game.paddleY - 4 && game.ballY <= game.paddleY + 38) { game.ballVX = Math.abs(game.ballVX); setGameScore(game.score + 1); }
-else { game.ballX = 160; game.ballY = 86; game.ballVX = 3; game.ballVY = Math.random() > .5 ? 2 : -2; setGameScore(0); game.flashUntil = Date.now() + 350; }
+if (game.ballY >= game.paddleY - 4 && game.ballY <= game.paddleY + 38) { game.ballVX = Math.abs(game.ballVX); game.paddleFlashUntil = Date.now() + 140; setGameScore(game.score + 1); gameSound("bounce"); }
+else { game.resetAt = Date.now() + 650; game.flashUntil = Date.now() + 350; gameSound("crash"); }
 }
 } else if (game.mode === "asteroids") {
-game.asteroidX += game.asteroidVX; game.asteroidY += game.asteroidVY;
-if (game.asteroidX < 24 || game.asteroidX > 296) game.asteroidVX *= -1;
+game.asteroidY += game.asteroidVY;
 if (game.bullet) {
 game.bulletY -= 8;
 if (game.bulletY < 38) game.bullet = false;
-else if (Math.abs(game.asteroidX - game.shipX) < 16 && Math.abs(game.asteroidY - game.bulletY) < 16) {
-setGameScore(game.score + 1); game.bullet = false; game.asteroidX = 30 + Math.random() * 260; game.asteroidY = 46; game.asteroidVX = Math.random() > .5 ? 2 : -2; game.asteroidVY = 2 + Math.min(Math.floor(game.score / 5), 3);
+else if (Math.abs(game.asteroidX - game.shipX) < game.asteroidSize + 9 && Math.abs(game.asteroidY - game.bulletY) < game.asteroidSize + 9) {
+setGameScore(game.score + 1); game.bullet = false; game.meteorBoomX = game.asteroidX; game.meteorBoomY = game.asteroidY; game.meteorBoomUntil = Date.now() + 180; gameSound("break"); spawnMeteor();
 }
 }
-if (game.asteroidY > 150) { game.flashUntil = Date.now() + 350; game.asteroidX = 30 + Math.random() * 260; game.asteroidY = 46; setGameScore(0); }
+if (game.asteroidY > 150) { game.flashUntil = Date.now() + 350; gameSound("crash"); spawnMeteor(); setGameScore(0); }
 } else if (game.mode === "fly") {
 game.obstacleX -= 4 + Math.min(Math.floor(game.score / 6), 4);
 if (game.shot) {
 game.shotX += 9;
 if (game.shotX > 310) game.shot = false;
-else if (Math.abs(game.shotX - game.obstacleX) < 16 && Math.abs(game.planeY - game.obstacleY) < 24) { setGameScore(game.score + 1); game.shot = false; game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; }
+else if (Math.abs(game.shotX - game.obstacleX) < 16 && Math.abs(game.planeY - game.obstacleY) < 24) { setGameScore(game.score + 1); game.shot = false; game.flyBoomX = game.obstacleX; game.flyBoomY = game.obstacleY; game.flyBoomUntil = Date.now() + 180; gameSound("break"); spawnObstacle(); }
 }
-if (game.obstacleX < 24) { game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; setGameScore(game.score + 1); }
-if (game.obstacleX < 64 && game.obstacleX > 28 && Math.abs(game.planeY - game.obstacleY) < 28) { game.flashUntil = Date.now() + 350; game.obstacleX = 310; game.obstacleY = 52 + Math.random() * 92; setGameScore(0); }
+if (game.obstacleX < 24) { spawnObstacle(); setGameScore(game.score + 1); }
+if (game.obstacleX < 64 && game.obstacleX > 28 && Math.abs(game.planeY - game.obstacleY) < 28) { game.flashUntil = Date.now() + 350; game.resetAt = Date.now() + 650; gameSound("crash"); }
 } else if (game.mode === "maze") {
 const vulnerable = Date.now() < game.mazePowerUntil;
 const speed = vulnerable ? 1 : 1 + Math.min(Math.floor(game.score / 10), 3);
 game.ghostX += game.ghostX > game.mazeX ? -speed : speed;
 if (Math.random() < (vulnerable ? .05 : .07)) game.ghostLane += game.ghostLane < game.mazeLane ? 1 : game.ghostLane > game.mazeLane ? -1 : 0;
 if (Math.abs(game.mazeX - game.pelletX) < 13 && game.mazeLane === game.pelletLane) {
-setGameScore(game.score + 1); game.mazePowerUntil = Date.now() + 6000; game.pelletX = 42 + Math.random() * 236; game.pelletLane = Math.floor(Math.random() * 3);
+setGameScore(game.score + 1); gameSound("pellet"); game.pelletX = 42 + Math.random() * 236; game.pelletLane = Math.floor(Math.random() * 3);
+}
+for (const pellet of game.powerPellets) if (pellet.on && Math.abs(game.mazeX - pellet.x) < 13 && game.mazeLane === pellet.lane) {
+pellet.on = false; setGameScore(game.score + 3); game.mazePowerUntil = Date.now() + 6000; gameSound("power");
 }
 if (Math.abs(game.mazeX - game.ghostX) < 15 && game.mazeLane === game.ghostLane) {
 if (vulnerable) {
-setGameScore(game.score + 5); game.flashUntil = Date.now() + 180; game.ghostX = game.mazeX < 160 ? 278 : 42; game.ghostLane = Math.floor(Math.random() * 3);
+setGameScore(game.score + 5); game.flashUntil = Date.now() + 180; gameSound("break"); game.ghostX = game.mazeX < 160 ? 278 : 42; game.ghostLane = Math.floor(Math.random() * 3);
 } else {
-game.flashUntil = Date.now() + 350; game.mazeX = 52; game.mazeLane = 1; game.ghostX = 278; game.ghostLane = Math.floor(Math.random() * 3); game.pelletX = 90 + Math.random() * 170; game.pelletLane = Math.floor(Math.random() * 3); game.mazePowerUntil = 0; setGameScore(0);
+game.flashUntil = Date.now() + 350; game.resetAt = Date.now() + 750; gameSound("crash");
 }
 }
 }
@@ -617,8 +705,8 @@ resetGame();
 document.querySelectorAll(".game-tab").forEach(button => button.addEventListener("click", () => selectGame(button.dataset.game)));
 $("gameUpButton").addEventListener("click", () => { moveGame(-1); focusGameCanvas(); });
 $("gameDownButton").addEventListener("click", () => { moveGame(1); focusGameCanvas(); });
-$("gameFireButton").addEventListener("pointerdown", event => { event.preventDefault(); fireGame(); focusGameCanvas(); });
-$("gameResetButton").addEventListener("click", () => { resetGame(); focusGameCanvas(); });
+$("gameFireButton").addEventListener("pointerdown", event => { event.preventDefault(); if (game.mode === "maze") moveMaze(-1, 0); else fireGame(); focusGameCanvas(); });
+$("gameResetButton").addEventListener("click", () => { if (game.mode === "maze") moveMaze(1, 0); else { resetGame(); gameSound("start"); } focusGameCanvas(); });
 $("gameCanvas").addEventListener("pointerdown", event => { event.preventDefault(); focusGameCanvas(); fireGame(); });
 window.addEventListener("keydown", event => {
 if (game.mode === "none" || !game.visible || ["INPUT","SELECT","TEXTAREA","BUTTON"].includes(document.activeElement?.tagName || "")) return;
@@ -628,6 +716,8 @@ event.preventDefault();
 const movementKeys = (game.mode === "asteroids" || game.mode === "maze") ? ["ArrowLeft","ArrowRight"] : ["ArrowUp","ArrowDown"];
 if (event.key === movementKeys[0]) moveGame(-1);
 if (event.key === movementKeys[1]) moveGame(1);
+if (game.mode === "maze" && event.key === "ArrowUp") moveMaze(0, -1);
+if (game.mode === "maze" && event.key === "ArrowDown") moveMaze(0, 1);
 if (event.key === " " || event.key === "Enter") fireGame();
 });
 watchVisibility("gameCanvas", visible => { game.visible = visible; if (visible) drawGame(); });
@@ -865,7 +955,7 @@ button.title = tr("play");
 button.setAttribute("aria-label", tr("play"));
 button.disabled = !spotifyControlsEnabled || !item.uri;
 button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
-button.addEventListener("click", () => playQueueItem(item.uri));
+button.addEventListener("click", () => playQueueItem(item.uri, item.title, item.subtitle, item.index));
 row.appendChild(button);
 list.appendChild(row);
 }
@@ -985,10 +1075,13 @@ $("playbackCommandStatus").textContent = await response.text();
 await refresh();
 await loadQueue();
 }
-async function playQueueItem(uri) {
+async function playQueueItem(uri, title, artist, index) {
 if (!spotifyControlsEnabled || !uri) return;
 $("queueStatus").textContent = tr("startingQueueItem");
 const body = new URLSearchParams({ action:"queue_item", uri });
+if (title) body.set("title", title);
+if (artist) body.set("artist", artist);
+if (Number.isInteger(index)) body.set("index", String(index));
 const response = await fetch("/api/playback", { method:"POST", body });
 $("queueStatus").textContent = await response.text();
 await refresh();
@@ -1614,7 +1707,9 @@ void WebPortal::handleQueueJson() {
     sendJsonEscapedContent(server_, item.uri);
     server_.sendContent("\",\"imageUrl\":\"");
     sendJsonEscapedContent(server_, item.imageUrl);
-    server_.sendContent("\"}");
+    server_.sendContent("\",\"index\":");
+    server_.sendContent(String(index));
+    server_.sendContent("}");
     yield();
   }
   server_.sendContent("]}");
@@ -1754,6 +1849,9 @@ void WebPortal::handlePlaybackCommandPost() {
     ok = spotify_->startPlaylist(playlistUri);
   } else if (action == "queue_item") {
     const String itemUri = server_.arg("uri");
+    const String title = server_.arg("title");
+    const String artist = server_.arg("artist");
+    const int index = server_.hasArg("index") ? server_.arg("index").toInt() : -1;
     String contextUri = playback_ == nullptr ? "" : playback_->contextUri;
     if (itemUri.isEmpty()) {
       server_.send(400, "text/plain", "Missing queue item");
@@ -1765,11 +1863,7 @@ void WebPortal::handlePlaybackCommandPost() {
         contextUri = queue.contextUri;
       }
     }
-    if (contextUri.isEmpty()) {
-      server_.send(409, "text/plain", localizedText("Queue context unavailable", "Wachtrijcontext niet beschikbaar"));
-      return;
-    }
-    ok = spotify_->playQueueItem(itemUri, contextUri);
+    ok = spotify_->playQueueItem(itemUri, contextUri, title, artist, index);
   } else {
     server_.send(400, "text/plain", "Unknown playback action");
     return;

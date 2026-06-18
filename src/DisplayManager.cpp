@@ -326,48 +326,48 @@ void DisplayManager::renderLogsScreen(const String *lines, size_t lineCount, con
   renderLogs(tft_, lines, lineCount, notice);
 }
 
-void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice) {
+void DisplayManager::renderPongScreen(int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, bool paddleFlash, bool wallFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderPong(screen_, paddleY, ballX, ballY, score, highScore, missFlash, notice);
+    renderPong(screen_, paddleY, ballX, ballY, score, highScore, missFlash, paddleFlash, wallFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderPong(tft_, paddleY, ballX, ballY, score, highScore, missFlash, notice);
+  renderPong(tft_, paddleY, ballX, ballY, score, highScore, missFlash, paddleFlash, wallFlash, notice);
 }
 
-void DisplayManager::renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderAsteroidsScreen(int shipX, int shipY, int asteroidX, int asteroidY, int asteroidSize, int asteroidShape, int explodeX, int explodeY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, bool explodeFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderAsteroids(screen_, shipX, shipY, asteroidX, asteroidY, bulletY, bulletActive, score, highScore, hitFlash, notice);
+    renderAsteroids(screen_, shipX, shipY, asteroidX, asteroidY, asteroidSize, asteroidShape, explodeX, explodeY, bulletY, bulletActive, score, highScore, hitFlash, explodeFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderAsteroids(tft_, shipX, shipY, asteroidX, asteroidY, bulletY, bulletActive, score, highScore, hitFlash, notice);
+  renderAsteroids(tft_, shipX, shipY, asteroidX, asteroidY, asteroidSize, asteroidShape, explodeX, explodeY, bulletY, bulletActive, score, highScore, hitFlash, explodeFlash, notice);
 }
 
-void DisplayManager::renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderFlyerScreen(int planeY, int obstacleX, int obstacleY, int obstacleShape, int obstacleColor, int explodeX, int explodeY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, bool explodeFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderFlyer(screen_, planeY, obstacleX, obstacleY, shotX, shotActive, score, highScore, hitFlash, notice);
+    renderFlyer(screen_, planeY, obstacleX, obstacleY, obstacleShape, obstacleColor, explodeX, explodeY, shotX, shotActive, score, highScore, hitFlash, explodeFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderFlyer(tft_, planeY, obstacleX, obstacleY, shotX, shotActive, score, highScore, hitFlash, notice);
+  renderFlyer(tft_, planeY, obstacleX, obstacleY, obstacleShape, obstacleColor, explodeX, explodeY, shotX, shotActive, score, highScore, hitFlash, explodeFlash, notice);
 }
 
-void DisplayManager::renderMazeChaseScreen(int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool ghostVulnerable, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderMazeChaseScreen(int playerX, int playerLane, int playerDirX, int playerDirY, int ghostX, int ghostLane, int pelletX, int pelletLane, uint8_t powerPellets, int score, int highScore, bool ghostVulnerable, bool hitFlash, bool deathFlash, const StatusNotice &notice) {
   if (screenBufferReady_) {
     screen_.fillSprite(TFT_BLACK);
-    renderMazeChase(screen_, playerX, playerLane, ghostX, ghostLane, pelletX, pelletLane, score, highScore, ghostVulnerable, hitFlash, notice);
+    renderMazeChase(screen_, playerX, playerLane, playerDirX, playerDirY, ghostX, ghostLane, pelletX, pelletLane, powerPellets, score, highScore, ghostVulnerable, hitFlash, deathFlash, notice);
     screen_.pushSprite(0, 0);
     return;
   }
   tft_.fillScreen(TFT_BLACK);
-  renderMazeChase(tft_, playerX, playerLane, ghostX, ghostLane, pelletX, pelletLane, score, highScore, ghostVulnerable, hitFlash, notice);
+  renderMazeChase(tft_, playerX, playerLane, playerDirX, playerDirY, ghostX, ghostLane, pelletX, pelletLane, powerPellets, score, highScore, ghostVulnerable, hitFlash, deathFlash, notice);
 }
 
 void DisplayManager::renderAlbumArtScreen(
@@ -1062,7 +1062,7 @@ void DisplayManager::renderLogs(Canvas &canvas, const String *lines, size_t line
 }
 
 template <typename Canvas>
-void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, const StatusNotice &notice) {
+void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ballY, int score, int highScore, bool missFlash, bool paddleFlash, bool wallFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
   canvas.setTextColor(TFT_ORANGE, TFT_BLACK);
@@ -1071,8 +1071,8 @@ void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ball
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
   canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
-  canvas.drawFastVLine(160, 42, 118, TFT_DARKGREY);
-  canvas.fillRoundRect(18, paddleY, 8, 34, 3, TFT_ORANGE);
+  canvas.drawFastVLine(160, 42, 118, wallFlash ? TFT_GREEN : TFT_DARKGREY);
+  canvas.fillRoundRect(18, paddleY, 8, 34, 3, paddleFlash ? TFT_YELLOW : TFT_ORANGE);
   canvas.fillCircle(ballX, ballY, 4, TFT_GREEN);
   if (missFlash) {
     canvas.drawRect(0, 0, 320, 170, TFT_RED);
@@ -1082,7 +1082,7 @@ void DisplayManager::renderPong(Canvas &canvas, int paddleY, int ballX, int ball
 }
 
 template <typename Canvas>
-void DisplayManager::renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderAsteroids(Canvas &canvas, int shipX, int shipY, int asteroidX, int asteroidY, int asteroidSize, int asteroidShape, int explodeX, int explodeY, int bulletY, bool bulletActive, int score, int highScore, bool hitFlash, bool explodeFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
   canvas.setTextColor(BrightPurple, TFT_BLACK);
@@ -1091,12 +1091,31 @@ void DisplayManager::renderAsteroids(Canvas &canvas, int shipX, int shipY, int a
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
   canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
+  for (int i = 0; i < 18; i++) {
+    const int x = 18 + ((i * 47 + (millis() / 8)) % 284);
+    const int y = 42 + ((i * 29) % 112);
+    canvas.drawPixel(x, y, (i & 1) ? TFT_DARKGREY : GameLightBlue);
+  }
   canvas.drawLine(shipX, shipY - 10, shipX - 8, shipY + 8, BrightPurple);
   canvas.drawLine(shipX, shipY - 10, shipX + 8, shipY + 8, BrightPurple);
   canvas.drawLine(shipX - 8, shipY + 8, shipX + 8, shipY + 8, BrightPurple);
-  canvas.drawCircle(asteroidX, asteroidY, 9, GamePink);
-  canvas.drawLine(asteroidX - 6, asteroidY - 3, asteroidX - 2, asteroidY - 9, GamePink);
-  canvas.drawLine(asteroidX + 2, asteroidY + 8, asteroidX + 7, asteroidY + 2, GamePink);
+  const int radius = constrain(asteroidSize, 4, 12);
+  if (asteroidShape % 3 == 0) {
+    canvas.drawCircle(asteroidX, asteroidY, radius, GamePink);
+    canvas.drawLine(asteroidX - radius + 2, asteroidY - 2, asteroidX - 1, asteroidY - radius, GamePink);
+    canvas.drawLine(asteroidX + 2, asteroidY + radius - 1, asteroidX + radius - 1, asteroidY + 2, GamePink);
+  } else if (asteroidShape % 3 == 1) {
+    canvas.drawTriangle(asteroidX, asteroidY - radius, asteroidX - radius, asteroidY + radius - 2, asteroidX + radius, asteroidY + radius - 3, GamePink);
+    canvas.drawLine(asteroidX - radius / 2, asteroidY, asteroidX + radius / 2, asteroidY + 2, GamePink);
+  } else {
+    canvas.drawRoundRect(asteroidX - radius, asteroidY - radius + 2, radius * 2, radius * 2 - 2, 3, GamePink);
+    canvas.drawPixel(asteroidX + radius - 2, asteroidY - radius + 3, TFT_WHITE);
+  }
+  if (explodeFlash) {
+    canvas.drawCircle(explodeX, explodeY, radius + 6, TFT_YELLOW);
+    canvas.drawLine(explodeX - radius - 4, explodeY, explodeX + radius + 4, explodeY, TFT_YELLOW);
+    canvas.drawLine(explodeX, explodeY - radius - 4, explodeX, explodeY + radius + 4, TFT_YELLOW);
+  }
   if (bulletActive) {
     canvas.fillRoundRect(shipX - 2, bulletY, 4, 10, 2, GameLightBlue);
   }
@@ -1108,7 +1127,7 @@ void DisplayManager::renderAsteroids(Canvas &canvas, int shipX, int shipY, int a
 }
 
 template <typename Canvas>
-void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int obstacleY, int obstacleShape, int obstacleColor, int explodeX, int explodeY, int shotX, bool shotActive, int score, int highScore, bool hitFlash, bool explodeFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
   canvas.setTextColor(GameLightBlue, TFT_BLACK);
@@ -1117,13 +1136,32 @@ void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.drawString(scoreText, 312 - canvas.textWidth(scoreText, 2), 8, 2);
   canvas.drawFastHLine(8, 36, 304, TFT_DARKGREY);
+  for (int i = 0; i < 14; i++) {
+    const int x = 18 + ((i * 43 - static_cast<int>(millis() / 6)) % 284 + 284) % 284;
+    const int y = 44 + ((i * 23) % 108);
+    canvas.drawFastHLine(x, y, 5 + (i % 3), (i & 1) ? TFT_DARKGREY : GameLightBlue);
+  }
   const int planeX = 42;
   canvas.fillTriangle(planeX + 18, planeY, planeX - 12, planeY - 10, planeX - 12, planeY + 10, GameLightBlue);
   canvas.drawLine(planeX - 4, planeY, planeX - 22, planeY - 18, GameLightBlue);
   canvas.drawLine(planeX - 4, planeY, planeX - 22, planeY + 18, GameLightBlue);
-  canvas.fillRect(obstacleX - 8, obstacleY - 16, 16, 32, GameBrown);
-  canvas.drawCircle(obstacleX, obstacleY - 22, 5, GameDarkBrown);
-  canvas.drawCircle(obstacleX, obstacleY + 22, 5, GameDarkBrown);
+  const uint16_t colors[3] = {GameBrown, GamePink, TFT_GREEN};
+  const uint16_t obstacleFill = colors[constrain(obstacleColor, 0, 2)];
+  if (obstacleShape % 3 == 0) {
+    canvas.fillRect(obstacleX - 8, obstacleY - 16, 16, 32, obstacleFill);
+    canvas.drawCircle(obstacleX, obstacleY - 22, 5, GameDarkBrown);
+    canvas.drawCircle(obstacleX, obstacleY + 22, 5, GameDarkBrown);
+  } else if (obstacleShape % 3 == 1) {
+    canvas.fillTriangle(obstacleX, obstacleY - 18, obstacleX - 13, obstacleY + 16, obstacleX + 13, obstacleY + 16, obstacleFill);
+  } else {
+    canvas.fillRoundRect(obstacleX - 12, obstacleY - 12, 24, 24, 5, obstacleFill);
+    canvas.drawLine(obstacleX - 12, obstacleY, obstacleX + 12, obstacleY, TFT_BLACK);
+  }
+  if (explodeFlash) {
+    canvas.drawCircle(explodeX, explodeY, 18, TFT_YELLOW);
+    canvas.drawLine(explodeX - 20, explodeY, explodeX + 20, explodeY, TFT_YELLOW);
+    canvas.drawLine(explodeX, explodeY - 20, explodeX, explodeY + 20, TFT_YELLOW);
+  }
   if (shotActive) {
     canvas.fillRoundRect(shotX, planeY - 2, 14, 4, 2, GameLightBlue);
   }
@@ -1135,7 +1173,7 @@ void DisplayManager::renderFlyer(Canvas &canvas, int planeY, int obstacleX, int 
 }
 
 template <typename Canvas>
-void DisplayManager::renderMazeChase(Canvas &canvas, int playerX, int playerLane, int ghostX, int ghostLane, int pelletX, int pelletLane, int score, int highScore, bool ghostVulnerable, bool hitFlash, const StatusNotice &notice) {
+void DisplayManager::renderMazeChase(Canvas &canvas, int playerX, int playerLane, int playerDirX, int playerDirY, int ghostX, int ghostLane, int pelletX, int pelletLane, uint8_t powerPellets, int score, int highScore, bool ghostVulnerable, bool hitFlash, bool deathFlash, const StatusNotice &notice) {
   canvas.setTextDatum(TL_DATUM);
   canvas.fillScreen(TFT_BLACK);
   canvas.setTextColor(TFT_YELLOW, TFT_BLACK);
@@ -1152,12 +1190,40 @@ void DisplayManager::renderMazeChase(Canvas &canvas, int playerX, int playerLane
     }
   }
   canvas.fillCircle(pelletX, lanes[constrain(pelletLane, 0, 2)], 4, TFT_WHITE);
+  const int powerX[4] = {42, 278, 42, 278};
+  const int powerLane[4] = {0, 0, 2, 2};
+  for (int i = 0; i < 4; i++) {
+    if ((powerPellets & (1U << i)) != 0) {
+      canvas.fillCircle(powerX[i], lanes[powerLane[i]], 7, TFT_YELLOW);
+      canvas.drawCircle(powerX[i], lanes[powerLane[i]], 9, GamePink);
+    }
+  }
   const int y = lanes[constrain(playerLane, 0, 2)];
-  canvas.fillCircle(playerX, y, 10, TFT_YELLOW);
-  canvas.fillTriangle(playerX + 4, y, playerX + 13, y - 7, playerX + 13, y + 7, TFT_BLACK);
+  if (deathFlash) {
+    canvas.drawCircle(playerX, y, 12 + static_cast<int>((millis() / 70) % 5), TFT_RED);
+    canvas.drawLine(playerX - 12, y - 12, playerX + 12, y + 12, TFT_RED);
+    canvas.drawLine(playerX + 12, y - 12, playerX - 12, y + 12, TFT_RED);
+  } else {
+    canvas.fillCircle(playerX, y, 10, TFT_YELLOW);
+    if (playerDirY < 0) {
+      canvas.fillTriangle(playerX, y - 4, playerX - 7, y - 13, playerX + 7, y - 13, TFT_BLACK);
+    } else if (playerDirY > 0) {
+      canvas.fillTriangle(playerX, y + 4, playerX - 7, y + 13, playerX + 7, y + 13, TFT_BLACK);
+    } else if (playerDirX < 0) {
+      canvas.fillTriangle(playerX - 4, y, playerX - 13, y - 7, playerX - 13, y + 7, TFT_BLACK);
+    } else {
+      canvas.fillTriangle(playerX + 4, y, playerX + 13, y - 7, playerX + 13, y + 7, TFT_BLACK);
+    }
+    const int eyeX = playerX + (playerDirX == 0 ? 2 : playerDirX * 3);
+    const int eyeY = y + (playerDirY == 0 ? -4 : playerDirY * 3);
+    canvas.fillCircle(eyeX, eyeY, 2, TFT_BLACK);
+  }
   const int gy = lanes[constrain(ghostLane, 0, 2)];
   const uint16_t ghostColor = ghostVulnerable ? (((millis() / 180) % 2) == 0 ? GameBlue : TFT_WHITE) : BrightPurple;
   canvas.fillRoundRect(ghostX - 10, gy - 10, 20, 20, 6, ghostColor);
+  if (ghostVulnerable) {
+    canvas.drawRoundRect(ghostX - 12, gy - 12, 24, 24, 7, TFT_YELLOW);
+  }
   canvas.fillCircle(ghostX - 4, gy - 3, 2, TFT_WHITE);
   canvas.fillCircle(ghostX + 4, gy - 3, 2, TFT_WHITE);
   if (hitFlash) {

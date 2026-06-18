@@ -54,7 +54,12 @@ public:
   bool previousTrack();
   bool startLikedProxyPlaylist();
   bool startPlaylist(const String &playlistUri);
-  bool playQueueItem(const String &itemUri, const String &contextUri);
+  bool playQueueItem(
+      const String &itemUri,
+      const String &contextUri,
+      const String &title = "",
+      const String &artist = "",
+      int index = -1);
   bool setShuffle(bool enabled);
   bool setRepeatMode(const String &repeatState);
   bool transferPlayback(const String &deviceId, bool play);
