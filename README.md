@@ -71,6 +71,9 @@ conventions and the full framework/library dependency inventory live in
 when architecture, coding conventions, board support, APIs, release flow or
 dependencies change.
 
+Local setup, build, upload and release workflow details live in
+[`DEVELOPMENT_ENVIRONMENT.md`](DEVELOPMENT_ENVIRONMENT.md).
+
 ## Product Roadmap
 
 Product ideas, killer features, production-release must-haves and premium
@@ -181,7 +184,7 @@ Browsable URL:
 http://djconnect-<device-model>-XXXXXXXXXXXX.local
 ```
 
-The hostname is the device ID. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`. TXT records include `name`, `device_id`, `client_type`, `version`, `paired`, `api` and `model`.
+The hostname is the device ID. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`. TXT records include `name`, `device_id`, `client_type`, `version`, `paired`, `api` and `model`.
 The firmware does not use or accept persistent legacy IDs such as `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` or `djconnect-[six-digit-code]`. The six-digit setup value is only a temporary `pair_code`.
 
 ### Local Device API
@@ -272,8 +275,7 @@ Micro and the TensorFlow micro_speech frontend: idle mono PCM16 microphone
 chunks are converted into 40-bin features every 10 ms, three feature frames are
 fed into the streaming model, and detection is accepted when the 3-frame sliding
 window reaches the configured cutoff. The LilyGO T-Embed-CC1101 keeps the more
-conservative `0.90` cutoff; ESP32-S3-BOX-3 uses `0.86` to compensate for the
-different microphone/acoustic path.
+conservative `0.90` cutoff.
 
 Wake-word monitoring is available only while the device is in normal mode, not
 already recording voice, and Home Assistant pairing is confirmed. It is stored

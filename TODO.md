@@ -1,28 +1,21 @@
 # DJConnect Firmware Issues And Backlog
 
-Concrete issue and task list after release `v3.1.29`.
+Concrete issue and task list after release `v3.1.31`.
 
 ## Open Issues
 
-- [ ] ESP32-S3-BOX-3 display bring-up still needs physical validation.
-  - Backlight and display buffer initialize in logs, but earlier hardware testing showed a white screen/no text.
-  - Validate TFT controller/init sequence, rotation, backlight polarity and board revision.
 - [ ] Home Assistant sensor reset issue must be verified on the current HA integration.
-  - Firmware status payload is authoritative and release `v3.1.29` still posts periodic status.
+  - Firmware status payload is authoritative and release `v3.1.31` still posts periodic status.
   - If HA sensors briefly populate and then become unknown/pending, fix integration entity refresh/coordinator behavior.
-- [ ] OTA from the physical LilyGO should be re-tested with `v3.1.29`.
+- [ ] OTA from the physical LilyGO should be re-tested with `v3.1.31`.
   - Firmware now releases wake-word/TFLite and active voice/audio resources before GitHub TLS.
   - Confirm GitHub TLS no longer fails with memory allocation errors on no-PSRAM LilyGO hardware.
 - [ ] Okay Nabu wake-word reliability still needs real-room tuning.
-  - LilyGO cutoff is currently `0.90`; ESP32-S3-BOX-3 cutoff is `0.86`.
+  - LilyGO cutoff is currently `0.90`.
   - Validate false positives, missed detections, silence auto-stop and PTT handoff.
 - [ ] MP3 DJ-announcement audio playback needs more stress testing.
   - Test short/long MP3s and repeated HA/web flows.
   - Confirm watchdog stays fed and LED animation remains live.
-- [ ] ESP32-S3-BOX-3 speaker, microphone and button mapping need physical verification.
-  - Top button maps to LilyGO top button.
-  - Touch/center button maps to LilyGO encoder button.
-  - Side buttons map to LilyGO rotary direction.
 - [ ] GitHub Actions emits Node.js 20 deprecation warnings.
   - Current release workflow passes, but actions should be updated or opted into Node.js 24 before GitHub forces the runner default.
 
@@ -170,16 +163,14 @@ Concrete issue and task list after release `v3.1.29`.
 
 ## OTA / Release
 
-- [x] Confirm GitHub Action release binary contains expected `v3.1.28` marker.
-- [x] Confirm both public OTA binary assets are published for `v3.1.28`:
-  - `djconnect-lilygo-t-embed-s3-v3.1.28.bin`;
-  - `djconnect-esp32-s3-box-3-v3.1.28.bin`.
+- [x] Confirm GitHub Action release binary contains expected `v3.1.31` marker.
+- [x] Confirm the public OTA binary asset is published for `v3.1.31`:
+  - `djconnect-lilygo-t-embed-s3-v3.1.31.bin`.
 - [x] Confirm manifest is published with the release.
 - [ ] Confirm manifest uses only the `firmwares` array and no legacy top-level single-device OTA fields on every future release.
 - [ ] Confirm manifest `device` values match ESP OTA validation on every future release:
-  - `lilygo-t-embed-s3`;
-  - `esp32-s3-box-3`.
-- [x] Confirm `min_ha_integration` is derived from the firmware major/minor version (`3.1.28` -> `3.1.0`) and `max_ha_integration` is `<3.2.0`.
+  - `lilygo-t-embed-s3`.
+- [x] Confirm `min_ha_integration` is derived from the firmware major/minor version (`3.1.31` -> `3.1.0`) and `max_ha_integration` is `<3.2.0`.
 - [x] Update release hygiene snapshot checksum for `assets/website/site.webmanifest` after the tagline change.
 - [ ] Confirm OTA update screen shows target version.
 - [ ] Confirm OTA start/progress/complete/failure beeps are simple and not stuttery.

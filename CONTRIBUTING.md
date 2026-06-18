@@ -21,7 +21,9 @@ source files, example configs, logs, diagnostics and screenshots.
 ## Development Setup
 
 Use PlatformIO with the pinned ESP32 platform from `platformio.ini`. The
-supported firmware environment is `t_embed_cc1101`.
+supported firmware environment is `t_embed_cc1101`. See
+[`DEVELOPMENT_ENVIRONMENT.md`](DEVELOPMENT_ENVIRONMENT.md) for the full local
+setup, build, upload and release workflow.
 
 Run native tests when changing pure logic:
 
@@ -36,7 +38,7 @@ Run release-script checks when touching release tooling:
 bash test/native/test_release.sh
 ```
 
-Build the firmware targets:
+Build the firmware target:
 
 ```sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
@@ -76,6 +78,18 @@ update `SYNC_PROMPTS.md` and `PRODUCT_ROADMAP.md` in `pcvantol/djconnect`.
   connected to, approved by or sponsored by Spotify AB.
 - Use the real DJConnect brand assets; do not redraw the logo or icon unless it
   is being intentionally replaced.
+
+## AI-Assisted Development
+
+DJConnect is developed and maintained with AI-assisted and agentic engineering
+workflows, including Codex. AI assistance may be used for code changes,
+documentation, tests, release preparation and cross-repo consistency checks.
+
+All accepted changes remain maintainer-reviewed. Contributors are responsible
+for ensuring their changes are correct, testable, license-compatible and free of
+secrets or private data. Do not include tokens, passwords, private URLs,
+personal data or proprietary third-party material in prompts, issues, logs,
+screenshots or test fixtures.
 
 ## Pull Requests
 

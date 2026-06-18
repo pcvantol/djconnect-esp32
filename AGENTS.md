@@ -255,7 +255,7 @@ mDNS:
 - Service: `_djconnect._tcp`
 - URL: `http://djconnect-<device-model>-XXXXXXXXXXXX.local`
 - TXT records include `name`, `device_id`, `version`, `paired`, `api`, and `model`.
-- LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`; ESP32-S3-BOX-3 uses `djconnect-esp32-s3-box-3-XXXXXXXXXXXX`.
+- LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`.
 
 ## Secrets And Credential Policy
 
@@ -516,7 +516,7 @@ Current web expectations:
 - Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and local HA URL/status.
 - The Home Assistant pairing banner setup link must open in a new tab/window so the local ESP web portal remains loaded.
 - The web portal and captive/setup portal should keep the current DJConnect blue/purple brand styling from the icon/logo. Use blue/purple for headers, panels, primary buttons and pairing surfaces while keeping status colors semantically green/yellow/red.
-- The top web title bar shows `Muziekbediening met karakter`, firmware version and board device model. The status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Hide the battery icon when `battery.available` is false, such as ESP32-S3-BOX-3. Keep the IP address in the WiFi block, not in the top status bar.
+- The top web title bar shows `Muziekbediening met karakter`, firmware version and board device model. The status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Hide the battery icon when `battery.available` is false. Keep the IP address in the WiFi block, not in the top status bar.
 - The Home Assistant URL label in the web portal is `URL`, not `HA URL`.
 - Album art is shown when available.
 - Volume slider range is `0-60`.

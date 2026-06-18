@@ -11,9 +11,13 @@ bash -n scripts/extract_release_changelog.sh
 bash -n scripts/update_build_dependencies.sh
 python3 -m py_compile scripts/minify_webportal.py
 test -s DESIGN_DECISIONS.md
+test -s DEVELOPMENT_ENVIRONMENT.md
 grep -q "Technical Design Decisions" DESIGN_DECISIONS.md
 grep -q "Frameworks, Libraries And Third-Party Dependencies" DESIGN_DECISIONS.md
 grep -q "Release Maintenance Rule" DESIGN_DECISIONS.md
+grep -q "Development Environment" DEVELOPMENT_ENVIRONMENT.md
+grep -q "DEVELOPMENT_ENVIRONMENT.md" README.md
+grep -q "DEVELOPMENT_ENVIRONMENT.md" CONTRIBUTING.md
 grep -q "embedded OTA TLS CA/certificate" README.md
 grep -q "GitHub OTA TLS CA/certificate bundle" AGENTS.md
 grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" README.md

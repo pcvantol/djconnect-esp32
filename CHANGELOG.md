@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Added AI-assisted development hygiene guidance for contributors and security
+  reports.
+- Added `DEVELOPMENT_ENVIRONMENT.md` for local setup, build, upload and release
+  workflow guidance.
+
 ## v3.1.31
 
 ### Changed
