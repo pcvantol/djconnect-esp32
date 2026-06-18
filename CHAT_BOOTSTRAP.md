@@ -1,4 +1,4 @@
-# New Chat Prompt
+# Chat Bootstrap Prompt
 
 Use this prompt to initialize a fresh Codex chat for this repository:
 
