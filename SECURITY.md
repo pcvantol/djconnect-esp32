@@ -1,49 +1,59 @@
-# Security Policy
+# DJConnect Security Policy
 
-## Reporting a Vulnerability
+## Reporting A Vulnerability
 
-If you believe you have found a security vulnerability in DJConnect firmware,
-please report it privately by email:
+Please report security vulnerabilities privately by email:
 
 ```text
 security@djconnect.dev
 ```
 
-Please do not open a public GitHub issue for security-sensitive reports.
+Do not open a public GitHub issue for suspected security vulnerabilities, leaked secrets, credentials, private URLs, exploit details or sensitive logs. Private reporting gives the maintainer time to investigate and prepare a fix before details are widely visible.
 
-When possible, include:
+Useful report details include:
 
-- a clear description of the issue;
-- affected firmware version, board target and commit if known;
-- steps to reproduce;
-- potential impact;
-- any relevant logs, screenshots or proof-of-concept details that do not expose
-  secrets or private systems.
+- Affected repository, version, release tag, commit and component.
+- A clear description of the issue and expected impact.
+- Steps to reproduce or a proof of concept, when safe to share.
+- Relevant logs, screenshots, URLs or configuration details with secrets removed.
+- Whether tokens, credentials, local network access, audio, diagnostics or user data may be exposed.
 
-Avoid sending real WiFi passwords, Home Assistant tokens, OAuth credentials,
-private URLs or other secrets. Redacted examples are preferred.
+Please do not include real Spotify OAuth credentials, Home Assistant tokens, DJConnect bearer tokens, WiFi passwords, private network URLs, raw diagnostics or other secrets in the report. Redacted examples are preferred.
+
+## What To Expect
+
+The project maintainer will review security reports as soon as practical. DJConnect is a small community project, so response times may vary, but reports sent to `security@djconnect.dev` are the preferred path and will be handled with care.
+
+The maintainer may ask for clarifying details and will coordinate any fix, release or disclosure timing privately before public discussion. When a vulnerability is confirmed, the maintainer will work on an appropriate fix, document user impact where needed and publish release notes once the fix is available.
+
+If a report crosses repository boundaries, email `security@djconnect.dev` and include the affected component names. The report can be routed across the Home Assistant integration, Apple app, ESP32 firmware, website or Raspberry Pi client as needed.
 
 ## Supported Versions
 
-Security fixes are normally made against the current active firmware line. Older
-local development builds, prerelease experiments and unpublished forks may not
-receive separate fixes.
+Security fixes for DJConnect ESP32 firmware are normally made against the current active firmware line. Older local development builds, prerelease experiments and unpublished forks may not receive separate fixes.
 
-## Coordinated Disclosure
+## Security Scope
 
-The maintainer will review security reports and may ask for additional
-information. Please give the project reasonable time to investigate and prepare
-a fix before sharing details publicly.
+In scope for this repository:
 
-If the vulnerability affects another DJConnect repository, Home Assistant
-integration behavior or third-party dependency, the fix may require coordinated
-updates across repositories or upstream projects.
+- DJConnect ESP32 firmware code and supported board targets.
+- Local device API, pairing/provisioning behavior, bearer-token storage and validation.
+- OTA behavior, firmware metadata and release tooling.
+- Logs, diagnostics and documentation that could expose credentials or private artifacts.
 
-## Scope
+Out of scope for this repository:
 
-Security reports for this repository should focus on the ESP32 firmware, local
-device API, provisioning behavior, OTA behavior, credential handling, logs,
-diagnostics and repository release tooling.
+- Vulnerabilities in ESP-IDF, Arduino, PlatformIO, Spotify, Home Assistant, GitHub or third-party services themselves.
+- Home Assistant integration, Apple app, Raspberry Pi client or website issues that belong in a separate DJConnect repository, unless the report crosses repository boundaries.
 
-Reports about unrelated third-party services or platforms should be sent to the
-appropriate project or vendor.
+## Safe Research Guidelines
+
+Please avoid actions that could harm users or services:
+
+- Use your own Home Assistant instance, DJConnect device/client, website test session and Spotify account when testing.
+- Do not access, modify or delete data that is not yours.
+- Do not attempt denial-of-service attacks.
+- Do not publicly disclose a vulnerability before a fix or mitigation is available.
+- Do not exfiltrate tokens, passwords, audio, local-network data, private URLs, diagnostics or personal configuration.
+
+Good-faith security research that follows these guidelines is welcome.

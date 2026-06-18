@@ -104,13 +104,11 @@ asset_name_for() {
   if [[ "$CHANNEL" == "beta" ]]; then
     case "$board" in
       t_embed_cc1101) echo "djconnect-lilygo-t-embed-s3-beta-v$version.bin" ;;
-      esp32_s3_box3) echo "djconnect-esp32-s3-box-3-beta-v$version.bin" ;;
       *) fail "unknown release board: $board" ;;
     esac
   else
     case "$board" in
       t_embed_cc1101) echo "djconnect-lilygo-t-embed-s3-v$version.bin" ;;
-      esp32_s3_box3) echo "djconnect-esp32-s3-box-3-v$version.bin" ;;
       *) fail "unknown release board: $board" ;;
     esac
   fi
@@ -123,9 +121,6 @@ write_manifest() {
   local lilygo_asset="$4"
   local lilygo_sha="$5"
   local lilygo_size="$6"
-  local box3_asset="$7"
-  local box3_sha="$8"
-  local box3_size="$9"
   cat > "$manifest" <<EOF
 {
   "version": "$version",
@@ -140,13 +135,6 @@ write_manifest() {
       "asset": "$lilygo_asset",
       "sha256": "$lilygo_sha",
       "size": $lilygo_size
-    },
-    {
-      "board": "esp32_s3_box3",
-      "device": "esp32-s3-box-3",
-      "asset": "$box3_asset",
-      "sha256": "$box3_sha",
-      "size": $box3_size
     }
   ]
 }
@@ -231,9 +219,8 @@ if [[ "$CHANNEL" == "beta" ]]; then
   TAG="v$VERSION-beta"
   MANIFEST="firmware_manifest_beta.json"
 fi
-RELEASE_BOARDS=(t_embed_cc1101 esp32_s3_box3)
+RELEASE_BOARDS=(t_embed_cc1101)
 ASSET="$(asset_name_for t_embed_cc1101 "$VERSION")"
-BOX3_ASSET="$(asset_name_for esp32_s3_box3 "$VERSION")"
 RELEASE_DIR="release"
 FIRMWARE_RELEASE_REPO="${FIRMWARE_RELEASE_REPO:-pcvantol/djconnect-firmware}"
 PIO_BIN="${PIO_BIN:-/Users/pcvantol/.platformio/penv/bin/pio}"
@@ -248,7 +235,7 @@ echo "  tag:     $TAG"
 echo "  channel: $CHANNEL"
 echo "  min HA:  $MIN_HA_INTEGRATION"
 echo "  max HA:  <$MAX_HA_INTEGRATION"
-echo "  assets:  $ASSET, $BOX3_ASSET"
+echo "  asset:   $ASSET"
 echo "  dry-run: $DRY_RUN"
 
 if git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -263,10 +250,10 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would update release examples/version references in platformio.ini, version files, README, CHANGELOG and AGENTS if present."
-  echo "Would update and upgrade PlatformIO Core, global packages/tools and project packages for t_embed_cc1101 and esp32_s3_box3 before building."
+  echo "Would update and upgrade PlatformIO Core, global packages/tools and project packages for t_embed_cc1101 before building."
   echo "Would write $RELEASE_DIR/build-dependencies.diff and require THIRD_PARTY_NOTICES.md / DESIGN_DECISIONS.md review if dependency versions changed."
-  echo "Would build t_embed_cc1101 and esp32_s3_box3 in parallel with isolated PLATFORMIO_BUILD_DIR roots and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
-  echo "Would copy firmware to $RELEASE_DIR/$ASSET and $RELEASE_DIR/$BOX3_ASSET and write $RELEASE_DIR/$MANIFEST."
+  echo "Would build t_embed_cc1101 with isolated PLATFORMIO_BUILD_DIR root and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
+  echo "Would copy firmware to $RELEASE_DIR/$ASSET and write $RELEASE_DIR/$MANIFEST."
   echo "Would commit, tag and push source repo."
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
     echo "Would publish assets to firmware repo path: $PUBLISH_FIRMWARE_REPO."
@@ -295,9 +282,6 @@ REPORT_DIR="$RELEASE_DIR" scripts/update_build_dependencies.sh "${RELEASE_BOARDS
 LILYGO_ASSET=""
 LILYGO_SHA256=""
 LILYGO_SIZE=""
-BOX3_ASSET=""
-BOX3_SHA256=""
-BOX3_SIZE=""
 
 build_firmware_board() {
   local board="$1"
@@ -350,11 +334,6 @@ for board in "${RELEASE_BOARDS[@]}"; do
       LILYGO_SHA256="$asset_sha"
       LILYGO_SIZE="$asset_size"
       ;;
-    esp32_s3_box3)
-      BOX3_ASSET="$asset"
-      BOX3_SHA256="$asset_sha"
-      BOX3_SIZE="$asset_size"
-      ;;
   esac
 done
 
@@ -364,10 +343,7 @@ write_manifest \
   "$TAG" \
   "$LILYGO_ASSET" \
   "$LILYGO_SHA256" \
-  "$LILYGO_SIZE" \
-  "$BOX3_ASSET" \
-  "$BOX3_SHA256" \
-  "$BOX3_SIZE"
+  "$LILYGO_SIZE"
 
 run git add .
 if git diff --cached --quiet; then
@@ -388,7 +364,7 @@ if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
     run cp "$RELEASE_DIR/$asset.sha256" "$PUBLISH_FIRMWARE_REPO/$asset.sha256"
   done
   run cp "$RELEASE_DIR/$MANIFEST" "$PUBLISH_FIRMWARE_REPO/$MANIFEST"
-  run_in_dir "$PUBLISH_FIRMWARE_REPO" git add "$LILYGO_ASSET" "$LILYGO_ASSET.sha256" "$BOX3_ASSET" "$BOX3_ASSET.sha256" "$MANIFEST"
+  run_in_dir "$PUBLISH_FIRMWARE_REPO" git add "$LILYGO_ASSET" "$LILYGO_ASSET.sha256" "$MANIFEST"
   run_in_dir "$PUBLISH_FIRMWARE_REPO" git commit -m "Release DJConnect firmware $TAG"
   if ! (cd "$PUBLISH_FIRMWARE_REPO" && git rev-parse "$TAG" >/dev/null 2>&1); then
     run_in_dir "$PUBLISH_FIRMWARE_REPO" git tag "$TAG"
@@ -411,8 +387,6 @@ if [[ "$GH_RELEASE" == "true" ]]; then
     GH_RELEASE_ARGS+=(
       "$RELEASE_DIR/$LILYGO_ASSET"
       "$RELEASE_DIR/$LILYGO_ASSET.sha256"
-      "$RELEASE_DIR/$BOX3_ASSET"
-      "$RELEASE_DIR/$BOX3_ASSET.sha256"
       "$RELEASE_DIR/$MANIFEST"
     )
     run gh "${GH_RELEASE_ARGS[@]}"

@@ -10,7 +10,7 @@ license that applies to this repository.
 ## What Belongs Here
 
 This repository contains the DJConnect ESP32-S3 firmware for the LilyGO
-T-Embed-CC1101 and the early ESP32-S3-BOX-3 bring-up target. Firmware source,
+T-Embed-CC1101. Firmware source,
 embedded web portal code, device UI behavior, Home Assistant device-layer
 support, docs, tests, build scripts and release workflow updates belong here.
 
@@ -20,9 +20,8 @@ source files, example configs, logs, diagnostics and screenshots.
 
 ## Development Setup
 
-Use PlatformIO with the pinned ESP32 platform from `platformio.ini`. The default
-production environment is `t_embed_cc1101`; the BOX-3 validation environment is
-`esp32_s3_box3`.
+Use PlatformIO with the pinned ESP32 platform from `platformio.ini`. The
+supported firmware environment is `t_embed_cc1101`.
 
 Run native tests when changing pure logic:
 
@@ -41,7 +40,6 @@ Build the firmware targets:
 
 ```sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
-/Users/pcvantol/.platformio/penv/bin/pio run -e esp32_s3_box3
 ```
 
 After web portal markup, CSS or JavaScript changes, regenerate the embedded
@@ -95,10 +93,10 @@ Firmware releases use `./release.sh X.Y.Z` from the repository root. Versions
 and tags use semantic versioning with a `vX.Y.Z` Git tag. Always run
 `./release.sh X.Y.Z --dry-run` first.
 
-The release script builds board-specific firmware assets for the LilyGO
-T-Embed-CC1101 and ESP32-S3-BOX-3 targets, writes the firmware manifest, commits
-the source release, creates the tag and pushes it. GitHub Actions publishes the
-public firmware release artifacts for Home Assistant OTA distribution.
+The release script builds the LilyGO T-Embed-CC1101 firmware asset, writes the
+firmware manifest, commits the source release, creates the tag and pushes it.
+GitHub Actions publishes the public firmware release artifacts for Home
+Assistant OTA distribution.
 
 After a release, keep related DJConnect repositories synchronized when firmware
 behavior changes shared contracts, setup flows, OTA metadata, Assist behavior,

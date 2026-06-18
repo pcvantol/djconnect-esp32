@@ -81,22 +81,19 @@ echo "$dry_run_output" | grep -q "channel: stable"
 echo "$dry_run_output" | grep -q "min HA:  98.76.0"
 echo "$dry_run_output" | grep -q "max HA:  <98.77.0"
 echo "$dry_run_output" | grep -q "djconnect-lilygo-t-embed-s3-v98.76.54.bin"
-echo "$dry_run_output" | grep -q "djconnect-esp32-s3-box-3-v98.76.54.bin"
 echo "$dry_run_output" | grep -q "Would update and upgrade PlatformIO Core, global packages/tools and project packages"
 echo "$dry_run_output" | grep -q "Would write release/build-dependencies.diff and require THIRD_PARTY_NOTICES.md / DESIGN_DECISIONS.md review"
-echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 and esp32_s3_box3 in parallel with isolated PLATFORMIO_BUILD_DIR roots"
+echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 with isolated PLATFORMIO_BUILD_DIR root"
 echo "$dry_run_output" | grep -q "DJCONNECT_VERSION=98.76.54 / DJCONNECT_VERSION_TAG=v98.76.54"
 echo "$dry_run_output" | grep -q "Would commit, tag and push source repo"
 echo "$dry_run_output" | grep -q "GitHub Actions will build/publish"
 grep -q '"$RELEASE_DIR/$LILYGO_ASSET"' release.sh
-grep -q '"$RELEASE_DIR/$BOX3_ASSET"' release.sh
 grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${{ matrix.env }}"' .github/workflows/release-firmware.yml
 grep -q 'scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md' .github/workflows/release-firmware.yml
 grep -q 'body_path: release-notes.md' .github/workflows/release-firmware.yml
 grep -q 'release/${{ needs.release-info.outputs.lilygo_bin }}' .github/workflows/release-firmware.yml
-grep -q 'release/${{ needs.release-info.outputs.box3_bin }}' .github/workflows/release-firmware.yml
 grep -q 'release/${{ needs.release-info.outputs.manifest }}' .github/workflows/release-firmware.yml
 if grep -q '^[[:space:]]*release/\*$' .github/workflows/release-firmware.yml; then
   echo "GitHub release workflow must not publish every generated release artifact" >&2
@@ -133,7 +130,6 @@ echo "$beta_output" | grep -q "channel: beta"
 echo "$beta_output" | grep -q "min HA:  98.76.0"
 echo "$beta_output" | grep -q "max HA:  <98.77.0"
 echo "$beta_output" | grep -q "djconnect-lilygo-t-embed-s3-beta-v98.76.55.bin"
-echo "$beta_output" | grep -q "djconnect-esp32-s3-box-3-beta-v98.76.55.bin"
 echo "$beta_output" | grep -q "firmware_manifest_beta.json"
 
 beta_prerelease_output="$(./release.sh 98.76.57 --channel beta --gh-release --dry-run)"

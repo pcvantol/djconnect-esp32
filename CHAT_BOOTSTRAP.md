@@ -30,7 +30,6 @@ Belangrijke regels:
 - Release tooling geraakt? Draai `bash test/native/test_release.sh`.
 - Firmware build:
   `/Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101`
-  `/Users/pcvantol/.platformio/penv/bin/pio run -e esp32_s3_box3`
 - Release dry-run:
   `./release.sh X.Y.Z --dry-run`
 - Release:

@@ -30,7 +30,7 @@ PIO_BIN="${PIO_BIN:-/Users/pcvantol/.platformio/penv/bin/pio}"
 [[ -x "$PIO_BIN" ]] || PIO_BIN="pio"
 
 if [[ "$#" -eq 0 ]]; then
-  ENVIRONMENTS=(t_embed_cc1101 esp32_s3_box3)
+  ENVIRONMENTS=(t_embed_cc1101)
 else
   ENVIRONMENTS=("$@")
 fi

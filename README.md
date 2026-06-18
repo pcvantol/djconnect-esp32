@@ -2,7 +2,7 @@
 
 DJConnect. Muziekbediening met karakter.
 
-DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101, with an early ESP32-S3-BOX-3 bring-up environment. The device is a Home Assistant paired playback remote with a display, rotary encoder, top button, LED ring, web portal and Home Assistant device integration.
+DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. The device is a Home Assistant paired playback remote with a display, rotary encoder, top button, LED ring, web portal and Home Assistant device integration.
 
 DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotify OAuth credentials or call the Spotify Web API directly. Playback commands are sent to the Home Assistant integration as generic backend-agnostic commands, so Home Assistant can proxy them to Spotify today or another playback backend such as Sonos or `media_player` later.
 
@@ -40,20 +40,15 @@ DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotif
 
 ## Hardware
 
-Supported firmware targets:
+Supported firmware target:
 
 - LilyGO T-Embed-CC1101 / T-Embed S3 through PlatformIO environment `t_embed_cc1101`.
-- Experimental ESP32-S3-BOX-3 bring-up through PlatformIO environment `esp32_s3_box3`.
 
 The LilyGO build uses the ST7789 display, rotary encoder with center button,
 top button, BQ27220 battery gauge, WS2812 LED ring, built-in speaker cues and
 microphone for push-to-talk.
 
-The ESP32-S3-BOX-3 build uses the board display, speaker, microphone and button
-mapping under `BoardProfile.h`. It does not expose a battery gauge or LED ring,
-so those indicators and animations stay hidden/disabled on that board.
-
-Both targets use the pinned pioarduino ESP-IDF 5.3 / Arduino ESP32 3.x toolchain.
+The firmware uses the pinned pioarduino ESP-IDF 5.3 / Arduino ESP32 3.x toolchain.
 Arduino ESP32 2.x / ESP-IDF 4.x compatibility is not maintained.
 
 ## Important Limitations
@@ -374,7 +369,7 @@ Queue, playlist and output data are supplied by the Home Assistant integration. 
 
 Keep new provisioning writes in `ProvisioningController`, power/sleep/watchdog decisions in `PowerController`, pure menu counts/options in `DJConnectMenuModel`, and long HTTP timeout policy through `NetworkActivity`. This keeps `DJConnectApp` focused on orchestration instead of becoming the owner of every subsystem.
 
-The ESP32-S3-BOX-3 PlatformIO environment uses the Espressif `esp32s3box` board definition so PSRAM-capable Box hardware boots with PSRAM enabled. The LilyGO environment stays on the existing no-PSRAM `esp32-s3-devkitc-1` definition until a supported LilyGO T-Embed-CC1101 PSRAM module variant is explicitly verified.
+The LilyGO environment stays on the existing no-PSRAM `esp32-s3-devkitc-1` definition until a supported LilyGO T-Embed-CC1101 PSRAM module variant is explicitly verified.
 
 ## Architecture Decisions
 
@@ -400,7 +395,7 @@ The device Settings menu includes a `Stress test` toggle. This is a local render
 
 ## OTA Firmware Updates
 
-Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries are board-specific: `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` for LilyGO and `djconnect-esp32-s3-box-3-vX.Y.Z.bin` for ESP32-S3-BOX-3. The manifest uses a `firmwares` array with each board profile, target device, asset, SHA256 and size; Home Assistant must select the entry that matches the paired device model. `min_ha_integration` and `max_ha_integration` are derived from the firmware major/minor version, so firmware `X.Y.Z` publishes `min_ha_integration: "X.Y.0"` and exclusive `max_ha_integration: "X.(Y+1).0"`.
+Home Assistant can call `POST /api/device/ota` with a valid bearer token and firmware URL. The device checks the target device type and battery/charging state before starting OTA. Release binaries use the LilyGO asset name `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`. The manifest uses a `firmwares` array with the board profile, target device, asset, SHA256 and size; Home Assistant must select the entry that matches the paired device model. `min_ha_integration` and `max_ha_integration` are derived from the firmware major/minor version, so firmware `X.Y.Z` publishes `min_ha_integration: "X.Y.0"` and exclusive `max_ha_integration: "X.(Y+1).0"`.
 
 Local development builds still show `vdev` on the device, but the Home Assistant/device API reports dev firmware as OTA-comparable version `0.0.0`. This keeps local flashes clearly recognizable while ensuring every published `X.Y.Z` firmware release is seen as an upgrade from a dev build.
 
@@ -412,7 +407,7 @@ During normal boot, the display shows the DJConnect tagline `Muziekbediening met
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, `release/djconnect-esp32-s3-box-3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. The pushed git tag then triggers the GitHub Action, which performs the same dependency update step, builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that both compiled firmware images contain the expected `vX.Y.Z` version tag before publishing both OTA assets and their `.sha256` files. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. The pushed git tag then triggers the GitHub Action, which performs the same dependency update step, builds and publishes the public firmware release in `pcvantol/djconnect-firmware`. The action verifies that the compiled firmware image contains the expected `vX.Y.Z` version tag before publishing the OTA asset and its `.sha256` file. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
 
 The embedded web portal lives in `src/WebPortal.cpp` as a PROGMEM raw literal.
 Run `python3 scripts/minify_webportal.py` after changing the portal markup,
@@ -431,7 +426,7 @@ Before publishing firmware, also revalidate the embedded OTA TLS CA/certificate
 bundle in `include/GitHubTls.h` against the current GitHub API and release-asset
 redirect certificate chains.
 
-Beta firmware uses the same flow with `--channel beta` or a `vX.Y.Z-beta` tag. Beta assets are named `djconnect-lilygo-t-embed-s3-beta-vX.Y.Z.bin` and `djconnect-esp32-s3-box-3-beta-vX.Y.Z.bin`, the manifest is `firmware_manifest_beta.json`, and the GitHub release is marked as a prerelease.
+Beta firmware uses the same flow with `--channel beta` or a `vX.Y.Z-beta` tag. Beta assets are named `djconnect-lilygo-t-embed-s3-beta-vX.Y.Z.bin`, the manifest is `firmware_manifest_beta.json`, and the GitHub release is marked as a prerelease.
 
 Old public firmware releases, tags and workflow runs can be reviewed and pruned
 with the separate dry-run first cleanup helper. Use `--keep-runs` when you want
@@ -495,7 +490,7 @@ Build firmware:
 Refresh build dependencies before a manual verification build:
 
 ```bash
-scripts/update_build_dependencies.sh t_embed_cc1101 esp32_s3_box3
+scripts/update_build_dependencies.sh t_embed_cc1101
 ```
 
 The firmware environment is pinned to the pioarduino ESP32 platform line that

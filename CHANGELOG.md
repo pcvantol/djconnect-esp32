@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.1.31
+
+### Changed
+
+- Removed the ESP32-S3-BOX-3 PlatformIO build target and release/CI publishing
+  path so firmware releases publish only the supported LilyGO T-Embed S3 asset.
+- Updated release-cycle documentation to keep `CHAT_BOOTSTRAP.md` current for
+  future Codex sessions.
+- Added community and security documentation, including private vulnerability
+  reporting through `security@djconnect.dev`.
+
 ## v3.1.30
 
 ### Changed

@@ -4,7 +4,7 @@ Guidance for coding agents working on the DJConnect ESP32-S3 firmware.
 
 ## Project Overview
 
-DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3, with an early ESP32-S3-BOX-3 bring-up environment. It is a Home Assistant paired playback remote with:
+DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3. It is a Home Assistant paired playback remote with:
 
 - TFT now-playing UI, menus, logs, album art, queue and sound output screens.
 - Rotary encoder and top-button controls.
@@ -14,11 +14,7 @@ DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP3
 - Home Assistant status publishing and native device command handling.
 - Home Assistant device-layer support: pairing, mDNS discovery, device API, status posting and OTA trigger endpoints.
 
-The default production PlatformIO environment is `t_embed_cc1101`.
-The experimental BOX-3 bring-up environment is `esp32_s3_box3`; it currently
-targets physical display, speaker, microphone and button validation. It has no
-battery gauge or LED ring, and those UI indicators/animations must stay hidden
-or disabled for that board profile.
+The supported PlatformIO environment is `t_embed_cc1101`.
 It is pinned to the pioarduino ESP32 platform line that uses ESP-IDF 5.3 with
 Arduino ESP32 3.x compatibility. Do not add Arduino ESP32 2.x / ESP-IDF 4.x
 fallback code unless the user explicitly changes the supported toolchain.
@@ -46,7 +42,7 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `platformio.ini`: PlatformIO board/env/build flags.
 - `src/main.cpp`: tiny Arduino entrypoint; keep real behavior in classes.
 - `include/DJConnectApp.h`, `src/DJConnectApp.cpp`: top-level app orchestration.
-- `include/BoardProfile.h`: board-specific pinout, device model and hardware capability flags for the LilyGO and BOX-3 environments.
+- `include/BoardProfile.h`: board-specific pinout, device model and hardware capability flags.
 - `include/Config.h`: shared constants, version, selected board pins and timing.
 - `include/AppState.h`: shared state structs.
 - `include/LogicHelpers.h`: pure helper functions with native unit tests.
@@ -125,16 +121,15 @@ To also publish assets into the public firmware repo:
 
 The release script keeps local dev defaults as `dev` / `vdev` and injects the
 release version through PlatformIO build flags. Do not hardcode release versions
-into `include/Config.h`. Release builds publish both supported firmware assets:
-`t_embed_cc1101` as `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and
-`esp32_s3_box3` as `djconnect-esp32-s3-box-3-vX.Y.Z.bin`; beta releases use the
-same board split with `beta-vX.Y.Z` asset names. The manifest uses a
-`firmwares` array for board-specific OTA selection and does not keep top-level
-single-device asset fields. `min_ha_integration` is derived from the firmware
-major/minor version, so firmware `X.Y.Z` publishes `X.Y.0` unless the release
-command explicitly overrides it. Before firmware builds, release tooling must
-run `scripts/update_build_dependencies.sh` to upgrade PlatformIO Core and update
-global/project PlatformIO packages for both board environments. Review the
+into `include/Config.h`. Release builds publish the LilyGO firmware asset
+`djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`; beta releases use
+`djconnect-lilygo-t-embed-s3-beta-vX.Y.Z.bin`. The manifest uses a `firmwares`
+array for OTA selection and does not keep top-level single-device asset fields.
+`min_ha_integration` is derived from the firmware major/minor version, so
+firmware `X.Y.Z` publishes `X.Y.0` unless the release command explicitly
+overrides it. Before firmware builds, release tooling must run
+`scripts/update_build_dependencies.sh` to upgrade PlatformIO Core and update
+global/project PlatformIO packages for the LilyGO environment. Review the
 generated build-dependency diff; if framework, library or tool versions changed,
 update `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing.
 Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so a

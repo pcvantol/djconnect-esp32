@@ -105,12 +105,13 @@ Sources:
 
 - `include/BoardProfile.h`
 - `include/Config.h`
-- `platformio.ini` environments `t_embed_cc1101` and `esp32_s3_box3`
+- `platformio.ini` environment `t_embed_cc1101`
 
 Why:
 
-- The LilyGO T-Embed S3 and ESP32-S3-BOX-3 share the app logic but differ in
-  display, buttons, battery and LED-ring hardware.
+- Board-specific settings are isolated in `BoardProfile.h` so the LilyGO build
+  can stay focused on its verified display, buttons, battery and LED-ring
+  hardware.
 - Compile-time capability flags keep unsupported hardware paths out of runtime
   behavior without adding legacy fallback formats or generic device IDs.
 
