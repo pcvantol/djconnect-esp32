@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.1.35
+
+### Added
+
+- Added offline CI validation for the committed Postman collections so device
+  API examples stay parseable, placeholder-based and free of accidental
+  secrets.
+
 ## v3.1.34
 
 ### Changed
