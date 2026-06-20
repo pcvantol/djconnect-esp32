@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v3.1.34
 
 ### Changed
 
@@ -10,6 +10,8 @@
 - Clarified release tooling output so maintainer-run releases explicitly verify
   or create the public firmware GitHub release after pushing assets to
   `pcvantol/djconnect-firmware`.
+- Removed the remaining inactive ESP32-S3-BOX-3 board profile code so the
+  firmware source now matches the LilyGO-only build and release contract.
 
 ## v3.1.33
 

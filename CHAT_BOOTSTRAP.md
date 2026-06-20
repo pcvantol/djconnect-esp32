@@ -15,12 +15,13 @@ Lees eerst:
 Context:
 - DJConnect ESP32-S3 firmware repo.
 - Huidige licentie is MIT.
-- Laatste release is v3.1.33, commit e70eb0a.
-- v3.1.33 publiceert alleen het LilyGO T-Embed S3 firmware asset:
-  `djconnect-lilygo-t-embed-s3-v3.1.33.bin`, `.sha256` en
+- Laatste release is v3.1.34.
+- v3.1.34 publiceert alleen het LilyGO T-Embed S3 firmware asset:
+  `djconnect-lilygo-t-embed-s3-v3.1.34.bin`, `.sha256` en
   `firmware_manifest.json`.
 - De ESP32-S3-BOX-3 PlatformIO/release/CI target is verwijderd; niet opnieuw
-  toevoegen tenzij de gebruiker expliciet nieuwe board support vraagt.
+  toevoegen tenzij de gebruiker expliciet nieuwe board support vraagt. Ook de
+  resterende inactive BOX-3 board-profile code is verwijderd.
 - Community/security-documentatie en security-contact blijven actueel:
   `security@djconnect.dev`.
 - GitHub repo hygiene: secret scanning, push protection, Dependabot alerts en
