@@ -235,7 +235,7 @@ The ESP stores one Home Assistant URL for runtime traffic:
 
 `ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant sends a Nabu Casa URL as `ha_local_url`, the ESP rejects pairing instead of entering a half-paired state. Status, playback and voice calls always use the local URL. Cloud/Nabu Casa URLs are not stored or used by the ESP runtime; they belong only in Home Assistant's backend/OAuth configuration flows.
 
-Postman collections are available under `postman/`. `DJConnect ESP API.postman_collection.json` documents the protected Home Assistant device-layer endpoints, and `DJConnect Local API.postman_collection.json` covers the local web portal/API test routes. Import one of them and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing when testing protected routes.
+Postman collections are available under `postman/`. `DJConnect ESP API.postman_collection.json` documents the protected Home Assistant device-layer endpoints, and `DJConnect Local API.postman_collection.json` covers the local web portal/API test routes. Import one of them and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing when testing protected routes. CI runs an offline collection sanity check with `python3 test/native/test_postman_collections.py` so committed collections stay parseable, placeholder-based and free of accidental secrets.
 
 ## Playback Provisioning
 

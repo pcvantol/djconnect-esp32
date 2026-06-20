@@ -22,8 +22,8 @@ Primary sources used:
   dependency attribution.
 - `include/*.h` and `src/*.cpp` for module boundaries and implementation
   patterns.
-- `test/native/test_logic.cpp` and `test/native/test_release.sh` for testable
-  design contracts.
+- `test/native/test_logic.cpp`, `test/native/test_release.sh` and
+  `test/native/test_postman_collections.py` for testable design contracts.
 
 ## Language And Runtime Split
 
@@ -31,7 +31,7 @@ Primary sources used:
 | --- | --- | --- |
 | C++17 / Arduino C++ | Firmware runtime, device logic, rendering, HTTP APIs, audio, OTA and hardware control | `include/`, `src/`, `test/native/test_logic.cpp` |
 | Bash | Release and hygiene automation | `release.sh`, `scripts/cleanup_old_releases.sh`, `test/native/test_release.sh` |
-| Python | PlatformIO upload/monitor helper hook | `scripts/platformio_upload_monitor_delay.py` |
+| Python | PlatformIO upload/monitor helper hook and offline repository checks | `scripts/platformio_upload_monitor_delay.py`, `test/native/test_postman_collections.py` |
 | HTML / CSS / JavaScript | Embedded captive portal and web portal served from firmware | `src/WebPortal.cpp`, captive portal HTML in `src/DJConnectApp.cpp` |
 | JSON | Postman collections, web manifest, model metadata and release manifest output | `postman/`, `assets/website/site.webmanifest`, `third_party/micro_wake_word/okay_nabu.json` |
 | RGB565 / binary assets | Embedded display assets and wake-word model asset | `assets/esp_display/embedded/`, `third_party/micro_wake_word/okay_nabu.tflite` |
@@ -380,6 +380,7 @@ Sources:
 - `scripts/minify_webportal.py`
 - `scripts/extract_release_changelog.sh`
 - `test/native/test_release.sh`
+- `test/native/test_postman_collections.py`
 - `platformio.ini`
 - `README.md` OTA sections
 
@@ -478,6 +479,9 @@ Observed conventions:
   `client_type:"esp32"`.
 - ESP-to-HA payloads do not use `device_type`.
 - Device API and Postman examples use placeholders for secrets.
+- CI validates committed Postman collections offline so request JSON, protected
+  device-route bearer placeholders and secret-free placeholder values stay
+  consistent without requiring a live ESP.
 - Release manifests use a board-specific `firmwares` array.
 
 Sources:
@@ -485,6 +489,8 @@ Sources:
 - `src/DJConnectApiServer.cpp`
 - `src/SpotifyClient.cpp`
 - `postman/*.postman_collection.json`
+- `test/native/test_postman_collections.py`
+- `.github/workflows/ci.yml`
 - `release.sh`
 - `AGENTS.md`
 
