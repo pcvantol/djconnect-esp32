@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.1.36
+
+### Changed
+
+- Cleaned the public firmware distribution repository so OTA metadata points to
+  the current LilyGO-only release and old repository-stored firmware binaries,
+  including inactive ESP32-S3-BOX-3 artifacts, are no longer listed.
+
 ## v3.1.35
 
 ### Added
