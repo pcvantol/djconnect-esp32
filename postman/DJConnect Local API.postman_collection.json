@@ -880,7 +880,7 @@
               "raw": "{\n  \"url\": \"{{firmware_url}}\",\n  \"sha256\": \"{{firmware_sha256}}\",\n  \"version\": \"{{firmware_version}}\",\n  \"device\": \"{{device_model}}\"\n}"
             },
             "url": "{{base_url}}/api/device/ota",
-            "description": "Protected OTA endpoint. The device field must match the active board profile, for example lilygo-t-embed-s3 or esp32-s3-box-3."
+            "description": "Protected OTA endpoint. The device field must match the active LilyGO board profile: lilygo-t-embed-s3."
           },
           "response": []
         },

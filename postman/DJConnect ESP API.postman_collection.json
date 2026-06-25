@@ -583,7 +583,7 @@
                 "ota"
               ]
             },
-            "description": "Starts OTA firmware update after bearer validation and battery/charging checks. Use the firmware URL that matches the active device model: lilygo-t-embed-s3 or esp32-s3-box-3. The ESP responds before rebooting."
+            "description": "Starts OTA firmware update after bearer validation and battery/charging checks. Use the firmware URL that matches the active LilyGO device model: lilygo-t-embed-s3. The ESP responds before rebooting."
           },
           "response": []
         },
