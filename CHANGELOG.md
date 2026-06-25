@@ -5,8 +5,10 @@
 ### Changed
 
 - Synced handoff and Postman OTA documentation with the canonical shared sync
-  prompt: `v3.1.36` is the latest verified release and LilyGO T-Embed S3 is the
+  prompt: `v3.1.37` is the latest verified release and LilyGO T-Embed S3 is the
   only published ESP firmware target.
+- Confirmed post-release cleanup so the source and public firmware repositories
+  retain `v3.1.37` as the current stable release line.
 
 ## v3.1.36
 

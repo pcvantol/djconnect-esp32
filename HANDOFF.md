@@ -76,6 +76,10 @@ Latest release verification for `v3.1.37`:
   only `djconnect-lilygo-t-embed-s3-v3.1.37.bin`,
   `djconnect-lilygo-t-embed-s3-v3.1.37.bin.sha256` and
   `firmware_manifest.json`.
+- Post-release cleanup kept `v3.1.37` as the current stable line. Public
+  firmware repo release/tag `v3.1.36` was removed; source repo stable tags
+  `v3.1.31` through `v3.1.36` plus three old release workflow runs were
+  removed. Local stale tags were pruned to match the remote cleanup.
 - Branch protection/admin enforcement on `pcvantol/djconnect-esp32/main` was
   restored after the controlled maintainer release window.
 
