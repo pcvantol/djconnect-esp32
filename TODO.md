@@ -1,7 +1,6 @@
 # DJConnect Firmware Issues And Backlog
 
-Concrete issue and task list after release `v3.1.37` and the `3.2.x` protocol
-sync work.
+Concrete issue and task list after release `v3.2.0`.
 
 ## Open Issues
 

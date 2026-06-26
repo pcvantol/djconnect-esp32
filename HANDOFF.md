@@ -6,11 +6,10 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is
 
 Current repo state includes:
 
-- Latest verified firmware release from this repo: `v3.1.37`. Current protocol
-  sync work targets the `v3.2.x` firmware/HA contract. Source repo
+- Latest verified firmware release from this repo: `v3.2.0`. Source repo
   `pcvantol/djconnect-esp32` and public firmware repo
-  `pcvantol/djconnect-firmware` both have pushed `v3.1.37` tags. The public
-  firmware GitHub release is `DJConnect Firmware v3.1.37` and contains only the
+  `pcvantol/djconnect-firmware` both have pushed `v3.2.0` tags. The public
+  firmware GitHub release is `DJConnect firmware v3.2.0` and contains only the
   LilyGO binary, matching `.sha256`, and `firmware_manifest.json`; generated
   local `release/` artifacts remain ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
@@ -18,7 +17,7 @@ Current repo state includes:
 - Board profiles are split through `BoardProfile.h`. The supported PlatformIO build is the LilyGO `t_embed_cc1101` / `lilygo-t-embed-s3` target.
 - The ESP32-S3-BOX-3 PlatformIO build target, release artifact and GitHub
   Actions matrix entry were removed in `v3.1.31` and remain absent in
-  `v3.1.37`; the remaining inactive BOX-3 board-profile code was also removed.
+  `v3.2.0`; the remaining inactive BOX-3 board-profile code was also removed.
   The LilyGO env remains on the existing no-PSRAM `esp32-s3-devkitc-1`
   definition until a specific PSRAM-equipped T-Embed-CC1101 variant is
   verified.
@@ -74,19 +73,19 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Latest release verification for `v3.1.37`:
+Latest release verification for `v3.2.0`:
 
-- `./release.sh 3.1.37 --publish-firmware-repo ../djconnect-firmware` completed
+- `./release.sh 3.2.0 --publish-firmware-repo ../djconnect-firmware --gh-release` completed
   a clean LilyGO release build with unchanged PlatformIO dependency versions.
-- The source repo tag and public firmware repo tag `v3.1.37` were pushed.
+- The source repo tag and public firmware repo tag `v3.2.0` were pushed.
 - The public firmware GitHub release was created and verified as Latest with
-  only `djconnect-lilygo-t-embed-s3-v3.1.37.bin`,
-  `djconnect-lilygo-t-embed-s3-v3.1.37.bin.sha256` and
+  only `djconnect-lilygo-t-embed-s3-v3.2.0.bin`,
+  `djconnect-lilygo-t-embed-s3-v3.2.0.bin.sha256` and
   `firmware_manifest.json`.
-- Post-release cleanup kept `v3.1.37` as the current stable line. Public
-  firmware repo release/tag `v3.1.36` was removed; source repo stable tags
-  `v3.1.31` through `v3.1.36` plus three old release workflow runs were
-  removed. Local stale tags were pruned to match the remote cleanup.
+- Post-release cleanup kept `v3.2.0` as the current stable line. Public
+  firmware repo release/tag `v3.1.37` was removed; source repo stable tag
+  `v3.1.37` plus old release workflow runs were removed. Local stale tags were
+  pruned to match the remote cleanup.
 - Branch protection/admin enforcement on `pcvantol/djconnect-esp32/main` was
   restored after the controlled maintainer release window.
 
