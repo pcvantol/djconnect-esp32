@@ -237,11 +237,16 @@ playback source/default-playlist override options. Source, device and
 default-playlist choices belong in the Home Assistant integration, and
 user-facing setup copy labels the client URL as `Client adres`.
 
-Home Assistant `v3.1.z` and ESP `v3.1.z` are matched by major/minor version, not
+Home Assistant `v3.2.z` and ESP `v3.2.z` are matched by major/minor version, not
 by patch. HTTP 426 with `error:"version_mismatch"` is treated as an update
 requirement and does not clear the stored pairing token. Backend availability is
 also runtime state: `backend_available:false` maps to a localized Home Assistant
-Spotify-connection hint, while 401/403/404 mark pairing stale.
+playback hint, while 401/403/404 mark pairing stale. Home Assistant `3.2.x`
+responses may expose a lightweight backend summary (`music_backend`,
+`music_backend_name`, capabilities, target player and error); firmware stores it
+only for display/status/debug and keeps provider credentials in Home Assistant.
+Output arrays are preferred over legacy device arrays, with `devices` retained
+as a compatibility fallback.
 
 Sources:
 

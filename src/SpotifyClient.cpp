@@ -11,6 +11,7 @@
 #include "I18n.h"
 #include "LogicHelpers.h"
 #include "NetworkActivity.h"
+#include "PlaybackResponseParser.h"
 #include "ScopedWatchdogPause.h"
 #include "DJConnectDevice.h"
 #include "TextHelpers.h"
@@ -316,6 +317,8 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
         }
         AppLog.println("HA playback backend unavailable");
         setProxyError(I18n::text("playback_backend_unavailable_hint"));
+      } else if (PlaybackResponseParser::isUnsupportedBackendCapability((*response).as<JsonVariantConst>())) {
+        setProxyError((*response)["message"] | "Backend capability unsupported");
       } else {
         setProxyError((*response)["message"] | (*response)["error"] | "HA playback failed");
       }
@@ -434,25 +437,8 @@ void SpotifyClient::applyDeviceList(JsonVariantConst source, DeviceListState &de
   devices.error = "";
   devices.count = 0;
   JsonArrayConst items;
-  if (source["devices"].is<JsonArrayConst>()) {
-    items = source["devices"].as<JsonArrayConst>();
-  } else if (source["items"].is<JsonArrayConst>()) {
-    items = source["items"].as<JsonArrayConst>();
-  } else if (source["outputs"].is<JsonArrayConst>()) {
-    items = source["outputs"].as<JsonArrayConst>();
-  } else if (source["data"]["devices"].is<JsonArrayConst>()) {
-    items = source["data"]["devices"].as<JsonArrayConst>();
-  } else if (source["data"]["items"].is<JsonArrayConst>()) {
-    items = source["data"]["items"].as<JsonArrayConst>();
-  } else if (source["data"]["outputs"].is<JsonArrayConst>()) {
-    items = source["data"]["outputs"].as<JsonArrayConst>();
-  } else if (source["result"]["devices"].is<JsonArrayConst>()) {
-    items = source["result"]["devices"].as<JsonArrayConst>();
-  } else if (source["result"]["items"].is<JsonArrayConst>()) {
-    items = source["result"]["items"].as<JsonArrayConst>();
-  } else if (source["result"]["outputs"].is<JsonArrayConst>()) {
-    items = source["result"]["outputs"].as<JsonArrayConst>();
-  }
+  PlaybackResponseParser::applyBackendSummary(source, devices.backend);
+  items = PlaybackResponseParser::preferredOutputArray(source);
   for (JsonVariantConst item : items) {
     if (devices.count >= 8) {
       break;
@@ -469,6 +455,15 @@ void SpotifyClient::applyDeviceList(JsonVariantConst source, DeviceListState &de
     devices.count++;
   }
   devices.available = true;
+  if (!devices.backend.name.isEmpty()) {
+    AppLog.line("Backend: " + devices.backend.name);
+  }
+  if (!devices.backend.targetPlayerName.isEmpty()) {
+    AppLog.line("Target: " + devices.backend.targetPlayerName);
+  }
+  if (!devices.backend.available) {
+    AppLog.line("Backend unavailable");
+  }
 }
 
 void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {

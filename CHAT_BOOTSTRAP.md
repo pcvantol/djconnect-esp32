@@ -15,7 +15,7 @@ Lees eerst:
 Context:
 - DJConnect ESP32-S3 firmware repo.
 - Huidige licentie is MIT.
-- Laatste release is v3.1.37.
+- Laatste geverifieerde release is v3.1.37; huidige protocolwerk richt op v3.2.x.
 - v3.1.37 publiceert alleen het LilyGO T-Embed S3 firmware asset:
   `djconnect-lilygo-t-embed-s3-v3.1.37.bin`, `.sha256` en
   `firmware_manifest.json`.

@@ -157,11 +157,32 @@ struct SpotifyDeviceState {
   bool supportsVolume = false;
 };
 
+struct MusicBackendCapabilities {
+  bool supportsSearch = false;
+  bool supportsQueue = false;
+  bool supportsOutputs = false;
+  bool supportsFavorites = false;
+  bool supportsRecentlyPlayed = false;
+  bool supportsTopItems = false;
+};
+
+struct MusicBackendSummary {
+  String backend;
+  String name;
+  bool available = true;
+  int revision = 0;
+  MusicBackendCapabilities capabilities;
+  String targetPlayerId;
+  String targetPlayerName;
+  String error;
+};
+
 struct DeviceListState {
   bool available = false;
   String error;
   size_t count = 0;
   SpotifyDeviceState devices[8];
+  MusicBackendSummary backend;
 };
 
 // Lightweight runtime stats surfaced by the web dashboard.

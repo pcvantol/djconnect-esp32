@@ -1,13 +1,14 @@
 # DJConnect Firmware Issues And Backlog
 
-Concrete issue and task list after release `v3.1.31`.
+Concrete issue and task list after release `v3.1.37` and the `3.2.x` protocol
+sync work.
 
 ## Open Issues
 
 - [ ] Home Assistant sensor reset issue must be verified on the current HA integration.
-  - Firmware status payload is authoritative and release `v3.1.31` still posts periodic status.
+  - Firmware status payload is authoritative and the `3.2.x` firmware contract still posts periodic status.
   - If HA sensors briefly populate and then become unknown/pending, fix integration entity refresh/coordinator behavior.
-- [ ] OTA from the physical LilyGO should be re-tested with `v3.1.31`.
+- [ ] OTA from the physical LilyGO should be re-tested with `v3.2.x`.
   - Firmware now releases wake-word/TFLite and active voice/audio resources before GitHub TLS.
   - Confirm GitHub TLS no longer fails with memory allocation errors on no-PSRAM LilyGO hardware.
 - [ ] Okay Nabu wake-word reliability still needs real-room tuning.

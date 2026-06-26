@@ -11,6 +11,7 @@
 #include "LogicHelpers.h"
 #include "NetworkActivityLogic.h"
 #include "DJConnectMenuModel.h"
+#include "PlaybackResponseParser.h"
 
 struct FakeHttpClient {
   uint32_t connectTimeout = 0;
@@ -131,6 +132,77 @@ static void testHomeAssistantStatusAliasContractNames() {
     assert(alias != nullptr);
     assert(std::strlen(alias) > 0);
   }
+}
+
+static void testHomeAssistantStatusLocalOnlyContractNames() {
+  JsonDocument status;
+  status["device_id"] = "djconnect-lilygo-t-embed-s3-001122AABBCC";
+  status["client_type"] = "esp32";
+  status["ha_local_url"] = "http://192.168.1.10:8123";
+  status["local_url"] = "http://djconnect-lilygo-t-embed-s3-001122AABBCC.local";
+  status["firmware"] = "3.2.0";
+  status["spotify_configured"] = false;
+  assert(status["client_type"] == "esp32");
+  assert(status["ha_local_url"] == "http://192.168.1.10:8123");
+  assert(status["ha_remote_url"].isNull());
+}
+
+static void testBackendSummaryParsing() {
+  JsonDocument doc;
+  deserializeJson(doc,
+                  "{\"music_backend\":\"music_assistant\","
+                  "\"music_backend_name\":\"Music Assistant\","
+                  "\"music_backend_available\":true,"
+                  "\"music_backend_revision\":4,"
+                  "\"music_backend_capabilities\":{\"supports_search\":true,\"supports_queue\":true,"
+                  "\"supports_outputs\":true,\"supports_favorites\":false,"
+                  "\"supports_recently_played\":true,\"supports_top_items\":false},"
+                  "\"music_target_player\":{\"id\":\"media_player.mass_woonkamer\",\"name\":\"Woonkamer\"},"
+                  "\"music_backend_error\":null}");
+
+  MusicBackendSummary summary;
+  PlaybackResponseParser::applyBackendSummary(doc.as<JsonVariantConst>(), summary);
+  assert(summary.backend == "music_assistant");
+  assert(summary.name == "Music Assistant");
+  assert(summary.available);
+  assert(summary.revision == 4);
+  assert(summary.capabilities.supportsSearch);
+  assert(summary.capabilities.supportsQueue);
+  assert(summary.capabilities.supportsOutputs);
+  assert(!summary.capabilities.supportsFavorites);
+  assert(summary.capabilities.supportsRecentlyPlayed);
+  assert(!summary.capabilities.supportsTopItems);
+  assert(summary.targetPlayerId == "media_player.mass_woonkamer");
+  assert(summary.targetPlayerName == "Woonkamer");
+}
+
+static void testOutputsPreferredOverLegacyDevices() {
+  JsonDocument doc;
+  deserializeJson(doc,
+                  "{\"devices\":[{\"id\":\"legacy\",\"name\":\"Legacy speaker\"}],"
+                  "\"outputs\":[{\"id\":\"output\",\"name\":\"Living room\"}]}");
+
+  JsonArrayConst outputs = PlaybackResponseParser::preferredOutputArray(doc.as<JsonVariantConst>());
+  assert(!outputs.isNull());
+  JsonVariantConst first = outputs[0];
+  assert(first["id"] == "output");
+  assert(first["name"] == "Living room");
+
+  doc.clear();
+  deserializeJson(doc, "{\"devices\":[{\"id\":\"legacy\",\"name\":\"Legacy speaker\"}]}");
+  outputs = PlaybackResponseParser::preferredOutputArray(doc.as<JsonVariantConst>());
+  first = outputs[0];
+  assert(first["id"] == "legacy");
+}
+
+static void testUnsupportedBackendCapabilityResponse() {
+  JsonDocument doc;
+  deserializeJson(doc, "{\"success\":false,\"error\":\"unsupported_backend_capability\",\"message\":\"Queue unsupported\"}");
+  assert(PlaybackResponseParser::isUnsupportedBackendCapability(doc.as<JsonVariantConst>()));
+
+  doc.clear();
+  deserializeJson(doc, "{\"success\":false,\"error\":\"backend_unavailable\"}");
+  assert(!PlaybackResponseParser::isUnsupportedBackendCapability(doc.as<JsonVariantConst>()));
 }
 
 static void testGamesMenuCount() {
@@ -816,6 +888,10 @@ int main() {
   testHaPlaybackConnectionErrorClassification();
   testHomeAssistantStatusMirroredSettingsDefaults();
   testHomeAssistantStatusAliasContractNames();
+  testHomeAssistantStatusLocalOnlyContractNames();
+  testBackendSummaryParsing();
+  testOutputsPreferredOverLegacyDevices();
+  testUnsupportedBackendCapabilityResponse();
   testGamesMenuCount();
   testHomeAssistantClientTypeErrorContract();
   testImmediatePollTimestampConvention();

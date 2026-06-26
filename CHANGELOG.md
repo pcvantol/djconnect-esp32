@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.2.0
+
+### Changed
+
+- Updated the firmware-side Home Assistant protocol contract to `3.2.x`.
+- Kept the ESP runtime local-only: pairing/status/playback/voice continue to
+  use only `ha_local_url`; `ha_remote_url` is ignored and removed from NVS.
+- Added backend-neutral parsing for Home Assistant playback summaries including
+  Music Assistant/Spotify Direct backend name, availability, revision,
+  capabilities, target player and backend error.
+- Prefer Home Assistant `outputs` over legacy `devices` in playback output
+  responses while keeping `devices` as a fallback for older integrations.
+- Treat unsupported backend capability responses as clear playback errors
+  without implying stale Home Assistant pairing.
+
 ## v3.1.37
 
 ### Changed

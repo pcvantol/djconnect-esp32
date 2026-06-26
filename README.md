@@ -4,7 +4,7 @@ DJConnect. Muziekbediening met karakter.
 
 DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. The device is a Home Assistant paired playback remote with a display, rotary encoder, top button, LED ring, web portal and Home Assistant device integration.
 
-DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotify OAuth credentials or call the Spotify Web API directly. Playback commands are sent to the Home Assistant integration as generic backend-agnostic commands, so Home Assistant can proxy them to Spotify today or another playback backend such as Sonos or `media_player` later.
+DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotify OAuth credentials or call the Spotify Web API directly. Playback commands are sent to the Home Assistant integration as generic backend-agnostic commands, so Home Assistant can proxy them to Music Assistant, Spotify Direct or another Home Assistant-side playback backend.
 
 ## Features
 
@@ -233,13 +233,13 @@ The ESP stores one Home Assistant URL for runtime traffic:
 
 - `ha_local_url`: the LAN URL the ESP should use for normal control, for example `http://192.168.1.10:8123`. The pairing screen shows `http://homeassistant.local:8123` as the default user hint for where Home Assistant is expected on the LAN.
 
-`ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant sends a Nabu Casa URL as `ha_local_url`, the ESP rejects pairing instead of entering a half-paired state. Status, playback and voice calls always use the local URL. Cloud/Nabu Casa URLs are not stored or used by the ESP runtime; they belong only in Home Assistant's backend/OAuth configuration flows.
+`ha_local_url` must be a real LAN URL and must not contain `.ui.nabu.casa`. If Home Assistant sends a Nabu Casa URL as `ha_local_url`, the ESP rejects pairing instead of entering a half-paired state. Status, playback and voice calls always use the local URL. Cloud/Nabu Casa URLs are not stored or used by the ESP runtime; they belong only in Home Assistant's backend/OAuth configuration flows. If Home Assistant accidentally includes `ha_remote_url`, the ESP ignores it and removes any old stored remote URL key from NVS on pairing updates.
 
 Postman collections are available under `postman/`. `DJConnect ESP API.postman_collection.json` documents the protected Home Assistant device-layer endpoints, and `DJConnect Local API.postman_collection.json` covers the local web portal/API test routes. Import one of them and set `base_url` to the device IP or mDNS URL and `device_token` to the token returned by Home Assistant pairing when testing protected routes. CI runs an offline collection sanity check with `python3 test/native/test_postman_collections.py` so committed collections stay parseable, placeholder-based and free of accidental secrets.
 
 ## Playback Provisioning
 
-The ESP no longer accepts or stores Spotify OAuth credentials and no local Spotify provisioning endpoint is registered. Backend credentials must be configured in Home Assistant. Pairing/status responses may still provide non-secret settings such as language or Assist pipeline id.
+The ESP no longer accepts or stores Spotify OAuth credentials and no local Spotify provisioning endpoint is registered. Backend credentials and the Music Assistant versus Spotify Direct selection must be configured in Home Assistant. Pairing/status responses may still provide non-secret settings such as language or Assist pipeline id.
 
 ## Push-To-Talk Voice Flow
 
@@ -319,7 +319,7 @@ The generic command endpoint is:
 POST /api/device/command
 ```
 
-Supported command payloads:
+Supported local device command payloads include:
 
 ```json
 {"command":"status"}
@@ -328,6 +328,8 @@ Supported command payloads:
 {"command":"set_volume","value":35}
 {"command":"set_output","value":"iPhone"}
 {"command":"start_playlist","value":"spotify:playlist:..."}
+{"command":"set_shuffle","value":true}
+{"command":"set_repeat","value":"context"}
 {"command":"screen_brightness","value":75}
 {"command":"screen_dim_timeout","value":60000}
 {"command":"turn_off_after","value":900000}
@@ -342,7 +344,9 @@ Status is still posted periodically to the Home Assistant integration through `/
 
 The status payload mirrors user device settings both top-level and under `settings`, including `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `wake_word_enabled`/`wake_word`, `ota_state`, `update_state`, `sound_output` and `playback_configured`. It also sends the compatibility hint `spotify_configured` as the same boolean without exposing credentials. The payload includes `screen_state`, `led_state`, `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to unknown or minimum values.
 
-Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing and shows a localized Home Assistant Spotify-connection hint instead of raw provider errors. If HA returns `{"success":false,"error":"invalid_client_type"}` or an HTTP error body with `error:"invalid_client_type"`, the ESP logs `HA rejected payload: missing client_type=esp32`, treats it as a firmware/HA contract problem and does not clear NVS pairing or the device token. HTTP 426 with `error:"version_mismatch"` requires a firmware/integration update and also keeps pairing/token intact.
+Playback command responses from Home Assistant should keep authentication failures separate from backend availability. HTTP 401/403/404 marks pairing stale. Temporary playback/backend failures should preferably return HTTP 200 with JSON such as `{"success":false,"backend_available":false,"message":"..."}`; the ESP then turns the playback status indicator red without clearing pairing and shows localized Home Assistant playback guidance instead of raw provider errors. If HA returns `{"success":false,"error":"unsupported_backend_capability","message":"..."}`, the ESP logs/shows the short message as an unsupported action for the selected backend. If HA returns `{"success":false,"error":"invalid_client_type"}` or an HTTP error body with `error:"invalid_client_type"`, the ESP logs `HA rejected payload: missing client_type=esp32`, treats it as a firmware/HA contract problem and does not clear NVS pairing or the device token. HTTP 426 with `error:"version_mismatch"` means the Home Assistant integration and ESP firmware major/minor protocol versions do not match, requires a firmware/integration update and also keeps pairing/token intact.
+
+Home Assistant `3.2.x` playback responses may include non-secret backend summary fields such as `music_backend`, `music_backend_name`, `music_backend_available`, `music_backend_revision`, `music_backend_capabilities`, `music_target_player` and `music_backend_error`. The ESP parses and stores this lightweight summary for status/debug/display use only; credentials and provider-specific playback decisions stay in Home Assistant. Output lists should use `outputs`; firmware still accepts legacy `devices` as a fallback.
 
 After boot and Home Assistant setup, the ESP posts status immediately, then gives automatic playback polling a short grace period before the first background playback status command. Physical playback controls remain available, while the delayed background poll avoids stacking wake-word startup, HA status and playback proxy work during the tight no-PSRAM boot window.
 
