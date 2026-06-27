@@ -6,6 +6,15 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. The d
 
 DJConnect is not a Spotify Connect speaker/player. The ESP does not store Spotify OAuth credentials or call the Spotify Web API directly. Playback commands are sent to the Home Assistant integration as generic backend-agnostic commands, so Home Assistant can proxy them to Music Assistant, Spotify Direct or another Home Assistant-side playback backend.
 
+## Repository Status
+
+This repository is currently treated as the active ESP32 firmware source and
+release repository because it contains the PlatformIO project, firmware source,
+release script, release workflow and published `v3.2.x` source tags. The shared
+DJConnect CI baseline keeps firmware repositories aligned on PlatformIO build
+validation, native firmware tests, release-script dry-run checks, CodeQL
+`c-cpp` analysis and committed-secret scanning.
+
 ## Features
 
 - Shows the active playback output reported by Home Assistant.
