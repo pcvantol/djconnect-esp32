@@ -245,8 +245,12 @@ playback hint, while 401/403/404 mark pairing stale. Home Assistant `3.2.x`
 responses may expose a lightweight backend summary (`music_backend`,
 `music_backend_name`, capabilities, target player and error); firmware stores it
 only for display/status/debug and keeps provider credentials in Home Assistant.
-Output arrays are preferred over legacy device arrays, with `devices` retained
-as a compatibility fallback.
+Safe `music_backend_error` objects are reduced to their user-facing message/code
+instead of logging raw backend details. Output arrays are preferred over legacy
+device arrays, with `devices` retained as a compatibility fallback. Queue
+context is accepted from top-level fields and nested `queue`, `data.queue` or
+`result.queue` containers so backend-neutral queue responses can still use
+`play_context_at` only when an explicit context exists.
 
 Sources:
 

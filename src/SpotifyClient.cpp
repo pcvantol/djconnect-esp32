@@ -469,43 +469,9 @@ void SpotifyClient::applyDeviceList(JsonVariantConst source, DeviceListState &de
 void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {
   queue.available = false;
   queue.error = "";
-  queue.contextUri = source["context_uri"] | source["contextUri"] | source["queue_context"] |
-                     source["queueContext"] | "";
-  if (queue.contextUri.isEmpty()) {
-    JsonVariantConst playback = source["playback"];
-    if (!playback.isNull()) {
-      queue.contextUri = playback["context_uri"] | playback["contextUri"] |
-                         playback["queue_context"] | playback["queueContext"] | "";
-    }
-  }
-  if (queue.contextUri.isEmpty()) {
-    JsonVariantConst queuePayload = source["queue"];
-    if (!queuePayload.isNull()) {
-      queue.contextUri = queuePayload["context_uri"] | queuePayload["contextUri"] |
-                         queuePayload["queue_context"] | queuePayload["queueContext"] | "";
-    }
-  }
+  queue.contextUri = PlaybackResponseParser::queueContextUri(source);
   queue.count = 0;
-  JsonArrayConst items;
-  if (source["queue"].is<JsonArrayConst>()) {
-    items = source["queue"].as<JsonArrayConst>();
-  } else if (source["items"].is<JsonArrayConst>()) {
-    items = source["items"].as<JsonArrayConst>();
-  } else if (source["queue"]["items"].is<JsonArrayConst>()) {
-    items = source["queue"]["items"].as<JsonArrayConst>();
-  } else if (source["data"]["queue"].is<JsonArrayConst>()) {
-    items = source["data"]["queue"].as<JsonArrayConst>();
-  } else if (source["data"]["items"].is<JsonArrayConst>()) {
-    items = source["data"]["items"].as<JsonArrayConst>();
-  } else if (source["data"]["queue"]["items"].is<JsonArrayConst>()) {
-    items = source["data"]["queue"]["items"].as<JsonArrayConst>();
-  } else if (source["result"]["queue"].is<JsonArrayConst>()) {
-    items = source["result"]["queue"].as<JsonArrayConst>();
-  } else if (source["result"]["items"].is<JsonArrayConst>()) {
-    items = source["result"]["items"].as<JsonArrayConst>();
-  } else if (source["result"]["queue"]["items"].is<JsonArrayConst>()) {
-    items = source["result"]["queue"]["items"].as<JsonArrayConst>();
-  }
+  JsonArrayConst items = PlaybackResponseParser::queueArray(source);
   for (JsonVariantConst item : items) {
     if (queue.count >= QueueState::MaxItems) {
       break;

@@ -10,6 +10,8 @@
 - Added backend-neutral parsing for Home Assistant playback summaries including
   Music Assistant/Spotify Direct backend name, availability, revision,
   capabilities, target player and backend error.
+- Accepted safe backend error objects and nested queue context from the
+  Home Assistant `3.2.x` response contract.
 - Prefer Home Assistant `outputs` over legacy `devices` in playback output
   responses while keeping `devices` as a fallback for older integrations.
 - Treat unsupported backend capability responses as clear playback errors

@@ -51,8 +51,11 @@ Current repo state includes:
   `music_backend`, `music_backend_name`, `music_backend_available`,
   `music_backend_revision`, `music_backend_capabilities`,
   `music_target_player` and `music_backend_error`. Firmware parses this for
-  display/status/debug only. Output responses should prefer `outputs`; legacy
-  `devices` remains accepted as a fallback.
+  display/status/debug only, including safe `music_backend_error` objects with
+  `code`/`message`. Output responses should prefer `outputs`; legacy `devices`
+  remains accepted as a fallback. Queue context is accepted at the top level and
+  under `queue`, `data.queue` or `result.queue`; the ESP still sends
+  `play_context_at` only when Home Assistant explicitly returns usable context.
 - Backend credentials are never accepted by ESP firmware.
 - Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Normal idle turn-off sleep is battery-only. When USB-C/external power is detected, Now Playing may still dim or turn the screen off, but the ESP stays awake and logs that idle sleep was suppressed. Boot logs include reset reason and wakeup cause so true panic/watchdog/brownout resets are distinguishable from deep sleep.
@@ -137,6 +140,9 @@ Core data/security boundaries:
 ## Known Issues
 
 - NVS credentials are currently stored in ESP32 NVS but not encrypted by this Arduino/PlatformIO build.
+- The canonical HA roadmap still mentions ESP32-S3-BOX-3 firmware assets as a
+  broader product target, but this firmware repo's current supported
+  PlatformIO/release/CI target remains LilyGO T-Embed S3 only.
 - OTA status clearing in Home Assistant depends on the integration processing the post-boot status payload correctly.
 - Home Assistant sensor reset behavior must be verified against the current integration. If sensors briefly populate and then become unknown/pending, the fix belongs in the integration entity/coordinator refresh path.
 - HA native entities for brightness, speaker volume, timeouts, language, theme and log level should read the mirrored `/api/djconnect/status` settings fields; otherwise they may show minimum/default values until changed from HA.

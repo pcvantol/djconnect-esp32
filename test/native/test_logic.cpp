@@ -174,6 +174,16 @@ static void testBackendSummaryParsing() {
   assert(!summary.capabilities.supportsTopItems);
   assert(summary.targetPlayerId == "media_player.mass_woonkamer");
   assert(summary.targetPlayerName == "Woonkamer");
+
+  doc.clear();
+  deserializeJson(doc,
+                  "{\"data\":{\"music_backend\":\"spotify_direct\","
+                  "\"music_backend_error\":{\"code\":\"backend_unavailable\","
+                  "\"message\":\"Spotify is unavailable\"}}}");
+  MusicBackendSummary nestedSummary;
+  PlaybackResponseParser::applyBackendSummary(doc.as<JsonVariantConst>(), nestedSummary);
+  assert(nestedSummary.backend == "spotify_direct");
+  assert(nestedSummary.error == "Spotify is unavailable");
 }
 
 static void testOutputsPreferredOverLegacyDevices() {
@@ -203,6 +213,32 @@ static void testUnsupportedBackendCapabilityResponse() {
   doc.clear();
   deserializeJson(doc, "{\"success\":false,\"error\":\"backend_unavailable\"}");
   assert(!PlaybackResponseParser::isUnsupportedBackendCapability(doc.as<JsonVariantConst>()));
+}
+
+static void testBackendQueueResponseShapes() {
+  JsonDocument doc;
+  deserializeJson(doc,
+                  "{\"data\":{\"queue\":{\"context_uri\":\"spotify:playlist:abc\","
+                  "\"items\":[{\"title\":\"Even Flow\",\"artist_name\":\"Pearl Jam\","
+                  "\"uri\":\"spotify:track:1\",\"thumbnail_url\":\"https://example.test/even-flow.jpg\"}]}}}");
+
+  String context = PlaybackResponseParser::queueContextUri(doc.as<JsonVariantConst>());
+  assert(std::strcmp(context.c_str(), "spotify:playlist:abc") == 0);
+  JsonArrayConst items = PlaybackResponseParser::queueArray(doc.as<JsonVariantConst>());
+  assert(!items.isNull());
+  JsonVariantConst first = items[0];
+  assert(first["title"] == "Even Flow");
+  assert(first["thumbnail_url"] == "https://example.test/even-flow.jpg");
+
+  doc.clear();
+  deserializeJson(doc,
+                  "{\"result\":{\"queue_context\":\"spotify:album:def\","
+                  "\"items\":[{\"name\":\"Go\",\"artist\":\"Pearl Jam\"}]}}");
+  context = PlaybackResponseParser::queueContextUri(doc.as<JsonVariantConst>());
+  assert(std::strcmp(context.c_str(), "spotify:album:def") == 0);
+  items = PlaybackResponseParser::queueArray(doc.as<JsonVariantConst>());
+  first = items[0];
+  assert(first["name"] == "Go");
 }
 
 static void testGamesMenuCount() {
@@ -892,6 +928,7 @@ int main() {
   testBackendSummaryParsing();
   testOutputsPreferredOverLegacyDevices();
   testUnsupportedBackendCapabilityResponse();
+  testBackendQueueResponseShapes();
   testGamesMenuCount();
   testHomeAssistantClientTypeErrorContract();
   testImmediatePollTimestampConvention();

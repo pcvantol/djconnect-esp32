@@ -62,6 +62,16 @@ inline JsonArrayConst preferredOutputArray(JsonVariantConst source) {
   return !outputs.isNull() ? outputs : deviceArray(source);
 }
 
+inline String backendErrorMessage(JsonVariantConst error, const String &fallback) {
+  if (error.is<const char *>()) {
+    return error.as<const char *>();
+  }
+  if (error.is<JsonObjectConst>()) {
+    return error["message"] | error["code"] | fallback;
+  }
+  return fallback;
+}
+
 inline void applyBackendSummary(JsonVariantConst source, MusicBackendSummary &summary) {
   JsonVariantConst backendSource = source;
   if (source["backend"].is<JsonObjectConst>()) {
@@ -80,7 +90,10 @@ inline void applyBackendSummary(JsonVariantConst source, MusicBackendSummary &su
   summary.name = backendSource["music_backend_name"] | backendSource["name"] | summary.name;
   summary.available = firstBool(backendSource, "music_backend_available", "available", summary.available);
   summary.revision = backendSource["music_backend_revision"] | backendSource["revision"] | summary.revision;
-  summary.error = backendSource["music_backend_error"] | backendSource["error"] | summary.error;
+  summary.error = backendErrorMessage(backendSource["music_backend_error"], summary.error);
+  if (summary.error.length() == 0) {
+    summary.error = backendErrorMessage(backendSource["error"], summary.error);
+  }
 
   JsonVariantConst capabilities = backendSource["music_backend_capabilities"].is<JsonObjectConst>()
                                       ? backendSource["music_backend_capabilities"]
@@ -102,6 +115,86 @@ inline void applyBackendSummary(JsonVariantConst source, MusicBackendSummary &su
     summary.targetPlayerId = target["id"] | summary.targetPlayerId;
     summary.targetPlayerName = target["name"] | summary.targetPlayerName;
   }
+}
+
+inline String queueContextUri(JsonVariantConst source) {
+  const char *keys[] = {"context_uri", "contextUri", "queue_context", "queueContext"};
+  auto findIn = [&](JsonVariantConst container) -> String {
+    if (container.isNull()) {
+      return "";
+    }
+    for (const char *key : keys) {
+      JsonVariantConst field = container[key];
+      if (field.is<const char *>()) {
+        const char *value = field.as<const char *>();
+        if (value != nullptr && value[0] != '\0') {
+          return value;
+        }
+      }
+    }
+    return "";
+  };
+
+  String value = findIn(source);
+  if (value.length() > 0) {
+    return value;
+  }
+  value = findIn(source["playback"]);
+  if (value.length() > 0) {
+    return value;
+  }
+  value = findIn(source["queue"]);
+  if (value.length() > 0) {
+    return value;
+  }
+  value = findIn(source["data"]);
+  if (value.length() > 0) {
+    return value;
+  }
+  value = findIn(source["data"]["queue"]);
+  if (value.length() > 0) {
+    return value;
+  }
+  value = findIn(source["result"]);
+  if (value.length() > 0) {
+    return value;
+  }
+  value = findIn(source["result"]["queue"]);
+  if (value.length() > 0) {
+    return value;
+  }
+  return "";
+}
+
+inline JsonArrayConst queueArray(JsonVariantConst source) {
+  if (source["queue"].is<JsonArrayConst>()) {
+    return source["queue"].as<JsonArrayConst>();
+  }
+  if (source["items"].is<JsonArrayConst>()) {
+    return source["items"].as<JsonArrayConst>();
+  }
+  if (source["queue"]["items"].is<JsonArrayConst>()) {
+    return source["queue"]["items"].as<JsonArrayConst>();
+  }
+  if (source["data"]["queue"].is<JsonArrayConst>()) {
+    return source["data"]["queue"].as<JsonArrayConst>();
+  }
+  if (source["data"]["items"].is<JsonArrayConst>()) {
+    return source["data"]["items"].as<JsonArrayConst>();
+  }
+  if (source["data"]["queue"]["items"].is<JsonArrayConst>()) {
+    return source["data"]["queue"]["items"].as<JsonArrayConst>();
+  }
+  if (source["result"]["queue"].is<JsonArrayConst>()) {
+    return source["result"]["queue"].as<JsonArrayConst>();
+  }
+  if (source["result"]["items"].is<JsonArrayConst>()) {
+    return source["result"]["items"].as<JsonArrayConst>();
+  }
+  if (source["result"]["queue"]["items"].is<JsonArrayConst>()) {
+    return source["result"]["queue"]["items"].as<JsonArrayConst>();
+  }
+  return JsonArrayConst();
 }
 
 inline bool isUnsupportedBackendCapability(JsonVariantConst response) {
