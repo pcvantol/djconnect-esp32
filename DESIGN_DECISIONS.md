@@ -68,6 +68,10 @@ Subsystem classes own concrete responsibilities:
   debug/device control.
 - `SpotifyClient`: backend-agnostic playback proxy HTTP calls to Home Assistant.
 - `ProvisioningController`: NVS provisioning/settings storage.
+- `SettingsController`: normalization and selection mapping for settings posted
+  by the web dashboard, Home Assistant commands and device menu flows.
+- `DeviceStatusBuilder`: small Home Assistant status snapshot builders that keep
+  status payload field selection out of the top-level app loop.
 - `PowerController`: charger, deep sleep and watchdog policy. Normal idle
   turn-off sleep is battery-only; USB-C/external power suppresses it while still
   allowing screen dim/off behavior.
@@ -82,6 +86,8 @@ Sources:
 - `src/DJConnectApiServer.h`, `src/DJConnectApiServer.cpp`
 - `include/SpotifyClient.h`, `src/SpotifyClient.cpp`
 - `include/ProvisioningController.h`, `src/ProvisioningController.cpp`
+- `include/SettingsController.h`, `src/SettingsController.cpp`
+- `include/DeviceStatusBuilder.h`, `src/DeviceStatusBuilder.cpp`
 - `include/PowerController.h`, `src/PowerController.cpp`
 - `include/LedRing.h`, `src/LedRing.cpp`
 - `include/VoiceRecorder.h`, `src/VoiceRecorder.cpp`
@@ -94,6 +100,8 @@ Why:
   draws screens.
 - It reduces accidental coupling between UI, network and power paths, which is
   important for watchdog stability.
+- Shared settings normalization keeps web, device-command and Home Assistant
+  entity updates from drifting as new settings are added.
 
 ### Board Profile / Compile-Time Capability Pattern
 

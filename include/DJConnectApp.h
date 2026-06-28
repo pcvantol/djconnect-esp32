@@ -7,6 +7,7 @@
 #include "BleWifiProvisioning.h"
 #include "BatteryMonitor.h"
 #include "Config.h"
+#include "DeviceStatusBuilder.h"
 #include "DjResponseAudioPlayer.h"
 #include "DisplayManager.h"
 #include "InputController.h"
@@ -14,6 +15,7 @@
 #include "LedRing.h"
 #include "PowerController.h"
 #include "ProvisioningController.h"
+#include "SettingsController.h"
 #include "SoundManager.h"
 #include "SoftResetMonitor.h"
 #include "DJConnectMenu.h"
@@ -183,6 +185,8 @@ private:
   void recordLoopMetrics(uint32_t loopStartedAt);
   // Applies settings posted from the web dashboard and persists them.
   void applyWebSettings(uint8_t brightnessPercent, uint32_t offTimeoutMs, uint32_t sleepTimeoutMs, uint8_t speakerVolumePercent, const String &languageCode, const String &themeCode, const String &logLevel, bool wakeWordEnabled);
+  DeviceSettingsSnapshot currentSettingsSnapshot() const;
+  void applySettingsSnapshot(const DeviceSettingsSnapshot &settings);
   void requestWebWifiSettings(const String &ssid, const String &password);
   void processPendingWifiSettings();
 
