@@ -4153,11 +4153,19 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
 
 void DJConnectApp::markHomeAssistantPairingInvalid(const String &message) {
   if (homeAssistantPaired_) {
-    AppLog.println("Home Assistant: pairing invalid or stale");
+    AppLog.println("Home Assistant: pairing invalid or stale, clearing local pairing");
   }
+  haDevice_.clearHomeAssistantPairing();
   homeAssistantPaired_ = false;
   haPairingPendingValidation_ = false;
   playbackRefreshAfterPairing_ = false;
+  haPairingScreenActive_ = true;
+  haPairingStartedAt_ = 0;
+  lastHaStatusAt_ = 0;
+  haDevice_.displayPairingCode();
+  if (WiFi.status() == WL_CONNECTED) {
+    haDiscovery_.begin(haDevice_);
+  }
   showNotice(message, 5000);
   renderNow();
 }

@@ -8,6 +8,11 @@
   response contract.
 - Accepted safe backend error objects and nested queue context from Home
   Assistant playback/queue responses.
+- Added HA-compatible pairing discovery fields to mDNS and
+  `/api/device/pairing-info`.
+- Made Home Assistant stale-pairing responses clear the local ESP pairing and
+  return to pairing mode while preserving the `426 version_mismatch` update
+  block behavior.
 - Added native contract coverage for backend error objects and backend-neutral
   queue response shapes.
 

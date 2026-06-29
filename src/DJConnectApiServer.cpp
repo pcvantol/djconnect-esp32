@@ -146,12 +146,17 @@ void DJConnectApiServer::handleInfo() {
 void DJConnectApiServer::handlePairingInfo() {
   device_->ensurePairingCode();
   JsonDocument doc;
+  doc["success"] = true;
   doc["device_id"] = device_->getDeviceId();
   doc["device_name"] = device_->getDeviceName();
   doc["client_type"] = device_->getClientType();
   doc["pair_code"] = device_->getPairCode();
+  doc["pairing_code"] = device_->getPairCode();
+  doc["paired"] = device_->isPaired();
   doc["firmware"] = device_->getFirmwareVersion();
   doc["local_url"] = device_->getLocalUrl();
+  doc["pairing_path"] = "/api/device/pairing-info";
+  doc["pair_path"] = "/api/device/pair";
   String payload;
   serializeJson(doc, payload);
   sendJson(200, payload);
@@ -233,7 +238,15 @@ void DJConnectApiServer::handlePair() {
   if (!samePairing && directPairCallback_ != nullptr) {
     directPairCallback_(callbackContext_);
   }
-  sendJson(200, "{\"success\":true,\"paired\":true}");
+  JsonDocument response;
+  response["success"] = true;
+  response["device_id"] = device_->getDeviceId();
+  response["client_type"] = device_->getClientType();
+  response["paired"] = true;
+  response["ha_pairing_status"] = "paired";
+  String payload;
+  serializeJson(response, payload);
+  sendJson(200, payload);
 }
 
 void DJConnectApiServer::handleOta() {

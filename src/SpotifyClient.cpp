@@ -265,6 +265,9 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
         setProxyError(errorDoc["message"] | "Update DJConnect firmware/integration");
         return false;
       }
+      if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
+        tokenInvalidGrant_ = true;
+      }
     }
     if (code == 401 || code == 403 || code == 404) {
       tokenInvalidGrant_ = true;
@@ -309,6 +312,9 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
         setProxyError("HA rejected payload: missing client_type=esp32");
         AppLog.println("HA rejected payload: missing client_type=esp32");
         return false;
+      }
+      if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
+        tokenInvalidGrant_ = true;
       }
       const bool backendAvailable = (*response)["backend_available"] | true;
       if (!backendAvailable) {

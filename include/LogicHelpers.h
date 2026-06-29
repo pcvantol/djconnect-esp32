@@ -292,6 +292,13 @@ inline bool isHomeAssistantPairingInvalidStatus(int statusCode) {
   return statusCode == 401 || statusCode == 403 || statusCode == 404;
 }
 
+inline bool isHomeAssistantPairingInvalidError(const char *error) {
+  return error != nullptr &&
+         (strcmp(error, "not_configured") == 0 ||
+          strcmp(error, "stale_pairing") == 0 ||
+          strcmp(error, "pairing_stale") == 0);
+}
+
 inline bool isHexDigit(char value) {
   return (value >= '0' && value <= '9') ||
          (value >= 'a' && value <= 'f') ||

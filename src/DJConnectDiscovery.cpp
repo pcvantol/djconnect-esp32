@@ -58,12 +58,20 @@ void DJConnectDiscovery::updateTxtRecords() {
     return;
   }
 
+  device_->ensurePairingCode();
   MDNS.addServiceTxt("djconnect", "tcp", "name", device_->getDeviceName());
+  MDNS.addServiceTxt("djconnect", "tcp", "device_name", device_->getDeviceName());
   MDNS.addServiceTxt("djconnect", "tcp", "device_id", device_->getDeviceId());
   MDNS.addServiceTxt("djconnect", "tcp", "client_type", device_->getClientType());
   MDNS.addServiceTxt("djconnect", "tcp", "version", device_->getFirmwareVersion());
+  MDNS.addServiceTxt("djconnect", "tcp", "firmware", device_->getFirmwareVersion());
   MDNS.addServiceTxt("djconnect", "tcp", "paired", device_->isPaired() ? "true" : "false");
   MDNS.addServiceTxt("djconnect", "tcp", "api", "/api/device");
+  MDNS.addServiceTxt("djconnect", "tcp", "local_url", device_->getLocalUrl());
+  MDNS.addServiceTxt("djconnect", "tcp", "pair_code", device_->getPairCode());
+  MDNS.addServiceTxt("djconnect", "tcp", "pairing_code", device_->getPairCode());
+  MDNS.addServiceTxt("djconnect", "tcp", "pairing_path", "/api/device/pairing-info");
+  MDNS.addServiceTxt("djconnect", "tcp", "pair_path", "/api/device/pair");
   MDNS.addServiceTxt("djconnect", "tcp", "model", device_->getModel());
 }
 

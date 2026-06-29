@@ -286,8 +286,6 @@ String firstDjResponseAudioUrl(JsonDocument &doc) {
   return audioUrl;
 }
 
-static constexpr uint8_t HaNotFoundInvalidationThreshold = 3;
-static constexpr uint32_t HaNotFoundInvalidationWindowMs = 60000;
 }  // namespace
 
 void VoiceHttpClient::begin(DJConnectDevice &device) {
@@ -381,6 +379,9 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
     } else if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
       updatePairingInvalidationForStatus(code);
       message = errorDoc["message"] | "Update DJConnect firmware/integration";
+    } else if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
+      pairingInvalidated_ = true;
+      message = strlen(errorMessage) > 0 ? String(errorMessage) : I18n::text("voice_ha_auth_failed");
     } else if (code == 404) {
       updatePairingInvalidationForStatus(code);
       message = I18n::text("voice_ha_endpoint_missing");
@@ -498,6 +499,9 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
     } else if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
       updatePairingInvalidationForStatus(code);
       message = errorDoc["message"] | "Update DJConnect firmware/integration";
+    } else if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
+      pairingInvalidated_ = true;
+      message = strlen(errorMessage) > 0 ? String(errorMessage) : I18n::text("voice_ha_auth_failed");
     } else if (code == 404) {
       updatePairingInvalidationForStatus(code);
       message = I18n::text("voice_ha_endpoint_missing");
@@ -543,22 +547,7 @@ bool VoiceHttpClient::pairingInvalidated() const {
 }
 
 bool VoiceHttpClient::updatePairingInvalidationForStatus(int statusCode) {
-  if (statusCode == 404) {
-    const uint32_t now = millis();
-    if (firstHaNotFoundAt_ == 0 || now - firstHaNotFoundAt_ > HaNotFoundInvalidationWindowMs) {
-      firstHaNotFoundAt_ = now;
-      consecutiveHaNotFoundCount_ = 0;
-    }
-    consecutiveHaNotFoundCount_++;
-    AppLog.print("Home Assistant route not found count=");
-    AppLog.println(consecutiveHaNotFoundCount_);
-    pairingInvalidated_ = consecutiveHaNotFoundCount_ >= HaNotFoundInvalidationThreshold;
-    return pairingInvalidated_;
-  }
-
-  consecutiveHaNotFoundCount_ = 0;
-  firstHaNotFoundAt_ = 0;
-  pairingInvalidated_ = statusCode == 401 || statusCode == 403;
+  pairingInvalidated_ = Logic::isHomeAssistantPairingInvalidStatus(statusCode);
   return pairingInvalidated_;
 }
 
