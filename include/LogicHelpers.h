@@ -296,7 +296,9 @@ inline bool isHomeAssistantPairingInvalidError(const char *error) {
   return error != nullptr &&
          (strcmp(error, "not_configured") == 0 ||
           strcmp(error, "stale_pairing") == 0 ||
-          strcmp(error, "pairing_stale") == 0);
+          strcmp(error, "pairing_stale") == 0 ||
+          strcmp(error, "stale_token") == 0 ||
+          strcmp(error, "invalid_token") == 0);
 }
 
 inline bool isHexDigit(char value) {

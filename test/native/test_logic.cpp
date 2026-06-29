@@ -507,6 +507,8 @@ static void testVoiceChunkHelpers() {
   assert(Logic::isHomeAssistantPairingInvalidError("not_configured"));
   assert(Logic::isHomeAssistantPairingInvalidError("stale_pairing"));
   assert(Logic::isHomeAssistantPairingInvalidError("pairing_stale"));
+  assert(Logic::isHomeAssistantPairingInvalidError("stale_token"));
+  assert(Logic::isHomeAssistantPairingInvalidError("invalid_token"));
   assert(!Logic::isHomeAssistantPairingInvalidError("version_mismatch"));
   assert(!Logic::isHomeAssistantPairingInvalidError(nullptr));
   assert(Logic::isDjConnectVersionMismatch(426, "version_mismatch"));

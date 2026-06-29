@@ -10,6 +10,8 @@
   Assistant playback/queue responses.
 - Added HA-compatible pairing discovery fields to mDNS and
   `/api/device/pairing-info`.
+- Added Raspberry Pi local-device compatible `version`/`app_version`,
+  `pairing_token` and `local_only` aliases to ESP32 local API responses.
 - Made Home Assistant stale-pairing responses clear the local ESP pairing and
   return to pairing mode while preserving the `426 version_mismatch` update
   block behavior.

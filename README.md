@@ -193,7 +193,7 @@ Browsable URL:
 http://djconnect-<device-model>-XXXXXXXXXXXX.local
 ```
 
-The hostname is the device ID. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`. TXT records include `name`/`device_name`, `device_id`, `client_type`, `version`/`firmware`, `paired`, `api`, `local_url`, `pair_code`/`pairing_code`, `pairing_path`, `pair_path` and `model`.
+The hostname is the device ID. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`. TXT records include `name`/`device_name`, `device_id`, `client_type`, `version`/`firmware`/`app_version`, `paired`, `api`, `local_url`, `pair_code`/`pairing_code`, `pairing_path`, `pair_path` and `model`.
 The firmware does not use or accept persistent legacy IDs such as `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` or `djconnect-[six-digit-code]`. The six-digit setup value is only a temporary `pair_code`.
 
 ### Local Device API
@@ -203,7 +203,7 @@ Open endpoints:
 - `GET /api/device/info`
 - `GET /api/device/pairing-info`
 
-`GET /api/device/pairing-info` returns `success:true`, the model-specific `device_id`, `device_name`, temporary `pair_code`/`pairing_code`, `client_type:"esp32"`, pairing state, firmware, mDNS `local_url`, `pairing_path` and `pair_path`. It does not return or accept `device_type`.
+`GET /api/device/pairing-info` returns `success:true`, the model-specific `device_id`, `device_name`, temporary `pair_code`/`pairing_code`/`pairing_token`, `client_type:"esp32"`, pairing state, firmware/version aliases, mDNS `local_url`, `transport:"local_only"`, `pairing_path` and `pair_path`. It does not return or accept `device_type`.
 
 Protected endpoints require `Authorization: Bearer <device_token>`:
 
@@ -275,7 +275,7 @@ Web portal PTT is a simulation button for testing the DJ-announcement text path.
 
 If the Home Assistant integration has been removed while the ESP still has an old pairing token, the web PTT simulation can return a Home Assistant voice endpoint 404. Reset Home Assistant pairing on the device or web portal, add the DJConnect integration again, and pair the device with the new code.
 
-The ESP also checks pairing health during periodic Home Assistant status updates and during device/web push-to-talk calls. HTTP 401, 403 or 404 responses, or HA errors such as `not_configured`/`stale_pairing`, clear the local Home Assistant pairing state and return the ESP to pairing mode. HTTP 426 with `error:"version_mismatch"` remains an update-required protocol block and does not clear the stored pairing token.
+The ESP also checks pairing health during periodic Home Assistant status updates and during device/web push-to-talk calls. HTTP 401, 403 or 404 responses, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear the local Home Assistant pairing state and return the ESP to pairing mode. HTTP 426 with `error:"version_mismatch"` remains an update-required protocol block and does not clear the stored pairing token.
 
 Micro wake word support includes the ESPHome `Okay Nabu` model asset vendored
 under `third_party/micro_wake_word/` and linked into the firmware as
@@ -391,7 +391,7 @@ The LilyGO environment stays on the existing no-PSRAM `esp32-s3-devkitc-1` defin
 - Home Assistant is the trusted backend for pairing, playback command interpretation, backend credentials, Assist STT/TTS orchestration and OTA offer handling. The ESP stores only WiFi settings and its Home Assistant device token.
 - The ESP remains the local edge device for display, controls, LED ring, battery policy, speaker cues, microphone capture and playback of HA-provided DJ response audio. It must keep working when optional HA/web features are unused.
 - Push-to-talk uses the DJConnect integration as the backend boundary: the ESP records WAV audio and uploads it to `/api/djconnect/voice`; the HA integration owns Assist/STT/TTS and returns DJ text plus optional audio URL. The ESP does not authenticate directly to Home Assistant core `/api/websocket`, call OpenAI directly or upload browser microphone audio.
-- Home Assistant is authoritative for pairing validity. HA 401/403/404 responses, or HA errors such as `not_configured`/`stale_pairing`, clear the stored local pairing and return the ESP to pairing mode. HTTP 426 `version_mismatch` is handled as an update-required protocol block without clearing pairing.
+- Home Assistant is authoritative for pairing validity. HA 401/403/404 responses, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear the stored local pairing and return the ESP to pairing mode. HTTP 426 `version_mismatch` is handled as an update-required protocol block without clearing pairing.
 - The device Settings menu includes `Change WiFi`, which restarts into the setup/captive portal while preserving the stored Home Assistant pairing token. Use Factory reset or Reset Home Assistant pairing when pairing should be removed.
 - Spotify OAuth and other playback-backend credentials are never stored on the ESP.
 - Long network operations are bounded by explicit timeout policy and tracked through `NetworkActivity`; UI/input responsiveness should not depend on a blocking Spotify, HA, OTA or audio download call finishing quickly.

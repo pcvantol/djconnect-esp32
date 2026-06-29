@@ -205,7 +205,7 @@ provider calls to safe maxima.
 
 Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, firmware, battery percentage, WiFi RSSI, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, wake-word enabled state, OTA/update state, screen state, LED state and sound output. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_state`, `led_state`, `sound_output`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `wake_word_enabled`/`wake_word`, `ota_state` and `update_state`.
 
-For `/api/djconnect/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404, or HA errors such as `not_configured`/`stale_pairing`, clear local pairing and return the ESP to pairing mode. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
+For `/api/djconnect/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear local pairing and return the ESP to pairing mode. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
 
 If HA returns `error:"invalid_client_type"`, treat it as a firmware/HA contract
 problem, not as stale pairing. Log `HA rejected payload: missing
@@ -305,7 +305,7 @@ The public ESP API Postman collection lives at `postman/DJConnect ESP API.postma
 - Treat Home Assistant as the trusted backend for pairing, generic playback command interpretation, backend credentials, Assist STT/TTS, OTA offer handling and native entity commands.
 - Keep the ESP focused on local edge behavior: display, buttons/encoder, LED ring, battery/power policy, speaker cues, microphone capture and playback of HA-provided DJ response audio.
 - Keep PTT on the integration-backed WAV-upload route: ESP records WAV, uploads it to `/api/djconnect/voice`, then displays/plays the returned DJ response. Do not add direct ESP Assist websocket auth, direct OpenAI calls or browser microphone uploads.
-- Home Assistant is authoritative for pairing validity. On HA 401/403/404, or HA errors such as `not_configured`/`stale_pairing`, clear local pairing and return the ESP to pairing mode.
+- Home Assistant is authoritative for pairing validity. On HA 401/403/404, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear local pairing and return the ESP to pairing mode.
 - Keep external JSON payload names compatible with HA, but keep internal ESP32 Preferences keys at 15 characters or less.
 - Route slow network operations through explicit timeout/backoff policy and avoid making input/display responsiveness depend on an unbounded HTTP call.
 - Keep generated release binaries/manifests out of the firmware source repo workflow unless explicitly publishing release artifacts.
