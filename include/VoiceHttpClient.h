@@ -23,8 +23,6 @@ private:
 
   DJConnectDevice *device_ = nullptr;
   bool pairingInvalidated_ = false;
-  uint8_t consecutiveHaNotFoundCount_ = 0;
-  uint32_t firstHaNotFoundAt_ = 0;
   ActivityCallback activityCallback_ = nullptr;
   void *activityContext_ = nullptr;
 };

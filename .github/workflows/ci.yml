@@ -61,6 +61,9 @@ jobs:
       - name: Validate Postman collections
         run: python3 test/native/test_postman_collections.py
 
+      - name: Validate web portal i18n
+        run: python3 test/native/test_webportal_i18n.py
+
   release-script:
     runs-on: ubuntu-latest
     timeout-minutes: 10

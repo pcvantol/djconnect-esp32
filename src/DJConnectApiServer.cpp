@@ -129,8 +129,14 @@ void DJConnectApiServer::handleInfo() {
   doc["device_name"] = device_->getDeviceName();
   doc["client_type"] = device_->getClientType();
   doc["firmware"] = device_->getFirmwareVersion();
+  doc["version"] = device_->getFirmwareVersion();
+  doc["app_version"] = device_->getFirmwareVersion();
   doc["model"] = device_->getModel();
   doc["paired"] = device_->isPaired();
+  doc["ha_pairing_status"] = device_->isPaired() ? "paired" : "pending";
+  doc["local_url"] = device_->getLocalUrl();
+  doc["api"] = "/api/device";
+  doc["transport"] = "local_only";
   doc["playback_configured"] = device_->isPlaybackConfigured();
   doc["assist_pipeline_id"] = device_->getAssistPipelineId();
   doc["battery_percent"] = battery_ == nullptr ? -1 : battery_->percent;
@@ -146,12 +152,21 @@ void DJConnectApiServer::handleInfo() {
 void DJConnectApiServer::handlePairingInfo() {
   device_->ensurePairingCode();
   JsonDocument doc;
+  doc["success"] = true;
   doc["device_id"] = device_->getDeviceId();
   doc["device_name"] = device_->getDeviceName();
   doc["client_type"] = device_->getClientType();
   doc["pair_code"] = device_->getPairCode();
+  doc["pairing_code"] = device_->getPairCode();
+  doc["pairing_token"] = device_->getPairCode();
+  doc["paired"] = device_->isPaired();
   doc["firmware"] = device_->getFirmwareVersion();
+  doc["version"] = device_->getFirmwareVersion();
+  doc["app_version"] = device_->getFirmwareVersion();
   doc["local_url"] = device_->getLocalUrl();
+  doc["transport"] = "local_only";
+  doc["pairing_path"] = "/api/device/pairing-info";
+  doc["pair_path"] = "/api/device/pair";
   String payload;
   serializeJson(doc, payload);
   sendJson(200, payload);
@@ -233,7 +248,15 @@ void DJConnectApiServer::handlePair() {
   if (!samePairing && directPairCallback_ != nullptr) {
     directPairCallback_(callbackContext_);
   }
-  sendJson(200, "{\"success\":true,\"paired\":true}");
+  JsonDocument response;
+  response["success"] = true;
+  response["device_id"] = device_->getDeviceId();
+  response["client_type"] = device_->getClientType();
+  response["paired"] = true;
+  response["ha_pairing_status"] = "paired";
+  String payload;
+  serializeJson(response, payload);
+  sendJson(200, payload);
 }
 
 void DJConnectApiServer::handleOta() {

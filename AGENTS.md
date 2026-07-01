@@ -173,7 +173,7 @@ Keep concerns separated:
 - Long/blocking HTTP flows should use `NetworkActivity` or a documented equivalent guard with explicit connect/read timeouts, progress logging where useful, and loop/watchdog yielding for large transfers.
 - `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
 - `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
-- User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated. Loglevel UI labels still need translated strings.
+- User-facing display, captive portal, webportal, setup, pairing/status and on-device voice-facing strings should go through the language/i18n path where practical. Supported languages are English (`en`), Dutch (`nl`), German (`de`), French (`fr`) and Spanish (`es`); unknown values fall back to English. Add every new user-facing string key in all supported languages and keep `src/I18n.cpp` compile-time completeness validation passing. Logs intentionally remain English and must not be translated. Loglevel UI labels still need translated strings.
 - App logs are centrally formatted as `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`. Do not manually add timestamps, severity labels, or `[DJConnect]` to new log messages; the central logger strips that prefix when it appears at the start of older callsites.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.
@@ -205,7 +205,7 @@ provider calls to safe maxima.
 
 Periodic HA status payloads must carry the ESP device settings that native HA entities mirror: pairing status, local URL, firmware, battery percentage, WiFi RSSI, screen brightness, screen timeout, turn-off timeout, speaker cue volume, language, theme, log level, wake-word enabled state, OTA/update state, screen state, LED state and sound output. Keep the top-level fields and the nested `settings`, `screen` and `led` objects synchronized with the HA integration contract. Required names include `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_state`, `led_state`, `sound_output`, `screen_brightness`/`brightness`, `screen_dim_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `language`, `theme`, `log_level`, `wake_word_enabled`/`wake_word`, `ota_state` and `update_state`.
 
-For `/api/djconnect/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404 means stale pairing. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
+For `/api/djconnect/command`, keep auth failures distinct from playback-backend failures. HTTP 401/403/404, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear local pairing and return the ESP to pairing mode. Backend/player unavailability should be represented as HTTP 200 with `success:false` and `backend_available:false`; the ESP will show a red playback indicator without clearing pairing.
 
 If HA returns `error:"invalid_client_type"`, treat it as a firmware/HA contract
 problem, not as stale pairing. Log `HA rejected payload: missing
@@ -305,7 +305,7 @@ The public ESP API Postman collection lives at `postman/DJConnect ESP API.postma
 - Treat Home Assistant as the trusted backend for pairing, generic playback command interpretation, backend credentials, Assist STT/TTS, OTA offer handling and native entity commands.
 - Keep the ESP focused on local edge behavior: display, buttons/encoder, LED ring, battery/power policy, speaker cues, microphone capture and playback of HA-provided DJ response audio.
 - Keep PTT on the integration-backed WAV-upload route: ESP records WAV, uploads it to `/api/djconnect/voice`, then displays/plays the returned DJ response. Do not add direct ESP Assist websocket auth, direct OpenAI calls or browser microphone uploads.
-- Pairing validity is runtime state. On HA 401/403/404, mark Home Assistant as stale/red and disable PTT, but do not erase NVS pairing automatically.
+- Home Assistant is authoritative for pairing validity. On HA 401/403/404, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear local pairing and return the ESP to pairing mode.
 - Keep external JSON payload names compatible with HA, but keep internal ESP32 Preferences keys at 15 characters or less.
 - Route slow network operations through explicit timeout/backoff policy and avoid making input/display responsiveness depend on an unbounded HTTP call.
 - Keep generated release binaries/manifests out of the firmware source repo workflow unless explicitly publishing release artifacts.
@@ -335,7 +335,7 @@ Physical push-to-talk from Now Playing uses the Home Assistant integration as th
 - Do not start physical PTT from Current song/AlbumArt. Current song is a read-only detail screen and uses the same top-button back behavior as menu screens.
 - The web portal PTT simulation may still send a fixed localized text command to the ESP `/api/voice-text` proxy. It displays returned DJ text on the device and must return the voice/PTT state to idle after completion. It intentionally must not play returned TTS audio on the device, so it cannot leave the speaker/audio path busy or block physical encoder PTT. It requires WiFi plus successful Home Assistant pairing/device token, but must not depend on backend credentials stored on the ESP or active playback. Do not upload browser WAV audio to the ESP.
 - If `/api/djconnect/voice` returns 404, treat it as a missing/removed Home Assistant integration route or stale ESP pairing. Surface a reset-pairing/setup-again message instead of implying a Spotify credential problem.
-- Treat HA endpoint 401, 403 and 404 responses as runtime-invalid pairing for status/PTT flows. Mark indicators stale/red and instruct reset pairing, but do not automatically erase stored pairing from NVS.
+- Treat HA endpoint 401, 403 and 404 responses as invalid pairing for status/PTT flows. Clear local pairing and return the ESP to pairing mode.
 - Wake-word support uses the bundled ESPHome `Okay Nabu` model through TensorFlow Lite Micro plus the TensorFlow micro_speech frontend. It defaults to off and must be explicitly enabled by the user from device settings, web settings or the HA entity after pairing. It must stay local-only and must not perform network I/O from the audio poll path. The legacy `djconnect_micro_wake_word_detect` hook remains supported only as a compatibility fallback.
 - Do not call OpenAI directly from ESP firmware.
 - Keep `DJCONNECT_DEBUG_TEXT_COMMAND` available as a compile-time fixed-text fallback only.

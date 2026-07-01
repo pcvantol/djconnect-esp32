@@ -31,8 +31,12 @@ uint32_t sleepTimeoutValueMs(size_t index) {
   return Logic::deepSleepTimeoutMsForIndex(index);
 }
 
+String languageValue(size_t index) {
+  return DJConnectMenuModel::languageValue(index);
+}
+
 String languageLabel(Language language) {
-  return I18n::text(language == Language::Dutch ? "language_dutch" : "language_english");
+  return I18n::text(I18n::languageLabelKey(language));
 }
 
 String themeValue(size_t index) {

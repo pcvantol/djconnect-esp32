@@ -504,6 +504,13 @@ static void testVoiceChunkHelpers() {
   assert(Logic::isHomeAssistantPairingInvalidStatus(404));
   assert(!Logic::isHomeAssistantPairingInvalidStatus(500));
   assert(!Logic::isHomeAssistantPairingInvalidStatus(426));
+  assert(Logic::isHomeAssistantPairingInvalidError("not_configured"));
+  assert(Logic::isHomeAssistantPairingInvalidError("stale_pairing"));
+  assert(Logic::isHomeAssistantPairingInvalidError("pairing_stale"));
+  assert(Logic::isHomeAssistantPairingInvalidError("stale_token"));
+  assert(Logic::isHomeAssistantPairingInvalidError("invalid_token"));
+  assert(!Logic::isHomeAssistantPairingInvalidError("version_mismatch"));
+  assert(!Logic::isHomeAssistantPairingInvalidError(nullptr));
   assert(Logic::isDjConnectVersionMismatch(426, "version_mismatch"));
   assert(!Logic::isDjConnectVersionMismatch(426, "unauthorized"));
   assert(!Logic::isDjConnectVersionMismatch(400, "version_mismatch"));
@@ -615,10 +622,23 @@ static void testWebPortalButtonStates() {
 }
 
 static void testLanguageCodeNormalization() {
+  assert(Logic::SupportedLanguageCount == 5);
+  assert(DJConnectMenuModel::LanguageOptionCount == Logic::SupportedLanguageCount);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(0), "en") == 0);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(1), "nl") == 0);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(2), "de") == 0);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(3), "fr") == 0);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(4), "es") == 0);
+  for (size_t index = 0; index < DJConnectMenuModel::LanguageOptionCount; index++) {
+    assert(std::strcmp(DJConnectMenuModel::languageValue(index), Logic::supportedLanguageCodeAt(index)) == 0);
+  }
   assert(std::strcmp(Logic::languageCodeOrDefault("en"), "en") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("nl"), "nl") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("NL"), "nl") == 0);
-  assert(std::strcmp(Logic::languageCodeOrDefault("de"), "en") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("de"), "de") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("FR"), "fr") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("es"), "es") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("it"), "en") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault(nullptr), "en") == 0);
 }
 
@@ -748,6 +768,12 @@ static void testDeviceCommandParserSettings() {
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::Language);
   assert(command.value == "nl");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"language\",\"value\":\"de\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Language);
+  assert(command.value == "de");
 
   doc.clear();
   deserializeJson(doc, "{\"command\":\"theme\",\"value\":\"dark\"}");

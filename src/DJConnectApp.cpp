@@ -60,6 +60,15 @@ const char *resetReasonName(esp_reset_reason_t reason) {
   }
 }
 
+size_t languageSelectionFor(Language language) {
+  for (size_t index = 0; index < I18n::SupportedLanguageCount; index++) {
+    if (I18n::languageAt(index) == language) {
+      return index;
+    }
+  }
+  return 0;
+}
+
 const char *wakeupCauseName(esp_sleep_wakeup_cause_t cause) {
   switch (cause) {
     case ESP_SLEEP_WAKEUP_EXT0:
@@ -409,7 +418,7 @@ void DJConnectApp::loadProvisioning() {
       break;
     }
   }
-  languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+  languageSelection_ = languageSelectionFor(language_);
   for (size_t index = 0; index < ThemeOptionCount; index++) {
     if (themeValue(index) == themeCode_) {
       themeSelection_ = index;
@@ -1265,7 +1274,7 @@ void DJConnectApp::moveMenuSelection(int encoderSteps) {
     screenBrightnessPercent_ = brightnessValuePercent(brightnessSelection_);
     display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
   } else if (activeScreen_ == UiScreen::Language) {
-    language_ = languageSelection_ == 1 ? Language::Dutch : Language::English;
+    language_ = I18n::languageAt(languageSelection_);
     I18n::setLanguage(language_);
   } else if (activeScreen_ == UiScreen::SpeakerVolume) {
     speakerVolumePercent_ = speakerVolumeValuePercent(speakerVolumeSelection_);
@@ -1355,7 +1364,7 @@ void DJConnectApp::selectCurrentMenuItem() {
       } else if (settingsSelection_ == 2) {
         openScreen(UiScreen::SleepTimeout);
       } else if (settingsSelection_ == 3) {
-        languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+        languageSelection_ = languageSelectionFor(language_);
         openScreen(UiScreen::Language);
       } else if (settingsSelection_ == 4) {
         for (size_t index = 0; index < ThemeOptionCount; index++) {
@@ -1416,7 +1425,7 @@ void DJConnectApp::selectCurrentMenuItem() {
       break;
 
     case UiScreen::Language:
-      language_ = languageSelection_ == 1 ? Language::Dutch : Language::English;
+      language_ = I18n::languageAt(languageSelection_);
       I18n::setLanguage(language_);
       saveDisplaySettings();
       showNotice(String(I18n::text("language")) + " " + languageLabel(language_), 2000);
@@ -1600,15 +1609,16 @@ void DJConnectApp::applySleepTimeoutSelection() {
 
 void DJConnectApp::saveDisplaySettings() {
   languageCode_ = I18n::languageCode();
+  const DeviceSettingsSnapshot settings = currentSettingsSnapshot();
   provisioning_.saveDisplaySettings(
-      screenOffTimeoutMs_,
-      deviceSleepTimeoutMs_,
-      screenBrightnessPercent_,
-      languageCode_,
-      themeCode_,
-      logLevel_,
-      speakerVolumePercent_,
-      wakeWordEnabled_,
+      settings.screenOffTimeoutMs,
+      settings.deviceSleepTimeoutMs,
+      settings.screenBrightnessPercent,
+      settings.languageCode,
+      settings.themeCode,
+      settings.logLevel,
+      settings.speakerVolumePercent,
+      settings.wakeWordEnabled,
       volumeFeedbackEnabled_);
 }
 
@@ -2360,13 +2370,14 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     return ok;
   }
   if (command.type == DeviceCommandType::ScreenBrightness) {
-    screenBrightnessPercent_ = constrain(command.numericValue, 25, 100);
+    DeviceSettingsSnapshot settings = currentSettingsSnapshot();
+    settings.screenBrightnessPercent = constrain(command.numericValue, 25, 100);
+    applySettingsSnapshot(settings);
     for (size_t index = 0; index < BrightnessOptionCount; index++) {
       if (brightnessValuePercent(index) == screenBrightnessPercent_) {
         brightnessSelection_ = index;
       }
     }
-    display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
     saveDisplaySettings();
     AppLog.print("Device command: screen brightness ");
     AppLog.println(screenBrightnessPercent_);
@@ -2376,13 +2387,14 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     return true;
   }
   if (command.type == DeviceCommandType::ScreenDimTimeout) {
-    screenOffTimeoutMs_ = constrain(static_cast<uint32_t>(command.numericValue) * 1000UL, 30000UL, 240000UL);
+    DeviceSettingsSnapshot settings = currentSettingsSnapshot();
+    settings.screenOffTimeoutMs = constrain(static_cast<uint32_t>(command.numericValue) * 1000UL, 30000UL, 240000UL);
+    applySettingsSnapshot(settings);
     for (size_t index = 0; index < DimTimeoutOptionCount; index++) {
       if (dimTimeoutValueMs(index) == screenOffTimeoutMs_) {
         dimTimeoutSelection_ = index;
       }
     }
-    display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
     saveDisplaySettings();
     AppLog.print("Device command: screen dim timeout ");
     AppLog.println(screenOffTimeoutMs_);
@@ -2392,8 +2404,9 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     return true;
   }
   if (command.type == DeviceCommandType::DeepSleepTimeout) {
-    deviceSleepTimeoutMs_ = constrain(static_cast<uint32_t>(command.numericValue) * 60000UL, 300000UL, 3600000UL);
-    sleepTimeoutSelection_ = Logic::deepSleepTimeoutIndexForMs(deviceSleepTimeoutMs_);
+    DeviceSettingsSnapshot settings = currentSettingsSnapshot();
+    settings.deviceSleepTimeoutMs = constrain(static_cast<uint32_t>(command.numericValue) * 60000UL, 300000UL, 3600000UL);
+    applySettingsSnapshot(settings);
     saveDisplaySettings();
     AppLog.print("Device command: turn off after ");
     AppLog.println(deviceSleepTimeoutMs_);
@@ -2403,13 +2416,9 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     return true;
   }
   if (command.type == DeviceCommandType::SpeakerVolume) {
-    speakerVolumePercent_ = constrain(command.numericValue, 25, 100);
-    for (size_t index = 0; index < SpeakerVolumeOptionCount; index++) {
-      if (speakerVolumeValuePercent(index) == speakerVolumePercent_) {
-        speakerVolumeSelection_ = index;
-      }
-    }
-    sound_.setVolumePercent(speakerVolumePercent_);
+    DeviceSettingsSnapshot settings = currentSettingsSnapshot();
+    settings.speakerVolumePercent = constrain(command.numericValue, 25, 100);
+    applySettingsSnapshot(settings);
     saveDisplaySettings();
     AppLog.print("Device command: speaker volume ");
     AppLog.println(speakerVolumePercent_);
@@ -2419,10 +2428,16 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     return true;
   }
   if (command.type == DeviceCommandType::Language) {
-    language_ = I18n::languageFromCode(command.value);
-    I18n::setLanguage(language_);
-    languageCode_ = I18n::languageCode();
-    languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+    DeviceSettingsSnapshot settings = SettingsController::normalize(
+        screenBrightnessPercent_,
+        screenOffTimeoutMs_,
+        deviceSleepTimeoutMs_,
+        speakerVolumePercent_,
+        command.value,
+        themeCode_,
+        logLevel_,
+        wakeWordEnabled_);
+    applySettingsSnapshot(settings);
     saveDisplaySettings();
     AppLog.print("Device command: language ");
     AppLog.println(languageCode_);
@@ -2432,19 +2447,16 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     return true;
   }
   if (command.type == DeviceCommandType::Theme) {
-    String theme = command.value;
-    theme.toLowerCase();
-    if (theme != "auto" && theme != "light") {
-      theme = "dark";
-    }
-    themeCode_ = theme;
-    for (size_t index = 0; index < ThemeOptionCount; index++) {
-      if (themeValue(index) == themeCode_) {
-        themeSelection_ = index;
-        break;
-      }
-    }
-    applyTheme();
+    DeviceSettingsSnapshot settings = SettingsController::normalize(
+        screenBrightnessPercent_,
+        screenOffTimeoutMs_,
+        deviceSleepTimeoutMs_,
+        speakerVolumePercent_,
+        languageCode_,
+        command.value,
+        logLevel_,
+        wakeWordEnabled_);
+    applySettingsSnapshot(settings);
     saveDisplaySettings();
     AppLog.print("Device command: theme ");
     AppLog.println(themeCode_);
@@ -2454,20 +2466,17 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     return true;
   }
   if (command.type == DeviceCommandType::LogLevel) {
-    String level = command.value;
-    level.toLowerCase();
-    if (level != "debug" && level != "warning" && level != "error") {
-      level = "info";
-    }
-    logLevel_ = level;
-    for (size_t index = 0; index < LogLevelOptionCount; index++) {
-      if (logLevelValue(index) == logLevel_) {
-        logLevelSelection_ = index;
-        break;
-      }
-    }
+    DeviceSettingsSnapshot settings = SettingsController::normalize(
+        screenBrightnessPercent_,
+        screenOffTimeoutMs_,
+        deviceSleepTimeoutMs_,
+        speakerVolumePercent_,
+        languageCode_,
+        themeCode_,
+        command.value,
+        wakeWordEnabled_);
+    applySettingsSnapshot(settings);
     saveDisplaySettings();
-    AppLog.setLevel(logLevel_);
     showNotice(String(I18n::text("log_level")) + " " + logLevelLabel(logLevel_), 1800);
     renderNow();
     message = "Log level updated";
@@ -3787,48 +3796,56 @@ void DJConnectApp::applyWebSettings(
     const String &themeCode,
     const String &logLevel,
     bool wakeWordEnabled) {
-  screenBrightnessPercent_ = constrain(brightnessPercent, 25, 100);
-  screenOffTimeoutMs_ = constrain(offTimeoutMs, 30000UL, 240000UL);
-  deviceSleepTimeoutMs_ = constrain(sleepTimeoutMs, 300000UL, 3600000UL);
-  speakerVolumePercent_ = constrain(speakerVolumePercent, 25, 100);
-  language_ = I18n::languageFromCode(languageCode);
+  applySettingsSnapshot(SettingsController::normalize(
+      brightnessPercent,
+      offTimeoutMs,
+      sleepTimeoutMs,
+      speakerVolumePercent,
+      languageCode,
+      themeCode,
+      logLevel,
+      wakeWordEnabled));
+  saveDisplaySettings();
+  showNotice(I18n::text("web_settings_saved"), 1800);
+  renderNow();
+  sendHomeAssistantStatusIfDue(true);
+}
+
+DeviceSettingsSnapshot DJConnectApp::currentSettingsSnapshot() const {
+  DeviceSettingsSnapshot settings;
+  settings.screenBrightnessPercent = screenBrightnessPercent_;
+  settings.screenOffTimeoutMs = screenOffTimeoutMs_;
+  settings.deviceSleepTimeoutMs = deviceSleepTimeoutMs_;
+  settings.speakerVolumePercent = speakerVolumePercent_;
+  settings.language = language_;
+  settings.languageCode = languageCode_;
+  settings.themeCode = themeCode_;
+  settings.logLevel = logLevel_;
+  settings.wakeWordEnabled = wakeWordEnabled_;
+  return settings;
+}
+
+void DJConnectApp::applySettingsSnapshot(const DeviceSettingsSnapshot &settings) {
+  screenBrightnessPercent_ = settings.screenBrightnessPercent;
+  screenOffTimeoutMs_ = settings.screenOffTimeoutMs;
+  deviceSleepTimeoutMs_ = settings.deviceSleepTimeoutMs;
+  speakerVolumePercent_ = settings.speakerVolumePercent;
+  language_ = settings.language;
   I18n::setLanguage(language_);
   languageCode_ = I18n::languageCode();
-  languageSelection_ = language_ == Language::Dutch ? 1 : 0;
-  themeCode_ = themeCode;
-  themeCode_.toLowerCase();
-  if (themeCode_ != "auto" && themeCode_ != "light") {
-    themeCode_ = "dark";
-  }
-  logLevel_ = logLevel;
-  logLevel_.toLowerCase();
-  if (logLevel_ != "debug" && logLevel_ != "warning" && logLevel_ != "error") {
-    logLevel_ = "info";
-  }
-  wakeWordEnabled_ = wakeWordEnabled;
+  themeCode_ = settings.themeCode;
+  logLevel_ = settings.logLevel;
+  wakeWordEnabled_ = settings.wakeWordEnabled;
   wakeWord_.setEnabled(wakeWordEnabled_);
   if (!wakeWordEnabled_) {
     wakeWord_.releaseResources();
   }
-  for (size_t index = 0; index < ThemeOptionCount; index++) {
-    if (themeValue(index) == themeCode_) {
-      themeSelection_ = index;
-      break;
-    }
-  }
-  for (size_t index = 0; index < LogLevelOptionCount; index++) {
-    if (logLevelValue(index) == logLevel_) {
-      logLevelSelection_ = index;
-      break;
-    }
-  }
-  sleepTimeoutSelection_ = Logic::deepSleepTimeoutIndexForMs(deviceSleepTimeoutMs_);
-  for (size_t index = 0; index < SpeakerVolumeOptionCount; index++) {
-    if (speakerVolumeValuePercent(index) == speakerVolumePercent_) {
-      speakerVolumeSelection_ = index;
-      break;
-    }
-  }
+  const DeviceSettingsSelections selections = SettingsController::selectionsFor(settings);
+  languageSelection_ = selections.languageSelection;
+  themeSelection_ = selections.themeSelection;
+  logLevelSelection_ = selections.logLevelSelection;
+  sleepTimeoutSelection_ = selections.sleepTimeoutSelection;
+  speakerVolumeSelection_ = selections.speakerVolumeSelection;
   display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
   if (haPairingScreenActive_) {
     display_.forceBacklightPercent(100);
@@ -3839,10 +3856,6 @@ void DJConnectApp::applyWebSettings(
   }
   AppLog.setLevel(logLevel_);
   sound_.setVolumePercent(speakerVolumePercent_);
-  saveDisplaySettings();
-  showNotice(I18n::text("web_settings_saved"), 1800);
-  renderNow();
-  sendHomeAssistantStatusIfDue(true);
 }
 
 void DJConnectApp::applyProvisionedLanguage(const String &languageCode) {
@@ -3853,7 +3866,7 @@ void DJConnectApp::applyProvisionedLanguage(const String &languageCode) {
   language_ = I18n::languageFromCode(normalized);
   I18n::setLanguage(language_);
   languageCode_ = I18n::languageCode();
-  languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+  languageSelection_ = languageSelectionFor(language_);
   AppLog.print("UI language applied: ");
   AppLog.println(languageCode_);
   renderNow();
@@ -4114,16 +4127,8 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
   if (haDevice_.isPlaybackConfigured() && !playbackProxyUsable) {
     AppLog.println("Playback proxy marked stale; requesting HA status refresh");
   }
-  DeviceSettingsStatus settings;
-  settings.screenBrightnessPercent = screenBrightnessPercent_;
-  settings.screenOffTimeoutMs = screenOffTimeoutMs_;
-  settings.turnOffAfterMs = deviceSleepTimeoutMs_;
-  settings.speakerVolumePercent = speakerVolumePercent_;
-  settings.language = languageCode_;
-  settings.theme = themeCode_;
-  settings.logLevel = logLevel_;
-  settings.wakeWordEnabled = wakeWordEnabled_;
-  const String soundOutput = playback_.deviceName.isEmpty() ? "" : playback_.deviceName;
+  const DeviceSettingsStatus settings = DeviceStatusBuilder::settingsStatus(currentSettingsSnapshot());
+  const String soundOutput = DeviceStatusBuilder::soundOutputName(playback_);
   const DJConnectPairing::StatusResult result =
       haPairing_.sendStatusToHA(battery_, playbackProxyUsable, settings, visualState_, soundOutput);
   if (result == DJConnectPairing::StatusResult::Ok) {
@@ -4157,11 +4162,19 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
 
 void DJConnectApp::markHomeAssistantPairingInvalid(const String &message) {
   if (homeAssistantPaired_) {
-    AppLog.println("Home Assistant: pairing invalid or stale");
+    AppLog.println("Home Assistant: pairing invalid or stale, clearing local pairing");
   }
+  haDevice_.clearHomeAssistantPairing();
   homeAssistantPaired_ = false;
   haPairingPendingValidation_ = false;
   playbackRefreshAfterPairing_ = false;
+  haPairingScreenActive_ = true;
+  haPairingStartedAt_ = 0;
+  lastHaStatusAt_ = 0;
+  haDevice_.displayPairingCode();
+  if (WiFi.status() == WL_CONNECTED) {
+    haDiscovery_.begin(haDevice_);
+  }
   showNotice(message, 5000);
   renderNow();
 }
@@ -4798,10 +4811,10 @@ void DJConnectApp::renderMenuNow() {
     }
 
     case UiScreen::Language: {
-      MenuItemView items[LanguageOptionCount] = {
-          {languageLabel(Language::English)},
-          {languageLabel(Language::Dutch)},
-      };
+      MenuItemView items[LanguageOptionCount];
+      for (size_t index = 0; index < LanguageOptionCount; index++) {
+        items[index].label = languageLabel(I18n::languageAt(index));
+      }
       items[languageSelection_].label += " " + String(I18n::text("selected"));
       display_.renderMenuList(
           I18n::text("language"),

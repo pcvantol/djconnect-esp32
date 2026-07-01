@@ -6,10 +6,10 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is
 
 Current repo state includes:
 
-- Latest verified firmware release from this repo: `v3.2.0`. Source repo
+- Latest verified firmware release from this repo: `v3.2.2`. Source repo
   `pcvantol/djconnect-esp32` and public firmware repo
-  `pcvantol/djconnect-firmware` both have pushed `v3.2.0` tags. The public
-  firmware GitHub release is `DJConnect firmware v3.2.0` and contains only the
+  `pcvantol/djconnect-firmware` both have pushed `v3.2.2` tags. The public
+  firmware GitHub release is `DJConnect firmware v3.2.2` and contains only the
   LilyGO binary, matching `.sha256`, and `firmware_manifest.json`; generated
   local `release/` artifacts remain ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
@@ -29,6 +29,10 @@ Current repo state includes:
 - Web portal includes Now Playing, DJ-announcement simulation, outputs, playlists, queue with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. It uses the DJConnect blue/purple brand styling, shows `Muziekbediening met karakter`, firmware version plus board device model in the title bar, and uses lila/magenta playback controls and volume slider. Queue and playlist panels use compact internal scroll areas. Queue accepts up to 100 real items from Home Assistant and is de-duplicated by URI or title/subtitle fallback so single-item queues do not render repeated tracks. Queue items with direct Spotify track or episode URIs stay startable even when Home Assistant omits `context_uri`/`queue_context`; context plus offset is still sent when playlist/album/show context exists. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
 - Playback proxy control requests use short waits and transient-failure cooldown; OTA writes release wake-word/TFLite and active voice/audio resources before GitHub TLS, tolerate slow GitHub/CDN stream bursts, manually follow GitHub release redirects, log the download host/final URL on transport failures and continue to feed the watchdog and firmware-update LED animation.
 - Device main menu includes a local Games submenu with Paddle Rally, Meteor Run, Sky Dash and Maze Chase. Games are local-only, use encoder movement/center-button fire or lane controls where applicable, persist highscores in NVS and are not exposed through Home Assistant. Current game behavior includes Maze Chase corner power pellets/vulnerable ghost/death delay, Meteor Run straight-falling varied meteors, Sky Dash animated star streaks and varied obstacles, Paddle Rally hit feedback and short 8-bit event sounds.
+- Device UI, setup/pairing/status text, web portal settings and device-generated
+  voice-facing strings support English, Dutch, German, French and Spanish
+  (`en`, `nl`, `de`, `fr`, `es`) through the central `I18n` table. Logs remain
+  English and protocol fields/payload values are never localized.
 - Device Help screen lists top button, encoder button and rotary actions. It appears once after initial Home Assistant pairing, then remains available from the main menu.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
 - Home Assistant should expose the proxied playback as a native `media_player` entity if user-facing HA media controls are desired. That entity represents the backend playback session, not the ESP speaker.
@@ -38,13 +42,13 @@ Current repo state includes:
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
 - Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
 - HA should treat pairing as pending until the ESP confirms token storage and a successful LAN status post. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token`, required LAN `ha_local_url`, and lightweight settings, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/status`. Automatic playback polling is delayed briefly after boot/pairing to avoid stacking HA status, playback proxy and wake-word startup work on no-PSRAM LilyGO hardware.
-- Device IDs and mDNS hostnames are board-model specific. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`. Home Assistant should use the `model` field/TXT record for device-type routing instead of parsing the old `djconnect-lilygo-` prefix. ESP mDNS discovery is setup-only: unpaired devices advertise `_djconnect._tcp` with `client_type=esp32` alongside `name`, `device_id`, `version`, `paired`, `api` and `model`, and paired devices stop advertising until pairing is reset.
+- Device IDs and mDNS hostnames are board-model specific. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`. Home Assistant should use the `model` field/TXT record for device-type routing instead of parsing the old `djconnect-lilygo-` prefix. ESP mDNS discovery is setup-only: unpaired devices advertise `_djconnect._tcp` with `client_type=esp32` alongside `name`/`device_name`, `device_id`, `version`/`firmware`/`app_version`, `paired`, `api`, `local_url`, `pair_code`/`pairing_code`, `pairing_path`, `pair_path` and `model`, and paired devices stop advertising until pairing is reset.
 - The ESP rejects persistent legacy IDs such as `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` and `djconnect-[six-digit-code]`; the six-digit value is only `pair_code` in pairing-info/pairing UI.
 - The ESP requires a real LAN `ha_local_url` for normal status, playback proxy commands and voice calls. If Home Assistant sends a Nabu Casa `.ui.nabu.casa` URL as `ha_local_url`, firmware rejects the pairing callback instead of entering a half-paired state. If Home Assistant accidentally sends `ha_remote_url`, firmware ignores it and removes any old stored remote URL key on pairing updates. Playback fails clearly with `HA playback command unavailable: local HA URL missing` when local is absent. Cloud/Nabu Casa URLs are not accepted, stored, reported, or used by the ESP runtime.
 - Direct pairing during the pairing screen leaves pairing mode first so BLE can shut down before the Okay Nabu TensorFlow runtime allocates its arena.
 - Okay Nabu wake word runs locally through TensorFlow Lite Micro plus the TensorFlow micro_speech frontend. Current LilyGO tuning uses a 10 ms feature step, 3-frame sliding window and `0.90` cutoff. Wake-word recordings auto-stop after 1.2 seconds of silence and are hard-capped at 15 seconds.
 - After WiFi/Home Assistant setup, the ESP posts HA status immediately and delays the first automatic playback status poll by a short boot grace period. Physical playback controls can still send commands immediately.
-- `/api/djconnect/command` should distinguish auth from backend availability. 401/403/404 means stale pairing. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow. Command payloads are identity-only (`device_id`, `client_type:"esp32"`, `payload_type:"command"` and `firmware`) and must not be treated as authoritative device-status snapshots.
+- `/api/djconnect/command` should distinguish auth from backend availability. 401/403/404, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear local pairing and return the ESP to pairing mode. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow. Command payloads are identity-only (`device_id`, `client_type:"esp32"`, `payload_type:"command"` and `firmware`) and must not be treated as authoritative device-status snapshots.
 - Periodic `/api/djconnect/status` is the authoritative source for Home Assistant ESP sensors and mirrors device settings/entities: `ha_pairing_status`, `local_url`, screen brightness aliases, screen timeout aliases, turn-off timeout, speaker/cue volume aliases, language, theme, log level, OTA/update state, screen state and LED state.
 - HA integration and firmware must share the same major/minor protocol version. `3.2.z` firmware should talk to `3.2.z` HA integration; patch versions may differ. HTTP 426 `version_mismatch` is an update-required protocol block, not a pairing-token failure.
 - HA `3.2.x` playback responses may include a lightweight backend summary:
@@ -76,21 +80,16 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Latest release verification for `v3.2.0`:
+Latest release verification for `v3.2.2`:
 
-- `./release.sh 3.2.0 --publish-firmware-repo ../djconnect-firmware --gh-release` completed
-  a clean LilyGO release build with unchanged PlatformIO dependency versions.
-- The source repo tag and public firmware repo tag `v3.2.0` were pushed.
-- The public firmware GitHub release was created and verified as Latest with
-  only `djconnect-lilygo-t-embed-s3-v3.2.0.bin`,
-  `djconnect-lilygo-t-embed-s3-v3.2.0.bin.sha256` and
+- `./release.sh 3.2.2` completed a clean LilyGO source release build.
+- The source repo tag `v3.2.2` was pushed.
+- Verify that GitHub Actions or maintainer-controlled public publishing creates
+  the public firmware release with only
+  `djconnect-lilygo-t-embed-s3-v3.2.2.bin`,
+  `djconnect-lilygo-t-embed-s3-v3.2.2.bin.sha256` and
   `firmware_manifest.json`.
-- Post-release cleanup kept `v3.2.0` as the current stable line. Public
-  firmware repo release/tag `v3.1.37` was removed; source repo stable tag
-  `v3.1.37` plus old release workflow runs were removed. Local stale tags were
-  pruned to match the remote cleanup.
-- Branch protection/admin enforcement on `pcvantol/djconnect-esp32/main` was
-  restored after the controlled maintainer release window.
+- Post-release cleanup should keep `v3.2.2` as the current stable line.
 
 ## Architecture
 
@@ -112,7 +111,7 @@ Main module boundaries:
 Core data/security boundaries:
 
 - Device API uses `Authorization: Bearer <device_token>` for protected endpoints.
-- Home Assistant pairing validity is runtime state. HA 401/403/404 marks pairing stale/red but does not erase established stored pairing automatically. Playback proxy commands are disabled until a successful authenticated HA status post confirms the stored token.
+- Home Assistant is authoritative for pairing validity. HA 401/403/404 responses, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear established local pairing and return the ESP to pairing mode. Playback proxy commands are disabled until a successful authenticated HA status post confirms the stored token.
 - Playback proxy backend availability is separate from pairing validity. A command response with `success:false` and `backend_available:false` marks the playback music-note indicator red but must not clear pairing or rotate tokens.
 - Device status belongs on `/api/djconnect/status`. Do not reintroduce battery, firmware, RSSI, pairing, screen, LED, settings or sound-output fields onto playback command payloads as partial snapshots.
 - Playback-backend refresh tokens are never stored on the ESP and therefore are never logged or shown back to users.
@@ -151,7 +150,7 @@ Core data/security boundaries:
 - Home Assistant OTA selection must use the matching `firmwares[]` entry for the paired device model. Do not fall back to the removed generic firmware asset naming or top-level single-device manifest fields.
 - Queue, playlist and output metadata now come from Home Assistant. Backend-specific fallbacks belong in the integration. Firmware prefers backend-neutral output terminology and must not label the selected HA backend as Spotify unless Home Assistant explicitly reports Spotify Direct.
 - If Home Assistant returns duplicate queue entries for single-track queues, firmware de-duplicates them for display; the integration should still prefer returning the actual backend queue shape rather than padding with the current item.
-- The Home Assistant integration must send a real LAN `ha_local_url` during pairing. Sending Nabu Casa as local is rejected by firmware; sending a stale token gives a local `/api/djconnect/status` 401 and keeps H red.
+- The Home Assistant integration must send a real LAN `ha_local_url` during pairing. Sending Nabu Casa as local is rejected by firmware; sending a stale token gives a local `/api/djconnect/status` 401 and returns the ESP to pairing mode.
 - MP3 DJ-announcement playback can still be sensitive to decoder/runtime blocking; watchdog handling has been improved but should be stress-tested with varied MP3 lengths/bitrates.
 - Okay Nabu detection works locally through TFLite Micro but still needs real-room LilyGO tuning for false positives, missed detections and silence auto-stop.
 - Home Assistant STT/TTS failures are backend/integration dependent. Firmware surfaces error bodies but cannot fix missing HA STT provider configuration.

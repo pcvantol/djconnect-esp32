@@ -38,6 +38,7 @@ uint8_t brightnessValuePercent(size_t index);
 uint8_t speakerVolumeValuePercent(size_t index);
 uint32_t sleepTimeoutValueMs(size_t index);
 
+String languageValue(size_t index);
 String languageLabel(Language language);
 String themeValue(size_t index);
 String themeLabel(const String &theme);

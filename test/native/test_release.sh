@@ -11,7 +11,9 @@ bash -n scripts/extract_release_changelog.sh
 bash -n scripts/update_build_dependencies.sh
 python3 -m py_compile scripts/minify_webportal.py
 python3 -m py_compile test/native/test_postman_collections.py
+python3 -m py_compile test/native/test_webportal_i18n.py
 python3 test/native/test_postman_collections.py
+python3 test/native/test_webportal_i18n.py
 test -s DESIGN_DECISIONS.md
 test -s DEVELOPMENT_ENVIRONMENT.md
 grep -q "Technical Design Decisions" DESIGN_DECISIONS.md

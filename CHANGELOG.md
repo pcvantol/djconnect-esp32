@@ -1,5 +1,21 @@
 # Changelog
 
+## v3.2.2
+
+### Changed
+
+- Added five-language UI localization support for English, Dutch, German,
+  French and Spanish across device display strings, setup/pairing/status text,
+  web portal settings and device-generated voice-facing messages.
+- Centralized firmware user-facing string lookup in a fixed `I18n` table with
+  compile-time completeness validation for every supported language.
+- Extended Home Assistant pairing/settings language provisioning and local
+  device/web language selection to accept only `en`, `nl`, `de`, `fr` and `es`,
+  while keeping protocol fields, endpoint paths, JSON keys and payload values
+  unlocalized.
+- Updated native tests and developer guidance so future user-facing strings
+  must be added for all supported languages.
+
 ## v3.2.1
 
 ### Changed
@@ -8,6 +24,13 @@
   response contract.
 - Accepted safe backend error objects and nested queue context from Home
   Assistant playback/queue responses.
+- Added HA-compatible pairing discovery fields to mDNS and
+  `/api/device/pairing-info`.
+- Added Raspberry Pi local-device compatible `version`/`app_version`,
+  `pairing_token` and `local_only` aliases to ESP32 local API responses.
+- Made Home Assistant stale-pairing responses clear the local ESP pairing and
+  return to pairing mode while preserving the `426 version_mismatch` update
+  block behavior.
 - Added native contract coverage for backend error objects and backend-neutral
   queue response shapes.
 

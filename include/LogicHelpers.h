@@ -8,6 +8,13 @@
 
 namespace Logic {
 
+constexpr size_t SupportedLanguageCount = 5;
+
+inline const char *supportedLanguageCodeAt(size_t index) {
+  static const char *const values[SupportedLanguageCount] = {"en", "nl", "de", "fr", "es"};
+  return values[index < SupportedLanguageCount ? index : 0];
+}
+
 // Keeps percentage-like values inside the UI/API range used by Spotify and the LED ring.
 inline int clampPercent(int value) {
   if (value < 0) {
@@ -292,6 +299,15 @@ inline bool isHomeAssistantPairingInvalidStatus(int statusCode) {
   return statusCode == 401 || statusCode == 403 || statusCode == 404;
 }
 
+inline bool isHomeAssistantPairingInvalidError(const char *error) {
+  return error != nullptr &&
+         (strcmp(error, "not_configured") == 0 ||
+          strcmp(error, "stale_pairing") == 0 ||
+          strcmp(error, "pairing_stale") == 0 ||
+          strcmp(error, "stale_token") == 0 ||
+          strcmp(error, "invalid_token") == 0);
+}
+
 inline bool isHexDigit(char value) {
   return (value >= '0' && value <= '9') ||
          (value >= 'a' && value <= 'f') ||
@@ -551,7 +567,19 @@ inline const char *languageCodeOrDefault(const char *code) {
   if (code == nullptr) {
     return "en";
   }
-  return (strcmp(code, "nl") == 0 || strcmp(code, "NL") == 0) ? "nl" : "en";
+  char normalized[3] = {};
+  normalized[0] = code[0] >= 'A' && code[0] <= 'Z' ? static_cast<char>(code[0] + ('a' - 'A')) : code[0];
+  normalized[1] = code[1] >= 'A' && code[1] <= 'Z' ? static_cast<char>(code[1] + ('a' - 'A')) : code[1];
+  if (normalized[0] == '\0' || normalized[1] == '\0') {
+    return "en";
+  }
+  for (size_t index = 0; index < SupportedLanguageCount; index++) {
+    const char *supported = supportedLanguageCodeAt(index);
+    if (strcmp(normalized, supported) == 0) {
+      return supported;
+    }
+  }
+  return "en";
 }
 
 struct Bq27220Reading {

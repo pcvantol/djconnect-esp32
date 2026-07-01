@@ -272,6 +272,10 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
       AppLog.println(response["firmware"] | response["firmware_major_minor"] | device_->getFirmwareVersion().c_str());
       return StatusResult::VersionMismatch;
     }
+    if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
+      AppLog.println("HA pairing appears invalid");
+      return StatusResult::PairingInvalid;
+    }
     if (code >= 200 && code < 300) {
       applyProvisionedLanguage(response.as<JsonVariantConst>());
     }

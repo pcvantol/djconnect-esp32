@@ -160,7 +160,7 @@ static const char IndexHtml[] PROGMEM = R"rawliteral(
 <select id="offTimeout"><option value="30000" data-i18n="timeout30s">30 seconds</option><option value="60000" data-i18n="timeout1m">1 minute</option><option value="120000" data-i18n="timeout2m">2 minutes</option><option value="240000" data-i18n="timeout4m">4 minutes</option></select><span class="fine" data-i18n="settingsFine">Screen turns off after the selected idle timeout. LED ring follows the screen power state.</span></label><label data-i18n-label="deepSleep">Turn off after
 <select id="sleepTimeout"><option value="300000" data-i18n="timeout5m">5 minutes</option><option value="900000" data-i18n="timeout15m">15 minutes</option><option value="1800000" data-i18n="timeout30m">30 minutes</option><option value="3600000" data-i18n="timeout60m">60 minutes</option></select></label><label data-i18n-label="speakerVolume">Speaker volume
 <select id="speakerVolume"><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label><label data-i18n-label="language">Language
-<select id="language"><option value="en" data-i18n="languageEnglish">English</option><option value="nl" data-i18n="languageDutch">Dutch</option></select></label><label data-i18n-label="theme">Theme
+<select id="language"><option value="en" data-i18n="languageEnglish">English</option><option value="nl" data-i18n="languageDutch">Dutch</option><option value="de" data-i18n="languageGerman">German</option><option value="fr" data-i18n="languageFrench">French</option><option value="es" data-i18n="languageSpanish">Spanish</option></select></label><label data-i18n-label="theme">Theme
 <select id="theme"><option value="dark" data-i18n="themeDark">Dark</option><option value="light" data-i18n="themeLight">Light</option><option value="auto" data-i18n="themeAuto">Auto</option></select></label><label data-i18n-label="logLevel">Log level
 <select id="logLevel"><option value="debug" data-i18n="logLevelDebug">Debug</option><option value="info" data-i18n="logLevelInfo">Info</option><option value="warning" data-i18n="logLevelWarning">Warning</option><option value="error" data-i18n="logLevelError">Error</option></select></label><label data-i18n-label="wakeWord">Wake word
 <select id="wakeWordEnabled"><option value="0" data-i18n="off">Off</option><option value="1" data-i18n="on">On</option></select></label><button data-i18n="saveSettings" type="submit">Save settings</button></form><div id="settingsStatus" class="status"></div></section><section class="panel"><h2 data-i18n="wifi">WiFi</h2><div class="grid wifi-grid"><div class="row"><span class="key" data-i18n="state">State</span><span id="wifiConnected" class="value">-</span></div><div class="row"><span class="key">IP</span><span id="wifiIp" class="value mono">-</span></div><div class="row"><span class="key">SSID</span><span id="wifiSsid" class="value">-</span></div><div class="row"><span class="key">RSSI</span><span class="value"><span id="wifiSignal" class="signal level-0"><i></i><i></i><i></i><i></i></span><span id="wifiRssi">-</span></span></div><div class="row"><span class="key">MAC</span><span id="wifiMac" class="value">-</span></div></div><form id="wifiForm" class="controls"><label data-i18n-label="newWifiSsid">New WiFi SSID
@@ -214,7 +214,7 @@ spotifyUnavailable:"Playback not connected",
 output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Queue", refreshUpNext:"Refresh queue", refreshPlaylists:"Refresh playlists", loadingQueue:"Loading queue...",
 playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", games:"Games", settings:"Settings",
 brightness:"Screen brightness", dimTimeout:"Screen dim timeout", deepSleep:"Turn off after", speakerVolume:"Speaker volume", wakeWord:"Wake word",
-language:"Language", languageEnglish:"English", languageDutch:"Dutch", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error",
+language:"Language", languageEnglish:"English", languageDutch:"Dutch", languageGerman:"German", languageFrench:"French", languageSpanish:"Spanish", theme:"Theme", themeAuto:"Auto", themeDark:"Dark", themeLight:"Light", logLevel:"Log level", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Warning", logLevelError:"Error",
 timeout30s:"30 seconds", timeout1m:"1 minute", timeout2m:"2 minutes", timeout4m:"4 minutes", timeout5m:"5 minutes", timeout15m:"15 minutes", timeout30m:"30 minutes", timeout60m:"60 minutes",
 shuffle:"Shuffle", shuffleOff:"Shuffle off", shuffleOn:"Shuffle on", repeat:"Repeat", repeatOff:"Repeat off", repeatOnce:"Repeat once", repeatInfinite:"Repeat infinite", saveSettings:"Save settings", settingsFine:"Screen turns off after the selected idle timeout. LED ring follows the screen power state.",
 wifi:"WiFi", state:"State", newWifiSsid:"New WiFi SSID", newWifiPassword:"New WiFi password", wifiButton:"Test WiFi & restart device",
@@ -251,7 +251,7 @@ spotifyUnavailable:"Afspelen niet verbonden",
 output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Wachtrij", refreshUpNext:"Wachtrij verversen", refreshPlaylists:"Afspeellijsten verversen", loadingQueue:"Wachtrij laden...",
 playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", games:"Games", settings:"Instellingen",
 brightness:"Schermhelderheid", dimTimeout:"Scherm uit na", deepSleep:"Uitzetten na", speakerVolume:"Speakervolume", wakeWord:"Wakeword",
-language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout",
+language:"Taal", languageEnglish:"Engels", languageDutch:"Nederlands", languageGerman:"Duits", languageFrench:"Frans", languageSpanish:"Spaans", theme:"Thema", themeAuto:"Auto", themeDark:"Donker", themeLight:"Licht", logLevel:"Logniveau", logLevelDebug:"Debug", logLevelInfo:"Info", logLevelWarning:"Waarschuwing", logLevelError:"Fout",
 timeout30s:"30 seconden", timeout1m:"1 minuut", timeout2m:"2 minuten", timeout4m:"4 minuten", timeout5m:"5 minuten", timeout15m:"15 minuten", timeout30m:"30 minuten", timeout60m:"60 minuten",
 shuffle:"Shuffle", shuffleOff:"Shuffle uit", shuffleOn:"Shuffle aan", repeat:"Herhalen", repeatOff:"Herhalen uit", repeatOnce:"Eenmaal herhalen", repeatInfinite:"Oneindig herhalen", saveSettings:"Instellingen opslaan", settingsFine:"Scherm gaat uit na de ingestelde inactiviteit. LED-ring volgt de schermstatus.",
 wifi:"WiFi", state:"Status", newWifiSsid:"Nieuwe WiFi SSID", newWifiPassword:"Nieuw WiFi wachtwoord", wifiButton:"Test WiFi & herstart device",
@@ -277,8 +277,54 @@ noIp:"Geen IP", wifiSignal:"WiFi signaal", wifiDisconnected:"WiFi niet verbonden
 legal:"Juridisch", copyrightNotice:"Copyright (c) 2026 Peter van Tol. DJConnect firmware is MIT-gelicentieerde open-source software.",
 trademarkNotice:"Spotify is een handelsmerk van Spotify AB. DJConnect is niet verbonden aan, goedgekeurd door of gesponsord door Spotify AB.",
 ossNotice:"Deze firmware bevat open-source softwarecomponenten. De licenties daarvan blijven bij de respectievelijke auteurs."
+},
+de: {
+deviceNotPaired:"Geraet nicht mit Home Assistant gekoppelt", setup:"Zum Einrichten klicken", providePair:"und Koppelcode eingeben:",
+nowPlaying:"Laeuft gerade", previous:"Voriger Titel", next:"Naechster Titel", play:"Play", pause:"Pause", liked:"Standardliste starten",
+webPttHold:"DJ-Ansage testen", webPttListening:"DJ-Ansage testen...", webPttProcessing:"Testbefehl senden...", webPttSent:"DJ-Test gesendet", webPttFailed:"Voice-Befehl fehlgeschlagen", webPttTestCommand:"Teste den DJConnect Ansagefluss",
+spotifyUnavailable:"Wiedergabe nicht verbunden", output:"Audioausgang", loadingOutputs:"Ausgaenge laden...", upNext:"Warteschlange", refreshUpNext:"Warteschlange aktualisieren", refreshPlaylists:"Playlists aktualisieren", loadingQueue:"Warteschlange laden...",
+settings:"Einstellungen", brightness:"Helligkeit", dimTimeout:"Display dimmen nach", deepSleep:"Ausschalten nach", speakerVolume:"Lautsprecher", wakeWord:"Wakeword",
+language:"Sprache", languageEnglish:"Englisch", languageDutch:"Niederlaendisch", languageGerman:"Deutsch", languageFrench:"Franzoesisch", languageSpanish:"Spanisch", themeDark:"Dunkel", themeLight:"Hell", logLevel:"Logstufe", logLevelWarning:"Warnung", logLevelError:"Fehler",
+wifi:"WiFi", state:"Status", newWifiSsid:"Neue WiFi SSID", newWifiPassword:"Neues WiFi Passwort", wifiButton:"WiFi testen & neu starten", wifiPasswordPlaceholder:"leer lassen fuer aktuell",
+pairing:"Kopplung", pairCode:"Koppelcode", resetPairing:"Kopplung resetten", playback:"Musik", connection:"Verbindung", musicLastIssue:"Letzte Meldung", refreshPlayback:"Musikstatus aktualisieren",
+diagnostics:"Diagnose", screen:"Display", storage:"Speicher", restart:"Geraet neu starten", pauseLogs:"Logs pausieren", selectAll:"Alles waehlen", uploadFirmware:"Firmware hochladen", factoryReset:"Werksreset",
+loading:"Laden", playing:"Spielt", paused:"Pausiert", noPlayback:"Keine Wiedergabe", connected:"Verbunden", disconnected:"Getrennt", notAuthorized:"Nicht autorisiert", disabled:"Deaktiviert", on:"Ein", off:"Aus", charging:"laedt", full:"voll",
+paired:"Gekoppelt", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformation fehlt", none:"Keine", noOutputs:"Keine Audioausgaenge", outputsFailed:"Ausgaenge fehlgeschlagen", noQueuedSongs:"Keine Songs", noPlaylists:"Keine Playlists", noLogs:"Noch keine Logs",
+switchingOutput:"Ausgang wechseln...", skipping:"Ueberspringen...", goingBack:"Zurueck...", startingLiked:"Standardliste starten...", startingQueueItem:"Titel starten...", selectPlaylist:"Playlist waehlen", startingPlaylist:"Playlist starten...", saving:"Speichern...", refreshing:"Aktualisieren...",
+restartConfirm:"DJConnect neu starten?", resetPairingConfirm:"Home Assistant Kopplung resetten und neu starten?", factoryResetConfirm:"DJConnect auf Werkseinstellungen setzen?", wifiSignal:"WiFi Signal", wifiDisconnected:"WiFi getrennt", ago:"her"
+},
+fr: {
+deviceNotPaired:"Appareil non associe a Home Assistant", setup:"Cliquer pour configurer", providePair:"et saisir le code:",
+nowPlaying:"Lecture", previous:"Titre precedent", next:"Titre suivant", play:"Lire", pause:"Pause", liked:"Lancer playlist defaut",
+webPttHold:"Tester annonce DJ", webPttListening:"Test annonce DJ...", webPttProcessing:"Envoi commande...", webPttSent:"Test annonce envoye", webPttFailed:"Commande vocale echouee", webPttTestCommand:"Tester le flux annonce DJConnect",
+spotifyUnavailable:"Lecture non connectee", output:"Sortie audio", loadingOutputs:"Chargement sorties...", upNext:"File", refreshUpNext:"Actualiser file", refreshPlaylists:"Actualiser playlists", loadingQueue:"Chargement file...",
+settings:"Reglages", brightness:"Luminosite", dimTimeout:"Veille ecran apres", deepSleep:"Eteindre apres", speakerVolume:"Volume HP", wakeWord:"Mot reveil",
+language:"Langue", languageEnglish:"Anglais", languageDutch:"Neerlandais", languageGerman:"Allemand", languageFrench:"Francais", languageSpanish:"Espagnol", themeDark:"Sombre", themeLight:"Clair", logLevel:"Niveau log", logLevelWarning:"Avertissement", logLevelError:"Erreur",
+wifi:"WiFi", state:"Etat", newWifiSsid:"Nouveau SSID WiFi", newWifiPassword:"Nouveau mot de passe WiFi", wifiButton:"Tester WiFi & redemarrer", wifiPasswordPlaceholder:"laisser vide pour conserver",
+pairing:"Association", pairCode:"Code", resetPairing:"Reinit association", playback:"Musique", connection:"Connexion", musicLastIssue:"Dernier message", refreshPlayback:"Actualiser musique",
+diagnostics:"Diagnostic", screen:"Ecran", storage:"Stockage", restart:"Redemarrer appareil", pauseLogs:"Pause logs", selectAll:"Tout selectionner", uploadFirmware:"Envoyer firmware", factoryReset:"Reinit usine",
+loading:"Chargement", playing:"Lecture", paused:"Pause", noPlayback:"Pas de lecture", connected:"Connecte", disconnected:"Deconnecte", notAuthorized:"Non autorise", disabled:"Desactive", on:"Active", off:"Desactive", charging:"charge", full:"plein",
+paired:"Associe", pairingMode:"Mode association", pairingUnavailable:"Infos association indisponibles", none:"Aucun", noOutputs:"Aucune sortie", outputsFailed:"Sorties echouees", noQueuedSongs:"Aucun titre", noPlaylists:"Aucune playlist", noLogs:"Aucun log",
+switchingOutput:"Changement sortie...", skipping:"Suivant...", goingBack:"Retour...", startingLiked:"Playlist defaut...", startingQueueItem:"Titre choisi...", selectPlaylist:"Choisir playlist", startingPlaylist:"Lancer playlist...", saving:"Enregistrement...", refreshing:"Actualisation...",
+restartConfirm:"Redemarrer DJConnect?", resetPairingConfirm:"Reinit association Home Assistant et redemarrer?", factoryResetConfirm:"Reinitialiser DJConnect?", wifiSignal:"Signal WiFi", wifiDisconnected:"WiFi deconnecte", ago:"avant"
+},
+es: {
+deviceNotPaired:"Dispositivo no vinculado con Home Assistant", setup:"Clic para configurar", providePair:"e introduce codigo:",
+nowPlaying:"Sonando", previous:"Cancion anterior", next:"Siguiente cancion", play:"Reproducir", pause:"Pausa", liked:"Iniciar playlist predeterminada",
+webPttHold:"Probar anuncio DJ", webPttListening:"Probando anuncio DJ...", webPttProcessing:"Enviando prueba...", webPttSent:"Prueba enviada", webPttFailed:"Comando de voz fallido", webPttTestCommand:"Probar flujo de anuncio DJConnect",
+spotifyUnavailable:"Reproduccion desconectada", output:"Salida de audio", loadingOutputs:"Cargando salidas...", upNext:"Cola", refreshUpNext:"Actualizar cola", refreshPlaylists:"Actualizar playlists", loadingQueue:"Cargando cola...",
+settings:"Ajustes", brightness:"Brillo pantalla", dimTimeout:"Atenuar pantalla tras", deepSleep:"Apagar despues", speakerVolume:"Volumen altavoz", wakeWord:"Palabra clave",
+language:"Idioma", languageEnglish:"Ingles", languageDutch:"Neerlandes", languageGerman:"Aleman", languageFrench:"Frances", languageSpanish:"Espanol", themeDark:"Oscuro", themeLight:"Claro", logLevel:"Nivel log", logLevelWarning:"Aviso", logLevelError:"Error",
+wifi:"WiFi", state:"Estado", newWifiSsid:"Nuevo SSID WiFi", newWifiPassword:"Nueva clave WiFi", wifiButton:"Probar WiFi y reiniciar", wifiPasswordPlaceholder:"dejar vacio para mantener",
+pairing:"Vinculo", pairCode:"Codigo", resetPairing:"Restablecer vinculo", playback:"Musica", connection:"Conexion", musicLastIssue:"Ultimo aviso", refreshPlayback:"Actualizar musica",
+diagnostics:"Diagnostico", screen:"Pantalla", storage:"Almacenamiento", restart:"Reiniciar dispositivo", pauseLogs:"Pausar logs", selectAll:"Seleccionar todo", uploadFirmware:"Subir firmware", factoryReset:"Restablecer fabrica",
+loading:"Cargando", playing:"Reproduciendo", paused:"Pausado", noPlayback:"Sin reproduccion", connected:"Conectado", disconnected:"Desconectado", notAuthorized:"No autorizado", disabled:"Desactivado", on:"Encendido", off:"Apagado", charging:"cargando", full:"lleno",
+paired:"Vinculado", pairingMode:"Modo vinculo", pairingUnavailable:"Info vinculo no disponible", none:"Ninguno", noOutputs:"Sin salidas", outputsFailed:"Salidas fallidas", noQueuedSongs:"Sin canciones", noPlaylists:"Sin playlists", noLogs:"Sin logs",
+switchingOutput:"Cambiando salida...", skipping:"Saltando...", goingBack:"Volviendo...", startingLiked:"Iniciando playlist...", startingQueueItem:"Iniciando cancion...", selectPlaylist:"Elige playlist", startingPlaylist:"Iniciando playlist...", saving:"Guardando...", refreshing:"Actualizando...",
+restartConfirm:"Reiniciar DJConnect?", resetPairingConfirm:"Restablecer vinculo Home Assistant y reiniciar?", factoryResetConfirm:"Restablecer DJConnect?", wifiSignal:"Senal WiFi", wifiDisconnected:"WiFi desconectado", ago:"hace"
 }
 };
+["de","fr","es"].forEach(code => { translations[code] = {...translations.en, ...translations[code]}; });
 const tr = key => (translations[currentLanguage] && translations[currentLanguage][key]) || translations.en[key] || key;
 function applyTranslations() {
 document.documentElement.lang = currentLanguage;
@@ -1503,7 +1549,7 @@ void WebPortal::handleSettingsPost() {
   const uint8_t speakerVolume = constrain(server_.hasArg("speakerVolume") ? server_.arg("speakerVolume").toInt() : 100, 25, 100);
   String language = server_.hasArg("language") ? server_.arg("language") : "en";
   language.toLowerCase();
-  if (language != "nl") {
+  if (!I18n::isSupportedLanguageCode(language)) {
     language = "en";
   }
   String theme = server_.hasArg("theme") ? server_.arg("theme") : "dark";
@@ -1543,7 +1589,7 @@ void WebPortal::handleShufflePost() {
     return;
   }
   if (spotify_ == nullptr || !spotify_->isAuthorized()) {
-    server_.send(409, "text/plain", localizedText("Playback not connected", "Afspelen niet verbonden"));
+    server_.send(409, "text/plain", localizedText("spotify_not_connected"));
     return;
   }
 
@@ -1557,7 +1603,7 @@ void WebPortal::handleShufflePost() {
     server_.send(500, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Shuffle failed" : playback_->error);
     return;
   }
-  server_.send(200, "text/plain", localizedText(enabled ? "Shuffle on" : "Shuffle off", enabled ? "Shuffle aan" : "Shuffle uit"));
+  server_.send(200, "text/plain", localizedText(enabled ? "shuffle_on" : "shuffle_off"));
 }
 
 void WebPortal::handleRepeatPost() {
@@ -1566,7 +1612,7 @@ void WebPortal::handleRepeatPost() {
     return;
   }
   if (spotify_ == nullptr || !spotify_->isAuthorized()) {
-    server_.send(409, "text/plain", localizedText("Playback not connected", "Afspelen niet verbonden"));
+    server_.send(409, "text/plain", localizedText("spotify_not_connected"));
     return;
   }
 
@@ -1580,11 +1626,11 @@ void WebPortal::handleRepeatPost() {
     return;
   }
   if (repeat == "track") {
-    server_.send(200, "text/plain", localizedText("Repeat once", "Eenmaal herhalen"));
+    server_.send(200, "text/plain", localizedText("repeat_once"));
   } else if (repeat == "context") {
-    server_.send(200, "text/plain", localizedText("Repeat infinite", "Oneindig herhalen"));
+    server_.send(200, "text/plain", localizedText("repeat_infinite"));
   } else {
-    server_.send(200, "text/plain", localizedText("Repeat off", "Herhalen uit"));
+    server_.send(200, "text/plain", localizedText("repeat_off"));
   }
 }
 
@@ -1602,9 +1648,7 @@ void WebPortal::handleWifiPost() {
   }
 
   wifiSettingsCallback_(callbackContext_, ssid, server_.arg("password"));
-  server_.send(202, "text/plain", localizedText(
-                                     "WiFi test started. Device will restart automatically if the connection succeeds.",
-                                     "WiFi-test gestart. Het device herstart automatisch als de verbinding lukt."));
+  server_.send(202, "text/plain", localizedText("wifi_test_started_restart"));
 }
 
 void WebPortal::handleVolumePost() {
@@ -1785,7 +1829,7 @@ void WebPortal::handleTransferPost() {
       return;
     }
     spotify_->refreshPlayback();
-    server_.send(200, "text/plain", localizedText("Playback stopped", "Playback gestopt"));
+    server_.send(200, "text/plain", localizedText("playback_stopped"));
     return;
   }
 
@@ -1813,7 +1857,7 @@ void WebPortal::handleTransferPost() {
 
   AppLog.println("Web playback: output switched");
   spotify_->refreshPlayback();
-  server_.send(200, "text/plain", localizedText("Output switched", "Output gewisseld"));
+  server_.send(200, "text/plain", localizedText("output_switched"));
 }
 
 void WebPortal::handlePlaybackCommandPost() {
@@ -1879,19 +1923,19 @@ void WebPortal::handlePlaybackCommandPost() {
   AppLog.print("Web playback: action completed ");
   AppLog.println(action);
   spotify_->refreshPlayback();
-  String message = localizedText("Default playlist started", "Standaard playlist gestart");
+  String message = localizedText("liked_proxy_started");
   if (action == "next") {
-    message = localizedText("Next song", "Volgend nummer");
+    message = localizedText("next_track");
   } else if (action == "previous") {
-    message = localizedText("Previous song", "Vorig nummer");
+    message = localizedText("previous_track");
   } else if (action == "play") {
-    message = localizedText("Playing", "Speelt");
+    message = localizedText("playing");
   } else if (action == "pause") {
-    message = localizedText("Paused", "Gepauzeerd");
+    message = localizedText("paused");
   } else if (action == "playlist") {
-    message = localizedText("Playlist started", "Afspeellijst gestart");
+    message = localizedText("playlist_started");
   } else if (action == "queue_item") {
-    message = localizedText("Selected song started", "Gekozen nummer gestart");
+    message = localizedText("selected_song_started");
   }
   server_.send(200, "text/plain", message);
 }
@@ -1934,14 +1978,12 @@ void WebPortal::handleRefreshPost() {
   if (refreshCallback_ != nullptr) {
     refreshCallback_(callbackContext_);
   }
-  server_.send(200, "text/plain", localizedText("Refresh requested", "Verversen aangevraagd"));
+  server_.send(200, "text/plain", localizedText("refresh_requested"));
 }
 
 void WebPortal::handleResetPairingPost() {
   AppLog.println("Web action: reset Home Assistant pairing requested");
-  server_.send(200, "text/plain", localizedText(
-                                      "Reset pairing requested. Restarting to pairing screen...",
-                                      "Koppeling resetten aangevraagd. Herstarten naar koppelscherm..."));
+  server_.send(200, "text/plain", localizedText("reset_pairing_restart"));
   delay(250);
   if (resetPairingCallback_ != nullptr) {
     resetPairingCallback_(callbackContext_);
@@ -1951,16 +1993,14 @@ void WebPortal::handleResetPairingPost() {
 
 void WebPortal::handleRebootPost() {
   AppLog.println("Web action: restart requested");
-  server_.send(200, "text/plain", localizedText("Restarting device...", "Device herstarten..."));
+  server_.send(200, "text/plain", localizedText("restarting"));
   delay(250);
   ESP.restart();
 }
 
 void WebPortal::handleHardResetPost() {
   AppLog.println("Web action: factory reset requested");
-  server_.send(200, "text/plain", localizedText(
-                                      "Factory reset requested. Restarting into setup mode...",
-                                      "Fabrieksreset wordt uitgevoerd..."));
+  server_.send(200, "text/plain", localizedText("factory_reset_restart"));
   delay(250);
   if (hardResetCallback_ != nullptr) {
     hardResetCallback_(callbackContext_);
@@ -1973,7 +2013,7 @@ void WebPortal::handleOtaFinished() {
       sound_->playOtaComplete();
       delay(320);
     }
-    server_.send(200, "text/plain", localizedText("Firmware uploaded. Restarting...", "Firmware geupload. Herstarten..."));
+    server_.send(200, "text/plain", localizedText("firmware_uploaded_restart"));
     delay(500);
     ESP.restart();
     return;
@@ -2106,18 +2146,24 @@ String WebPortal::formatBytes(uint32_t bytes) const {
   return String(bytes) + " B";
 }
 
-String WebPortal::localizedText(const char *en, const char *nl) const {
-  return languageCode_ != nullptr && *languageCode_ == "nl" ? String(nl) : String(en);
+String WebPortal::localizedText(const char *key) const {
+  const Language previous = I18n::language();
+  if (languageCode_ != nullptr) {
+    I18n::setLanguage(I18n::languageFromCode(*languageCode_));
+  }
+  const String value = I18n::text(key);
+  I18n::setLanguage(previous);
+  return value;
 }
 
 void WebPortal::sendSpotifyUnavailableText() {
-  server_.send(503, "text/plain", localizedText("Playback not connected", "Afspelen niet verbonden"));
+  server_.send(503, "text/plain", localizedText("spotify_not_connected"));
 }
 
 void WebPortal::sendSpotifyUnavailableJson(const char *arrayKey) {
   JsonDocument doc;
   doc["available"] = false;
-  doc["error"] = localizedText("Playback not connected", "Afspelen niet verbonden");
+  doc["error"] = localizedText("spotify_not_connected");
   doc[arrayKey].to<JsonArray>();
   String body;
   serializeJson(doc, body);
