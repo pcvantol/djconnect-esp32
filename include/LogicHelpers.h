@@ -8,6 +8,13 @@
 
 namespace Logic {
 
+constexpr size_t SupportedLanguageCount = 5;
+
+inline const char *supportedLanguageCodeAt(size_t index) {
+  static const char *const values[SupportedLanguageCount] = {"en", "nl", "de", "fr", "es"};
+  return values[index < SupportedLanguageCount ? index : 0];
+}
+
 // Keeps percentage-like values inside the UI/API range used by Spotify and the LED ring.
 inline int clampPercent(int value) {
   if (value < 0) {
@@ -566,17 +573,11 @@ inline const char *languageCodeOrDefault(const char *code) {
   if (normalized[0] == '\0' || normalized[1] == '\0') {
     return "en";
   }
-  if (strcmp(normalized, "nl") == 0) {
-    return "nl";
-  }
-  if (strcmp(normalized, "de") == 0) {
-    return "de";
-  }
-  if (strcmp(normalized, "fr") == 0) {
-    return "fr";
-  }
-  if (strcmp(normalized, "es") == 0) {
-    return "es";
+  for (size_t index = 0; index < SupportedLanguageCount; index++) {
+    const char *supported = supportedLanguageCodeAt(index);
+    if (strcmp(normalized, supported) == 0) {
+      return supported;
+    }
   }
   return "en";
 }

@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+#include "LogicHelpers.h"
+
 enum class Language : uint8_t {
   English,
   Dutch,
@@ -12,7 +14,7 @@ enum class Language : uint8_t {
 };
 
 namespace I18n {
-constexpr size_t SupportedLanguageCount = 5;
+constexpr size_t SupportedLanguageCount = Logic::SupportedLanguageCount;
 void setLanguage(Language language);
 Language language();
 String languageCode();

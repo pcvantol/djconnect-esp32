@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "LogicHelpers.h"
+
 enum class UiScreen {
   NowPlaying,
   AlbumArt,
@@ -45,7 +47,7 @@ namespace DJConnectMenuModel {
 constexpr size_t MenuStackCapacity = 5;
 constexpr size_t DimTimeoutOptionCount = 4;
 constexpr size_t BrightnessOptionCount = 4;
-constexpr size_t LanguageOptionCount = 5;
+constexpr size_t LanguageOptionCount = Logic::SupportedLanguageCount;
 constexpr size_t ThemeOptionCount = 3;
 constexpr size_t LogLevelOptionCount = 4;
 constexpr size_t SpeakerVolumeOptionCount = 4;
@@ -134,8 +136,7 @@ inline uint8_t speakerVolumeValuePercent(size_t index) {
 }
 
 inline const char *languageValue(size_t index) {
-  static const char *const values[LanguageOptionCount] = {"en", "nl", "de", "fr", "es"};
-  return values[index < LanguageOptionCount ? index : 0];
+  return Logic::supportedLanguageCodeAt(index);
 }
 
 inline const char *themeValue(size_t index) {

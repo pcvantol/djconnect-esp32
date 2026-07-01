@@ -622,6 +622,16 @@ static void testWebPortalButtonStates() {
 }
 
 static void testLanguageCodeNormalization() {
+  assert(Logic::SupportedLanguageCount == 5);
+  assert(DJConnectMenuModel::LanguageOptionCount == Logic::SupportedLanguageCount);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(0), "en") == 0);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(1), "nl") == 0);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(2), "de") == 0);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(3), "fr") == 0);
+  assert(std::strcmp(Logic::supportedLanguageCodeAt(4), "es") == 0);
+  for (size_t index = 0; index < DJConnectMenuModel::LanguageOptionCount; index++) {
+    assert(std::strcmp(DJConnectMenuModel::languageValue(index), Logic::supportedLanguageCodeAt(index)) == 0);
+  }
   assert(std::strcmp(Logic::languageCodeOrDefault("en"), "en") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("nl"), "nl") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("NL"), "nl") == 0);
