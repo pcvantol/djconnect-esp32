@@ -433,8 +433,14 @@ Observed conventions:
 - Logging goes through `AppLog` and central severity formatting; callsites do
   not manually prepend timestamps/severity.
 - Host-testable logic is kept free of Arduino dependencies where practical.
-- Runtime behavior is intentionally English in logs; user-facing strings flow
-  through `I18n` where practical.
+- Runtime behavior is intentionally English in logs; user-facing display,
+  setup, pairing, status and device-generated voice text flows through `I18n`
+  where practical.
+- Supported UI languages are `en`, `nl`, `de`, `fr` and `es`. New
+  user-facing string keys must be added for every supported language in
+  `src/I18n.cpp`; the translation table has a compile-time completeness check.
+  Protocol field names, JSON keys, endpoint paths and payload values such as
+  `client_type:"esp32"` are never localized.
 
 Sources:
 

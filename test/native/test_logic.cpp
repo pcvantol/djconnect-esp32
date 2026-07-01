@@ -625,7 +625,10 @@ static void testLanguageCodeNormalization() {
   assert(std::strcmp(Logic::languageCodeOrDefault("en"), "en") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("nl"), "nl") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault("NL"), "nl") == 0);
-  assert(std::strcmp(Logic::languageCodeOrDefault("de"), "en") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("de"), "de") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("FR"), "fr") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("es"), "es") == 0);
+  assert(std::strcmp(Logic::languageCodeOrDefault("it"), "en") == 0);
   assert(std::strcmp(Logic::languageCodeOrDefault(nullptr), "en") == 0);
 }
 
@@ -755,6 +758,12 @@ static void testDeviceCommandParserSettings() {
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::Language);
   assert(command.value == "nl");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"language\",\"value\":\"de\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::Language);
+  assert(command.value == "de");
 
   doc.clear();
   deserializeJson(doc, "{\"command\":\"theme\",\"value\":\"dark\"}");

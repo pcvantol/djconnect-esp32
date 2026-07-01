@@ -101,7 +101,7 @@ private:
   String formatBytes(uint32_t bytes) const;
 
   // Keeps small portal strings localized without pulling the full device i18n table into HTML.
-  String localizedText(const char *en, const char *nl) const;
+  String localizedText(const char *key) const;
   uint32_t estimatedProgressMs() const;
 
   WebServer server_{80};

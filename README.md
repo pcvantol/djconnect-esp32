@@ -22,7 +22,7 @@ validation, native firmware tests, release-script dry-run checks, CodeQL
 - Scrolls long title and artist/show text once when the track changes.
 - Volume control through the encoder, web portal and Home Assistant command API, limited to `0-60`.
 - Separate shuffle and repeat controls from the device main menu, Now Playing web portal and Home Assistant command API.
-- Language setting for the device UI, web portal and captive portal: English or Dutch.
+- Language setting for the device UI, web portal and captive portal: English, Dutch, German, French or Spanish (`en`, `nl`, `de`, `fr`, `es`).
 - Theme setting for the device and web portal: Auto, Dark or Light.
 - Log level setting from the device, web portal and Home Assistant command API: debug, info, warning or error. The default is info.
 - Playlist browser on the device and web portal to start playlists directly.

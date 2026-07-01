@@ -94,7 +94,11 @@ String DJConnectDevice::normalizedLanguageCode(const String &languageCode) {
   String normalized = languageCode;
   normalized.trim();
   normalized.toLowerCase();
-  return normalized == "nl" || normalized == "en" ? normalized : "";
+  const int separator = normalized.indexOf('-');
+  if (separator > 0) {
+    normalized = normalized.substring(0, separator);
+  }
+  return I18n::isSupportedLanguageCode(normalized) ? normalized : "";
 }
 
 bool DJConnectDevice::saveProvisionedLanguage(const String &languageCode) {

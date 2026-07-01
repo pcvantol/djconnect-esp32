@@ -173,7 +173,7 @@ Keep concerns separated:
 - Long/blocking HTTP flows should use `NetworkActivity` or a documented equivalent guard with explicit connect/read timeouts, progress logging where useful, and loop/watchdog yielding for large transfers.
 - `BatteryMonitor` reads raw battery data and applies the voltage-based battery estimate.
 - `LedRing` owns LED-ring presentation. Keep display brightness policy and LED power behavior coordinated through existing app/display methods.
-- User-facing display, captive portal, and webportal strings should go through the language/i18n path where practical. Supported languages are English (`en`) and Dutch (`nl`); unknown values fall back to English. Logs intentionally remain English and must not be translated. Loglevel UI labels still need translated strings.
+- User-facing display, captive portal, webportal, setup, pairing/status and on-device voice-facing strings should go through the language/i18n path where practical. Supported languages are English (`en`), Dutch (`nl`), German (`de`), French (`fr`) and Spanish (`es`); unknown values fall back to English. Add every new user-facing string key in all supported languages and keep `src/I18n.cpp` compile-time completeness validation passing. Logs intentionally remain English and must not be translated. Loglevel UI labels still need translated strings.
 - App logs are centrally formatted as `HH:mm INF ...`, `HH:mm WRN ...`, `HH:mm ERR ...` or `HH:mm DBG ...`. Do not manually add timestamps, severity labels, or `[DJConnect]` to new log messages; the central logger strips that prefix when it appears at the start of older callsites.
 
 Prefer extending existing modules over introducing new global state. Keep `src/main.cpp` small.

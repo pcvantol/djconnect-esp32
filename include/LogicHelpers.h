@@ -560,7 +560,25 @@ inline const char *languageCodeOrDefault(const char *code) {
   if (code == nullptr) {
     return "en";
   }
-  return (strcmp(code, "nl") == 0 || strcmp(code, "NL") == 0) ? "nl" : "en";
+  char normalized[3] = {};
+  normalized[0] = code[0] >= 'A' && code[0] <= 'Z' ? static_cast<char>(code[0] + ('a' - 'A')) : code[0];
+  normalized[1] = code[1] >= 'A' && code[1] <= 'Z' ? static_cast<char>(code[1] + ('a' - 'A')) : code[1];
+  if (normalized[0] == '\0' || normalized[1] == '\0') {
+    return "en";
+  }
+  if (strcmp(normalized, "nl") == 0) {
+    return "nl";
+  }
+  if (strcmp(normalized, "de") == 0) {
+    return "de";
+  }
+  if (strcmp(normalized, "fr") == 0) {
+    return "fr";
+  }
+  if (strcmp(normalized, "es") == 0) {
+    return "es";
+  }
+  return "en";
 }
 
 struct Bq27220Reading {

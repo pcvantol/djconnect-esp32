@@ -6,10 +6,10 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is
 
 Current repo state includes:
 
-- Latest verified firmware release from this repo: `v3.2.0`. Source repo
+- Latest verified firmware release from this repo: `v3.2.2`. Source repo
   `pcvantol/djconnect-esp32` and public firmware repo
-  `pcvantol/djconnect-firmware` both have pushed `v3.2.0` tags. The public
-  firmware GitHub release is `DJConnect firmware v3.2.0` and contains only the
+  `pcvantol/djconnect-firmware` both have pushed `v3.2.2` tags. The public
+  firmware GitHub release is `DJConnect firmware v3.2.2` and contains only the
   LilyGO binary, matching `.sha256`, and `firmware_manifest.json`; generated
   local `release/` artifacts remain ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
@@ -29,6 +29,10 @@ Current repo state includes:
 - Web portal includes Now Playing, DJ-announcement simulation, outputs, playlists, queue with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. It uses the DJConnect blue/purple brand styling, shows `Muziekbediening met karakter`, firmware version plus board device model in the title bar, and uses lila/magenta playback controls and volume slider. Queue and playlist panels use compact internal scroll areas. Queue accepts up to 100 real items from Home Assistant and is de-duplicated by URI or title/subtitle fallback so single-item queues do not render repeated tracks. Queue items with direct Spotify track or episode URIs stay startable even when Home Assistant omits `context_uri`/`queue_context`; context plus offset is still sent when playlist/album/show context exists. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
 - Playback proxy control requests use short waits and transient-failure cooldown; OTA writes release wake-word/TFLite and active voice/audio resources before GitHub TLS, tolerate slow GitHub/CDN stream bursts, manually follow GitHub release redirects, log the download host/final URL on transport failures and continue to feed the watchdog and firmware-update LED animation.
 - Device main menu includes a local Games submenu with Paddle Rally, Meteor Run, Sky Dash and Maze Chase. Games are local-only, use encoder movement/center-button fire or lane controls where applicable, persist highscores in NVS and are not exposed through Home Assistant. Current game behavior includes Maze Chase corner power pellets/vulnerable ghost/death delay, Meteor Run straight-falling varied meteors, Sky Dash animated star streaks and varied obstacles, Paddle Rally hit feedback and short 8-bit event sounds.
+- Device UI, setup/pairing/status text, web portal settings and device-generated
+  voice-facing strings support English, Dutch, German, French and Spanish
+  (`en`, `nl`, `de`, `fr`, `es`) through the central `I18n` table. Logs remain
+  English and protocol fields/payload values are never localized.
 - Device Help screen lists top button, encoder button and rotary actions. It appears once after initial Home Assistant pairing, then remains available from the main menu.
 - Home Assistant native device commands support two-way playback/settings control through `/api/device/command`.
 - Home Assistant should expose the proxied playback as a native `media_player` entity if user-facing HA media controls are desired. That entity represents the backend playback session, not the ESP speaker.
@@ -76,21 +80,16 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Latest release verification for `v3.2.0`:
+Latest release verification for `v3.2.2`:
 
-- `./release.sh 3.2.0 --publish-firmware-repo ../djconnect-firmware --gh-release` completed
-  a clean LilyGO release build with unchanged PlatformIO dependency versions.
-- The source repo tag and public firmware repo tag `v3.2.0` were pushed.
-- The public firmware GitHub release was created and verified as Latest with
-  only `djconnect-lilygo-t-embed-s3-v3.2.0.bin`,
-  `djconnect-lilygo-t-embed-s3-v3.2.0.bin.sha256` and
+- `./release.sh 3.2.2` completed a clean LilyGO source release build.
+- The source repo tag `v3.2.2` was pushed.
+- Verify that GitHub Actions or maintainer-controlled public publishing creates
+  the public firmware release with only
+  `djconnect-lilygo-t-embed-s3-v3.2.2.bin`,
+  `djconnect-lilygo-t-embed-s3-v3.2.2.bin.sha256` and
   `firmware_manifest.json`.
-- Post-release cleanup kept `v3.2.0` as the current stable line. Public
-  firmware repo release/tag `v3.1.37` was removed; source repo stable tag
-  `v3.1.37` plus old release workflow runs were removed. Local stale tags were
-  pruned to match the remote cleanup.
-- Branch protection/admin enforcement on `pcvantol/djconnect-esp32/main` was
-  restored after the controlled maintainer release window.
+- Post-release cleanup should keep `v3.2.2` as the current stable line.
 
 ## Architecture
 

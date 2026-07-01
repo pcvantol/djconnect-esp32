@@ -37,11 +37,7 @@ DeviceSettingsSnapshot normalize(
   settings.deviceSleepTimeoutMs = constrain(sleepTimeoutMs, 300000UL, 3600000UL);
   settings.speakerVolumePercent = constrain(speakerVolumePercent, 25, 100);
   settings.language = I18n::languageFromCode(languageCode);
-  settings.languageCode = languageCode;
-  settings.languageCode.toLowerCase();
-  if (settings.languageCode != "nl") {
-    settings.languageCode = "en";
-  }
+  settings.languageCode = I18n::languageCode(settings.language);
   settings.themeCode = normalizedTheme(themeCode);
   settings.logLevel = normalizedLogLevel(logLevel);
   settings.wakeWordEnabled = wakeWordEnabled;
@@ -50,7 +46,12 @@ DeviceSettingsSnapshot normalize(
 
 DeviceSettingsSelections selectionsFor(const DeviceSettingsSnapshot &settings) {
   DeviceSettingsSelections selections;
-  selections.languageSelection = settings.language == Language::Dutch ? 1 : 0;
+  for (size_t index = 0; index < DJConnectMenuModel::LanguageOptionCount; index++) {
+    if (settings.languageCode == DJConnectMenuModel::languageValue(index)) {
+      selections.languageSelection = index;
+      break;
+    }
+  }
   selections.sleepTimeoutSelection = Logic::deepSleepTimeoutIndexForMs(settings.deviceSleepTimeoutMs);
   for (size_t index = 0; index < DJConnectMenuModel::ThemeOptionCount; index++) {
     if (settings.themeCode == DJConnectMenuModel::themeValue(index)) {

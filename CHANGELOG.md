@@ -1,5 +1,21 @@
 # Changelog
 
+## v3.2.2
+
+### Changed
+
+- Added five-language UI localization support for English, Dutch, German,
+  French and Spanish across device display strings, setup/pairing/status text,
+  web portal settings and device-generated voice-facing messages.
+- Centralized firmware user-facing string lookup in a fixed `I18n` table with
+  compile-time completeness validation for every supported language.
+- Extended Home Assistant pairing/settings language provisioning and local
+  device/web language selection to accept only `en`, `nl`, `de`, `fr` and `es`,
+  while keeping protocol fields, endpoint paths, JSON keys and payload values
+  unlocalized.
+- Updated native tests and developer guidance so future user-facing strings
+  must be added for all supported languages.
+
 ## v3.2.1
 
 ### Changed

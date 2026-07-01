@@ -60,6 +60,15 @@ const char *resetReasonName(esp_reset_reason_t reason) {
   }
 }
 
+size_t languageSelectionFor(Language language) {
+  for (size_t index = 0; index < I18n::SupportedLanguageCount; index++) {
+    if (I18n::languageAt(index) == language) {
+      return index;
+    }
+  }
+  return 0;
+}
+
 const char *wakeupCauseName(esp_sleep_wakeup_cause_t cause) {
   switch (cause) {
     case ESP_SLEEP_WAKEUP_EXT0:
@@ -409,7 +418,7 @@ void DJConnectApp::loadProvisioning() {
       break;
     }
   }
-  languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+  languageSelection_ = languageSelectionFor(language_);
   for (size_t index = 0; index < ThemeOptionCount; index++) {
     if (themeValue(index) == themeCode_) {
       themeSelection_ = index;
@@ -1265,7 +1274,7 @@ void DJConnectApp::moveMenuSelection(int encoderSteps) {
     screenBrightnessPercent_ = brightnessValuePercent(brightnessSelection_);
     display_.configurePowerSaving(screenBrightnessPercent_, screenOffTimeoutMs_);
   } else if (activeScreen_ == UiScreen::Language) {
-    language_ = languageSelection_ == 1 ? Language::Dutch : Language::English;
+    language_ = I18n::languageAt(languageSelection_);
     I18n::setLanguage(language_);
   } else if (activeScreen_ == UiScreen::SpeakerVolume) {
     speakerVolumePercent_ = speakerVolumeValuePercent(speakerVolumeSelection_);
@@ -1355,7 +1364,7 @@ void DJConnectApp::selectCurrentMenuItem() {
       } else if (settingsSelection_ == 2) {
         openScreen(UiScreen::SleepTimeout);
       } else if (settingsSelection_ == 3) {
-        languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+        languageSelection_ = languageSelectionFor(language_);
         openScreen(UiScreen::Language);
       } else if (settingsSelection_ == 4) {
         for (size_t index = 0; index < ThemeOptionCount; index++) {
@@ -1416,7 +1425,7 @@ void DJConnectApp::selectCurrentMenuItem() {
       break;
 
     case UiScreen::Language:
-      language_ = languageSelection_ == 1 ? Language::Dutch : Language::English;
+      language_ = I18n::languageAt(languageSelection_);
       I18n::setLanguage(language_);
       saveDisplaySettings();
       showNotice(String(I18n::text("language")) + " " + languageLabel(language_), 2000);
@@ -3857,7 +3866,7 @@ void DJConnectApp::applyProvisionedLanguage(const String &languageCode) {
   language_ = I18n::languageFromCode(normalized);
   I18n::setLanguage(language_);
   languageCode_ = I18n::languageCode();
-  languageSelection_ = language_ == Language::Dutch ? 1 : 0;
+  languageSelection_ = languageSelectionFor(language_);
   AppLog.print("UI language applied: ");
   AppLog.println(languageCode_);
   renderNow();
@@ -4802,10 +4811,10 @@ void DJConnectApp::renderMenuNow() {
     }
 
     case UiScreen::Language: {
-      MenuItemView items[LanguageOptionCount] = {
-          {languageLabel(Language::English)},
-          {languageLabel(Language::Dutch)},
-      };
+      MenuItemView items[LanguageOptionCount];
+      for (size_t index = 0; index < LanguageOptionCount; index++) {
+        items[index].label = languageLabel(I18n::languageAt(index));
+      }
       items[languageSelection_].label += " " + String(I18n::text("selected"));
       display_.renderMenuList(
           I18n::text("language"),
