@@ -9,9 +9,11 @@ bash -n scripts/cleanup_old_releases.sh
 bash -n scripts/capture_device_screens.sh
 bash -n scripts/extract_release_changelog.sh
 bash -n scripts/update_build_dependencies.sh
+bash -n test/native/test_ha_contract_smoke.sh
 python3 -m py_compile scripts/minify_webportal.py
 python3 -m py_compile test/native/test_postman_collections.py
 python3 -m py_compile test/native/test_webportal_i18n.py
+test/native/test_ha_contract_smoke.sh
 python3 test/native/test_postman_collections.py
 python3 test/native/test_webportal_i18n.py
 test -s DESIGN_DECISIONS.md
@@ -64,7 +66,7 @@ echo "97d1a6567cc3c61d8cdb4c2ca05ed37adfd6bdc112efeb90177c4bba7095f476  assets/w
 echo "34e667173f5fe834f9282d11ab5a1f4f5fa2225010388f50a6f5bf7d72e2d460  assets/website/favicon-32.png" | shasum -a 256 -c -
 
 # The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
-if rg -n --glob "!test/native/test_release.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
+if rg -n --glob "!test/native/test_release.sh" --glob "!test/native/test_ha_contract_smoke.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
   README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old product/endpoint reference found" >&2
   exit 1
