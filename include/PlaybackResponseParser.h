@@ -155,6 +155,14 @@ inline String queueContextUri(JsonVariantConst source) {
   if (value.length() > 0) {
     return value;
   }
+  value = findIn(source["payload"]);
+  if (value.length() > 0) {
+    return value;
+  }
+  value = findIn(source["payload"]["queue"]);
+  if (value.length() > 0) {
+    return value;
+  }
   value = findIn(source["result"]);
   if (value.length() > 0) {
     return value;
@@ -170,31 +178,54 @@ inline JsonArrayConst queueArray(JsonVariantConst source) {
   if (source["queue"].is<JsonArrayConst>()) {
     return source["queue"].as<JsonArrayConst>();
   }
-  if (source["items"].is<JsonArrayConst>()) {
-    return source["items"].as<JsonArrayConst>();
-  }
   if (source["queue"]["items"].is<JsonArrayConst>()) {
     return source["queue"]["items"].as<JsonArrayConst>();
   }
   if (source["data"]["queue"].is<JsonArrayConst>()) {
     return source["data"]["queue"].as<JsonArrayConst>();
   }
-  if (source["data"]["items"].is<JsonArrayConst>()) {
-    return source["data"]["items"].as<JsonArrayConst>();
-  }
   if (source["data"]["queue"]["items"].is<JsonArrayConst>()) {
     return source["data"]["queue"]["items"].as<JsonArrayConst>();
   }
+  if (source["payload"]["queue"].is<JsonArrayConst>()) {
+    return source["payload"]["queue"].as<JsonArrayConst>();
+  }
+  if (source["payload"]["queue"]["items"].is<JsonArrayConst>()) {
+    return source["payload"]["queue"]["items"].as<JsonArrayConst>();
+  }
   if (source["result"]["queue"].is<JsonArrayConst>()) {
     return source["result"]["queue"].as<JsonArrayConst>();
-  }
-  if (source["result"]["items"].is<JsonArrayConst>()) {
-    return source["result"]["items"].as<JsonArrayConst>();
   }
   if (source["result"]["queue"]["items"].is<JsonArrayConst>()) {
     return source["result"]["queue"]["items"].as<JsonArrayConst>();
   }
   return JsonArrayConst();
+}
+
+inline String queueItemTitle(JsonVariantConst item) {
+  return item["title"] | item["name"] | item["track_name"] | item["trackName"] |
+         item["episode_name"] | item["episodeName"] | item["media_title"] |
+         item["mediaTitle"] | "";
+}
+
+inline String queueItemArtist(JsonVariantConst item) {
+  return item["artist"] | item["artist_name"] | item["artistName"] | item["subtitle"] | "";
+}
+
+inline String queueItemAlbum(JsonVariantConst item) {
+  return item["album"] | item["album_name"] | item["albumName"] | "";
+}
+
+inline String queueItemIdentity(JsonVariantConst item) {
+  return item["uri"] | item["track_uri"] | item["trackUri"] | item["episode_uri"] |
+         item["episodeUri"] | item["media_content_id"] | item["mediaContentId"] |
+         item["content_id"] | item["contentId"] | item["id"] | item["value"] | "";
+}
+
+inline String queueItemImageUrl(JsonVariantConst item) {
+  return item["album_image_url"] | item["albumImageUrl"] | item["image_url"] |
+         item["imageUrl"] | item["thumbnail_url"] | item["thumbnailUrl"] |
+         item["album_art_url"] | item["media_image_url"] | item["entity_picture"] | "";
 }
 
 inline bool isUnsupportedBackendCapability(JsonVariantConst response) {

@@ -483,21 +483,11 @@ void SpotifyClient::applyQueue(JsonVariantConst source, QueueState &queue) {
       break;
     }
     QueueItemState candidate;
-    candidate.title =
-        item["title"] | item["name"] | item["track_name"] | item["trackName"] |
-        item["episode_name"] | item["episodeName"] | item["media_title"] |
-        item["mediaTitle"] | "";
-    candidate.subtitle =
-        item["subtitle"] | item["artist"] | item["artist_name"] | item["artists"] |
-        item["album"] | item["show"] | item["show_name"] | item["showName"] | "";
-    candidate.uri =
-        item["uri"] | item["track_uri"] | item["trackUri"] | item["episode_uri"] |
-        item["episodeUri"] | item["media_content_id"] | item["mediaContentId"] |
-        item["content_id"] | item["contentId"] | item["id"] | item["value"] | "";
-    candidate.imageUrl =
-        item["album_image_url"] | item["albumImageUrl"] | item["album_art_url"] |
-        item["image_url"] | item["imageUrl"] | item["media_image_url"] |
-        item["entity_picture"] | item["thumbnail_url"] | "";
+    candidate.title = PlaybackResponseParser::queueItemTitle(item);
+    candidate.subtitle = PlaybackResponseParser::queueItemArtist(item);
+    candidate.album = PlaybackResponseParser::queueItemAlbum(item);
+    candidate.uri = PlaybackResponseParser::queueItemIdentity(item);
+    candidate.imageUrl = PlaybackResponseParser::queueItemImageUrl(item);
     if (candidate.title.isEmpty() && candidate.uri.isEmpty()) {
       continue;
     }

@@ -232,13 +232,37 @@ static void testBackendQueueResponseShapes() {
 
   doc.clear();
   deserializeJson(doc,
-                  "{\"result\":{\"queue_context\":\"spotify:album:def\","
+                  "{\"result\":{\"queue\":{\"queue_context\":\"spotify:album:def\","
                   "\"items\":[{\"name\":\"Go\",\"artist\":\"Pearl Jam\"}]}}");
   context = PlaybackResponseParser::queueContextUri(doc.as<JsonVariantConst>());
   assert(std::strcmp(context.c_str(), "spotify:album:def") == 0);
   items = PlaybackResponseParser::queueArray(doc.as<JsonVariantConst>());
   first = items[0];
   assert(first["name"] == "Go");
+
+  doc.clear();
+  deserializeJson(doc,
+                  "{\"payload\":{\"contextUri\":\"spotify:playlist:ghi\","
+                  "\"queue\":{\"items\":[{\"title\":\"Nothing Else Matters\","
+                  "\"artist\":\"Scala & Kolacny Brothers\",\"artist_name\":\"Metallica\","
+                  "\"subtitle\":\"fallback artist\",\"album_name\":\"One-Winged Angel\","
+                  "\"id\":\"stable-id\",\"duration_ms\":392000,"
+                  "\"image_url\":\"https://example.test/nothing.jpg\"}]}}}");
+  context = PlaybackResponseParser::queueContextUri(doc.as<JsonVariantConst>());
+  assert(std::strcmp(context.c_str(), "spotify:playlist:ghi") == 0);
+  items = PlaybackResponseParser::queueArray(doc.as<JsonVariantConst>());
+  assert(!items.isNull());
+  first = items[0];
+  assert(std::strcmp(PlaybackResponseParser::queueItemTitle(first).c_str(), "Nothing Else Matters") == 0);
+  assert(std::strcmp(PlaybackResponseParser::queueItemArtist(first).c_str(), "Scala & Kolacny Brothers") == 0);
+  assert(std::strcmp(PlaybackResponseParser::queueItemAlbum(first).c_str(), "One-Winged Angel") == 0);
+  assert(std::strcmp(PlaybackResponseParser::queueItemIdentity(first).c_str(), "stable-id") == 0);
+  assert(std::strcmp(PlaybackResponseParser::queueItemImageUrl(first).c_str(), "https://example.test/nothing.jpg") == 0);
+
+  doc.clear();
+  deserializeJson(doc, "{\"payload\":{\"items\":[{\"title\":\"Playlist result\"}]}}");
+  items = PlaybackResponseParser::queueArray(doc.as<JsonVariantConst>());
+  assert(items.isNull());
 }
 
 static void testGamesMenuCount() {

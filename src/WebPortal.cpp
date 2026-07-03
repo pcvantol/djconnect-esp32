@@ -990,7 +990,7 @@ title.className = "queue-title";
 title.textContent = item.title || "-";
 const subtitle = document.createElement("div");
 subtitle.className = "queue-subtitle";
-subtitle.textContent = item.subtitle || "-";
+subtitle.textContent = item.album && item.subtitle ? `${item.subtitle} - ${item.album}` : (item.subtitle || item.album || "-");
 meta.appendChild(title);
 meta.appendChild(subtitle);
 row.appendChild(meta);
@@ -1747,6 +1747,8 @@ void WebPortal::handleQueueJson() {
     sendJsonEscapedContent(server_, item.title);
     server_.sendContent("\",\"subtitle\":\"");
     sendJsonEscapedContent(server_, item.subtitle);
+    server_.sendContent("\",\"album\":\"");
+    sendJsonEscapedContent(server_, item.album);
     server_.sendContent("\",\"uri\":\"");
     sendJsonEscapedContent(server_, item.uri);
     server_.sendContent("\",\"imageUrl\":\"");
