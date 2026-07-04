@@ -10,6 +10,7 @@ Updates the PlatformIO build toolchain before firmware builds:
 
   - upgrades PlatformIO Core;
   - updates globally installed PlatformIO packages/tools;
+  - installs/resolves project packages for each requested environment;
   - updates project packages for each requested environment.
 
 Environment variables:
@@ -73,6 +74,9 @@ echo "+ $PIO_BIN pkg update -g"
 "$PIO_BIN" pkg update -g
 
 for environment in "${ENVIRONMENTS[@]}"; do
+  echo "+ $PIO_BIN pkg install -d $PROJECT_DIR -e $environment"
+  "$PIO_BIN" pkg install -d "$PROJECT_DIR" -e "$environment"
+
   echo "+ $PIO_BIN pkg update -d $PROJECT_DIR -e $environment"
   "$PIO_BIN" pkg update -d "$PROJECT_DIR" -e "$environment"
 done

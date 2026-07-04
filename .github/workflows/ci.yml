@@ -32,7 +32,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install platformio
-          pio pkg install -e t_embed_cc1101
+          mkdir -p release/ci-native
+          REPORT_DIR=release/ci-native scripts/update_build_dependencies.sh t_embed_cc1101
+
+      - name: Upload native dependency report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-dependencies-ci-native
+          path: release/ci-native/*
+          if-no-files-found: ignore
 
       - name: Build native unit tests
         run: |
@@ -100,6 +109,19 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install platformio
+
+      - name: Update build dependencies
+        run: |
+          mkdir -p release/ci-platformio
+          REPORT_DIR=release/ci-platformio scripts/update_build_dependencies.sh t_embed_cc1101
+
+      - name: Upload PlatformIO dependency report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-dependencies-ci-platformio
+          path: release/ci-platformio/*
+          if-no-files-found: ignore
 
       - name: Build LilyGO firmware
         run: pio run -e t_embed_cc1101

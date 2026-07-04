@@ -105,6 +105,10 @@ grep -q '"$RELEASE_DIR/$LILYGO_ASSET"' release.sh
 grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${{ matrix.env }}"' .github/workflows/release-firmware.yml
+grep -q 'REPORT_DIR=release/ci-native scripts/update_build_dependencies.sh t_embed_cc1101' .github/workflows/ci.yml
+grep -q 'REPORT_DIR=release/ci-platformio scripts/update_build_dependencies.sh t_embed_cc1101' .github/workflows/ci.yml
+grep -q 'build-dependencies-ci-native' .github/workflows/ci.yml
+grep -q 'build-dependencies-ci-platformio' .github/workflows/ci.yml
 grep -q 'scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md' .github/workflows/release-firmware.yml
 grep -q 'body_path: release-notes.md' .github/workflows/release-firmware.yml
 grep -q 'release/${{ needs.release-info.outputs.lilygo_bin }}' .github/workflows/release-firmware.yml
@@ -120,6 +124,7 @@ grep -q 'DJCONNECT_RELEASE_BUILD=1 -Os' .github/workflows/release-firmware.yml
 grep -q 'scripts/minify_webportal.py' README.md
 grep -q 'scripts/minify_webportal.py' AGENTS.md
 grep -q 'scripts/minify_webportal.py' DESIGN_DECISIONS.md
+grep -q 'pkg install -d "$PROJECT_DIR" -e "$environment"' scripts/update_build_dependencies.sh
 grep -q 'THIRD_PARTY_NOTICES.md and DESIGN_DECISIONS.md before publishing' scripts/update_build_dependencies.sh
 if grep -q 'GH_RELEASE_ARGS+=(.*"$RELEASE_DIR"/\\*)' release.sh; then
   echo "GitHub release upload must not glob every local release artifact" >&2

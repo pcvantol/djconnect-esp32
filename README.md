@@ -422,18 +422,19 @@ During normal boot, the display shows the DJConnect tagline `Muziekbediening met
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. Public OTA assets live in `pcvantol/djconnect-firmware`; publish them with `--publish-firmware-repo ../djconnect-firmware` and create/verify the public GitHub release with only the LilyGO `.bin`, `.sha256` and manifest assets. If the source GitHub Action is configured and has release credentials, the pushed tag can also build and publish the public firmware release, but maintainer-run releases should verify the public release explicitly. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages, dependencies and tools before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. Public OTA assets live in `pcvantol/djconnect-firmware`; publish them with `--publish-firmware-repo ../djconnect-firmware` and create/verify the public GitHub release with only the LilyGO `.bin`, `.sha256` and manifest assets. If the source GitHub Action is configured and has release credentials, the pushed tag can also build and publish the public firmware release, but maintainer-run releases should verify the public release explicitly. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
 
 The embedded web portal lives in `src/WebPortal.cpp` as a PROGMEM raw literal.
 Run `python3 scripts/minify_webportal.py` after changing the portal markup,
 styles or scripts so the served portal remains compact without adding runtime
 decompression to the no-PSRAM LilyGO path.
 
-Dependency updates write `release/build-dependencies-before.txt`,
+Dependency updates install/resolve and update the PlatformIO project packages,
+global packages and tools, then write `release/build-dependencies-before.txt`,
 `release/build-dependencies-after.txt` and `release/build-dependencies.diff`
-locally. GitHub Actions release builds, when used, also publish equivalent
-per-board reports in workflow artifacts. If the diff shows upgraded frameworks,
-libraries or tools, update
+locally. GitHub Actions CI and release builds also publish equivalent reports
+in workflow artifacts. If the diff shows upgraded frameworks, libraries or
+tools, update
 `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing the release.
 These dependency reports are review/audit artifacts only; the public GitHub
 firmware release must publish only board firmware binaries, their `.sha256`
@@ -504,7 +505,7 @@ Build firmware:
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Refresh build dependencies before a manual verification build:
+Refresh third-party packages, build dependencies and tools before a manual verification build:
 
 ```bash
 scripts/update_build_dependencies.sh t_embed_cc1101

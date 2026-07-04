@@ -42,6 +42,10 @@ Belangrijke regels:
 - Gebruik `apply_patch` voor handmatige edits.
 - DJConnect wordt ontwikkeld en onderhouden met AI-assisted/agentic engineering workflows, inclusief Codex; accepted changes blijven maintainer-reviewed en prompts/logs/issues mogen geen secrets of private data bevatten.
 - Geen secrets/tokens/wachtwoorden in code, docs, logs of diagnostics.
+- Release- en CI-buildflows werken PlatformIO Core plus third-party packages,
+  dependencies en tools bij via `scripts/update_build_dependencies.sh`; review
+  de dependency diff en werk `THIRD_PARTY_NOTICES.md` / `DESIGN_DECISIONS.md`
+  bij wanneer versies wijzigen.
 - WebPortal markup/CSS/JS gewijzigd? Draai `python3 scripts/minify_webportal.py`.
 - Native tests bij pure logic changes:
   `c++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/native/test_logic.cpp -o /tmp/djconnect_unit_tests`
