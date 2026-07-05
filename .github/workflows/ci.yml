@@ -152,15 +152,15 @@ jobs:
           workflows=$(gh api \
             --paginate \
             --slurp \
-            "repos/${REPO}/actions/workflows" \
-            --jq 'map(.workflows[]) | .[].id')
+            "repos/${REPO}/actions/workflows" | \
+            jq -r 'map(.workflows[]) | .[].id')
 
           for workflow_id in ${workflows}; do
             old_runs=$(gh api \
               --paginate \
               --slurp \
-              "repos/${REPO}/actions/workflows/${workflow_id}/runs?status=completed&per_page=100" \
-              --jq "map(.workflow_runs[]) | sort_by(.created_at) | reverse | .[${KEEP_RUNS}:] | .[].id")
+              "repos/${REPO}/actions/workflows/${workflow_id}/runs?status=completed&per_page=100" | \
+              jq -r "map(.workflow_runs[]) | sort_by(.created_at) | reverse | .[${KEEP_RUNS}:] | .[].id")
 
             for run_id in ${old_runs}; do
               if [ "${run_id}" = "${CURRENT_RUN_ID}" ]; then
