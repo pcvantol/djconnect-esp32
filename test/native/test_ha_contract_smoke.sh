@@ -34,11 +34,21 @@ if rg -n --glob "!test/native/test_ha_contract_smoke.sh" \
   exit 1
 fi
 
+if rg -n --glob "!test/native/test_ha_contract_smoke.sh" \
+  "/api/djconnect/(pair|command|status|voice)([^[:alnum:]_/.-]|$)" \
+  "${SEARCH_PATHS[@]}"; then
+  echo "legacy unversioned Home Assistant DJConnect API route found" >&2
+  exit 1
+fi
+
 rg -q 'request\["client_type"\] = device_.*getClientType\(\)' src/SpotifyClient.cpp
+rg -q '/api/djconnect/v1/command' src/SpotifyClient.cpp
 rg -q 'request\["payload_type"\] = "command"' src/SpotifyClient.cpp
 rg -q 'request\["command"\] = "set_shuffle"' src/SpotifyClient.cpp
 rg -q 'proxyCommand\("set_repeat", normalized\)' src/SpotifyClient.cpp
 rg -q 'request\["client_type"\] = device_->getClientType\(\)' src/DJConnectPairing.cpp
+rg -q '/api/djconnect/v1/pair' src/DJConnectPairing.cpp
+rg -q '/api/djconnect/v1/status' src/DJConnectPairing.cpp
 rg -q 'request\["ha_pairing_status"\] = "paired"' src/DJConnectPairing.cpp
 rg -q 'request\["screen_brightness_percent"\]' src/DJConnectPairing.cpp
 rg -q 'request\["speaker_volume_percent"\]' src/DJConnectPairing.cpp
@@ -47,6 +57,7 @@ rg -q 'request\["turn_off_after_ms"\]' src/DJConnectPairing.cpp
 rg -q 'isDjConnectVersionMismatch\(426, "version_mismatch"\)' test/native/test_logic.cpp
 rg -q '!Logic::isHomeAssistantPairingInvalidStatus\(426\)' test/native/test_logic.cpp
 rg -q '!Logic::isHomeAssistantPairingInvalidError\("version_mismatch"\)' test/native/test_logic.cpp
+rg -q '/api/djconnect/v1/voice' src/VoiceHttpClient.cpp
 
 if rg -n --glob "!test/native/test_ha_contract_smoke.sh" --glob "!test/native/test_release.sh" \
   "set_play_mode|refresh_token|client_secret|client_id" \

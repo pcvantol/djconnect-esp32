@@ -12,6 +12,9 @@
 #include "NetworkActivity.h"
 #include "ScopedWatchdogPause.h"
 namespace {
+constexpr const char *HaPairPath = "/api/djconnect/v1/pair";
+constexpr const char *HaStatusPath = "/api/djconnect/v1/status";
+
 String joinUrl(const String &base, const char *path) {
   if (base.endsWith("/")) {
     return base.substring(0, base.length() - 1) + path;
@@ -84,7 +87,7 @@ bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
   HTTPClient http;
   NetworkActivity activity("ha_pair", Config::HttpLongIoTimeoutMs);
   NetworkActivity::configureLongHttp(http);
-  const String url = joinUrl(haUrl, "/api/djconnect/pair");
+  const String url = joinUrl(haUrl, HaPairPath);
   if (!http.begin(url)) {
     AppLog.println("HA pair HTTP begin failed");
     activity.finishError("begin failed");
@@ -229,7 +232,7 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   HTTPClient http;
   NetworkActivity activity("ha_status", Config::HttpIoTimeoutMs);
   NetworkActivity::configureDefaultHttp(http);
-  const String url = joinUrl(haUrl, "/api/djconnect/status");
+  const String url = joinUrl(haUrl, HaStatusPath);
   if (!http.begin(url)) {
     AppLog.println("HA status HTTP begin failed");
     activity.finishError("begin failed");

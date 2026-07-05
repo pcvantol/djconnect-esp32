@@ -22,6 +22,7 @@
 
 namespace {
 constexpr size_t MaxLargePlaybackPayloadBytes = 65536;
+constexpr const char *HaCommandPath = "/api/djconnect/v1/command";
 
 bool isLargePlaybackCommand(const String &command) {
   return command == "queue" || command == "playlists";
@@ -180,7 +181,7 @@ String SpotifyClient::proxyEndpoint() const {
     AppLog.line("HA playback command unavailable: local HA URL missing");
     return "";
   }
-  return haUrl + "/api/djconnect/command";
+  return haUrl + HaCommandPath;
 }
 
 bool SpotifyClient::proxyCommand(const String &command, JsonDocument *response) {
