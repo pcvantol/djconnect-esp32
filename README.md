@@ -252,6 +252,19 @@ The ESP no longer accepts or stores Spotify OAuth credentials and no local Spoti
 
 ## Push-To-Talk Voice Flow
 
+App clients that implement Ask DJ text chat use the canonical Home Assistant
+integration routes `POST /api/djconnect/v1/ask_dj/message`,
+`GET /api/djconnect/v1/ask_dj/history?since_revision=<number>` and
+`POST /api/djconnect/v1/ask_dj/history/clear`. The ESP firmware is not an Ask DJ
+text-chat client: physical push-to-talk stays on `/api/djconnect/v1/voice`, and
+follow-up or playback mutations are accepted only when Home Assistant sends
+explicit device commands/actions through `/api/djconnect/v1/command`. App
+clients use `client_message_id` for idempotency, treat backend history as the
+source of truth through `history_revision` and `clear_revision`, and prefer
+provider-neutral fields such as `music_search_query` and `last_music_search`.
+Do not use removed raw/developer Ask DJ entrypoints from firmware or web-portal
+flows.
+
 Physical PTT, from the Now Playing screen:
 
 1. Hold the encoder button on the Now Playing screen.

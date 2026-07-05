@@ -55,8 +55,20 @@ if search_repo \
 fi
 
 if search_repo \
-  "/ask_dj/history/clear|ask_dj/history|Track Insight|track insight|track_insight"; then
-  echo "ESP32 firmware must not depend on app-client Ask DJ history or Track Insight APIs" >&2
+  "/api/djconnect/v1/ask_dj([^[:alnum:]_/.-]|$)|djconnect\\.ask_dj"; then
+  echo "legacy raw Ask DJ API route or Home Assistant service found" >&2
+  exit 1
+fi
+
+if search_repo \
+  "spotify_search_query|last_spotify_search"; then
+  echo "legacy provider-specific Ask DJ search field alias found" >&2
+  exit 1
+fi
+
+if search_repo \
+  "Track Insight|track insight|track_insight"; then
+  echo "ESP32 firmware must not depend on app-client Track Insight APIs" >&2
   exit 1
 fi
 
@@ -74,6 +86,14 @@ require_pattern 'proxyCommand\("set_repeat", normalized\)' src/SpotifyClient.cpp
 require_pattern 'request\["client_type"\] = device_->getClientType\(\)' src/DJConnectPairing.cpp
 require_pattern '/api/djconnect/v1/pair' src/DJConnectPairing.cpp
 require_pattern '/api/djconnect/v1/status' src/DJConnectPairing.cpp
+require_pattern '/api/djconnect/v1/ask_dj/message' README.md
+require_pattern '/api/djconnect/v1/ask_dj/history\?since_revision=<number>' README.md
+require_pattern '/api/djconnect/v1/ask_dj/history/clear' README.md
+require_pattern 'client_message_id' README.md
+require_pattern 'history_revision' README.md
+require_pattern 'clear_revision' README.md
+require_pattern 'music_search_query' README.md
+require_pattern 'last_music_search' README.md
 require_pattern 'request\["ha_pairing_status"\] = "paired"' src/DJConnectPairing.cpp
 require_pattern 'request\["screen_brightness_percent"\]' src/DJConnectPairing.cpp
 require_pattern 'request\["speaker_volume_percent"\]' src/DJConnectPairing.cpp
