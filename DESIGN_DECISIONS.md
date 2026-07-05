@@ -245,6 +245,13 @@ playback source/default-playlist override options. Source, device and
 default-playlist choices belong in the Home Assistant integration, and
 user-facing setup copy labels the client URL as `Client adres`.
 
+Ask DJ text chat is an app-client contract, not an ESP firmware flow. App
+clients use `/api/djconnect/v1/ask_dj/message`,
+`/api/djconnect/v1/ask_dj/history` and
+`/api/djconnect/v1/ask_dj/history/clear`; removed raw/developer Ask DJ
+entrypoints must not be used. ESP follow-up/playback mutations stay on explicit
+`/api/djconnect/v1/command` actions from Home Assistant.
+
 Home Assistant `v3.2.z` and ESP `v3.2.z` are matched by major/minor version, not
 by patch. HTTP 426 with `error:"version_mismatch"` is treated as an update
 requirement and does not clear the stored pairing token. Backend availability is
