@@ -48,3 +48,61 @@ jobs:
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4
+
+  cleanup-workflow-runs:
+    needs:
+      - analyze
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Delete older completed workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          KEEP_RUNS: "2"
+        run: |
+          set -euo pipefail
+
+          current_workflow_id=$(gh api \
+            "repos/${REPO}/actions/runs/${CURRENT_RUN_ID}" \
+            --jq '.workflow_id')
+
+          workflows=$(gh api \
+            --paginate \
+            --slurp \
+            "repos/${REPO}/actions/workflows" | \
+            jq -r 'map(.workflows[]) | .[].id')
+
+          for workflow_id in ${workflows}; do
+            keep_limit="${KEEP_RUNS}"
+            if [ "${workflow_id}" = "${current_workflow_id}" ]; then
+              keep_limit=$((KEEP_RUNS - 1))
+            fi
+
+            mapfile -t run_ids < <(gh api \
+              --paginate \
+              --slurp \
+              "repos/${REPO}/actions/workflows/${workflow_id}/runs?status=completed&per_page=100" | \
+              jq -r 'map(.workflow_runs[]) | sort_by(.created_at) | reverse | .[].id')
+
+            if ((${#run_ids[@]} <= keep_limit)); then
+              continue
+            fi
+
+            for index in "${!run_ids[@]}"; do
+              run_id="${run_ids[${index}]}"
+              if ((index < keep_limit)) || [ "${run_id}" = "${CURRENT_RUN_ID}" ]; then
+                continue
+              fi
+
+              gh api \
+                --method DELETE \
+                "repos/${REPO}/actions/runs/${run_id}"
+            done
+          done
