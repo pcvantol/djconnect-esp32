@@ -370,11 +370,12 @@ Release builds inject `DJCONNECT_VERSION` and `DJCONNECT_VERSION_TAG`, build bot
 board environments and publish board-specific firmware assets plus a manifest
 with a `firmwares` array.
 
-Before release firmware is built, `scripts/update_build_dependencies.sh` upgrades
-PlatformIO Core and updates global/project PlatformIO packages for the selected
-board environments. The script writes before/after package lists and a diff into
-the release artifact directory so dependency version changes are visible during
-release review.
+Before CI or release firmware is built, `scripts/update_build_dependencies.sh`
+upgrades PlatformIO Core, updates global packages/tools, then installs/resolves
+and updates project packages for the selected board environments. CI build jobs
+upload the before/after package lists and diff as workflow artifacts. The
+release flow writes those reports into the release artifact directory so
+dependency version changes are visible during release review.
 
 Public GitHub release notes are extracted from the matching `CHANGELOG.md`
 release section through `scripts/extract_release_changelog.sh`; missing or empty
@@ -407,9 +408,9 @@ Why:
   semver.
 - Board-specific assets avoid ambiguous `djconnect-device` binaries and let HA
   select firmware by device model.
-- Updating build dependencies before release reduces stale framework/tool risk,
-  while the generated dependency diff makes third-party notice and dependency
-  inventory updates explicit instead of relying on memory.
+- Updating build dependencies before CI and release builds reduces stale
+  framework/tool risk, while the generated dependency diff makes third-party
+  notice and dependency inventory updates explicit instead of relying on memory.
 - Reusing the changelog section for GitHub Releases keeps public release notes,
   OTA release metadata and repository history aligned.
 

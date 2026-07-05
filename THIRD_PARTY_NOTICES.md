@@ -112,7 +112,8 @@ Assistant unless explicitly stated by those owners.
 
 ## Maintenance
 
-Firmware release builds run `scripts/update_build_dependencies.sh` before
-compilation. Review the generated `build-dependencies.diff`; when framework,
-library or tool versions are added, removed or upgraded, update this file
-together with `platformio.ini` and `DESIGN_DECISIONS.md` before publishing.
+Firmware CI and release builds run `scripts/update_build_dependencies.sh`
+before compilation to install/resolve and update PlatformIO packages,
+dependencies and tools. Review the generated `build-dependencies.diff`; when
+framework, library or tool versions are added, removed or upgraded, update this
+file together with `platformio.ini` and `DESIGN_DECISIONS.md` before publishing.

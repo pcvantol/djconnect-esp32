@@ -232,7 +232,7 @@ the device is reachable.
 
 Playback credentials live in Home Assistant and are never accepted or stored by the ESP.
 
-The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` accepts the Home Assistant callback with `device_token`, a required LAN `ha_local_url`, Assist pipeline id and lightweight settings such as `device_language`/`language`. The main loop then confirms the pairing through `/api/djconnect/status` over the LAN URL and schedules an immediate playback status poll. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
+The device token is stored in NVS and is never logged. During pairing, `/api/device/pair` accepts the Home Assistant callback with `device_token`, a required LAN `ha_local_url`, Assist pipeline id and lightweight settings such as `device_language`/`language`. The main loop then confirms the pairing through `/api/djconnect/v1/status` over the LAN URL and schedules an immediate playback status poll. Playback commands are not sent until that status check returns success, so stale or pending tokens do not generate repeated playback 401s.
 
 Repeated direct callbacks with the same local URL and `device_token` are treated as idempotent and do not reset pairing validation. Home Assistant should still avoid using `/api/device/pair` as a generic settings-sync endpoint after pairing; use `/api/device/command` for settings and the status response contract for state acknowledgements.
 
@@ -257,7 +257,7 @@ Physical PTT, from the Now Playing screen:
 1. Hold the encoder button on the Now Playing screen.
 2. The device records mono PCM16 audio as a WAV file on LittleFS.
 3. Release the encoder button.
-4. The ESP uploads the raw WAV body to the DJConnect HA integration at `/api/djconnect/voice` with the paired device token.
+4. The ESP uploads the raw WAV body to the DJConnect HA integration at `/api/djconnect/v1/voice` with the paired device token.
 5. The HA integration performs the Home Assistant Assist/STT/TTS work on the backend. If Assist needs the HA WebSocket API, that WebSocket connection belongs inside the HA integration, not on the ESP.
 6. The HA integration returns DJ text and an optional WAV or MP3 `audio_url`.
 7. The ESP displays the DJ text briefly, detects the audio type from `Content-Type` or magic bytes, and plays compatible WAV/MP3 audio through the built-in speaker.
@@ -346,10 +346,10 @@ Supported local device command payloads include:
 {"command":"language","value":"nl"}
 {"command":"theme","value":"dark"}
 {"command":"log_level","value":"info"}
-{"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/djconnect/tts/example.mp3"}
+{"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/djconnect/v1/tts/example.mp3"}
 ```
 
-Status is still posted periodically to the Home Assistant integration through `/api/djconnect/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. Every ESP-to-Home Assistant JSON payload for `/api/djconnect/status` and `/api/djconnect/command` includes top-level `device_id` and `client_type:"esp32"`; the firmware does not send `device_type` in those payloads. Playback command payloads stay identity-only and must not carry partial device-status snapshots; `/api/djconnect/status` is the authoritative source for battery, firmware, RSSI, pairing, screen, LED, settings and sound-output sensor values. Raw WAV uploads to `/api/djconnect/voice` use the bearer token and `X-DJConnect-Device-ID` headers instead of a JSON body.
+Status is still posted periodically to the Home Assistant integration through `/api/djconnect/v1/status`, and the ESP local API remains available for OTA, reboot, pairing reset, generic device commands and DJ response display/playback. Every ESP-to-Home Assistant JSON payload for `/api/djconnect/v1/status` and `/api/djconnect/v1/command` includes top-level `device_id` and `client_type:"esp32"`; the firmware does not send `device_type` in those payloads. Playback command payloads stay identity-only and must not carry partial device-status snapshots; `/api/djconnect/v1/status` is the authoritative source for battery, firmware, RSSI, pairing, screen, LED, settings and sound-output sensor values. Raw WAV uploads to `/api/djconnect/v1/voice` use the bearer token and `X-DJConnect-Device-ID` headers instead of a JSON body.
 
 The status payload mirrors user device settings both top-level and under `settings`, including `client_type`, `ha_pairing_status`, `local_url`, `ha_local_url`, `firmware`, `battery_percent`, `wifi_rssi`, `screen_brightness`/`brightness`, `screen_brightness_percent`, `screen_dim_timeout_ms`, `screen_off_timeout_ms`, `turn_off_after_ms`, `speaker_volume`/`cue_volume`, `speaker_volume_percent`, `language`, `theme`, `log_level`, `wake_word_enabled`/`wake_word`, `ota_state`, `update_state`, `sound_output` and `playback_configured`. It also sends the compatibility hint `spotify_configured` as the same boolean without exposing credentials. The payload includes `screen_state`, `led_state`, `screen.state`/`screen.brightness_level` and `led.state` so Home Assistant entities can refresh from the ESP state instead of defaulting to unknown or minimum values.
 
@@ -390,7 +390,7 @@ The LilyGO environment stays on the existing no-PSRAM `esp32-s3-devkitc-1` defin
 
 - Home Assistant is the trusted backend for pairing, playback command interpretation, backend credentials, Assist STT/TTS orchestration and OTA offer handling. The ESP stores only WiFi settings and its Home Assistant device token.
 - The ESP remains the local edge device for display, controls, LED ring, battery policy, speaker cues, microphone capture and playback of HA-provided DJ response audio. It must keep working when optional HA/web features are unused.
-- Push-to-talk uses the DJConnect integration as the backend boundary: the ESP records WAV audio and uploads it to `/api/djconnect/voice`; the HA integration owns Assist/STT/TTS and returns DJ text plus optional audio URL. The ESP does not authenticate directly to Home Assistant core `/api/websocket`, call OpenAI directly or upload browser microphone audio.
+- Push-to-talk uses the DJConnect integration as the backend boundary: the ESP records WAV audio and uploads it to `/api/djconnect/v1/voice`; the HA integration owns Assist/STT/TTS and returns DJ text plus optional audio URL. The ESP does not authenticate directly to Home Assistant core `/api/websocket`, call OpenAI directly or upload browser microphone audio.
 - Home Assistant is authoritative for pairing validity. HA 401/403/404 responses, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear the stored local pairing and return the ESP to pairing mode. HTTP 426 `version_mismatch` is handled as an update-required protocol block without clearing pairing.
 - The device Settings menu includes `Change WiFi`, which restarts into the setup/captive portal while preserving the stored Home Assistant pairing token. Use Factory reset or Reset Home Assistant pairing when pairing should be removed.
 - Spotify OAuth and other playback-backend credentials are never stored on the ESP.
@@ -422,18 +422,19 @@ During normal boot, the display shows the DJConnect tagline `Muziekbediening met
 
 Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. Public OTA assets live in `pcvantol/djconnect-firmware`; publish them with `--publish-firmware-repo ../djconnect-firmware` and create/verify the public GitHub release with only the LilyGO `.bin`, `.sha256` and manifest assets. If the source GitHub Action is configured and has release credentials, the pushed tag can also build and publish the public firmware release, but maintainer-run releases should verify the public release explicitly. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, updates/upgrades PlatformIO Core plus third-party project packages, dependencies and tools before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. Public OTA assets live in `pcvantol/djconnect-firmware`; publish them with `--publish-firmware-repo ../djconnect-firmware` and create/verify the public GitHub release with only the LilyGO `.bin`, `.sha256` and manifest assets. If the source GitHub Action is configured and has release credentials, the pushed tag can also build and publish the public firmware release, but maintainer-run releases should verify the public release explicitly. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
 
 The embedded web portal lives in `src/WebPortal.cpp` as a PROGMEM raw literal.
 Run `python3 scripts/minify_webportal.py` after changing the portal markup,
 styles or scripts so the served portal remains compact without adding runtime
 decompression to the no-PSRAM LilyGO path.
 
-Dependency updates write `release/build-dependencies-before.txt`,
+Dependency updates install/resolve and update the PlatformIO project packages,
+global packages and tools, then write `release/build-dependencies-before.txt`,
 `release/build-dependencies-after.txt` and `release/build-dependencies.diff`
-locally. GitHub Actions release builds, when used, also publish equivalent
-per-board reports in workflow artifacts. If the diff shows upgraded frameworks,
-libraries or tools, update
+locally. GitHub Actions CI and release builds also publish equivalent reports
+in workflow artifacts. If the diff shows upgraded frameworks, libraries or
+tools, update
 `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing the release.
 These dependency reports are review/audit artifacts only; the public GitHub
 firmware release must publish only board firmware binaries, their `.sha256`
@@ -504,7 +505,7 @@ Build firmware:
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Refresh build dependencies before a manual verification build:
+Refresh third-party packages, build dependencies and tools before a manual verification build:
 
 ```bash
 scripts/update_build_dependencies.sh t_embed_cc1101
@@ -561,6 +562,6 @@ NVS encryption status:
 
 - Playback controls do nothing: check Home Assistant pairing, the HA integration command endpoint, backend authorization and the active output.
 - No Home Assistant pairing code: check the web portal pairing banner, mDNS discovery and `/api/device/pairing-info`.
-- PTT fails: check Home Assistant pairing, `ha_local_url`, `device_token`, the HA integration `/api/djconnect/voice` handler and HA Assist/TTS logs. The ESP should not report `Assist auth_invalid`; Assist WebSocket authentication belongs on the HA integration side.
+- PTT fails: check Home Assistant pairing, `ha_local_url`, `device_token`, the HA integration `/api/djconnect/v1/voice` handler and HA Assist/TTS logs. The ESP should not report `Assist auth_invalid`; Assist WebSocket authentication belongs on the HA integration side.
 - OTA fails: check battery/charging state, firmware URL, device type and network reachability.
 - Device becomes sluggish: check logs for `Responsiveness: slow loop`, `free_heap`, `min_free_heap` and `largest_block`.

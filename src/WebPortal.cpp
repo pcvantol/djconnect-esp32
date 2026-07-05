@@ -209,7 +209,7 @@ deviceNotPaired:"Device not paired with Home Assistant", setup:"Click here to se
 nowPlaying:"Now Playing", time:"Time", previous:"Previous song", next:"Next song", play:"Play", pause:"Pause", liked:"Start default playlist",
 webPttHold:"Test DJ announcement", webPttListening:"Testing DJ announcement...", webPttProcessing:"Sending test command...", webPttSent:"DJ announcement test sent", webPttTimeout:"DJ announcement test is still running on the device.",
 webPttUnsupported:"Voice test is unavailable.", webPttNoSpeech:"No test command",
-webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect announcement flow", webPttFlowInfo:"Tests: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ announcement text on the device.",
+webPttFailed:"Voice command failed", webPttTestCommand:"Test the DJConnect announcement flow", webPttFlowInfo:"Tests: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/v1/voice -> DJ announcement text on the device.",
 spotifyUnavailable:"Playback not connected",
 output:"Sound output", loadingOutputs:"Loading outputs...", volume:"Volume", upNext:"Queue", refreshUpNext:"Refresh queue", refreshPlaylists:"Refresh playlists", loadingQueue:"Loading queue...",
 playlists:"Playlists", loadingPlaylists:"Loading playlists...", startPlaylist:"Start playlist", games:"Games", settings:"Settings",
@@ -246,7 +246,7 @@ deviceNotPaired:"Device niet gekoppeld met Home Assistant", setup:"Klik hier om 
 nowPlaying:"Speelt nu", time:"Tijd", previous:"Vorig nummer", next:"Volgend nummer", play:"Afspelen", pause:"Pauzeren", liked:"Start standaard playlist",
 webPttHold:"Test DJ aankondiging", webPttListening:"DJ aankondiging testen...", webPttProcessing:"Testcommando versturen...", webPttSent:"DJ aankondiging test verstuurd", webPttTimeout:"DJ aankondiging test loopt nog op het device.",
 webPttUnsupported:"Voice test is niet beschikbaar.", webPttNoSpeech:"Geen testcommando",
-webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect aankondiging flow", webPttFlowInfo:"Test: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/voice -> DJ aankondiging tekst op het device.",
+webPttFailed:"Voice command mislukt", webPttTestCommand:"Test de DJConnect aankondiging flow", webPttFlowInfo:"Test: browser -> ESP /api/voice-text -> Home Assistant /api/djconnect/v1/voice -> DJ aankondiging tekst op het device.",
 spotifyUnavailable:"Afspelen niet verbonden",
 output:"Geluidsuitgang", loadingOutputs:"Geluidsuitgangen laden...", volume:"Volume", upNext:"Wachtrij", refreshUpNext:"Wachtrij verversen", refreshPlaylists:"Afspeellijsten verversen", loadingQueue:"Wachtrij laden...",
 playlists:"Afspeellijsten", loadingPlaylists:"Afspeellijsten laden...", startPlaylist:"Start afspeellijst", games:"Games", settings:"Instellingen",
@@ -990,7 +990,7 @@ title.className = "queue-title";
 title.textContent = item.title || "-";
 const subtitle = document.createElement("div");
 subtitle.className = "queue-subtitle";
-subtitle.textContent = item.subtitle || "-";
+subtitle.textContent = item.album && item.subtitle ? `${item.subtitle} - ${item.album}` : (item.subtitle || item.album || "-");
 meta.appendChild(title);
 meta.appendChild(subtitle);
 row.appendChild(meta);
@@ -1747,6 +1747,8 @@ void WebPortal::handleQueueJson() {
     sendJsonEscapedContent(server_, item.title);
     server_.sendContent("\",\"subtitle\":\"");
     sendJsonEscapedContent(server_, item.subtitle);
+    server_.sendContent("\",\"album\":\"");
+    sendJsonEscapedContent(server_, item.album);
     server_.sendContent("\",\"uri\":\"");
     sendJsonEscapedContent(server_, item.uri);
     server_.sendContent("\",\"imageUrl\":\"");

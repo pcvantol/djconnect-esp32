@@ -121,6 +121,7 @@ struct AboutStatus {
 struct QueueItemState {
   String title;
   String subtitle;
+  String album;
   String uri;
   String imageUrl;
 };

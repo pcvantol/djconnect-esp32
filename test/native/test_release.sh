@@ -9,9 +9,11 @@ bash -n scripts/cleanup_old_releases.sh
 bash -n scripts/capture_device_screens.sh
 bash -n scripts/extract_release_changelog.sh
 bash -n scripts/update_build_dependencies.sh
+bash -n test/native/test_ha_contract_smoke.sh
 python3 -m py_compile scripts/minify_webportal.py
 python3 -m py_compile test/native/test_postman_collections.py
 python3 -m py_compile test/native/test_webportal_i18n.py
+test/native/test_ha_contract_smoke.sh
 python3 test/native/test_postman_collections.py
 python3 test/native/test_webportal_i18n.py
 test -s DESIGN_DECISIONS.md
@@ -64,7 +66,7 @@ echo "97d1a6567cc3c61d8cdb4c2ca05ed37adfd6bdc112efeb90177c4bba7095f476  assets/w
 echo "34e667173f5fe834f9282d11ab5a1f4f5fa2225010388f50a6f5bf7d72e2d460  assets/website/favicon-32.png" | shasum -a 256 -c -
 
 # The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
-if rg -n --glob "!test/native/test_release.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
+if rg -n --glob "!test/native/test_release.sh" --glob "!test/native/test_ha_contract_smoke.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
   README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
   echo "old product/endpoint reference found" >&2
   exit 1
@@ -103,6 +105,10 @@ grep -q '"$RELEASE_DIR/$LILYGO_ASSET"' release.sh
 grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${{ matrix.env }}"' .github/workflows/release-firmware.yml
+grep -q 'REPORT_DIR=release/ci-native scripts/update_build_dependencies.sh t_embed_cc1101' .github/workflows/ci.yml
+grep -q 'REPORT_DIR=release/ci-platformio scripts/update_build_dependencies.sh t_embed_cc1101' .github/workflows/ci.yml
+grep -q 'build-dependencies-ci-native' .github/workflows/ci.yml
+grep -q 'build-dependencies-ci-platformio' .github/workflows/ci.yml
 grep -q 'scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md' .github/workflows/release-firmware.yml
 grep -q 'body_path: release-notes.md' .github/workflows/release-firmware.yml
 grep -q 'release/${{ needs.release-info.outputs.lilygo_bin }}' .github/workflows/release-firmware.yml
@@ -118,6 +124,7 @@ grep -q 'DJCONNECT_RELEASE_BUILD=1 -Os' .github/workflows/release-firmware.yml
 grep -q 'scripts/minify_webportal.py' README.md
 grep -q 'scripts/minify_webportal.py' AGENTS.md
 grep -q 'scripts/minify_webportal.py' DESIGN_DECISIONS.md
+grep -q 'pkg install -d "$PROJECT_DIR" -e "$environment"' scripts/update_build_dependencies.sh
 grep -q 'THIRD_PARTY_NOTICES.md and DESIGN_DECISIONS.md before publishing' scripts/update_build_dependencies.sh
 if grep -q 'GH_RELEASE_ARGS+=(.*"$RELEASE_DIR"/\\*)' release.sh; then
   echo "GitHub release upload must not glob every local release artifact" >&2

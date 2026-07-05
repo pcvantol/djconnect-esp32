@@ -565,7 +565,7 @@
               ]
             },
             "url": "{{base_url}}/api/voice-text",
-            "description": "Runs the web portal fixed-text DJ announcement flow through ESP -> HA /api/djconnect/voice. It intentionally does not play returned TTS audio."
+            "description": "Runs the web portal fixed-text DJ announcement flow through ESP -> HA /api/djconnect/v1/voice. It intentionally does not play returned TTS audio."
           },
           "response": []
         }

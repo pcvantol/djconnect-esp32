@@ -17,6 +17,7 @@
 
 namespace {
 using ActivityCallback = VoiceHttpClient::ActivityCallback;
+constexpr const char *HaVoicePath = "/api/djconnect/v1/voice";
 
 void notifyActivity(ActivityCallback callback, void *context) {
   if (callback != nullptr) {
@@ -196,7 +197,7 @@ bool looksLikeDjAudioUrl(const String &value) {
   if (!(lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/api/"))) {
     return false;
   }
-  return lower.indexOf("/api/djconnect/tts/") >= 0 ||
+  return lower.indexOf("/api/djconnect/v1/tts/") >= 0 ||
          lower.indexOf("/api/tts") >= 0 ||
          lower.endsWith(".mp3") ||
          lower.endsWith(".wav") ||
@@ -316,7 +317,7 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
     return false;
   }
   const String token = device_->getDeviceToken();
-  const String url = endpoint("/api/djconnect/voice");
+  const String url = endpoint(HaVoicePath);
   if (token.isEmpty()) {
     message = "No device token";
     return false;
@@ -433,7 +434,7 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
     return false;
   }
   const String token = device_->getDeviceToken();
-  const String url = endpoint("/api/djconnect/voice");
+  const String url = endpoint(HaVoicePath);
   if (token.isEmpty()) {
     message = "No device token";
     return false;

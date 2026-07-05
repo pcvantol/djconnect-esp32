@@ -64,7 +64,7 @@ Concrete issue and task list after release `v3.2.0`.
 - [ ] Validate that Home Assistant sends a real LAN `ha_local_url` during pairing.
 - [ ] Validate that Home Assistant never sends Nabu Casa `.ui.nabu.casa` as `ha_local_url`.
 - [ ] Confirm HA reports pairing as pending until ESP confirms token storage through `/api/device/pair`.
-- [ ] Confirm playback commands stay disabled until `/api/djconnect/status` accepts the stored device token.
+- [ ] Confirm playback commands stay disabled until `/api/djconnect/v1/status` accepts the stored device token.
 - [ ] Confirm HA integration owns backend OAuth/credential refresh without sending backend tokens to the ESP.
 - [ ] Confirm new HA/client setup and options flows do not expose legacy playback
   source/default-playlist override options and use `Client adres` for the client
@@ -72,7 +72,7 @@ Concrete issue and task list after release `v3.2.0`.
 - [ ] Confirm HA integration can return DJ announcement text plus WAV URL.
 - [ ] Confirm HA integration can return DJ announcement text plus MP3 URL.
 - [ ] Confirm Home Assistant status payload includes firmware version after OTA boot.
-- [ ] Add integration-side test prompt/checklist for `/api/djconnect/voice` STT/TTS provider configuration.
+- [ ] Add integration-side test prompt/checklist for `/api/djconnect/v1/voice` STT/TTS provider configuration.
 - [ ] Verify HA media/player play-pause entity actions mirror back on the device screen.
 - [ ] Add HA config-flow tests for Raspberry Pi mDNS discovery and pairing:
   - `_djconnect._tcp` TXT acceptance for `client_type=raspberry_pi`;

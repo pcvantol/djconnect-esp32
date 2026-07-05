@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.3
+
+### Changed
+
+- Updated Home Assistant DJConnect integration calls and documentation to use
+  the canonical `/api/djconnect/v1/...` route prefix for pair, status,
+  command and voice endpoints.
+
 ## v3.2.2
 
 ### Changed
@@ -357,7 +365,7 @@ Patch release for HA local-route pairing, wake-word/PTT stability, queue renderi
 
 ### Changed
 
-- Playback command payloads are now identity-only and no longer include partial device-status snapshots; `/api/djconnect/status` remains the authoritative source for HA sensor values.
+- Playback command payloads are now identity-only and no longer include partial device-status snapshots; `/api/djconnect/v1/status` remains the authoritative source for HA sensor values.
 - App logs now support atomic complete-line writes for async playback/volume worker messages so volume changes no longer interleave into broken serial/web log fragments.
 - Home Assistant startup state is now logged once when the local device API starts instead of repeating paired/URL lines during boot setup.
 - Wake-word listening now remains enabled when playback is idle or paused after Home Assistant is paired.
@@ -394,7 +402,7 @@ Patch release for DJ-response, Home Assistant status stability, playback logging
 
 ### Fixed
 
-- Fixed Home Assistant sensor resets caused by voice-only status posts to `/api/djconnect/status`; voice status no longer posts partial device-status payloads.
+- Fixed Home Assistant sensor resets caused by voice-only status posts to `/api/djconnect/v1/status`; voice status no longer posts partial device-status payloads.
 - Fixed task-watchdog `task not found` noise during volume/network/audio/OTA paths by guarding watchdog pause/reset calls.
 - Fixed web DJ-response test reporting failure despite successful ESP/HA flow by making the browser response handling more tolerant and explicit.
 - Fixed DJ-response web/device flow crash risk after skipped web-test audio by guarding long HA HTTP calls.
@@ -409,7 +417,7 @@ Hygiene release for the ESP-IDF 5.3 / Arduino ESP32 3.x migration, web portal po
 ### Added
 
 - Web album-art popover: clicking/tapping the Now Playing album art opens a large focused view with backdrop, close button and Escape support.
-- Web DJ-response test now shows an explicit route description: browser -> ESP `/api/voice-text` -> Home Assistant `/api/djconnect/voice` -> DJ-response text on the device.
+- Web DJ-response test now shows an explicit route description: browser -> ESP `/api/voice-text` -> Home Assistant `/api/djconnect/v1/voice` -> DJ-response text on the device.
 - PlatformIO upload+monitor stabilization for ESP32-S3 USB CDC after IDF 5 reset: monitor RTS/DTR are held low and combined upload/monitor runs wait briefly before opening the monitor.
 
 ### Changed
@@ -539,7 +547,7 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Home Assistant playback proxy calls use shorter request waits and a transient-failure cooldown so repeated HA 5xx/-1 responses do not stack blocking commands or trip the watchdog.
 - The `S` playback status indicator is now tri-state: green for active usable playback, grey for a reachable backend with no active playback, and red for playback proxy errors such as HA 5xx/-1 responses.
 - Reset Home Assistant pairing from the device now shows a clear reset screen, plays the soft-reset cue and flashes the LED ring before restarting into pairing mode.
-- Direct Home Assistant pairing callbacks are now treated as pending until `/api/djconnect/status` accepts the token. If HA returns 401/403/404, the ESP clears that pending token and stays on the pairing-code screen.
+- Direct Home Assistant pairing callbacks are now treated as pending until `/api/djconnect/v1/status` accepts the token. If HA returns 401/403/404, the ESP clears that pending token and stays on the pairing-code screen.
 - OTA firmware write shows `Firmware update in progress..` on the display for both Home Assistant OTA and manual web upload, runs a fast purple LED-ring animation, and plays start/progress/complete/failure speaker cues.
 - OTA download and manual firmware upload now explicitly service the ESP task watchdog while hashing and writing firmware chunks.
 - OTA streaming is more tolerant of slow GitHub/CDN bursts, with a longer idle window and larger write chunks before treating the stream as stalled.
@@ -565,7 +573,7 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Web portal firmware upload no longer shows a temporary `Uploading firmware...` / `Firmware uploaden...` status label before the final upload response.
 - Web interface logs can be paused and selected/copied.
 - `Restart device` and `Turn off device` are available from settings.
-- Push-to-talk now records a WAV file on the ESP and uploads it as raw `audio/wav` to the Home Assistant integration endpoint `/api/djconnect/voice`.
+- Push-to-talk now records a WAV file on the ESP and uploads it as raw `audio/wav` to the Home Assistant integration endpoint `/api/djconnect/v1/voice`.
 - The PTT flow is documented: ESP WAV upload to the HA integration, backend Assist/STT/TTS in Home Assistant, then DJ text plus optional WAV/MP3 URL back to the ESP device.
 - Direct Home Assistant Assist WebSocket authentication has been removed from the physical PTT path; the websocket, if required, belongs on the Home Assistant integration backend.
 - Encoder short press performs pause/resume and long press starts push-to-talk until release from Now Playing.
@@ -573,7 +581,7 @@ Consolidated DJConnect firmware release for the LilyGO T-Embed-CC1101 / ESP32-S3
 - Turn-off sleep periodically probes for USB-C charger attach; with a charger detected the device continues booting, otherwise it returns to sleep.
 - Push-to-talk logs listening steps to serial and the web logs screen.
 - LED-ring animations are yellow on PTT start, blue on PTT stop/processing, and green on accepted voice command response.
-- The old recognized-text-only physical PTT path was replaced by raw WAV upload to `/api/djconnect/voice`; the web portal still keeps a compact text-based DJ-response simulation path.
+- The old recognized-text-only physical PTT path was replaced by raw WAV upload to `/api/djconnect/v1/voice`; the web portal still keeps a compact text-based DJ-response simulation path.
 - Voice status messages use `recording`, `sending_command` and `error`.
 - DJ responses are displayed locally, optionally played and published as `last_dj_text` in runtime state.
 - DJ response audio now supports MP3 streams in addition to PCM WAV, with content-type and magic-byte detection plus text-only fallback for unsupported audio.

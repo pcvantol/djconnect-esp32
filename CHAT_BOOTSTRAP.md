@@ -15,9 +15,9 @@ Lees eerst:
 Context:
 - DJConnect ESP32-S3 firmware repo.
 - Huidige licentie is MIT.
-- Laatste geverifieerde release is v3.2.2.
-- v3.2.2 publiceert alleen het LilyGO T-Embed S3 firmware asset:
-  `djconnect-lilygo-t-embed-s3-v3.2.2.bin`, `.sha256` en
+- Laatste geverifieerde release is v3.2.3.
+- v3.2.3 publiceert alleen het LilyGO T-Embed S3 firmware asset:
+  `djconnect-lilygo-t-embed-s3-v3.2.3.bin`, `.sha256` en
   `firmware_manifest.json`.
 - User-facing firmware/web UI strings ondersteunen `en`, `nl`, `de`, `fr` en
   `es` via de centrale `I18n` tabel; protocolvelden en JSON keys blijven
@@ -42,6 +42,10 @@ Belangrijke regels:
 - Gebruik `apply_patch` voor handmatige edits.
 - DJConnect wordt ontwikkeld en onderhouden met AI-assisted/agentic engineering workflows, inclusief Codex; accepted changes blijven maintainer-reviewed en prompts/logs/issues mogen geen secrets of private data bevatten.
 - Geen secrets/tokens/wachtwoorden in code, docs, logs of diagnostics.
+- Release- en CI-buildflows werken PlatformIO Core plus third-party packages,
+  dependencies en tools bij via `scripts/update_build_dependencies.sh`; review
+  de dependency diff en werk `THIRD_PARTY_NOTICES.md` / `DESIGN_DECISIONS.md`
+  bij wanneer versies wijzigen.
 - WebPortal markup/CSS/JS gewijzigd? Draai `python3 scripts/minify_webportal.py`.
 - Native tests bij pure logic changes:
   `c++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/native/test_logic.cpp -o /tmp/djconnect_unit_tests`
