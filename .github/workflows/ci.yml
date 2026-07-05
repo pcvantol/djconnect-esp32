@@ -125,3 +125,50 @@ jobs:
 
       - name: Build LilyGO firmware
         run: pio run -e t_embed_cc1101
+
+  cleanup-workflow-runs:
+    needs:
+      - native-tests
+      - postman-collections
+      - release-script
+      - platformio-build
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Delete older completed workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          KEEP_RUNS: "2"
+        run: |
+          set -euo pipefail
+
+          workflows=$(gh api \
+            --paginate \
+            --slurp \
+            "repos/${REPO}/actions/workflows" \
+            --jq 'map(.workflows[]) | .[].id')
+
+          for workflow_id in ${workflows}; do
+            old_runs=$(gh api \
+              --paginate \
+              --slurp \
+              "repos/${REPO}/actions/workflows/${workflow_id}/runs?status=completed&per_page=100" \
+              --jq "map(.workflow_runs[]) | sort_by(.created_at) | reverse | .[${KEEP_RUNS}:] | .[].id")
+
+            for run_id in ${old_runs}; do
+              if [ "${run_id}" = "${CURRENT_RUN_ID}" ]; then
+                continue
+              fi
+
+              gh api \
+                --method DELETE \
+                "repos/${REPO}/actions/runs/${run_id}"
+            done
+          done
