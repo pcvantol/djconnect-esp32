@@ -91,18 +91,27 @@ echo "$dry_run_output" | grep -q "channel: stable"
 echo "$dry_run_output" | grep -q "min HA:  98.76.0"
 echo "$dry_run_output" | grep -q "max HA:  <98.77.0"
 echo "$dry_run_output" | grep -q "djconnect-lilygo-t-embed-s3-v98.76.54.bin"
+echo "$dry_run_output" | grep -q "Would fetch origin/main and verify the source release commit is based on the remote release base."
 echo "$dry_run_output" | grep -q "Would update and upgrade PlatformIO Core, global packages/tools and project packages"
 echo "$dry_run_output" | grep -q "Would write release/build-dependencies.diff and require THIRD_PARTY_NOTICES.md / DESIGN_DECISIONS.md review"
 echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 with isolated PLATFORMIO_BUILD_DIR root"
 echo "$dry_run_output" | grep -q "DJCONNECT_VERSION=98.76.54 / DJCONNECT_VERSION_TAG=v98.76.54"
-echo "$dry_run_output" | grep -q "Would commit, tag and push source repo"
+echo "$dry_run_output" | grep -q "Would commit, tag and push the current source release commit explicitly to origin/main."
 echo "$dry_run_output" | grep -q "If GitHub Actions release publishing is configured, the pushed tag may publish public firmware assets."
 
 publish_dry_run_output="$(./release.sh 98.76.59 --publish-firmware-repo ../djconnect-firmware --dry-run)"
 echo "$publish_dry_run_output" | grep -q "Would publish assets to firmware repo path: ../djconnect-firmware."
+echo "$publish_dry_run_output" | grep -q "Would fetch origin/main and verify the public firmware release commit is based on the remote release base."
 echo "$publish_dry_run_output" | grep -q "Would update the public firmware repo; verify or create the GitHub firmware release after publish."
 grep -q '"$RELEASE_DIR/$LILYGO_ASSET"' release.sh
 grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
+grep -q 'git fetch origin main' release.sh
+grep -q 'git merge-base --is-ancestor origin/main HEAD' release.sh
+grep -q 'git push origin HEAD:main' release.sh
+if grep -q 'git push origin main' release.sh; then
+  echo "release.sh must push the current release commit with HEAD:main, not a potentially stale local main branch" >&2
+  exit 1
+fi
 grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.sh
 grep -q 'scripts/update_build_dependencies.sh "${{ matrix.env }}"' .github/workflows/release-firmware.yml
 grep -q 'REPORT_DIR=release/ci-native scripts/update_build_dependencies.sh t_embed_cc1101' .github/workflows/ci.yml

@@ -135,6 +135,9 @@ update `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing.
 Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so a
 fresh Codex chat starts with the current release, handoff and verification
 context.
+Release tooling must verify the release commit is based on `origin/main` and
+push the current release commit explicitly with `git push origin HEAD:main`
+instead of relying on a potentially stale local `main` branch.
 Release builds must also set `DJCONNECT_RELEASE_BUILD=1` and keep the explicit
 size-oriented `-Os` flag in both `release.sh` and the GitHub workflow. Do not
 enable `-flto` in the current Arduino ESP32 / ESP-IDF 5.3 toolchain unless a

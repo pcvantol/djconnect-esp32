@@ -37,6 +37,16 @@ run_in_dir() {
   fi
 }
 
+verify_head_based_on_remote_main() {
+  local dir="$1"
+  run_in_dir "$dir" git fetch origin main
+  if [[ "$DRY_RUN" == "false" ]]; then
+    if ! (cd "$dir" && git merge-base --is-ancestor origin/main HEAD); then
+      fail "$(cd "$dir" && pwd) HEAD is not based on origin/main; rebase or merge the remote release base before releasing"
+    fi
+  fi
+}
+
 sha256_file() {
   local file="$1"
   if command -v shasum >/dev/null 2>&1; then
@@ -250,13 +260,15 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Would update release examples/version references in platformio.ini, version files, README, CHANGELOG and AGENTS if present."
+  echo "Would fetch origin/main and verify the source release commit is based on the remote release base."
   echo "Would update and upgrade PlatformIO Core, global packages/tools and project packages for t_embed_cc1101 before building."
   echo "Would write $RELEASE_DIR/build-dependencies.diff and require THIRD_PARTY_NOTICES.md / DESIGN_DECISIONS.md review if dependency versions changed."
   echo "Would build t_embed_cc1101 with isolated PLATFORMIO_BUILD_DIR root and DJCONNECT_VERSION=$VERSION / DJCONNECT_VERSION_TAG=$TAG."
   echo "Would copy firmware to $RELEASE_DIR/$ASSET and write $RELEASE_DIR/$MANIFEST."
-  echo "Would commit, tag and push source repo."
+  echo "Would commit, tag and push the current source release commit explicitly to origin/main."
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
     echo "Would publish assets to firmware repo path: $PUBLISH_FIRMWARE_REPO."
+    echo "Would fetch origin/main and verify the public firmware release commit is based on the remote release base."
   fi
   echo "Would push tag $TAG."
   if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
@@ -272,6 +284,8 @@ if [[ "$DRY_RUN" == "true" ]]; then
   fi
   exit 0
 fi
+
+verify_head_based_on_remote_main "."
 
 replace_version_examples "$VERSION" "$TAG"
 
@@ -357,12 +371,13 @@ else
   run git commit -m "Release DJConnect firmware $TAG"
 fi
 run git tag "$TAG"
-run git push origin main
+run git push origin HEAD:main
 run git push origin "$TAG"
 
 if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
   [[ -d "$PUBLISH_FIRMWARE_REPO" ]] || fail "firmware repo path does not exist: $PUBLISH_FIRMWARE_REPO"
   [[ -d "$PUBLISH_FIRMWARE_REPO/.git" ]] || fail "firmware repo path is not a git repo: $PUBLISH_FIRMWARE_REPO"
+  verify_head_based_on_remote_main "$PUBLISH_FIRMWARE_REPO"
   for board in "${RELEASE_BOARDS[@]}"; do
     asset="$(asset_name_for "$board" "$VERSION")"
     run cp "$RELEASE_DIR/$asset" "$PUBLISH_FIRMWARE_REPO/$asset"
@@ -374,7 +389,7 @@ if [[ -n "$PUBLISH_FIRMWARE_REPO" ]]; then
   if ! (cd "$PUBLISH_FIRMWARE_REPO" && git rev-parse "$TAG" >/dev/null 2>&1); then
     run_in_dir "$PUBLISH_FIRMWARE_REPO" git tag "$TAG"
   fi
-  run_in_dir "$PUBLISH_FIRMWARE_REPO" git push origin main
+  run_in_dir "$PUBLISH_FIRMWARE_REPO" git push origin HEAD:main
   run_in_dir "$PUBLISH_FIRMWARE_REPO" git push origin "$TAG"
 fi
 
