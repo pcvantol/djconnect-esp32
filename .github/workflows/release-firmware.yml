@@ -138,7 +138,8 @@ jobs:
       - name: Download firmware artifacts
         uses: actions/download-artifact@v8
         with:
-          path: artifacts
+          name: firmware-t_embed_cc1101
+          path: artifacts/firmware-t_embed_cc1101
 
       - name: Prepare release assets
         run: |
