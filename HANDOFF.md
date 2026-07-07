@@ -6,10 +6,10 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is
 
 Current repo state includes:
 
-- Latest verified firmware release from this repo: `v3.2.3`. Source repo
+- Latest verified firmware release from this repo: `v3.2.4`. Source repo
   `pcvantol/djconnect-esp32` and public firmware repo
-  `pcvantol/djconnect-firmware` both have pushed `v3.2.3` tags. The public
-  firmware GitHub release is `DJConnect firmware v3.2.3` and contains only the
+  `pcvantol/djconnect-firmware` both have pushed `v3.2.4` tags. The public
+  firmware GitHub release is `DJConnect firmware v3.2.4` and contains only the
   LilyGO binary, matching `.sha256`, and `firmware_manifest.json`; generated
   local `release/` artifacts remain ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
@@ -80,16 +80,16 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Latest release verification for `v3.2.3`:
+Latest release verification for `v3.2.4`:
 
-- `./release.sh 3.2.3` completed a clean LilyGO source release build.
-- The source repo tag `v3.2.3` was pushed.
+- `./release.sh 3.2.4` completed a clean LilyGO source release build.
+- The source repo tag `v3.2.4` was pushed.
 - Verify that GitHub Actions or maintainer-controlled public publishing creates
   the public firmware release with only
-  `djconnect-lilygo-t-embed-s3-v3.2.3.bin`,
-  `djconnect-lilygo-t-embed-s3-v3.2.3.bin.sha256` and
+  `djconnect-lilygo-t-embed-s3-v3.2.4.bin`,
+  `djconnect-lilygo-t-embed-s3-v3.2.4.bin.sha256` and
   `firmware_manifest.json`.
-- Post-release cleanup should keep `v3.2.3` as the current stable line.
+- Post-release cleanup should keep `v3.2.4` as the current stable line.
 
 ## Architecture
 

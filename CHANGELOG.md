@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.2.4
+
+### Changed
+
+- Aligned the firmware handoff notes with the canonical cross-repo sync
+  contract from the Home Assistant integration repo.
+
 ## v3.2.3
 
 ### Changed
