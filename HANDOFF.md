@@ -139,9 +139,9 @@ Core data/security boundaries:
 ## Known Issues
 
 - NVS credentials are currently stored in ESP32 NVS but not encrypted by this Arduino/PlatformIO build.
-- The canonical HA roadmap still mentions ESP32-S3-BOX-3 firmware assets as a
-  broader product target, but this firmware repo's current supported
-  PlatformIO/release/CI target remains LilyGO T-Embed S3 only.
+- The current supported PlatformIO/release/CI target remains LilyGO T-Embed S3
+  only. ESP32-S3-BOX-3 support should stay absent unless the central
+  cross-repo contract explicitly reintroduces it.
 - OTA status clearing in Home Assistant depends on the integration processing the post-boot status payload correctly.
 - Home Assistant sensor reset behavior must be verified against the current integration. If sensors briefly populate and then become unknown/pending, the fix belongs in the integration entity/coordinator refresh path.
 - HA native entities for brightness, speaker volume, timeouts, language, theme and log level should read the mirrored `/api/djconnect/v1/status` settings fields; otherwise they may show minimum/default values until changed from HA.
