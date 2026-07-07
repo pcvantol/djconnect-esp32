@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.2.8
+
+### Fixed
+
+- Changed Home Assistant/GitHub OTA downloads to spool the verified firmware
+  image to LittleFS before starting the flash writer, so no-PSRAM LilyGO
+  devices can release GitHub TLS heap before `Update.begin()` allocates its
+  flash buffer.
+
 ## v3.2.7
 
 ### Fixed

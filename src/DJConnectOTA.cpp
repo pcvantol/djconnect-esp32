@@ -2,6 +2,7 @@
 #include "DJConnectOTA.h"
 
 #include <HTTPClient.h>
+#include <LittleFS.h>
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -20,6 +21,7 @@
 namespace {
 constexpr size_t OtaDownloadBufferBytes = 1460;
 constexpr uint8_t OtaMaxRedirects = 5;
+constexpr const char *OtaSpoolPath = "/ota_update.bin";
 
 String sha256Hex(const unsigned char digest[32]) {
   static const char *hex = "0123456789abcdef";
@@ -259,17 +261,6 @@ bool DJConnectOTA::performUpdate(
     return false;
   }
 
-  const int contentLength = http.getSize();
-  if (!Update.begin(contentLength > 0 ? contentLength : UPDATE_SIZE_UNKNOWN)) {
-    message = "OTA Update.begin failed";
-    AppLog.print("OTA Update.begin error: ");
-    AppLog.println(Update.errorString());
-    http.end();
-    activity.finishError("Update.begin failed");
-    failWithCue();
-    return false;
-  }
-
   std::unique_ptr<uint8_t[]> buffer(new (std::nothrow) uint8_t[OtaDownloadBufferBytes]);
   if (!buffer) {
     message = "OTA buffer allocation failed";
@@ -279,8 +270,31 @@ bool DJConnectOTA::performUpdate(
     failWithCue();
     return false;
   }
+
+  const int contentLength = http.getSize();
+  AppLog.print("OTA content length=");
+  AppLog.println(contentLength);
+  if (!LittleFS.begin(true)) {
+    message = "OTA LittleFS unavailable";
+    AppLog.println(message);
+    http.end();
+    activity.finishError("littlefs unavailable");
+    failWithCue();
+    return false;
+  }
+  LittleFS.remove(OtaSpoolPath);
+  fs::File spoolFile = LittleFS.open(OtaSpoolPath, "w");
+  if (!spoolFile) {
+    message = "OTA spool open failed";
+    AppLog.println(message);
+    http.end();
+    activity.finishError("spool open failed");
+    failWithCue();
+    return false;
+  }
+
   Stream *stream = http.getStreamPtr();
-  size_t written = 0;
+  size_t downloaded = 0;
   size_t lastLogged = 0;
   size_t lastProgressCue = 0;
   uint32_t lastProgressAt = millis();
@@ -288,14 +302,15 @@ bool DJConnectOTA::performUpdate(
   mbedtls_sha256_init(&shaContext);
   if (mbedtls_sha256_starts(&shaContext, 0) != 0) {
     message = "OTA SHA256 init failed";
-    Update.abort();
+    spoolFile.close();
+    LittleFS.remove(OtaSpoolPath);
     http.end();
     mbedtls_sha256_free(&shaContext);
     activity.finishError("sha init failed");
     failWithCue();
     return false;
   }
-  while (stream != nullptr && (contentLength <= 0 || written < static_cast<size_t>(contentLength))) {
+  while (stream != nullptr && (contentLength <= 0 || downloaded < static_cast<size_t>(contentLength))) {
     serviceOtaLoop(ledRing);
     const int available = stream->available();
     if (available <= 0) {
@@ -305,7 +320,8 @@ bool DJConnectOTA::performUpdate(
       if (millis() - lastProgressAt > Config::OtaStreamIdleTimeoutMs) {
         message = "OTA stream timeout";
         AppLog.println("OTA stream timeout");
-        Update.abort();
+        spoolFile.close();
+        LittleFS.remove(OtaSpoolPath);
         http.end();
         mbedtls_sha256_free(&shaContext);
         activity.finishError("stream timeout");
@@ -318,7 +334,7 @@ bool DJConnectOTA::performUpdate(
 
     size_t toRead = min(static_cast<size_t>(available), OtaDownloadBufferBytes);
     if (contentLength > 0) {
-      toRead = min(toRead, static_cast<size_t>(contentLength) - written);
+      toRead = min(toRead, static_cast<size_t>(contentLength) - downloaded);
     }
     const size_t read = stream->readBytes(buffer.get(), toRead);
     if (read == 0) {
@@ -328,7 +344,8 @@ bool DJConnectOTA::performUpdate(
     if (mbedtls_sha256_update(&shaContext, buffer.get(), read) != 0) {
       message = "OTA SHA256 update failed";
       AppLog.println("OTA SHA256 update failed");
-      Update.abort();
+      spoolFile.close();
+      LittleFS.remove(OtaSpoolPath);
       http.end();
       mbedtls_sha256_free(&shaContext);
       activity.finishError("sha update failed");
@@ -336,39 +353,43 @@ bool DJConnectOTA::performUpdate(
       return false;
     }
     serviceOtaLoop(ledRing);
-    const size_t chunkWritten = Update.write(buffer.get(), read);
-    if (chunkWritten != read) {
-      message = "OTA write failed";
-      AppLog.println("OTA write failed");
-      Update.abort();
+    const size_t chunkSpooled = spoolFile.write(buffer.get(), read);
+    if (chunkSpooled != read) {
+      message = "OTA spool write failed";
+      AppLog.println(message);
+      spoolFile.close();
+      LittleFS.remove(OtaSpoolPath);
       http.end();
       mbedtls_sha256_free(&shaContext);
-      activity.finishError("write failed");
+      activity.finishError("spool write failed");
       failWithCue();
       return false;
     }
 
-    written += chunkWritten;
+    downloaded += chunkSpooled;
     lastProgressAt = millis();
-    if (sound != nullptr && written - lastProgressCue >= 196608) {
+    if (sound != nullptr && downloaded - lastProgressCue >= 196608) {
       sound->playOtaProgress();
-      lastProgressCue = written;
+      lastProgressCue = downloaded;
     }
-    if (written - lastLogged >= 65536 || (contentLength > 0 && written == static_cast<size_t>(contentLength))) {
-      AppLog.print("OTA written bytes=");
-      AppLog.println(written);
-      lastLogged = written;
+    if (downloaded - lastLogged >= 65536 || (contentLength > 0 && downloaded == static_cast<size_t>(contentLength))) {
+      AppLog.print("OTA downloaded bytes=");
+      AppLog.println(downloaded);
+      lastLogged = downloaded;
     }
     serviceOtaLoop(ledRing);
   }
 
-  if (contentLength > 0 && written != static_cast<size_t>(contentLength)) {
-    message = "OTA short write";
-    AppLog.println("OTA short write");
-    Update.abort();
+  spoolFile.flush();
+  spoolFile.close();
+
+  if (contentLength > 0 && downloaded != static_cast<size_t>(contentLength)) {
+    message = "OTA short download";
+    AppLog.println(message);
+    LittleFS.remove(OtaSpoolPath);
     http.end();
     mbedtls_sha256_free(&shaContext);
-    activity.finishError("short write");
+    activity.finishError("short download");
     failWithCue();
     return false;
   }
@@ -377,7 +398,7 @@ bool DJConnectOTA::performUpdate(
   if (mbedtls_sha256_finish(&shaContext, digest) != 0) {
     message = "OTA SHA256 finalize failed";
     AppLog.println("OTA SHA256 finalize failed");
-    Update.abort();
+    LittleFS.remove(OtaSpoolPath);
     http.end();
     mbedtls_sha256_free(&shaContext);
     activity.finishError("sha finalize failed");
@@ -389,25 +410,90 @@ bool DJConnectOTA::performUpdate(
   if (!equalsIgnoreCase(actualSha, request.sha256)) {
     message = "OTA SHA256 mismatch";
     AppLog.println("OTA SHA256 mismatch");
-    Update.abort();
+    LittleFS.remove(OtaSpoolPath);
     http.end();
     activity.finishError("sha mismatch");
     failWithCue();
     return false;
   }
   AppLog.println("OTA SHA256 verified");
+  http.end();
+  secureClient.stop();
+  serviceOtaLoop(ledRing);
+
+  const size_t updateSize = contentLength > 0 ? static_cast<size_t>(contentLength) : downloaded;
+  AppLog.print("OTA update partition bytes=");
+  AppLog.println(ESP.getFreeSketchSpace());
+  if (!Update.begin(updateSize > 0 ? updateSize : UPDATE_SIZE_UNKNOWN)) {
+    message = "OTA Update.begin failed";
+    AppLog.print("OTA Update.begin error: ");
+    AppLog.println(Update.errorString());
+    LittleFS.remove(OtaSpoolPath);
+    activity.finishError("Update.begin failed");
+    failWithCue();
+    return false;
+  }
+
+  fs::File updateFile = LittleFS.open(OtaSpoolPath, "r");
+  if (!updateFile) {
+    message = "OTA spool read failed";
+    AppLog.println(message);
+    Update.abort();
+    LittleFS.remove(OtaSpoolPath);
+    activity.finishError("spool read failed");
+    failWithCue();
+    return false;
+  }
+
+  size_t written = 0;
+  lastLogged = 0;
+  while (updateFile.available()) {
+    serviceOtaLoop(ledRing);
+    const size_t read = updateFile.read(buffer.get(), OtaDownloadBufferBytes);
+    if (read == 0) {
+      continue;
+    }
+    const size_t chunkWritten = Update.write(buffer.get(), read);
+    if (chunkWritten != read) {
+      message = "OTA write failed";
+      AppLog.println("OTA write failed");
+      updateFile.close();
+      Update.abort();
+      LittleFS.remove(OtaSpoolPath);
+      activity.finishError("write failed");
+      failWithCue();
+      return false;
+    }
+    written += chunkWritten;
+    if (written - lastLogged >= 65536 || written == updateSize) {
+      AppLog.print("OTA written bytes=");
+      AppLog.println(written);
+      lastLogged = written;
+    }
+  }
+  updateFile.close();
+
+  if (written != updateSize) {
+    message = "OTA short write";
+    AppLog.println(message);
+    Update.abort();
+    LittleFS.remove(OtaSpoolPath);
+    activity.finishError("short write");
+    failWithCue();
+    return false;
+  }
 
   if (!Update.end(true)) {
     message = "OTA finalize failed";
     AppLog.print("OTA finalize error: ");
     AppLog.println(Update.errorString());
-    http.end();
+    LittleFS.remove(OtaSpoolPath);
     activity.finishError("finalize failed");
     failWithCue();
     return false;
   }
 
-  http.end();
+  LittleFS.remove(OtaSpoolPath);
   message = "OTA started";
   AppLog.println("OTA update written successfully");
   if (sound != nullptr) {
