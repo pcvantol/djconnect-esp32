@@ -46,8 +46,11 @@ bool equalsIgnoreCase(const String &left, const String &right) {
   return true;
 }
 
-void serviceOtaLoop(LedRing *ledRing) {
+void serviceOtaLoop(DisplayManager *display, LedRing *ledRing) {
   ScopedWatchdogPause::resetIfAttached();
+  if (display != nullptr) {
+    display->forceBacklightPercent(100);
+  }
   if (ledRing != nullptr) {
     ledRing->showFirmwareUpdateAnimation();
   }
@@ -242,7 +245,7 @@ bool DJConnectOTA::performUpdate(
       return false;
     }
     downloadUrl = location;
-    serviceOtaLoop(ledRing);
+    serviceOtaLoop(display, ledRing);
   }
 
   if (code != HTTP_CODE_OK) {
@@ -311,9 +314,21 @@ bool DJConnectOTA::performUpdate(
     return false;
   }
   while (stream != nullptr && (contentLength <= 0 || downloaded < static_cast<size_t>(contentLength))) {
-    serviceOtaLoop(ledRing);
+    serviceOtaLoop(display, ledRing);
     const int available = stream->available();
-    if (available <= 0) {
+    size_t toRead = OtaDownloadBufferBytes;
+    if (available > 0) {
+      toRead = min(static_cast<size_t>(available), OtaDownloadBufferBytes);
+    }
+    if (contentLength > 0) {
+      toRead = min(toRead, static_cast<size_t>(contentLength) - downloaded);
+    }
+    if (toRead == 0) {
+      break;
+    }
+
+    const size_t read = stream->readBytes(buffer.get(), toRead);
+    if (read == 0) {
       if (!http.connected() && contentLength <= 0) {
         break;
       }
@@ -323,6 +338,7 @@ bool DJConnectOTA::performUpdate(
         spoolFile.close();
         LittleFS.remove(OtaSpoolPath);
         http.end();
+        secureClient.stop();
         mbedtls_sha256_free(&shaContext);
         activity.finishError("stream timeout");
         failWithCue();
@@ -331,16 +347,7 @@ bool DJConnectOTA::performUpdate(
       delay(10);
       continue;
     }
-
-    size_t toRead = min(static_cast<size_t>(available), OtaDownloadBufferBytes);
-    if (contentLength > 0) {
-      toRead = min(toRead, static_cast<size_t>(contentLength) - downloaded);
-    }
-    const size_t read = stream->readBytes(buffer.get(), toRead);
-    if (read == 0) {
-      continue;
-    }
-    serviceOtaLoop(ledRing);
+    serviceOtaLoop(display, ledRing);
     if (mbedtls_sha256_update(&shaContext, buffer.get(), read) != 0) {
       message = "OTA SHA256 update failed";
       AppLog.println("OTA SHA256 update failed");
@@ -352,7 +359,7 @@ bool DJConnectOTA::performUpdate(
       failWithCue();
       return false;
     }
-    serviceOtaLoop(ledRing);
+    serviceOtaLoop(display, ledRing);
     const size_t chunkSpooled = spoolFile.write(buffer.get(), read);
     if (chunkSpooled != read) {
       message = "OTA spool write failed";
@@ -377,7 +384,7 @@ bool DJConnectOTA::performUpdate(
       AppLog.println(downloaded);
       lastLogged = downloaded;
     }
-    serviceOtaLoop(ledRing);
+    serviceOtaLoop(display, ledRing);
   }
 
   spoolFile.flush();
@@ -419,7 +426,7 @@ bool DJConnectOTA::performUpdate(
   AppLog.println("OTA SHA256 verified");
   http.end();
   secureClient.stop();
-  serviceOtaLoop(ledRing);
+  serviceOtaLoop(display, ledRing);
 
   const size_t updateSize = contentLength > 0 ? static_cast<size_t>(contentLength) : downloaded;
   AppLog.print("OTA update partition bytes=");
@@ -448,7 +455,7 @@ bool DJConnectOTA::performUpdate(
   size_t written = 0;
   lastLogged = 0;
   while (updateFile.available()) {
-    serviceOtaLoop(ledRing);
+    serviceOtaLoop(display, ledRing);
     const size_t read = updateFile.read(buffer.get(), OtaDownloadBufferBytes);
     if (read == 0) {
       continue;

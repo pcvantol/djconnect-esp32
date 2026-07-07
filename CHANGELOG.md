@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.2.9
+
+### Fixed
+
+- Changed Home Assistant/GitHub OTA downloads to perform bounded blocking reads
+  from the TLS stream when no bytes are reported as buffered, avoiding false
+  stream timeouts before the release asset body starts flowing.
+- Kept the display backlight forced to 100% throughout long OTA download and
+  write loops instead of only at update start.
+
 ## v3.2.8
 
 ### Fixed
