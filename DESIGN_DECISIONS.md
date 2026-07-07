@@ -222,6 +222,31 @@ Why:
 - Keeps Home Assistant discovery focused on devices that still need pairing.
 - Avoids already-paired devices repeatedly appearing as new discovery candidates.
 
+### Pairing Heap Budget Pattern
+
+BLE WiFi provisioning is limited to setup/AP mode. Home Assistant pairing mode
+keeps WiFi, mDNS, the web portal and local device API available, but does not
+start BLE advertising on the LilyGO firmware path. Microphone and wake-word
+services are initialized lazily after Home Assistant pairing is confirmed.
+
+Sources:
+
+- `src/BleWifiProvisioning.cpp`
+- `src/DJConnectApp.cpp`
+- `include/DJConnectApp.h`
+- `README.md` Home Assistant Integration
+
+Why:
+
+- The LilyGO runtime is built on the no-PSRAM PlatformIO board definition even
+  when the chip reports external PSRAM, so late BLE service allocation can
+  collide with WiFi, web, display, audio and TensorFlow heap pressure.
+- Pairing remains reachable through the display code, mDNS, web portal and
+  local API while avoiding ESP-IDF Bluetooth stack panics in HA pairing-only
+  mode.
+- Deferring microphone and wake-word setup prevents unused pairing-screen
+  features from consuming heap before the device is paired.
+
 ### HA Boundary / Backend-Agnostic Playback Pattern
 
 The ESP never stores Spotify OAuth or backend credentials. It sends generic

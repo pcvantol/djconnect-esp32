@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.2.5
+
+### Fixed
+
+- Fixed a LilyGO bootloop in Home Assistant pairing mode caused by late BLE
+  service allocation on the no-PSRAM runtime heap.
+- Deferred microphone and wake-word initialization until after Home Assistant
+  pairing is confirmed, so pairing mode keeps enough heap for the web portal,
+  mDNS and local device API.
+
+### Changed
+
+- Home Assistant pairing mode no longer starts BLE advertising on the LilyGO
+  firmware path; WiFi setup/AP mode still exposes BLE WiFi provisioning.
+
 ## v3.2.4
 
 ### Changed

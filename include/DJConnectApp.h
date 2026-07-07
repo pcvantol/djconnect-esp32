@@ -59,6 +59,7 @@ private:
       const String &password,
       String &message);
   bool handleBleProvisioningPayload(const String &payload, String &message);
+  void initializeVoiceServices();
 
   // Routes physical input events to playback actions or refresh commands they trigger.
   void handleInputEvents(const InputEvents &events);
@@ -375,6 +376,7 @@ private:
   bool voiceStopPending_ = false;
   bool voiceStartedByWakeWord_ = false;
   bool nextVoiceStartFromWakeWord_ = false;
+  bool voiceServicesInitialized_ = false;
   volatile bool voiceCancelRequested_ = false;
   VoiceState voiceState_ = VoiceState::Idle;
   bool webVoiceTextPending_ = false;

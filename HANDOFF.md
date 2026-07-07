@@ -6,10 +6,10 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is
 
 Current repo state includes:
 
-- Latest verified firmware release from this repo: `v3.2.4`. Source repo
+- Latest verified firmware release from this repo: `v3.2.5`. Source repo
   `pcvantol/djconnect-esp32` and public firmware repo
-  `pcvantol/djconnect-firmware` both have pushed `v3.2.4` tags. The public
-  firmware GitHub release is `DJConnect firmware v3.2.4` and contains only the
+  `pcvantol/djconnect-firmware` both have pushed `v3.2.5` tags. The public
+  firmware GitHub release is `DJConnect firmware v3.2.5` and contains only the
   LilyGO binary, matching `.sha256`, and `firmware_manifest.json`; generated
   local `release/` artifacts remain ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
@@ -40,12 +40,12 @@ Current repo state includes:
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed. The captive portal mirrors the blue/purple DJConnect web style and includes the board device model in browser title/header.
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
-- Home Assistant pairing mode keeps brightness at 100%, keeps BLE advertising active, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, and then deep-sleeps after 10 minutes if pairing is not completed.
+- Home Assistant pairing mode keeps brightness at 100%, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, keeps mDNS/web/API pairing paths available, and then deep-sleeps after 10 minutes if pairing is not completed. BLE WiFi provisioning remains available in setup/AP mode, but the LilyGO firmware skips BLE advertising in HA pairing-only mode to preserve no-PSRAM runtime heap.
 - HA should treat pairing as pending until the ESP confirms token storage and a successful LAN status post. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token`, required LAN `ha_local_url`, and lightweight settings, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/v1/status`. Automatic playback polling is delayed briefly after boot/pairing to avoid stacking HA status, playback proxy and wake-word startup work on no-PSRAM LilyGO hardware.
 - Device IDs and mDNS hostnames are board-model specific. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`. Home Assistant should use the `model` field/TXT record for device-type routing instead of parsing the old `djconnect-lilygo-` prefix. ESP mDNS discovery is setup-only: unpaired devices advertise `_djconnect._tcp` with `client_type=esp32` alongside `name`/`device_name`, `device_id`, `version`/`firmware`/`app_version`, `paired`, `api`, `local_url`, `pair_code`/`pairing_code`, `pairing_path`, `pair_path` and `model`, and paired devices stop advertising until pairing is reset.
 - The ESP rejects persistent legacy IDs such as `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` and `djconnect-[six-digit-code]`; the six-digit value is only `pair_code` in pairing-info/pairing UI.
 - The ESP requires a real LAN `ha_local_url` for normal status, playback proxy commands and voice calls. If Home Assistant sends a Nabu Casa `.ui.nabu.casa` URL as `ha_local_url`, firmware rejects the pairing callback instead of entering a half-paired state. If Home Assistant accidentally sends `ha_remote_url`, firmware ignores it and removes any old stored remote URL key on pairing updates. Playback fails clearly with `HA playback command unavailable: local HA URL missing` when local is absent. Cloud/Nabu Casa URLs are not accepted, stored, reported, or used by the ESP runtime.
-- Direct pairing during the pairing screen leaves pairing mode first so BLE can shut down before the Okay Nabu TensorFlow runtime allocates its arena.
+- Direct pairing during the pairing screen leaves pairing mode before the Okay Nabu TensorFlow runtime allocates its arena. Microphone and wake-word services are initialized lazily only after Home Assistant pairing is confirmed so setup/AP and HA pairing screens do not carry that heap cost.
 - Okay Nabu wake word runs locally through TensorFlow Lite Micro plus the TensorFlow micro_speech frontend. Current LilyGO tuning uses a 10 ms feature step, 3-frame sliding window and `0.90` cutoff. Wake-word recordings auto-stop after 1.2 seconds of silence and are hard-capped at 15 seconds.
 - After WiFi/Home Assistant setup, the ESP posts HA status immediately and delays the first automatic playback status poll by a short boot grace period. Physical playback controls can still send commands immediately.
 - `/api/djconnect/v1/command` should distinguish auth from backend availability. 401/403/404, or HA errors such as `not_configured`, `stale_pairing`, `stale_token` or `invalid_token`, clear local pairing and return the ESP to pairing mode. Playback/backend unavailability should be HTTP 200 with `success:false` and `backend_available:false`, not HTTP 503 during normal pairing/status flow. Command payloads are identity-only (`device_id`, `client_type:"esp32"`, `payload_type:"command"` and `firmware`) and must not be treated as authoritative device-status snapshots.
@@ -80,16 +80,16 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Latest release verification for `v3.2.4`:
+Latest release verification for `v3.2.5`:
 
-- `./release.sh 3.2.4` completed a clean LilyGO source release build.
-- The source repo tag `v3.2.4` was pushed.
+- `./release.sh 3.2.5` completed a clean LilyGO source release build.
+- The source repo tag `v3.2.5` was pushed.
 - Verify that GitHub Actions or maintainer-controlled public publishing creates
   the public firmware release with only
-  `djconnect-lilygo-t-embed-s3-v3.2.4.bin`,
-  `djconnect-lilygo-t-embed-s3-v3.2.4.bin.sha256` and
+  `djconnect-lilygo-t-embed-s3-v3.2.5.bin`,
+  `djconnect-lilygo-t-embed-s3-v3.2.5.bin.sha256` and
   `firmware_manifest.json`.
-- Post-release cleanup should keep `v3.2.4` as the current stable line.
+- Post-release cleanup should keep `v3.2.5` as the current stable line.
 
 ## Architecture
 

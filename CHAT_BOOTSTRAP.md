@@ -15,10 +15,14 @@ Lees eerst:
 Context:
 - DJConnect ESP32-S3 firmware repo.
 - Huidige licentie is MIT.
-- Laatste geverifieerde release is v3.2.4.
-- v3.2.4 publiceert alleen het LilyGO T-Embed S3 firmware asset:
-  `djconnect-lilygo-t-embed-s3-v3.2.4.bin`, `.sha256` en
+- Laatste geverifieerde release is v3.2.5.
+- v3.2.5 publiceert alleen het LilyGO T-Embed S3 firmware asset:
+  `djconnect-lilygo-t-embed-s3-v3.2.5.bin`, `.sha256` en
   `firmware_manifest.json`.
+- Home Assistant pairing mode gebruikt WiFi, mDNS, web portal en device API
+  voor pairing, maar start op LilyGO geen BLE advertising meer in die
+  pairing-only state om de no-PSRAM heap stabiel te houden. BLE WiFi
+  provisioning blijft setup/AP-mode functionaliteit.
 - User-facing firmware/web UI strings ondersteunen `en`, `nl`, `de`, `fr` en
   `es` via de centrale `I18n` tabel; protocolvelden en JSON keys blijven
   onvertaald.

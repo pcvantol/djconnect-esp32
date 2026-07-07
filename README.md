@@ -154,7 +154,7 @@ In setup/AP mode, write WiFi credentials as JSON:
 
 Playback-backend credentials are not provisioned through BLE or stored on the ESP. Configure Spotify, Sonos or other backend credentials in the Home Assistant integration.
 
-In Home Assistant pairing mode, BLE advertising remains active so a Home Assistant Bluetooth Proxy config flow can discover the ESP while the pairing code is visible. The BLE status characteristic reports the current pairing state and visible pair code. Home Assistant should not mark the device as paired merely because HA has generated a local token; the ESP must confirm pairing by storing the device token, and playback commands remain disabled until the next authenticated Home Assistant status check succeeds.
+In setup/AP mode, BLE advertising remains active so a Home Assistant Bluetooth Proxy setup flow can send WiFi credentials while the setup portal is visible. Home Assistant pairing mode keeps WiFi, mDNS, the web portal and the local device API available, but the LilyGO firmware does not start BLE advertising in that pairing-only state so the no-PSRAM runtime heap stays stable. Home Assistant should not mark the device as paired merely because HA has generated a local token; the ESP must confirm pairing by storing the device token, and playback commands remain disabled until the next authenticated Home Assistant status check succeeds.
 
 ## Playback Backend
 
@@ -175,7 +175,7 @@ responses should stay generic and JSON-shaped.
 
 The custom integration domain is `djconnect`.
 
-When WiFi is configured but Home Assistant is not paired, the device enters pairing mode. The display shows the DJConnect logo/name, battery state, the default Home Assistant URL hint `http://homeassistant.local:8123`, a large pairing code and a center-button turn-off hint. Home Assistant/user-facing setup text should label the device URL as `Client adres`. The screen stays at 100% brightness for 10 minutes and the LED ring breathes blue. Normal playback/menu input is blocked, while reset controls, BLE advertising, the web portal and the device API remain available.
+When WiFi is configured but Home Assistant is not paired, the device enters pairing mode. The display shows the DJConnect logo/name, battery state, the default Home Assistant URL hint `http://homeassistant.local:8123`, a large pairing code and a center-button turn-off hint. Home Assistant/user-facing setup text should label the device URL as `Client adres`. The screen stays at 100% brightness for 10 minutes and the LED ring breathes blue. Normal playback/menu input is blocked, while reset controls, mDNS discovery, the web portal and the device API remain available.
 
 ### mDNS Discovery
 
@@ -304,13 +304,13 @@ already recording voice, and Home Assistant pairing is confirmed. It is stored
 as a user setting and defaults to off after factory reset/pairing; it can be
 enabled from the device Settings menu, the web portal settings panel or the
 Home Assistant wake-word entity. It does not require an active music playback
-session, so the user can request music while playback is idle or paused. Direct
-pairing exits the BLE/pairing screen before any wake-word runtime can start, so
-the TensorFlow arena is allocated only after the user has explicitly enabled the
-feature and pairing heap pressure has dropped. On detection, the device starts
-the same local PTT WAV upload flow as an encoder-button voice request; no
-wake-word audio leaves the device until the wake phrase has been detected and
-the normal PTT recording starts.
+session, so the user can request music while playback is idle or paused. The
+microphone and wake-word runtime are initialized lazily only after Home
+Assistant pairing is confirmed, so their buffers are not allocated during
+setup/AP or Home Assistant pairing screens. On detection, the device starts the
+same local PTT WAV upload flow as an encoder-button voice request; no wake-word
+audio leaves the device until the wake phrase has been detected and the normal
+PTT recording starts.
 
 Wake-word-started recordings stop automatically after the minimum listen window
 when microphone RMS stays below the silence threshold for 1.2 seconds, and all

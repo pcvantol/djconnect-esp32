@@ -155,14 +155,10 @@ void DJConnectApp::begin() {
   sound_.begin();
   djAudio_.begin(sound_, &ledRing_);
   djAudio_.setActivityCallback(voiceActivityCallback, this);
-  voiceRecorder_.begin();
-  wakeWord_.begin();
-  wakeWord_.setCallback(wakeWordDetectedCallback, this);
   voiceClient_.begin(haDevice_);
   voiceClient_.setActivityCallback(voiceActivityCallback, this);
   homeAssistantPaired_ = false;
   loadProvisioning();
-  wakeWord_.setEnabled(wakeWordEnabled_);
   sound_.playStartup();
   spotify_.setHomeAssistantDevice(haDevice_);
   spotify_.begin();
@@ -192,6 +188,7 @@ void DJConnectApp::begin() {
       haPairingScreenActive_ = true;
       haPairingStartedAt_ = millis();
       lastHaPairingScreenAt_ = millis();
+      AppLog.println("Home Assistant pairing: BLE advertising skipped to preserve runtime heap");
       haDevice_.displayPairingCode();
       lastBatteryPollAt_ = millis();
       loopMetricsWindowStartedAt_ = millis();
@@ -199,6 +196,7 @@ void DJConnectApp::begin() {
     }
     display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
     sendHomeAssistantStatusIfDue(true);
+    initializeVoiceServices();
     lastPlaybackPollAt_ = millis();
     playbackPollPausedUntil_ = millis() + Config::PlaybackBootGraceMs;
     playbackRefreshAfterPairing_ = true;
@@ -244,6 +242,7 @@ void DJConnectApp::loop() {
   if (handleHomeAssistantPairingMode(loopStartedAt)) {
     return;
   }
+  initializeVoiceServices();
 
   // Main loop order keeps input responsive, then drains async work, then performs slower polling.
   const InputEvents events = input_.poll();
@@ -856,6 +855,17 @@ bool DJConnectApp::handleBleProvisioningPayload(const String &payload, String &m
   AppLog.print("BLE provisioning WiFi SSID provided, chars=");
   AppLog.println(ssid.length());
   return testAndSaveProvisioning(ssid, password, message);
+}
+
+void DJConnectApp::initializeVoiceServices() {
+  if (voiceServicesInitialized_ || !homeAssistantPaired_) {
+    return;
+  }
+  voiceRecorder_.begin();
+  wakeWord_.begin();
+  wakeWord_.setCallback(wakeWordDetectedCallback, this);
+  wakeWord_.setEnabled(wakeWordEnabled_);
+  voiceServicesInitialized_ = true;
 }
 
 String DJConnectApp::captivePortalPage(
@@ -4210,10 +4220,6 @@ bool DJConnectApp::handleHomeAssistantPairingMode(uint32_t loopStartedAt) {
   haPairingScreenActive_ = true;
   homeAssistantPaired_ = false;
   haDevice_.ensurePairingCode();
-  if (!bleProvisioning_.isStarted()) {
-    bleProvisioning_.begin(haDevice_.getDeviceId());
-    bleProvisioning_.setStatus("pairing", String("Pair code ") + haDevice_.getPairCode());
-  }
   if (haPairingStartedAt_ == 0) {
     haPairingStartedAt_ = millis();
   }
