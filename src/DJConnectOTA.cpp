@@ -112,6 +112,14 @@ void logTlsError(WiFiClientSecure &client) {
   AppLog.println();
 }
 
+const char *caForDownloadHost(const String &host) {
+  const String hostname = stripPort(host);
+  if (hostname == "release-assets.githubusercontent.com") {
+    return GitHubReleaseAssetsCa;
+  }
+  return GitHubApiCa;
+}
+
 }
 
 bool DJConnectOTA::canUpdate(const BatteryState *battery, String &message) const {
@@ -183,7 +191,6 @@ bool DJConnectOTA::performUpdate(
   NetworkActivity activity("ota_download", Config::OtaIoTimeoutMs);
   HTTPClient http;
   WiFiClientSecure secureClient;
-  secureClient.setCACert(GitHubApiCa);
   secureClient.setHandshakeTimeout(Config::TlsHandshakeTimeoutMs);
   secureClient.setTimeout(Config::OtaIoTimeoutMs);
 
@@ -197,6 +204,7 @@ bool DJConnectOTA::performUpdate(
     AppLog.print("OTA download host: ");
     AppLog.println(host);
     logHostResolution(host);
+    secureClient.setCACert(caForDownloadHost(host));
     const bool begun = http.begin(secureClient, downloadUrl);
     if (!begun) {
       message = "OTA HTTP begin failed";
@@ -217,6 +225,7 @@ bool DJConnectOTA::performUpdate(
     AppLog.print(": ");
     AppLog.println(location);
     http.end();
+    secureClient.stop();
     if (location.isEmpty() || !location.startsWith("https://")) {
       message = "OTA redirect invalid";
       activity.finishError("redirect invalid");

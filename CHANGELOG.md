@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.2.7
+
+### Fixed
+
+- Split the embedded GitHub OTA trust bundle by download host so no-PSRAM
+  LilyGO devices keep TLS heap usage low for `github.com` while still trusting
+  the current `release-assets.githubusercontent.com` Let's Encrypt Root YR
+  redirect chain.
+
 ## v3.2.6
 
 ### Fixed
