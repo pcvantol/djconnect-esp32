@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.6
+
+### Fixed
+
+- Refreshed the embedded GitHub OTA TLS bundle so firmware downloads trust the
+  current `release-assets.githubusercontent.com` Let's Encrypt Root YR redirect
+  chain while keeping certificate verification enabled.
+
 ## v3.2.5
 
 ### Fixed
