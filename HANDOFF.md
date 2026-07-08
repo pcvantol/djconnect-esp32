@@ -6,28 +6,27 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is
 
 Current repo state includes:
 
-- Latest verified firmware release from this repo: `v3.2.5`. Source repo
+- Latest verified firmware release from this repo: `v3.2.10`. Source repo
   `pcvantol/djconnect-esp32` and public firmware repo
-  `pcvantol/djconnect-firmware` both have pushed `v3.2.5` tags. The public
-  firmware GitHub release is `DJConnect firmware v3.2.5` and contains only the
+  `pcvantol/djconnect-firmware` both have pushed `v3.2.10` tags. The public
+  firmware GitHub release is `DJConnect Firmware v3.2.10` and contains only the
   LilyGO binary, matching `.sha256`, and `firmware_manifest.json`; generated
   local `release/` artifacts remain ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
 - Home Assistant device layer with pairing, mDNS discovery, device-token auth, board-specific OTA, DJ response and status updates.
 - Board profiles are split through `BoardProfile.h`. The supported PlatformIO build is the LilyGO `t_embed_cc1101` / `lilygo-t-embed-s3` target.
 - The ESP32-S3-BOX-3 PlatformIO build target, release artifact and GitHub
-  Actions matrix entry were removed in `v3.1.31` and remain absent in
-  `v3.2.0`; the remaining inactive BOX-3 board-profile code was also removed.
-  The LilyGO env remains on the existing no-PSRAM `esp32-s3-devkitc-1`
-  definition until a specific PSRAM-equipped T-Embed-CC1101 variant is
-  verified.
+  Actions matrix entry were removed in `v3.1.31` and remain absent; the
+  remaining inactive BOX-3 board-profile code was also removed. The LilyGO env
+  remains on the existing `esp32-s3-devkitc-1` PlatformIO board definition with
+  verified OPI PSRAM build mode enabled for the T-Embed-CC1101 hardware.
 - Playback commands are proxied from the ESP to Home Assistant as generic commands. Music Assistant versus Spotify Direct is a Home Assistant-side backend choice. Spotify OAuth, Sonos credentials or other backend credentials live in Home Assistant, not on the ESP.
 - New client setup/settings flows must not show or expect legacy playback
   source/default-playlist override options. Home Assistant owns those playback
   decisions; user-facing setup labels should say `Client adres`.
 - Physical PTT records WAV on the ESP and uploads to the Home Assistant integration; Home Assistant owns Assist/STT/TTS backend work and returns DJ text plus optional WAV/MP3 audio URL. Middle encoder press cancels the active processing/DJ-announcement flow and requests response-audio stream stop as soon as possible.
 - Web portal includes Now Playing, DJ-announcement simulation, outputs, playlists, queue with per-item play, refresh and lazy browser-loaded album-art thumbnails, local browser games, logs, diagnostics, OTA upload, WiFi update, settings and status indicators. It uses the DJConnect blue/purple brand styling, shows `Muziekbediening met karakter`, firmware version plus board device model in the title bar, and uses lila/magenta playback controls and volume slider. Queue and playlist panels use compact internal scroll areas. Queue accepts up to 100 real items from Home Assistant and is de-duplicated by URI or title/subtitle fallback so single-item queues do not render repeated tracks. Queue items with direct Spotify track or episode URIs stay startable even when Home Assistant omits `context_uri`/`queue_context`; context plus offset is still sent when playlist/album/show context exists. Device logs are scrollable with the encoder and use compact `HH:mm INF` prefixes.
-- Playback proxy control requests use short waits and transient-failure cooldown; OTA writes release wake-word/TFLite and active voice/audio resources before GitHub TLS, tolerate slow GitHub/CDN stream bursts, manually follow GitHub release redirects, log the download host/final URL on transport failures and continue to feed the watchdog and firmware-update LED animation.
+- Playback proxy control requests use short waits and transient-failure cooldown. Home Assistant OTA was verified on the physical LilyGO in `v3.2.10`: the firmware enables PSRAM, releases wake-word/TFLite and active voice/audio resources before GitHub TLS, follows GitHub redirects to the release-asset host, then streams a bounded raw TLS `GET` directly into `Update.h` while calculating SHA256 and feeding the watchdog plus firmware-update LED animation.
 - Device main menu includes a local Games submenu with Paddle Rally, Meteor Run, Sky Dash and Maze Chase. Games are local-only, use encoder movement/center-button fire or lane controls where applicable, persist highscores in NVS and are not exposed through Home Assistant. Current game behavior includes Maze Chase corner power pellets/vulnerable ghost/death delay, Meteor Run straight-falling varied meteors, Sky Dash animated star streaks and varied obstacles, Paddle Rally hit feedback and short 8-bit event sounds.
 - Device UI, setup/pairing/status text, web portal settings and device-generated
   voice-facing strings support English, Dutch, German, French and Spanish
@@ -40,8 +39,8 @@ Current repo state includes:
 - If WiFi cannot connect, the device shows a 100%-brightness recovery menu: retry connect, restart device, turn off, and confirmed factory reset.
 - Setup/AP mode keeps brightness at 100%, shows a deeply fading rainbow breath, shows portal active for 10 minutes, allows center-button turn off, and then deep-sleeps if setup is not completed. The captive portal mirrors the blue/purple DJConnect web style and includes the board device model in browser title/header.
 - The device Settings menu has a confirmed Change WiFi action that reboots into setup/AP mode while preserving Home Assistant pairing; only Factory reset or Reset Home Assistant pairing clears HA state.
-- Home Assistant pairing mode keeps brightness at 100%, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, keeps mDNS/web/API pairing paths available, and then deep-sleeps after 10 minutes if pairing is not completed. BLE WiFi provisioning remains available in setup/AP mode, but the LilyGO firmware skips BLE advertising in HA pairing-only mode to preserve no-PSRAM runtime heap.
-- HA should treat pairing as pending until the ESP confirms token storage and a successful LAN status post. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token`, required LAN `ha_local_url`, and lightweight settings, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/v1/status`. Automatic playback polling is delayed briefly after boot/pairing to avoid stacking HA status, playback proxy and wake-word startup work on no-PSRAM LilyGO hardware.
+- Home Assistant pairing mode keeps brightness at 100%, shows the pair code plus center-button turn-off hint, breathes blue on the LED ring, keeps mDNS/web/API pairing paths available, and then deep-sleeps after 10 minutes if pairing is not completed. BLE WiFi provisioning remains available in setup/AP mode, but the LilyGO firmware skips BLE advertising in HA pairing-only mode to preserve runtime heap before normal paired features are initialized.
+- HA should treat pairing as pending until the ESP confirms token storage and a successful LAN status post. The ESP `/api/device/pair` route accepts a direct HA callback with `device_token`, required LAN `ha_local_url`, and lightweight settings, stores it with minimal in-route work, and lets the next main-loop pass confirm the pairing through `/api/djconnect/v1/status`. Automatic playback polling is delayed briefly after boot/pairing to avoid stacking HA status, playback proxy and wake-word startup work during the tight boot window.
 - Device IDs and mDNS hostnames are board-model specific. LilyGO uses `djconnect-lilygo-t-embed-s3-XXXXXXXXXXXX`. Home Assistant should use the `model` field/TXT record for device-type routing instead of parsing the old `djconnect-lilygo-` prefix. ESP mDNS discovery is setup-only: unpaired devices advertise `_djconnect._tcp` with `client_type=esp32` alongside `name`/`device_name`, `device_id`, `version`/`firmware`/`app_version`, `paired`, `api`, `local_url`, `pair_code`/`pairing_code`, `pairing_path`, `pair_path` and `model`, and paired devices stop advertising until pairing is reset.
 - The ESP rejects persistent legacy IDs such as `djconnect-XXXXXXXXXXXX`, `djconnect-lilygo-XXXXXXXXXXXX` and `djconnect-[six-digit-code]`; the six-digit value is only `pair_code` in pairing-info/pairing UI.
 - The ESP requires a real LAN `ha_local_url` for normal status, playback proxy commands and voice calls. If Home Assistant sends a Nabu Casa `.ui.nabu.casa` URL as `ha_local_url`, firmware rejects the pairing callback instead of entering a half-paired state. If Home Assistant accidentally sends `ha_remote_url`, firmware ignores it and removes any old stored remote URL key on pairing updates. Playback fails clearly with `HA playback command unavailable: local HA URL missing` when local is absent. Cloud/Nabu Casa URLs are not accepted, stored, reported, or used by the ESP runtime.
@@ -80,16 +79,15 @@ bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Latest release verification for `v3.2.5`:
+Latest release verification for `v3.2.10`:
 
-- `./release.sh 3.2.5` completed a clean LilyGO source release build.
-- The source repo tag `v3.2.5` was pushed.
-- Verify that GitHub Actions or maintainer-controlled public publishing creates
-  the public firmware release with only
-  `djconnect-lilygo-t-embed-s3-v3.2.5.bin`,
-  `djconnect-lilygo-t-embed-s3-v3.2.5.bin.sha256` and
+- `./release.sh 3.2.10` completed a clean LilyGO source release build.
+- The source repo tag `v3.2.10` was pushed.
+- GitHub Actions published the public firmware release with only
+  `djconnect-lilygo-t-embed-s3-v3.2.10.bin`,
+  `djconnect-lilygo-t-embed-s3-v3.2.10.bin.sha256` and
   `firmware_manifest.json`.
-- Post-release cleanup should keep `v3.2.5` as the current stable line.
+- Post-release cleanup should keep `v3.2.10` as the current stable line.
 
 ## Architecture
 
@@ -174,11 +172,21 @@ Recommended next work:
    - attributes: title, artist, album art, output/source, volume and supported features;
    - commands: play/pause, next/previous, volume, source/output selection and playlist/media start;
    - keep actual backend credentials and playback API calls in Home Assistant.
-7. Re-test OTA from a no-PSRAM LilyGO on the latest stable release to confirm the GitHub TLS memory issue is gone.
-8. Stress-test DJ-announcement MP3 playback with several short and long files.
-9. Continue reducing `DJConnectApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
-10. Update GitHub Actions for Node.js 24 compatibility.
-11. Add product security review for local HTTP device API, bearer-token lifetime, replay behavior and factory reset behavior.
+7. Validate Home Assistant OTA status clearing and firmware sensor refresh after
+   a v3.2.10-or-newer OTA boot, now that the physical LilyGO HA OTA route itself
+   has been verified.
+8. Measure PSRAM-safe voice/wake-word optimizations before changing runtime
+   buffers:
+   - wake-word model/runtime placement in PSRAM only where timing and detection
+     reliability stay stable;
+   - larger voice upload/spool buffers only when repeated short and 15-second
+     voice tests show current buffers are a bottleneck;
+   - OTA/download buffer tuning only with measured OTA-time or timeout benefit;
+   - per-subsystem memory diagnostics for OTA, wake word, microphone and speaker.
+9. Stress-test DJ-announcement MP3 playback with several short and long files.
+10. Continue reducing `DJConnectApp` size by moving setup/captive/BLE flow into a dedicated `ProvisioningController` runtime flow or `SetupController`.
+11. Update GitHub Actions for Node.js 24 compatibility.
+12. Add product security review for local HTTP device API, bearer-token lifetime, replay behavior and factory reset behavior.
 
 ## Cross-Repo Sync Prompts
 

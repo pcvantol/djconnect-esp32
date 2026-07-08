@@ -87,7 +87,9 @@ markup, CSS or JavaScript, regenerate the compact embedded asset:
 python3 scripts/minify_webportal.py
 ```
 
-Do not add runtime decompression requirements for the no-PSRAM LilyGO path.
+Do not add runtime decompression requirements to the LilyGO path; keep embedded
+web assets compact and cheap to serve during setup, pairing and OTA-adjacent
+flows.
 
 ## Release Preparation
 

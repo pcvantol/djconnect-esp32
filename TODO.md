@@ -1,18 +1,38 @@
 # DJConnect Firmware Issues And Backlog
 
-Concrete issue and task list after release `v3.2.0`.
+Concrete issue and task list after release `v3.2.10`.
 
 ## Open Issues
 
 - [ ] Home Assistant sensor reset issue must be verified on the current HA integration.
   - Firmware status payload is authoritative and the `3.2.x` firmware contract still posts periodic status.
   - If HA sensors briefly populate and then become unknown/pending, fix integration entity refresh/coordinator behavior.
-- [ ] OTA from the physical LilyGO should be re-tested with `v3.2.x`.
-  - Firmware now releases wake-word/TFLite and active voice/audio resources before GitHub TLS.
-  - Confirm GitHub TLS no longer fails with memory allocation errors on no-PSRAM LilyGO hardware.
+- [x] OTA from the physical LilyGO should be re-tested with `v3.2.10`.
+  - Verified Home Assistant-triggered GitHub OTA on the physical LilyGO
+    T-Embed-CC1101 after enabling OPI PSRAM build mode and direct raw TLS
+    release-asset streaming into `Update.h`.
+  - Confirmed the previous TLS memory allocation and immediate OTA write
+    failures no longer block the HA OTA route.
 - [ ] Okay Nabu wake-word reliability still needs real-room tuning.
   - LilyGO cutoff is currently `0.90`.
   - Validate false positives, missed detections, silence auto-stop and PTT handoff.
+- [ ] Measure wake-word memory placement before moving model/runtime buffers to PSRAM.
+  - Keep latency-sensitive capture, playback and inference scratch buffers in
+    internal RAM unless measurements prove PSRAM placement is safe.
+  - Compare free heap, largest internal block, inference timing and false/missed
+    wake-word behavior with wake word on/off.
+- [ ] Measure voice upload/spool throughput before increasing buffers.
+  - Test repeated short and 15-second recordings through `/api/djconnect/v1/voice`.
+  - Increase upload or file buffers only if logs show stalls, underruns or
+    watchdog pressure with current buffer sizes.
+- [ ] Tune OTA/download buffer size only with measured benefit.
+  - Current OTA path streams raw TLS into `Update.h` using a conservative buffer.
+  - Any larger buffer should preserve watchdog feeding, LED animation and
+    internal heap headroom while improving total OTA time or timeout margin.
+- [ ] Add per-subsystem memory diagnostics for OTA, wake word, microphone and speaker.
+  - Capture free heap, minimum free heap, largest internal block, PSRAM free
+    memory where available and subsystem lifecycle points.
+  - Keep diagnostics safe for normal logs and avoid credentials or audio data.
 - [ ] MP3 DJ-announcement audio playback needs more stress testing.
   - Test short/long MP3s and repeated HA/web flows.
   - Confirm watchdog stays fed and LED animation remains live.

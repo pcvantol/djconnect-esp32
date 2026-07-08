@@ -440,7 +440,7 @@ The local release helper prepares a source release, injects the release version 
 The embedded web portal lives in `src/WebPortal.cpp` as a PROGMEM raw literal.
 Run `python3 scripts/minify_webportal.py` after changing the portal markup,
 styles or scripts so the served portal remains compact without adding runtime
-decompression to the no-PSRAM LilyGO path.
+decompression to the LilyGO path.
 
 Dependency updates install/resolve and update the PlatformIO project packages,
 global packages and tools, then write `release/build-dependencies-before.txt`,

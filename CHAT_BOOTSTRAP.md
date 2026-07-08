@@ -25,8 +25,8 @@ Context:
   wake-word buffers blijven conservatief tenzij metingen iets anders aantonen.
 - Home Assistant pairing mode gebruikt WiFi, mDNS, web portal en device API
   voor pairing, maar start op LilyGO geen BLE advertising meer in die
-  pairing-only state om de no-PSRAM heap stabiel te houden. BLE WiFi
-  provisioning blijft setup/AP-mode functionaliteit.
+  pairing-only state om runtime heap stabiel te houden voordat normale paired
+  features starten. BLE WiFi provisioning blijft setup/AP-mode functionaliteit.
 - User-facing firmware/web UI strings ondersteunen `en`, `nl`, `de`, `fr` en
   `es` via de centrale `I18n` tabel; protocolvelden en JSON keys blijven
   onvertaald.

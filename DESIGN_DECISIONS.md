@@ -346,7 +346,7 @@ Why:
 
 - Sprite rendering reduces visible flicker on redraws.
 - Row-by-row BMP streaming avoids allocating a full screenshot file in RAM,
-  which matters on non-PSRAM LilyGO boards.
+  preserving internal heap for display, network, voice and OTA work.
 - Release firmware keeps screenshots protected by the paired device token. Local
   `dev` / `vdev` firmware exposes the screenshot endpoint without auth to support
   development capture after USB deploys without retrieving runtime secrets.
