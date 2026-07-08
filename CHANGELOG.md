@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v3.2.11
+
 ### Changed
 
 - Added shared subsystem memory diagnostics for OTA, wake-word runtime,
@@ -13,7 +15,7 @@
 - Reduced the post-WiFi delay before the first playback/backend poll so the
   first backend connection starts about 3 seconds after WiFi/setup is ready.
 
-## v3.2.11
+## v3.2.10
 
 ### Fixed
 
