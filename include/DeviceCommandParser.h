@@ -143,6 +143,11 @@ inline DeviceCommand parse(JsonVariantConst payload) {
              commandNameEquals(name, "set_wake_word_enabled")) {
     command.type = DeviceCommandType::WakeWord;
     command.numericValue = firstBool(payload, "value", "enabled", false) ? 1 : 0;
+  } else if (commandNameEquals(name, "stress_test") ||
+             commandNameEquals(name, "set_stress_test") ||
+             commandNameEquals(name, "monkey_test")) {
+    command.type = DeviceCommandType::StressTest;
+    command.numericValue = firstBool(payload, "value", "enabled", true) ? 1 : 0;
   }
   return command;
 }

@@ -30,6 +30,7 @@ enum class DeviceCommandType {
   Theme,
   LogLevel,
   WakeWord,
+  StressTest,
 };
 
 struct DeviceCommand {

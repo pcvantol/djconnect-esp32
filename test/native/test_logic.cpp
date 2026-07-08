@@ -834,6 +834,12 @@ static void testDeviceCommandParserSettings() {
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::WakeWord);
   assert(command.numericValue == 0);
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"stress_test\",\"enabled\":true}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::StressTest);
+  assert(command.numericValue == 1);
 }
 
 static void testDeviceCommandParserDjResponseAndUnknown() {

@@ -2498,6 +2498,14 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     message = "Wake word updated";
     return true;
   }
+  if (command.type == DeviceCommandType::StressTest) {
+    const bool enable = command.numericValue != 0;
+    if (enable != stressTestActive_) {
+      toggleStressTest();
+    }
+    message = enable ? "Stress test started" : "Stress test stopped";
+    return true;
+  }
 
   if (!playbackProxyReady()) {
     AppLog.println("Device command ignored: playback not connected");
@@ -2555,6 +2563,7 @@ bool DJConnectApp::handleDeviceCommand(const DeviceCommand &command, String &mes
     case DeviceCommandType::Theme:
     case DeviceCommandType::LogLevel:
     case DeviceCommandType::WakeWord:
+    case DeviceCommandType::StressTest:
       break;
 
     case DeviceCommandType::Shuffle:

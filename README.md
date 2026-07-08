@@ -359,6 +359,7 @@ Supported local device command payloads include:
 {"command":"language","value":"nl"}
 {"command":"theme","value":"dark"}
 {"command":"log_level","value":"info"}
+{"command":"stress_test","enabled":true}
 {"command":"dj_response","text":"Daar gaan we.","audio_url":"http://homeassistant.local:8123/api/djconnect/v1/tts/example.mp3"}
 ```
 

@@ -7,6 +7,9 @@
 - Added shared subsystem memory diagnostics for OTA, wake-word runtime,
   microphone recording and speaker response-audio paths, including internal heap
   and PSRAM snapshots where available.
+- Added a protected `stress_test` device command so the safe local render/input
+  monkey test can be started from the authenticated device API during
+  diagnostics.
 
 ## v3.2.10
 
