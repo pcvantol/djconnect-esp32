@@ -238,14 +238,18 @@ Sources:
 
 Why:
 
-- The LilyGO runtime is built on the no-PSRAM PlatformIO board definition even
-  when the chip reports external PSRAM, so late BLE service allocation can
-  collide with WiFi, web, display, audio and TensorFlow heap pressure.
+- The LilyGO runtime keeps the generic ESP32-S3 PlatformIO board definition but
+  enables the verified OPI PSRAM build mode for the T-Embed-CC1101 module, so
+  GitHub TLS, OTA writes, WiFi, web, display, audio and TensorFlow paths have
+  more heap headroom.
 - Pairing remains reachable through the display code, mDNS, web portal and
   local API while avoiding ESP-IDF Bluetooth stack panics in HA pairing-only
   mode.
 - Deferring microphone and wake-word setup prevents unused pairing-screen
   features from consuming heap before the device is paired.
+- Audio and wake-word hot-path buffers remain deliberately conservative even
+  with PSRAM enabled; PSRAM reduces heap pressure, but internal RAM is still
+  preferred for latency-sensitive capture, playback and inference scratch use.
 
 ### HA Boundary / Backend-Agnostic Playback Pattern
 
@@ -323,9 +327,8 @@ Why:
   heap and CPU time. Blocking calls can freeze input or trip the task watchdog.
 - The code prefers controlled failure and diagnostic logs over indefinite waits.
 - Wake-word inference defaults to off and is a persisted user setting because
-  its TFLite arena competes with TLS, album-art and audio flows on no-PSRAM
-  boards. Enabling it is explicit from device settings, web settings or Home
-  Assistant after pairing.
+  its TFLite arena competes with TLS, album-art and audio flows. Enabling it is
+  explicit from device settings, web settings or Home Assistant after pairing.
 
 ### Render-To-Sprite / Framebuffer Pattern
 

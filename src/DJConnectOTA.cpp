@@ -2,10 +2,10 @@
 #include "DJConnectOTA.h"
 
 #include <HTTPClient.h>
-#include <LittleFS.h>
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <esp_heap_caps.h>
 #include <esp_task_wdt.h>
 #include <mbedtls/sha256.h>
 #include <memory>
@@ -21,7 +21,15 @@
 namespace {
 constexpr size_t OtaDownloadBufferBytes = 1460;
 constexpr uint8_t OtaMaxRedirects = 5;
-constexpr const char *OtaSpoolPath = "/ota_update.bin";
+constexpr uint16_t OtaReleaseAssetReadTimeoutMs = 5000;
+
+struct HeapCapsDeleter {
+  void operator()(uint8_t *ptr) const {
+    if (ptr != nullptr) {
+      heap_caps_free(ptr);
+    }
+  }
+};
 
 String sha256Hex(const unsigned char digest[32]) {
   static const char *hex = "0123456789abcdef";
@@ -58,6 +66,60 @@ void serviceOtaLoop(DisplayManager *display, LedRing *ledRing) {
   yield();
 }
 
+bool readTlsHeaderLine(WiFiClientSecure &client, String &line, DisplayManager *display, LedRing *ledRing) {
+  line = "";
+  const uint32_t startedAt = millis();
+  while (millis() - startedAt <= Config::OtaStreamIdleTimeoutMs) {
+    serviceOtaLoop(display, ledRing);
+    int value = -1;
+    {
+      ScopedWatchdogPause watchdogPause;
+      value = client.read();
+    }
+    if (value >= 0) {
+      const char c = static_cast<char>(value);
+      if (c == '\n') {
+        line.trim();
+        return true;
+      }
+      if (c != '\r') {
+        line += c;
+      }
+      if (line.length() > 1024) {
+        return false;
+      }
+      continue;
+    }
+    if (!client.connected() && client.available() <= 0) {
+      return line.length() > 0;
+    }
+    delay(5);
+  }
+  return false;
+}
+
+bool writeTlsAll(WiFiClientSecure &client, const String &data, size_t &written, DisplayManager *display, LedRing *ledRing) {
+  written = 0;
+  const char *cursor = data.c_str();
+  size_t remaining = data.length();
+  while (remaining > 0) {
+    serviceOtaLoop(display, ledRing);
+    const size_t chunk = min(remaining, static_cast<size_t>(256));
+    size_t bytesWritten = 0;
+    {
+      ScopedWatchdogPause watchdogPause;
+      bytesWritten = client.write(reinterpret_cast<const uint8_t *>(cursor), chunk);
+    }
+    if (bytesWritten == 0) {
+      return false;
+    }
+    cursor += bytesWritten;
+    remaining -= bytesWritten;
+    written += bytesWritten;
+  }
+  return true;
+}
+
 bool isHttpRedirect(int code) {
   return code == HTTP_CODE_MOVED_PERMANENTLY ||
          code == HTTP_CODE_FOUND ||
@@ -77,6 +139,18 @@ String urlHost(const String &url) {
     hostEnd = url.length();
   }
   return url.substring(hostStart, hostEnd);
+}
+
+String urlPath(const String &url) {
+  const int schemeEnd = url.indexOf("://");
+  if (schemeEnd < 0) {
+    return "/";
+  }
+  const int pathStart = url.indexOf('/', schemeEnd + 3);
+  if (pathStart < 0) {
+    return "/";
+  }
+  return url.substring(pathStart);
 }
 
 String stripPort(const String &host) {
@@ -123,6 +197,10 @@ const char *caForDownloadHost(const String &host) {
     return GitHubReleaseAssetsCa;
   }
   return GitHubApiCa;
+}
+
+bool isReleaseAssetHost(const String &host) {
+  return stripPort(host) == "release-assets.githubusercontent.com";
 }
 
 }
@@ -203,12 +281,17 @@ bool DJConnectOTA::performUpdate(
   int code = 0;
   uint8_t redirects = 0;
   while (true) {
-    NetworkActivity::configureHttp(http, Config::OtaConnectTimeoutMs, Config::OtaIoTimeoutMs);
-    http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
     const String host = urlHost(downloadUrl);
     AppLog.print("OTA download host: ");
     AppLog.println(host);
     logHostResolution(host);
+    if (isReleaseAssetHost(host)) {
+      code = HTTP_CODE_OK;
+      break;
+    }
+
+    NetworkActivity::configureHttp(http, Config::OtaConnectTimeoutMs, Config::OtaIoTimeoutMs);
+    http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
     secureClient.setCACert(caForDownloadHost(host));
     const bool begun = http.begin(secureClient, downloadUrl);
     if (!begun) {
@@ -248,6 +331,16 @@ bool DJConnectOTA::performUpdate(
     serviceOtaLoop(display, ledRing);
   }
 
+  const String finalHost = urlHost(downloadUrl);
+  const bool rawReleaseAssetDownload = isReleaseAssetHost(finalHost);
+  bool updateStarted = false;
+  auto abortUpdateIfStarted = [&]() {
+    if (updateStarted) {
+      Update.abort();
+      updateStarted = false;
+    }
+  };
+
   if (code != HTTP_CODE_OK) {
     message = "OTA download failed " + String(code);
     AppLog.println(message);
@@ -264,50 +357,145 @@ bool DJConnectOTA::performUpdate(
     return false;
   }
 
-  std::unique_ptr<uint8_t[]> buffer(new (std::nothrow) uint8_t[OtaDownloadBufferBytes]);
+  int contentLength = -1;
+  if (rawReleaseAssetDownload) {
+    http.end();
+    secureClient.stop();
+    secureClient.setTimeout(OtaReleaseAssetReadTimeoutMs);
+    secureClient.setCACert(caForDownloadHost(finalHost));
+    const String hostname = stripPort(finalHost);
+    AppLog.println("OTA release asset mode: raw tls v2");
+    AppLog.println("OTA release asset TLS connect");
+    {
+      ScopedWatchdogPause watchdogPause;
+      if (!secureClient.connect(hostname.c_str(), 443)) {
+        message = "OTA release asset connect failed";
+        AppLog.println(message);
+        logTlsError(secureClient);
+        activity.finishError("asset connect failed");
+        abortUpdateIfStarted();
+        failWithCue();
+        return false;
+      }
+    }
+    serviceOtaLoop(display, ledRing);
+    AppLog.println("OTA release asset GET");
+    String assetRequest;
+    assetRequest.reserve(urlPath(downloadUrl).length() + hostname.length() + 128);
+    assetRequest += "GET ";
+    assetRequest += urlPath(downloadUrl);
+    assetRequest += " HTTP/1.0\r\nHost: ";
+    assetRequest += hostname;
+    assetRequest += "\r\nUser-Agent: DJConnect\r\nAccept: application/octet-stream\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n";
+    size_t requestBytesWritten = 0;
+    if (!writeTlsAll(secureClient, assetRequest, requestBytesWritten, display, ledRing)) {
+      message = "OTA release asset request write failed";
+      AppLog.println(message);
+      AppLog.print("OTA release asset request bytes=");
+      AppLog.print(requestBytesWritten);
+      AppLog.print("/");
+      AppLog.println(assetRequest.length());
+      logTlsError(secureClient);
+      activity.finishError("asset request write failed");
+      abortUpdateIfStarted();
+      failWithCue();
+      return false;
+    }
+    serviceOtaLoop(display, ledRing);
+    if (secureClient.getWriteError() != 0) {
+      AppLog.print("OTA release asset request write error: ");
+      AppLog.println(secureClient.getWriteError());
+      secureClient.clearWriteError();
+    }
+    AppLog.print("OTA release asset request sent bytes=");
+    AppLog.println(requestBytesWritten);
+
+    String statusLine;
+    if (!readTlsHeaderLine(secureClient, statusLine, display, ledRing)) {
+      message = "OTA release asset status timeout";
+      AppLog.println(message);
+      logTlsError(secureClient);
+      activity.finishError("asset status timeout");
+      abortUpdateIfStarted();
+      failWithCue();
+      return false;
+    }
+    AppLog.print("OTA release asset status: ");
+    AppLog.println(statusLine);
+    if (!statusLine.startsWith("HTTP/1.1 200") && !statusLine.startsWith("HTTP/1.0 200")) {
+      message = "OTA release asset HTTP failed";
+      activity.finishError("asset http failed");
+      abortUpdateIfStarted();
+      failWithCue();
+      return false;
+    }
+    while (secureClient.connected()) {
+      String headerLine;
+      if (!readTlsHeaderLine(secureClient, headerLine, display, ledRing)) {
+        message = "OTA release asset header timeout";
+        AppLog.println(message);
+        activity.finishError("asset header timeout");
+        abortUpdateIfStarted();
+        failWithCue();
+        return false;
+      }
+      if (headerLine.isEmpty()) {
+        break;
+      }
+      if (headerLine.startsWith("Content-Length:") || headerLine.startsWith("content-length:")) {
+        contentLength = headerLine.substring(headerLine.indexOf(':') + 1).toInt();
+      }
+    }
+  } else {
+    contentLength = http.getSize();
+  }
+
+  std::unique_ptr<uint8_t, HeapCapsDeleter> buffer(static_cast<uint8_t *>(heap_caps_malloc(
+      OtaDownloadBufferBytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
   if (!buffer) {
     message = "OTA buffer allocation failed";
     AppLog.println(message);
     http.end();
+    secureClient.stop();
+    abortUpdateIfStarted();
     activity.finishError("buffer alloc failed");
     failWithCue();
     return false;
   }
 
-  const int contentLength = http.getSize();
   AppLog.print("OTA content length=");
   AppLog.println(contentLength);
-  if (!LittleFS.begin(true)) {
-    message = "OTA LittleFS unavailable";
-    AppLog.println(message);
-    http.end();
-    activity.finishError("littlefs unavailable");
-    failWithCue();
-    return false;
-  }
-  LittleFS.remove(OtaSpoolPath);
-  fs::File spoolFile = LittleFS.open(OtaSpoolPath, "w");
-  if (!spoolFile) {
-    message = "OTA spool open failed";
-    AppLog.println(message);
-    http.end();
-    activity.finishError("spool open failed");
-    failWithCue();
-    return false;
+
+  const size_t updateSize = contentLength > 0 ? static_cast<size_t>(contentLength) : UPDATE_SIZE_UNKNOWN;
+  if (!updateStarted) {
+    AppLog.print("OTA update partition bytes=");
+    AppLog.println(ESP.getFreeSketchSpace());
+    if (!Update.begin(updateSize)) {
+      message = "OTA Update.begin failed";
+      AppLog.print("OTA Update.begin error: ");
+      AppLog.println(Update.errorString());
+      http.end();
+      secureClient.stop();
+      activity.finishError("Update.begin failed");
+      failWithCue();
+      return false;
+    }
+    updateStarted = true;
   }
 
-  Stream *stream = http.getStreamPtr();
+  Stream *stream = rawReleaseAssetDownload ? static_cast<Stream *>(&secureClient) : http.getStreamPtr();
   size_t downloaded = 0;
   size_t lastLogged = 0;
   size_t lastProgressCue = 0;
   uint32_t lastProgressAt = millis();
+  bool loggedFirstBodyBytes = false;
   mbedtls_sha256_context shaContext;
   mbedtls_sha256_init(&shaContext);
   if (mbedtls_sha256_starts(&shaContext, 0) != 0) {
     message = "OTA SHA256 init failed";
-    spoolFile.close();
-    LittleFS.remove(OtaSpoolPath);
+    abortUpdateIfStarted();
     http.end();
+    secureClient.stop();
     mbedtls_sha256_free(&shaContext);
     activity.finishError("sha init failed");
     failWithCue();
@@ -327,7 +515,15 @@ bool DJConnectOTA::performUpdate(
       break;
     }
 
-    const size_t read = stream->readBytes(buffer.get(), toRead);
+    size_t read = 0;
+    if (rawReleaseAssetDownload) {
+      int rawRead = 0;
+      ScopedWatchdogPause watchdogPause;
+      rawRead = secureClient.read(buffer.get(), toRead);
+      read = rawRead > 0 ? static_cast<size_t>(rawRead) : 0;
+    } else {
+      read = stream->readBytes(buffer.get(), toRead);
+    }
     if (read == 0) {
       if (!http.connected() && contentLength <= 0) {
         break;
@@ -335,8 +531,7 @@ bool DJConnectOTA::performUpdate(
       if (millis() - lastProgressAt > Config::OtaStreamIdleTimeoutMs) {
         message = "OTA stream timeout";
         AppLog.println("OTA stream timeout");
-        spoolFile.close();
-        LittleFS.remove(OtaSpoolPath);
+        abortUpdateIfStarted();
         http.end();
         secureClient.stop();
         mbedtls_sha256_free(&shaContext);
@@ -347,33 +542,49 @@ bool DJConnectOTA::performUpdate(
       delay(10);
       continue;
     }
+    if (!loggedFirstBodyBytes) {
+      AppLog.print("OTA first body bytes=");
+      AppLog.println(read);
+      loggedFirstBodyBytes = true;
+    }
     serviceOtaLoop(display, ledRing);
     if (mbedtls_sha256_update(&shaContext, buffer.get(), read) != 0) {
       message = "OTA SHA256 update failed";
       AppLog.println("OTA SHA256 update failed");
-      spoolFile.close();
-      LittleFS.remove(OtaSpoolPath);
+      abortUpdateIfStarted();
       http.end();
+      secureClient.stop();
       mbedtls_sha256_free(&shaContext);
       activity.finishError("sha update failed");
       failWithCue();
       return false;
     }
     serviceOtaLoop(display, ledRing);
-    const size_t chunkSpooled = spoolFile.write(buffer.get(), read);
-    if (chunkSpooled != read) {
-      message = "OTA spool write failed";
-      AppLog.println(message);
-      spoolFile.close();
-      LittleFS.remove(OtaSpoolPath);
+    const size_t chunkWritten = Update.write(buffer.get(), read);
+    if (chunkWritten != read) {
+      message = "OTA write failed";
+      AppLog.print("OTA write failed written=");
+      AppLog.print(chunkWritten);
+      AppLog.print("/");
+      AppLog.print(read);
+      AppLog.print(" progress=");
+      AppLog.print(Update.progress());
+      AppLog.print(" remaining=");
+      AppLog.print(Update.remaining());
+      AppLog.print(" first_byte=0x");
+      AppLog.print(buffer.get()[0], HEX);
+      AppLog.print(" error=");
+      AppLog.println(Update.errorString());
+      abortUpdateIfStarted();
       http.end();
+      secureClient.stop();
       mbedtls_sha256_free(&shaContext);
-      activity.finishError("spool write failed");
+      activity.finishError("write failed");
       failWithCue();
       return false;
     }
 
-    downloaded += chunkSpooled;
+    downloaded += chunkWritten;
     lastProgressAt = millis();
     if (sound != nullptr && downloaded - lastProgressCue >= 196608) {
       sound->playOtaProgress();
@@ -387,14 +598,12 @@ bool DJConnectOTA::performUpdate(
     serviceOtaLoop(display, ledRing);
   }
 
-  spoolFile.flush();
-  spoolFile.close();
-
   if (contentLength > 0 && downloaded != static_cast<size_t>(contentLength)) {
     message = "OTA short download";
     AppLog.println(message);
-    LittleFS.remove(OtaSpoolPath);
+    abortUpdateIfStarted();
     http.end();
+    secureClient.stop();
     mbedtls_sha256_free(&shaContext);
     activity.finishError("short download");
     failWithCue();
@@ -405,8 +614,9 @@ bool DJConnectOTA::performUpdate(
   if (mbedtls_sha256_finish(&shaContext, digest) != 0) {
     message = "OTA SHA256 finalize failed";
     AppLog.println("OTA SHA256 finalize failed");
-    LittleFS.remove(OtaSpoolPath);
+    abortUpdateIfStarted();
     http.end();
+    secureClient.stop();
     mbedtls_sha256_free(&shaContext);
     activity.finishError("sha finalize failed");
     failWithCue();
@@ -417,8 +627,9 @@ bool DJConnectOTA::performUpdate(
   if (!equalsIgnoreCase(actualSha, request.sha256)) {
     message = "OTA SHA256 mismatch";
     AppLog.println("OTA SHA256 mismatch");
-    LittleFS.remove(OtaSpoolPath);
+    abortUpdateIfStarted();
     http.end();
+    secureClient.stop();
     activity.finishError("sha mismatch");
     failWithCue();
     return false;
@@ -428,79 +639,15 @@ bool DJConnectOTA::performUpdate(
   secureClient.stop();
   serviceOtaLoop(display, ledRing);
 
-  const size_t updateSize = contentLength > 0 ? static_cast<size_t>(contentLength) : downloaded;
-  AppLog.print("OTA update partition bytes=");
-  AppLog.println(ESP.getFreeSketchSpace());
-  if (!Update.begin(updateSize > 0 ? updateSize : UPDATE_SIZE_UNKNOWN)) {
-    message = "OTA Update.begin failed";
-    AppLog.print("OTA Update.begin error: ");
-    AppLog.println(Update.errorString());
-    LittleFS.remove(OtaSpoolPath);
-    activity.finishError("Update.begin failed");
-    failWithCue();
-    return false;
-  }
-
-  fs::File updateFile = LittleFS.open(OtaSpoolPath, "r");
-  if (!updateFile) {
-    message = "OTA spool read failed";
-    AppLog.println(message);
-    Update.abort();
-    LittleFS.remove(OtaSpoolPath);
-    activity.finishError("spool read failed");
-    failWithCue();
-    return false;
-  }
-
-  size_t written = 0;
-  lastLogged = 0;
-  while (updateFile.available()) {
-    serviceOtaLoop(display, ledRing);
-    const size_t read = updateFile.read(buffer.get(), OtaDownloadBufferBytes);
-    if (read == 0) {
-      continue;
-    }
-    const size_t chunkWritten = Update.write(buffer.get(), read);
-    if (chunkWritten != read) {
-      message = "OTA write failed";
-      AppLog.println("OTA write failed");
-      updateFile.close();
-      Update.abort();
-      LittleFS.remove(OtaSpoolPath);
-      activity.finishError("write failed");
-      failWithCue();
-      return false;
-    }
-    written += chunkWritten;
-    if (written - lastLogged >= 65536 || written == updateSize) {
-      AppLog.print("OTA written bytes=");
-      AppLog.println(written);
-      lastLogged = written;
-    }
-  }
-  updateFile.close();
-
-  if (written != updateSize) {
-    message = "OTA short write";
-    AppLog.println(message);
-    Update.abort();
-    LittleFS.remove(OtaSpoolPath);
-    activity.finishError("short write");
-    failWithCue();
-    return false;
-  }
-
   if (!Update.end(true)) {
     message = "OTA finalize failed";
     AppLog.print("OTA finalize error: ");
     AppLog.println(Update.errorString());
-    LittleFS.remove(OtaSpoolPath);
     activity.finishError("finalize failed");
     failWithCue();
     return false;
   }
 
-  LittleFS.remove(OtaSpoolPath);
   message = "OTA started";
   AppLog.println("OTA update written successfully");
   if (sound != nullptr) {

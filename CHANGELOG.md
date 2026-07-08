@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.2.10
+
+### Fixed
+
+- Enabled the verified LilyGO T-Embed-CC1101 PSRAM build mode so Home
+  Assistant-triggered GitHub OTA has enough heap for TLS and flash writes.
+- Changed GitHub release-asset OTA downloads to stream directly from a raw TLS
+  request into `Update.h`, avoiding the previous LittleFS spool path.
+- Fixed release-asset TLS reads that could return `-1` and be interpreted as a
+  huge unsigned chunk, causing immediate OTA write failures.
+
 ## v3.2.9
 
 ### Fixed

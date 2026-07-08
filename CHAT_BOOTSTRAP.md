@@ -15,10 +15,14 @@ Lees eerst:
 Context:
 - DJConnect ESP32-S3 firmware repo.
 - Huidige licentie is MIT.
-- Laatste geverifieerde release is v3.2.5.
-- v3.2.5 publiceert alleen het LilyGO T-Embed S3 firmware asset:
-  `djconnect-lilygo-t-embed-s3-v3.2.5.bin`, `.sha256` en
+- Laatste geverifieerde release is v3.2.10.
+- v3.2.10 publiceert alleen het LilyGO T-Embed S3 firmware asset:
+  `djconnect-lilygo-t-embed-s3-v3.2.10.bin`, `.sha256` en
   `firmware_manifest.json`.
+- LilyGO T-Embed-CC1101 gebruikt de bestaande `esp32-s3-devkitc-1`
+  PlatformIO board definition met geverifieerde OPI PSRAM build mode. PSRAM is
+  nodig gebleken voor betrouwbare Home Assistant/GitHub OTA, maar voice en
+  wake-word buffers blijven conservatief tenzij metingen iets anders aantonen.
 - Home Assistant pairing mode gebruikt WiFi, mDNS, web portal en device API
   voor pairing, maar start op LilyGO geen BLE advertising meer in die
   pairing-only state om de no-PSRAM heap stabiel te houden. BLE WiFi
