@@ -21,6 +21,7 @@
 #include "Config.h"
 #include "GitHubTls.h"
 #include "LogicHelpers.h"
+#include "MemoryDiagnostics.h"
 #include "NetworkActivity.h"
 #include "ScopedWatchdogPause.h"
 #include "assets/djconnect_favicon_ico.h"
@@ -4589,10 +4590,7 @@ void DJConnectApp::showDjResponseOverlay(const String &title, const String &text
 }
 
 void DJConnectApp::prepareForOta() {
-  AppLog.line(String("OTA prepare: releasing runtime resources, free=") +
-              String(heap_caps_get_free_size(MALLOC_CAP_8BIT)) +
-              ", largest=" +
-              String(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
+  MemoryDiagnostics::log("ota_prepare_before_release");
   wakeWord_.releaseResources();
   sound_.requestStopStreaming();
   if (voiceRecorder_.isRecording()) {
@@ -4603,10 +4601,7 @@ void DJConnectApp::prepareForOta() {
   webVoiceTextOnlyActive_ = false;
   webVoiceTextOnlyConsumeNext_ = false;
   delay(50);
-  AppLog.line(String("OTA prepare: ready, free=") +
-              String(heap_caps_get_free_size(MALLOC_CAP_8BIT)) +
-              ", largest=" +
-              String(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
+  MemoryDiagnostics::log("ota_prepare_after_release");
 }
 
 void DJConnectApp::renderMenuNow() {

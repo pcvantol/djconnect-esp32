@@ -7,6 +7,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "MemoryDiagnostics.h"
 #include "ScopedWatchdogPause.h"
 
 namespace {
@@ -50,6 +51,7 @@ bool VoiceRecorder::begin() {
   }
   AppLog.line(String("Mic PDM ready: clk=") + String(Config::MicrophoneClockPin) +
               ", data=" + String(Config::MicrophoneDataPin));
+  MemoryDiagnostics::log("mic_ready");
   ready_ = true;
   return true;
 }
@@ -138,6 +140,7 @@ bool VoiceRecorder::start() {
     return false;
   }
   AppLog.println("Voice recording started");
+  MemoryDiagnostics::log("voice_recording_started");
   return true;
 }
 
@@ -164,6 +167,7 @@ bool VoiceRecorder::stop() {
   }
   AppLog.print("Voice WAV bytes: ");
   AppLog.println(wavSize());
+  MemoryDiagnostics::log("voice_recording_stopped");
   return true;
 }
 

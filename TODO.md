@@ -29,10 +29,14 @@ Concrete issue and task list after release `v3.2.10`.
   - Current OTA path streams raw TLS into `Update.h` using a conservative buffer.
   - Any larger buffer should preserve watchdog feeding, LED animation and
     internal heap headroom while improving total OTA time or timeout margin.
-- [ ] Add per-subsystem memory diagnostics for OTA, wake word, microphone and speaker.
-  - Capture free heap, minimum free heap, largest internal block, PSRAM free
-    memory where available and subsystem lifecycle points.
-  - Keep diagnostics safe for normal logs and avoid credentials or audio data.
+- [x] Add baseline per-subsystem memory diagnostics for OTA, wake word, microphone and speaker.
+  - Captures free heap, minimum free heap, internal free/largest block and
+    PSRAM free/largest block where available at subsystem lifecycle points.
+  - Diagnostics are log-only and do not include credentials or audio data.
+- [ ] Capture real-device diagnostics for OTA, wake word, microphone and speaker.
+  - Use the new `Memory ...` log lines to compare idle, wake-word enabled,
+    PTT recording, DJ response audio and HA OTA behavior before changing
+    buffer sizes or PSRAM placement.
 - [ ] MP3 DJ-announcement audio playback needs more stress testing.
   - Test short/long MP3s and repeated HA/web flows.
   - Confirm watchdog stays fed and LED animation remains live.

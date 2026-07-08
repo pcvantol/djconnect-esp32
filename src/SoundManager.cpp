@@ -14,6 +14,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "MemoryDiagnostics.h"
 #include "ScopedWatchdogPause.h"
 
 static constexpr uint32_t MinVolumeTickIntervalMs = 90;
@@ -396,6 +397,7 @@ bool SoundManager::playWavStream(Stream &stream, int contentLength) {
     AppLog.println("Voice response audio skipped: speaker busy");
     return false;
   }
+  MemoryDiagnostics::log("speaker_wav_stream_started");
   auto finish = [&](bool ok) {
     endAudioState();
     return ok;
@@ -534,6 +536,7 @@ bool SoundManager::playMp3Stream(const String &url) {
     AppLog.println("MP3 response audio skipped: speaker busy");
     return false;
   }
+  MemoryDiagnostics::log("speaker_mp3_url_stream_started");
 
   AudioFileSourceHTTPStream source(url.c_str());
   AudioFileSourceBuffer buffered(&source, 4096);
@@ -546,10 +549,8 @@ bool SoundManager::playMp3Stream(const String &url) {
   if (!started) {
     AppLog.print("MP3 decoder start failed, arena=");
     AppLog.print(sizeof(Mp3DecoderArena));
-    AppLog.print(" free=");
-    AppLog.print(heap_caps_get_free_size(MALLOC_CAP_8BIT));
-    AppLog.print(" largest=");
-    AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+    AppLog.println();
+    MemoryDiagnostics::log("speaker_mp3_url_decoder_failed");
     id3.close();
     buffered.close();
     source.close();
@@ -611,6 +612,7 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
     AppLog.println("MP3 response audio skipped: speaker busy");
     return false;
   }
+  MemoryDiagnostics::log("speaker_mp3_stream_started");
 
   AudioFileSourceArduinoStream source(stream, prefix, prefixLength, contentLength);
   AudioFileSourceBuffer buffered(&source, 4096);
@@ -623,10 +625,8 @@ bool SoundManager::playMp3Stream(Stream &stream, const uint8_t *prefix, size_t p
   if (!started) {
     AppLog.print("MP3 decoder start failed, arena=");
     AppLog.print(sizeof(Mp3DecoderArena));
-    AppLog.print(" free=");
-    AppLog.print(heap_caps_get_free_size(MALLOC_CAP_8BIT));
-    AppLog.print(" largest=");
-    AppLog.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+    AppLog.println();
+    MemoryDiagnostics::log("speaker_mp3_decoder_failed");
     id3.close();
     buffered.close();
     source.close();

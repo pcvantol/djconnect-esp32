@@ -3,6 +3,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "MemoryDiagnostics.h"
 #include "OkayNabuWakeWordModel.h"
 
 extern "C" bool djconnect_micro_wake_word_detect(const int16_t *samples, size_t sampleCount) __attribute__((weak));
@@ -92,6 +93,8 @@ void WakeWordEngine::setEnabled(bool enabled) {
 void WakeWordEngine::releaseResources() {
   loggedFirstAudio_ = false;
   if (djconnect_oke_nabu_wake_word_release != nullptr) {
+    MemoryDiagnostics::log("wake_word_before_release");
     djconnect_oke_nabu_wake_word_release();
+    MemoryDiagnostics::log("wake_word_after_release");
   }
 }

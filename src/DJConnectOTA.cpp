@@ -15,6 +15,7 @@
 #include "GitHubTls.h"
 #include "I18n.h"
 #include "LogicHelpers.h"
+#include "MemoryDiagnostics.h"
 #include "NetworkActivity.h"
 #include "ScopedWatchdogPause.h"
 
@@ -465,6 +466,7 @@ bool DJConnectOTA::performUpdate(
 
   AppLog.print("OTA content length=");
   AppLog.println(contentLength);
+  MemoryDiagnostics::log("ota_before_update_begin");
 
   const size_t updateSize = contentLength > 0 ? static_cast<size_t>(contentLength) : UPDATE_SIZE_UNKNOWN;
   if (!updateStarted) {
@@ -481,6 +483,7 @@ bool DJConnectOTA::performUpdate(
       return false;
     }
     updateStarted = true;
+    MemoryDiagnostics::log("ota_after_update_begin");
   }
 
   Stream *stream = rawReleaseAssetDownload ? static_cast<Stream *>(&secureClient) : http.getStreamPtr();

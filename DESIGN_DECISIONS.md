@@ -317,6 +317,7 @@ Sources:
 
 - `include/NetworkActivity.h`, `src/NetworkActivity.cpp`
 - `include/ScopedWatchdogPause.h`
+- `include/MemoryDiagnostics.h`, `src/MemoryDiagnostics.cpp`
 - `src/DJConnectOTA.cpp`
 - `src/DJConnectApp.cpp`
 - `src/SpotifyClient.cpp`
@@ -326,6 +327,9 @@ Why:
 - ESP32-S3 UI, audio, microphone, HTTP and wake-word inference share limited
   heap and CPU time. Blocking calls can freeze input or trip the task watchdog.
 - The code prefers controlled failure and diagnostic logs over indefinite waits.
+- `MemoryDiagnostics` centralizes subsystem memory snapshots so OTA, wake-word,
+  microphone and speaker paths log the same internal heap and PSRAM fields
+  before future buffer or placement tuning.
 - Wake-word inference defaults to off and is a persisted user setting because
   its TFLite arena competes with TLS, album-art and audio flows. Enabling it is
   explicit from device settings, web settings or Home Assistant after pairing.

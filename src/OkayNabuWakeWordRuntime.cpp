@@ -9,6 +9,7 @@
 
 #include "AppLog.h"
 #include "Config.h"
+#include "MemoryDiagnostics.h"
 #include "OkayNabuWakeWordModel.h"
 #include "tensorflow/lite/experimental/microfrontend/lib/frontend.h"
 #include "tensorflow/lite/experimental/microfrontend/lib/frontend_util.h"
@@ -151,10 +152,8 @@ bool ensureRuntime() {
     if (gRuntime == nullptr) {
       const uint32_t now = millis();
       if (now - lastAllocationFailureLogAt > 5000) {
-        AppLog.line(String("Wake word: runtime allocation failed, free=") +
-                    String(heap_caps_get_free_size(MALLOC_CAP_8BIT)) +
-                    ", largest=" +
-                    String(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
+        AppLog.println("Wake word: runtime allocation failed");
+        MemoryDiagnostics::log("wake_word_runtime_alloc_failed");
         lastAllocationFailureLogAt = now;
       }
       return false;
@@ -177,6 +176,7 @@ bool ensureRuntime() {
   AppLog.println(static_cast<int>(kTensorArenaBytes));
   AppLog.print("Wake word: output elements=");
   AppLog.println(static_cast<int>(runtime.outputElementCount));
+  MemoryDiagnostics::log("wake_word_runtime_ready");
   return true;
 }
 

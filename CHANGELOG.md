@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Added shared subsystem memory diagnostics for OTA, wake-word runtime,
+  microphone recording and speaker response-audio paths, including internal heap
+  and PSRAM snapshots where available.
+
 ## v3.2.10
 
 ### Fixed
