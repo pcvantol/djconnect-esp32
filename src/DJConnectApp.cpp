@@ -198,7 +198,7 @@ void DJConnectApp::begin() {
     display_.showBootMessage(I18n::text("boot_connecting_playback"), battery_);
     sendHomeAssistantStatusIfDue(true);
     initializeVoiceServices();
-    lastPlaybackPollAt_ = millis();
+    lastPlaybackPollAt_ = millis() - Config::PlaybackPollIntervalMs;
     playbackPollPausedUntil_ = millis() + Config::PlaybackBootGraceMs;
     playbackRefreshAfterPairing_ = true;
   }
@@ -531,7 +531,8 @@ void DJConnectApp::applyWifiConnectFailureSelection() {
     if (connectWiFi(Config::WifiConnectTimeoutMs, true) && WiFi.status() == WL_CONNECTED) {
       startWebPortalIfNeeded();
       display_.showBootMessage(I18n::text("boot_authorizing_spotify"), battery_);
-      lastPlaybackPollAt_ = millis();
+      lastPlaybackPollAt_ = millis() - Config::PlaybackPollIntervalMs;
+      playbackPollPausedUntil_ = millis() + Config::PlaybackBootGraceMs;
       renderNow();
     } else {
       renderWifiConnectFailureMenu();
@@ -4157,7 +4158,7 @@ void DJConnectApp::sendHomeAssistantStatusIfDue(bool force) {
     haPairingPendingValidation_ = false;
     if (wasPendingValidation || playbackRefreshAfterPairing_) {
       playbackRefreshAfterPairing_ = false;
-      lastPlaybackPollAt_ = millis();
+      lastPlaybackPollAt_ = millis() - Config::PlaybackPollIntervalMs;
       playbackPollPausedUntil_ = millis() + Config::PlaybackBootGraceMs;
       AppLog.println("Home Assistant: pairing status confirmed, enabling playback proxy");
     }
@@ -4534,7 +4535,8 @@ void DJConnectApp::noteDirectPairingReceived() {
   haPairingPendingValidation_ = true;
   playbackRefreshAfterPairing_ = true;
   lastHaStatusAt_ = Logic::forceImmediatePollTimestamp();
-  lastPlaybackPollAt_ = millis();
+  lastPlaybackPollAt_ = millis() - Config::PlaybackPollIntervalMs;
+  playbackPollPausedUntil_ = millis() + Config::PlaybackBootGraceMs;
   showNotice(I18n::text("boot_paired"), 1500);
   renderNow();
 }
