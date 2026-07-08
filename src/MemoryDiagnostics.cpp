@@ -1,6 +1,5 @@
 #include "MemoryDiagnostics.h"
 
-#include <ESP.h>
 #include <esp_heap_caps.h>
 
 #include "AppLog.h"
