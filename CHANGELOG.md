@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## v3.2.12
+
+### Changed
+
+- Added an offline Node.js Home Assistant contract fixture for ESP32 CI, covering
+  pairing, status, playback command, event, voice upload, TTS fetch and a narrow
+  Home Assistant-style WebSocket fast-path smoke test without real backend
+  services or secrets.
+- Added CI checks for the ESP32 HTTP contract e2e, WebSocket contract e2e and
+  fixture log-redaction validation.
+- Added explicit `client_id` and `device_name` identity fields to ESP32
+  Home Assistant pairing, status, playback command and voice payloads while
+  keeping `client_id` equal to `device_id`.
+
 ## v3.2.11
 
 ### Changed

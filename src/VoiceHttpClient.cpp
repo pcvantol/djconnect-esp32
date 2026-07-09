@@ -333,6 +333,8 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
 
   JsonDocument doc;
   doc["device_id"] = device_->getDeviceId();
+  doc["client_id"] = device_->getDeviceId();
+  doc["device_name"] = device_->getDeviceName();
   doc["client_type"] = device_->getClientType();
   doc["text"] = recognizedText;
   String body;
@@ -349,6 +351,9 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
   http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Client-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Device-Name", device_->getDeviceName());
+  http.addHeader("X-DJConnect-Client-Type", device_->getClientType());
   http.addHeader("X-DJConnect-Text", recognizedText);
 
   AppLog.print("Voice text command chars=");
@@ -468,6 +473,9 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   http.addHeader("Content-Type", "audio/wav");
   http.addHeader("Authorization", "Bearer " + token);
   http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Client-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Device-Name", device_->getDeviceName());
+  http.addHeader("X-DJConnect-Client-Type", device_->getClientType());
   AppLog.print("Voice WAV upload bytes=");
   AppLog.println(fileSize);
 

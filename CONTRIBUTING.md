@@ -51,6 +51,15 @@ portal:
 python3 scripts/minify_webportal.py
 ```
 
+Run the offline Home Assistant contract fixture checks when changing ESP32
+pairing/status/playback/voice contracts:
+
+```sh
+node Tools/http_e2e_contract.js
+node Tools/websocket_e2e_contract.js
+node Tools/validate_contract_redaction.js
+```
+
 Dry-run a release before publishing:
 
 ```sh

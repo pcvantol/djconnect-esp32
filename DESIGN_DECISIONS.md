@@ -24,6 +24,9 @@ Primary sources used:
   patterns.
 - `test/native/test_logic.cpp`, `test/native/test_release.sh` and
   `test/native/test_postman_collections.py` for testable design contracts.
+- `Tools/ha_contract_fixture.js`, `Tools/http_e2e_contract.js` and
+  `Tools/websocket_e2e_contract.js` for offline Home Assistant contract e2e
+  coverage.
 
 ## Language And Runtime Split
 
@@ -32,6 +35,7 @@ Primary sources used:
 | C++17 / Arduino C++ | Firmware runtime, device logic, rendering, HTTP APIs, audio, OTA and hardware control | `include/`, `src/`, `test/native/test_logic.cpp` |
 | Bash | Release and hygiene automation | `release.sh`, `scripts/cleanup_old_releases.sh`, `test/native/test_release.sh` |
 | Python | PlatformIO upload/monitor helper hook and offline repository checks | `scripts/platformio_upload_monitor_delay.py`, `test/native/test_postman_collections.py` |
+| Node.js | Offline Home Assistant contract fixture, HTTP/WebSocket e2e and log-redaction checks | `Tools/` |
 | HTML / CSS / JavaScript | Embedded captive portal and web portal served from firmware | `src/WebPortal.cpp`, captive portal HTML in `src/DJConnectApp.cpp` |
 | JSON | Postman collections, web manifest, model metadata and release manifest output | `postman/`, `assets/website/site.webmanifest`, `third_party/micro_wake_word/okay_nabu.json` |
 | RGB565 / binary assets | Embedded display assets and wake-word model asset | `assets/esp_display/embedded/`, `third_party/micro_wake_word/okay_nabu.tflite` |
@@ -165,6 +169,37 @@ Why:
   menu counts, battery estimates and parser behavior can be tested quickly on
   the host.
 - This creates regression coverage without requiring a connected ESP32-S3.
+
+### Offline Home Assistant Contract Fixture
+
+The repository carries a small Node.js fixture under `Tools/` for CI and local
+contract checks. It listens only on `127.0.0.1`, accepts port `0`, uses Node core
+modules only and models the ESP32-facing Home Assistant integration routes
+without real Home Assistant, Spotify, Music Assistant, OpenAI, secrets or
+external network calls.
+
+Sources:
+
+- `Tools/ha_contract_fixture.js`
+- `Tools/http_e2e_contract.js`
+- `Tools/websocket_e2e_contract.js`
+- `Tools/validate_contract_redaction.js`
+- `.github/workflows/ci.yml` job `ha-contract-e2e`
+
+Why:
+
+- Firmware contract regressions around pairing, status, playback proxy, voice
+  upload and TTS fetches can be caught in CI without a hardware device or private
+  Home Assistant instance.
+- The fixture enforces ESP32 identity fields: `device_id`, `device_name`,
+  `client_id` equal to `device_id`, and `client_type:"esp32"`, while rejecting
+  `device_type`.
+- WebSocket coverage is intentionally a narrow Home Assistant fast-path smoke
+  test for `/api/djconnect/v1/websocket/session`, HA-style auth handshake,
+  `djconnect/capabilities`, `djconnect/command` and `djconnect/status`. The
+  firmware runtime still uses HTTP as the canonical path.
+- The redaction check validates that fixture/e2e output prints only local URLs
+  and test status, not tokens, auth headers, raw audio or secret-like payloads.
 
 ### Callback Adapter Pattern
 

@@ -125,10 +125,14 @@ require_pattern '!Logic::isHomeAssistantPairingInvalidError\("version_mismatch"\
 require_pattern '/api/djconnect/v1/voice' src/VoiceHttpClient.cpp
 
 if search_contract_paths \
-  "set_play_mode|refresh_token|client_secret|client_id"; then
+  "set_play_mode|refresh_token|client_secret"; then
   echo "legacy playback mode flow or backend credential reference found in firmware contract paths" >&2
   exit 1
 fi
+
+require_pattern 'request\["client_id"\] = device_->getDeviceId\(\)' src/DJConnectPairing.cpp
+require_pattern 'request\["client_id"\] = device_->getDeviceId\(\)' src/SpotifyClient.cpp
+require_pattern 'doc\["client_id"\] = device_->getDeviceId\(\)' src/VoiceHttpClient.cpp
 
 if search_contract_paths \
   "dj_announcement_output|client_device|ha_speaker|text_only"; then

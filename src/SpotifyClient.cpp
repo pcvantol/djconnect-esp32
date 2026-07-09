@@ -342,6 +342,8 @@ void SpotifyClient::addCommandIdentityFields(JsonDocument &request) const {
   }
 
   request["device_id"] = device_->getDeviceId();
+  request["client_id"] = device_->getDeviceId();
+  request["device_name"] = device_->getDeviceName();
   request["client_type"] = device_->getClientType();
   request["payload_type"] = "command";
   request["firmware"] = device_->getFirmwareVersion();

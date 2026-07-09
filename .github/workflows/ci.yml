@@ -73,6 +73,28 @@ jobs:
       - name: Validate web portal i18n
         run: python3 test/native/test_webportal_i18n.py
 
+  ha-contract-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Run ESP32 HTTP contract e2e
+        run: node Tools/http_e2e_contract.js
+
+      - name: Run ESP32 WebSocket contract e2e
+        run: node Tools/websocket_e2e_contract.js
+
+      - name: Validate contract log redaction
+        run: node Tools/validate_contract_redaction.js
+
   release-script:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -130,6 +152,7 @@ jobs:
     needs:
       - native-tests
       - postman-collections
+      - ha-contract-e2e
       - release-script
       - platformio-build
     if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}

@@ -6,10 +6,10 @@ DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is
 
 Current repo state includes:
 
-- Latest verified firmware release from this repo: `v3.2.10`. Source repo
+- Latest verified firmware release from this repo: `v3.2.12`. Source repo
   `pcvantol/djconnect-esp32` and public firmware repo
-  `pcvantol/djconnect-firmware` both have pushed `v3.2.10` tags. The public
-  firmware GitHub release is `DJConnect Firmware v3.2.10` and contains only the
+  `pcvantol/djconnect-firmware` both have pushed `v3.2.12` tags. The public
+  firmware GitHub release is `DJConnect Firmware v3.2.12` and contains only the
   LilyGO binary, matching `.sha256`, and `firmware_manifest.json`; generated
   local `release/` artifacts remain ignored in source.
 - Firmware version flow based on git tag/build flags; local builds remain `dev` / `vdev`.
@@ -59,6 +59,12 @@ Current repo state includes:
   remains accepted as a fallback. Queue context is accepted at the top level and
   under `queue`, `data.queue` or `result.queue`; the ESP still sends
   `play_context_at` only when Home Assistant explicitly returns usable context.
+- ESP32 CI includes an offline Node.js Home Assistant contract fixture under
+  `Tools/` that runs without real Home Assistant, Spotify, Music Assistant,
+  OpenAI, secrets or external network calls. It covers ESP32 HTTP pairing,
+  status, playback command, event, voice upload and TTS fetch contracts, plus a
+  narrow Home Assistant `/api/websocket` auth handshake smoke test for shared
+  backend fast-path compatibility. The firmware runtime remains HTTP-first.
 - Backend credentials are never accepted by ESP firmware.
 - Top-button soft reset plays a dedicated cue and bright white LED-ring flashes before reboot. Turn-off/deep-sleep always plays a rainbow LED fade-out.
 - Normal idle turn-off sleep is battery-only. When USB-C/external power is detected, Now Playing may still dim or turn the screen off, but the ESP stays awake and logs that idle sleep was suppressed. Boot logs include reset reason and wakeup cause so true panic/watchdog/brownout resets are distinguishable from deep sleep.
@@ -74,20 +80,24 @@ Current repo state includes:
 Latest validated commands:
 
 ```sh
+node Tools/http_e2e_contract.js
+node Tools/websocket_e2e_contract.js
+node Tools/validate_contract_redaction.js
+bash test/native/test_ha_contract_smoke.sh
 c++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/native/test_logic.cpp -o /tmp/djconnect_unit_tests && /tmp/djconnect_unit_tests
 bash test/native/test_release.sh
 /Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101
 ```
 
-Latest release verification for `v3.2.10`:
+Latest release verification for `v3.2.12`:
 
-- `./release.sh 3.2.10` completed a clean LilyGO source release build.
-- The source repo tag `v3.2.10` was pushed.
+- `./release.sh 3.2.12` completed a clean LilyGO source release build.
+- The source repo tag `v3.2.12` was pushed.
 - GitHub Actions published the public firmware release with only
-  `djconnect-lilygo-t-embed-s3-v3.2.10.bin`,
-  `djconnect-lilygo-t-embed-s3-v3.2.10.bin.sha256` and
+  `djconnect-lilygo-t-embed-s3-v3.2.12.bin`,
+  `djconnect-lilygo-t-embed-s3-v3.2.12.bin.sha256` and
   `firmware_manifest.json`.
-- Post-release cleanup should keep `v3.2.10` as the current stable line.
+- Post-release cleanup should keep `v3.2.12` as the current stable line.
 
 ## Architecture
 

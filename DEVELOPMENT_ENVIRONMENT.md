@@ -22,6 +22,7 @@ ESP-IDF 5.3 and Arduino ESP32 3.x compatibility. Arduino ESP32 2.x / ESP-IDF
   `/Users/pcvantol/.platformio/penv/bin/pio` on the maintainer machine.
 - A C++17 compiler for native host tests.
 - Python 3 for web portal minification and release hygiene checks.
+- Node.js 24 for the offline Home Assistant contract fixture and e2e checks.
 - GitHub CLI (`gh`) for release and workflow maintenance.
 - A USB-connected LilyGO T-Embed-CC1101 for flashing and hardware validation.
 
@@ -54,6 +55,15 @@ docs hygiene, asset names or release contracts:
 
 ```sh
 bash test/native/test_release.sh
+```
+
+Run the offline Home Assistant contract fixture checks when changing pairing,
+status, playback proxy, voice or backend contract behavior:
+
+```sh
+node Tools/http_e2e_contract.js
+node Tools/websocket_e2e_contract.js
+node Tools/validate_contract_redaction.js
 ```
 
 Build firmware:

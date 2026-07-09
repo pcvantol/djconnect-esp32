@@ -73,6 +73,7 @@ bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
 
   JsonDocument request;
   request["device_id"] = device_->getDeviceId();
+  request["client_id"] = device_->getDeviceId();
   request["device_name"] = device_->getDeviceName();
   request["client_type"] = device_->getClientType();
   request["pair_code"] = device_->getPairCode();
@@ -166,6 +167,8 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
 
   JsonDocument request;
   request["device_id"] = device_->getDeviceId();
+  request["client_id"] = device_->getDeviceId();
+  request["device_name"] = device_->getDeviceName();
   request["client_type"] = device_->getClientType();
   request["ha_pairing_status"] = "paired";
   request["local_url"] = device_->getLocalUrl();

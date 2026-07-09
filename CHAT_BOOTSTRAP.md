@@ -15,9 +15,9 @@ Lees eerst:
 Context:
 - DJConnect ESP32-S3 firmware repo.
 - Huidige licentie is MIT.
-- Laatste geverifieerde release is v3.2.10.
-- v3.2.10 publiceert alleen het LilyGO T-Embed S3 firmware asset:
-  `djconnect-lilygo-t-embed-s3-v3.2.10.bin`, `.sha256` en
+- Laatste geverifieerde release is v3.2.12.
+- v3.2.12 publiceert alleen het LilyGO T-Embed S3 firmware asset:
+  `djconnect-lilygo-t-embed-s3-v3.2.12.bin`, `.sha256` en
   `firmware_manifest.json`.
 - LilyGO T-Embed-CC1101 gebruikt de bestaande `esp32-s3-devkitc-1`
   PlatformIO board definition met geverifieerde OPI PSRAM build mode. PSRAM is
@@ -48,6 +48,8 @@ Context:
 - Nieuwe review/QA-stap: check deze firmware-repo bij release- of
   cross-repo contractwerk tegen de `DJ Announcement Output Sync` sectie in
   `pcvantol/djconnect/SYNC_PROMPTS.md`.
+- ESP32 CI bevat een offline Node.js Home Assistant contract fixture onder
+  `Tools/` voor HTTP e2e, WebSocket handshake smoke en log-redaction checks.
 
 Belangrijke regels:
 - Gebruik `apply_patch` voor handmatige edits.

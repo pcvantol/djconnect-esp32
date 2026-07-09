@@ -414,6 +414,39 @@ The LilyGO environment uses the existing `esp32-s3-devkitc-1` board definition w
 - The public ESP API is documented as a Postman collection with variables only. Do not commit real device tokens or private HA URLs.
 - Product firmware is MIT-licensed open-source software, while release binaries and manifests are published separately for Home Assistant OTA distribution.
 
+## Home Assistant Contract Fixture
+
+The repository includes a Node.js 24 contract fixture that runs fully on
+`127.0.0.1` without a real Home Assistant, Spotify, Music Assistant, OpenAI,
+secrets or external network access. It covers the ESP32 HTTP routes used by the
+firmware and a small Home Assistant-style WebSocket handshake smoke test for the
+shared backend fast-path contract.
+
+Start the fixture manually:
+
+```sh
+node Tools/ha_contract_fixture.js
+```
+
+Run the ESP32 HTTP contract e2e:
+
+```sh
+node Tools/http_e2e_contract.js
+```
+
+Run the WebSocket contract smoke test:
+
+```sh
+node Tools/websocket_e2e_contract.js
+```
+
+The firmware runtime does not use Home Assistant `/api/websocket` directly
+today, so WebSocket coverage is limited to `/api/djconnect/v1/websocket/session`,
+the HA `auth_required`/`auth_ok` handshake, `djconnect/capabilities`,
+`djconnect/command` and `djconnect/status`. HTTP remains the canonical ESP32
+runtime path, including voice upload and TTS audio fetches. CI runs the HTTP e2e,
+WebSocket e2e and log-redaction validation in the `ha-contract-e2e` job.
+
 ## Battery, Charging and Turn Off
 
 Battery percentage is voltage-estimated. Below 20%, the device shows a charge screen and restricts normal operation. Below 10%, the device shows a short charge prompt and turns off. While charging below 20%, the device stays in a charging screen and does not connect WiFi. Normal idle turn-off sleep is suppressed while USB-C/external charging power is detected; on battery, turn-off sleep periodically wakes briefly to probe for USB-C charger attach.
