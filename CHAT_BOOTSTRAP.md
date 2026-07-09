@@ -1,75 +1,11 @@
-# Chat Bootstrap Prompt
+# Deprecated
 
-Use this prompt to initialize a fresh Codex chat for this repository:
+This file is no longer the primary bootstrap for DJConnect Codex sessions.
 
-```text
-Werk in repo: /Users/pcvantol/Documents/GitHub/djconnect-esp32
+Use `pcvantol/djconnect/BOOTSTRAP_CODEX_SESSION.md`.
 
-Lees eerst:
-- AGENTS.md
-- HANDOFF.md
-- README.md
-- CHANGELOG.md
-- CONTRIBUTING.md
+Temporary release or handoff notes should live in dedicated handoff/release
+documents, not in the platform bootstrap.
 
-Context:
-- DJConnect ESP32-S3 firmware repo.
-- Huidige licentie is MIT.
-- Laatste geverifieerde release is v3.2.12.
-- v3.2.12 publiceert alleen het LilyGO T-Embed S3 firmware asset:
-  `djconnect-lilygo-t-embed-s3-v3.2.12.bin`, `.sha256` en
-  `firmware_manifest.json`.
-- LilyGO T-Embed-CC1101 gebruikt de bestaande `esp32-s3-devkitc-1`
-  PlatformIO board definition met geverifieerde OPI PSRAM build mode. PSRAM is
-  nodig gebleken voor betrouwbare Home Assistant/GitHub OTA, maar voice en
-  wake-word buffers blijven conservatief tenzij metingen iets anders aantonen.
-- Home Assistant pairing mode gebruikt WiFi, mDNS, web portal en device API
-  voor pairing, maar start op LilyGO geen BLE advertising meer in die
-  pairing-only state om runtime heap stabiel te houden voordat normale paired
-  features starten. BLE WiFi provisioning blijft setup/AP-mode functionaliteit.
-- User-facing firmware/web UI strings ondersteunen `en`, `nl`, `de`, `fr` en
-  `es` via de centrale `I18n` tabel; protocolvelden en JSON keys blijven
-  onvertaald.
-- De ESP32-S3-BOX-3 PlatformIO/release/CI target is verwijderd; niet opnieuw
-  toevoegen tenzij de gebruiker expliciet nieuwe board support vraagt. Ook de
-  resterende inactive BOX-3 board-profile code is verwijderd.
-- Community/security-documentatie en security-contact blijven actueel:
-  `security@djconnect.dev`.
-- GitHub repo hygiene: secret scanning, push protection, Dependabot alerts en
-  branch protection op `main` staan aan. Voor maintainer-run releases kan admin
-  enforcement kort gecontroleerd uit, release push, en direct weer aan.
-- Publieke OTA assets staan in `pcvantol/djconnect-firmware`. Als de source
-  GitHub Action niet publiceert of expliciete lokale publicatie gewenst is,
-  gebruik `./release.sh X.Y.Z --publish-firmware-repo ../djconnect-firmware`
-  en maak/verifieer daarna de public firmware GitHub release met alleen de
-  LilyGO `.bin`, `.sha256` en manifest assets.
-- Werkmap zou schoon moeten zijn; controleer met `git status --short`.
-- Houd cross-repo contracten met `pcvantol/djconnect` actueel als protocol, HA integration, OTA, Assist/STT/TTS, Spotify playback, branding of roadmap geraakt wordt.
-- Nieuwe review/QA-stap: check deze firmware-repo bij release- of
-  cross-repo contractwerk tegen de `DJ Announcement Output Sync` sectie in
-  `pcvantol/djconnect/SYNC_PROMPTS.md`.
-- ESP32 CI bevat een offline Node.js Home Assistant contract fixture onder
-  `Tools/` voor HTTP e2e, WebSocket handshake smoke en log-redaction checks.
-
-Belangrijke regels:
-- Gebruik `apply_patch` voor handmatige edits.
-- DJConnect wordt ontwikkeld en onderhouden met AI-assisted/agentic engineering workflows, inclusief Codex; accepted changes blijven maintainer-reviewed en prompts/logs/issues mogen geen secrets of private data bevatten.
-- Geen secrets/tokens/wachtwoorden in code, docs, logs of diagnostics.
-- Release- en CI-buildflows werken PlatformIO Core plus third-party packages,
-  dependencies en tools bij via `scripts/update_build_dependencies.sh`; review
-  de dependency diff en werk `THIRD_PARTY_NOTICES.md` / `DESIGN_DECISIONS.md`
-  bij wanneer versies wijzigen.
-- WebPortal markup/CSS/JS gewijzigd? Draai `python3 scripts/minify_webportal.py`.
-- Native tests bij pure logic changes:
-  `c++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/native/test_logic.cpp -o /tmp/djconnect_unit_tests`
-  `/tmp/djconnect_unit_tests`
-- Release tooling geraakt? Draai `bash test/native/test_release.sh`.
-- Firmware build:
-  `/Users/pcvantol/.platformio/penv/bin/pio run -e t_embed_cc1101`
-- Release dry-run:
-  `./release.sh X.Y.Z --dry-run`
-- Release:
-  `./release.sh X.Y.Z`
-
-Start met `git status --short` en bevestig kort waar we staan.
-```
+Do not delete this file while release scripts, tests or historical references
+still mention `CHAT_BOOTSTRAP.md`.
