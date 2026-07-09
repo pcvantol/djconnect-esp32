@@ -48,6 +48,26 @@ require_pattern() {
   fi
 }
 
+require_block_without_pattern() {
+  local path="$1"
+  local start="$2"
+  local end="$3"
+  local forbidden="$4"
+  awk "/$start/{inside=1} inside{print} /$end/{if (inside) exit}" "$path" | {
+    if command -v rg >/dev/null 2>&1; then
+      if rg -q "$forbidden"; then
+        echo "forbidden pattern '$forbidden' found between $start and $end in $path" >&2
+        exit 1
+      fi
+    else
+      if grep -Eq "$forbidden"; then
+        echo "forbidden pattern '$forbidden' found between $start and $end in $path" >&2
+        exit 1
+      fi
+    fi
+  }
+}
+
 if search_repo \
   "sensor\\.djconnect_(spotify_status|playback_available|queue|playlists|outputs)|number\\.djconnect_volume|select\\.djconnect_(sound_output|repeat_state)|switch\\.djconnect_shuffle|\\bdjconnect_(volume|shuffle|repeat_state|sound_output|spotify_status|playback_available|queue|playlists|outputs)\\b"; then
   echo "removed Home Assistant playback entity dependency found" >&2
@@ -109,5 +129,24 @@ if search_contract_paths \
   echo "legacy playback mode flow or backend credential reference found in firmware contract paths" >&2
   exit 1
 fi
+
+if search_contract_paths \
+  "dj_announcement_output|client_device|ha_speaker|text_only"; then
+  echo "app-client DJ announcement output modes must not be firmware runtime contract fields" >&2
+  exit 1
+fi
+
+require_pattern 'server_->on\("/api/device/dj_response", HTTP_POST' src/DJConnectApiServer.cpp
+require_pattern 'const String audioUrl = doc\["audio_url"\] \| "";' src/DJConnectApiServer.cpp
+require_pattern 'response\["spoken"\] = spoken' src/DJConnectApiServer.cpp
+require_pattern 'sendJson\(spoken \? 200 : 202, payload\)' src/DJConnectApiServer.cpp
+require_pattern 'audioUrl = firstString\(payload, "audio_url", "audioUrl"\)' include/DeviceCommandParser.h
+require_pattern 'Text only DJ response' test/native/test_logic.cpp
+require_pattern 'announcement' test/native/test_logic.cpp
+require_pattern 'DjAudioType::Wav' src/DjResponseAudioPlayer.cpp
+require_pattern 'DjAudioType::Mp3' src/DjResponseAudioPlayer.cpp
+require_pattern 'DJ response audio type unsupported' src/DjResponseAudioPlayer.cpp
+require_block_without_pattern src/DJConnectApiServer.cpp 'void DJConnectApiServer::handleDjResponse\(\)' 'void DJConnectApiServer::handleCommand\(\)' 'clearPairing|markHomeAssistantPairingInvalid|savePairing'
+require_block_without_pattern src/DJConnectApp.cpp 'bool DJConnectApp::handleDjResponseText' 'void DJConnectApp::showDjResponseOverlay' 'clearPairing|markHomeAssistantPairingInvalid|savePairing'
 
 echo "Home Assistant contract smoke tests passed"

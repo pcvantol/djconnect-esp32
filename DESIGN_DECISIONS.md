@@ -368,6 +368,13 @@ The ESP treats `audio_url` as the sole playback contract for DJ-announcement
 audio returned by Home Assistant. Text-only responses remain valid and are
 displayed, but `audio_url=none` is deliberately not retried as speaker playback;
 that indicates the Home Assistant voice/TTS path did not provide audio.
+App-client announcement output modes such as `client_device`, `both`,
+`ha_speaker` and `text_only` are intentionally not firmware runtime settings.
+The ESP32 does not consume `dj_announcement_output` and does not configure a
+Home Assistant `media_player` speaker for DJ announcements; `/api/device/dj_response`
+remains the device-local text/audio handoff from Home Assistant to the ESP.
+Unknown extra fields on that payload are ignored, and missing or unsupported
+audio must not clear pairing or tokens.
 
 Sources:
 

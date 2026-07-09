@@ -857,6 +857,20 @@ static void testDeviceCommandParserDjResponseAndUnknown() {
   assert(command.audioUrl == "http://ha.local/tts/123.mp3");
 
   doc.clear();
+  deserializeJson(doc, "{\"command\":\"dj_response\",\"text\":\"Text only DJ response\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::DjResponse);
+  assert(command.value == "Text only DJ response");
+  assert(command.audioUrl == "");
+
+  doc.clear();
+  deserializeJson(doc, "{\"command\":\"dj_response\",\"text\":\"Extra fields ignored\",\"audio_url\":\"http://ha.local/tts/456.wav\",\"announcement\":\"both\"}");
+  command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  assert(command.type == DeviceCommandType::DjResponse);
+  assert(command.value == "Extra fields ignored");
+  assert(command.audioUrl == "http://ha.local/tts/456.wav");
+
+  doc.clear();
   deserializeJson(doc, "{\"command\":\"set_brightness\"}");
   command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
   assert(command.type == DeviceCommandType::ScreenBrightness);
