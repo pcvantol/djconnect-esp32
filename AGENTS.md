@@ -1,5 +1,18 @@
 # AGENTS.md
 
+## DJConnect Platform Bootstrap
+
+For a clean Codex/AI-agent session, first follow the canonical platform bootstrap:
+
+`pcvantol/djconnect/BOOTSTRAP_CODEX_SESSION.md`
+
+Then continue with the repository-specific instructions in this file.
+
+This repository extends the DJConnect Platform Foundation. It does not redefine it.
+
+This must be additive only. Existing repo-specific AGENTS guidance remains authoritative for implementation details.
+
+
 Guidance for coding agents working on the DJConnect ESP32-S3 firmware.
 
 ## DJConnect Platform Foundation
@@ -155,9 +168,10 @@ overrides it. Before firmware builds, release tooling must run
 global/project PlatformIO packages for the LilyGO environment. Review the
 generated build-dependency diff; if framework, library or tool versions changed,
 update `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing.
-Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so a
-fresh Codex chat starts with the current release, handoff and verification
-context.
+Release-cycle documentation updates may still refresh `CHAT_BOOTSTRAP.md` so
+release/handoff context remains discoverable when tooling expects that file.
+`CHAT_BOOTSTRAP.md` is not the clean-session bootstrap; clean Codex sessions use
+`pcvantol/djconnect/BOOTSTRAP_CODEX_SESSION.md` first.
 Release tooling must verify the release commit is based on `origin/main` and
 push the current release commit explicitly with `git push origin HEAD:main`
 instead of relying on a potentially stale local `main` branch.
