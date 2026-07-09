@@ -2,6 +2,29 @@
 
 Guidance for coding agents working on the DJConnect ESP32-S3 firmware.
 
+## DJConnect Platform Foundation
+
+This repository follows the canonical DJConnect design foundation in
+`pcvantol/djconnect`.
+
+Before product, protocol, UX, release, CI or cross-repo contract changes,
+consult:
+
+- `DJCONNECT_CONSTITUTION.md`
+- `PRODUCT_VISION.md`
+- `DESIGN_PRINCIPLES.md`
+- `ARCHITECTURE_PRINCIPLES.md`
+- `DOMAIN_MODEL.md`
+- `CLIENT_CAPABILITY_MATRIX.md`
+- `PRODUCT_LANGUAGE.md`
+- `PLATFORM_GOVERNANCE.md`
+- `PLATFORM_QUALITY_STANDARD.md`
+- `SYNC_PROMPTS.md`
+- `PRODUCT_ROADMAP.md`
+
+Repo-local ESP32 rules below remain authoritative for firmware-specific
+behavior.
+
 ## Project Overview
 
 DJConnect is an Arduino/PlatformIO firmware for the LilyGO T-Embed-CC1101 / ESP32-S3. It is a Home Assistant paired playback remote with:
