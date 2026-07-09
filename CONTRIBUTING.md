@@ -100,6 +100,11 @@ Before opening a pull request:
 3. Describe what changed.
 4. List the checks you ran.
 5. Note the impact on other DJConnect repositories.
+6. For release or cross-repo behavior changes, review this repo against the
+   `DJ Announcement Output Sync` section in
+   `pcvantol/djconnect/SYNC_PROMPTS.md`. For ESP firmware, confirm the
+   `/api/device/dj_response` path still uses `text` plus optional `audio_url`
+   and does not adopt app announcement output modes.
 
 ## Releases
 

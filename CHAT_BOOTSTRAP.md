@@ -45,6 +45,9 @@ Context:
   LilyGO `.bin`, `.sha256` en manifest assets.
 - Werkmap zou schoon moeten zijn; controleer met `git status --short`.
 - Houd cross-repo contracten met `pcvantol/djconnect` actueel als protocol, HA integration, OTA, Assist/STT/TTS, Spotify playback, branding of roadmap geraakt wordt.
+- Nieuwe review/QA-stap: check deze firmware-repo bij release- of
+  cross-repo contractwerk tegen de `DJ Announcement Output Sync` sectie in
+  `pcvantol/djconnect/SYNC_PROMPTS.md`.
 
 Belangrijke regels:
 - Gebruik `apply_patch` voor handmatige edits.
