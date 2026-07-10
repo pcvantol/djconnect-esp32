@@ -469,7 +469,12 @@ void SpotifyClient::applyDeviceList(JsonVariantConst source, DeviceListState &de
     target.id = item["id"] | item["device_id"] | item["value"] | "";
     target.name = item["name"] | "";
     target.type = item["type"] | "";
-    target.active = item["active"] | item["is_active"] | false;
+    target.provider = item["provider"] | "";
+    target.source = item["source"] | "";
+    target.firstSeenAt = item["first_seen_at"] | "";
+    target.lastSeenAt = item["last_seen_at"] | "";
+    target.active = PlaybackResponseParser::outputIsActive(item);
+    target.cached = PlaybackResponseParser::outputIsCached(item);
     target.supportsVolume = item["supports_volume"] | true;
     if (target.id.isEmpty() && target.name.isEmpty()) {
       continue;

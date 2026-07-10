@@ -3113,6 +3113,9 @@ bool DJConnectApp::transferToOutputByNameOrId(const String &output) {
     const bool iphoneAlias = lowerOutput == "iphone" && lowerDeviceName.indexOf("iphone") >= 0;
     if (device.id == output || device.name == output || iphoneAlias) {
       if (!spotify_.transferPlayback(device.id, true)) {
+        if (device.cached) {
+          playback_.error = I18n::text("cached_output_retry_hint");
+        }
         return false;
       }
       lastPlaybackPollAt_ = 0;
@@ -3383,7 +3386,7 @@ void DJConnectApp::transferToSelectedOutput() {
     lastPlaybackPollAt_ = 0;
     spotify_.refreshPlayback();
   } else {
-    showNotice(playback_.error, 3500);
+    showNotice(device.cached ? I18n::text("cached_output_retry_hint") : playback_.error, 3500);
   }
   renderNow();
 }
@@ -4648,6 +4651,10 @@ void DJConnectApp::renderMenuNow() {
         for (size_t index = 0; index < maxDevices; index++) {
           items[index + DJConnectMenuModel::FixedSoundOutputCount].label = deviceList_.devices[index].active ? "* " : "  ";
           items[index + DJConnectMenuModel::FixedSoundOutputCount].label += deviceList_.devices[index].name;
+          if (deviceList_.devices[index].cached) {
+            items[index + DJConnectMenuModel::FixedSoundOutputCount].label += " ";
+            items[index + DJConnectMenuModel::FixedSoundOutputCount].label += I18n::text("recent_output");
+          }
         }
         itemCount += maxDevices;
       }

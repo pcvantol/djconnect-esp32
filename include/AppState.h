@@ -154,7 +154,12 @@ struct SpotifyDeviceState {
   String id;
   String name;
   String type;
+  String provider;
+  String source;
+  String firstSeenAt;
+  String lastSeenAt;
   bool active = false;
+  bool cached = false;
   bool supportsVolume = false;
 };
 

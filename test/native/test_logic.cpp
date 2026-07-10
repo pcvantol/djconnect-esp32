@@ -223,6 +223,37 @@ static void testOutputsPreferredOverLegacyDevices() {
   assert(first["id"] == "legacy");
 }
 
+static void testCachedOutputsFromHomeAssistant() {
+  JsonDocument doc;
+  deserializeJson(doc,
+                  "{\"outputs\":["
+                  "{\"id\":\"live\",\"name\":\"Living room\",\"active\":true,"
+                  "\"provider\":\"spotify\",\"source\":\"web_api\"},"
+                  "{\"id\":\"cached\",\"name\":\"Kitchen\",\"cached\":true,"
+                  "\"first_seen_at\":\"2026-06-01T10:00:00Z\","
+                  "\"last_seen_at\":\"2026-07-01T10:00:00Z\","
+                  "\"provider\":\"spotify\",\"source\":\"cache\"}"
+                  "]}");
+
+  JsonArrayConst outputs = PlaybackResponseParser::preferredOutputArray(doc.as<JsonVariantConst>());
+  assert(!outputs.isNull());
+  assert(outputs.size() == 2);
+  assert(PlaybackResponseParser::outputIsActive(outputs[0]));
+  assert(!PlaybackResponseParser::outputIsCached(outputs[0]));
+  assert(!PlaybackResponseParser::outputIsActive(outputs[1]));
+  assert(PlaybackResponseParser::outputIsCached(outputs[1]));
+  assert(outputs[1]["provider"] == "spotify");
+  assert(outputs[1]["source"] == "cache");
+  assert(outputs[1]["first_seen_at"] == "2026-06-01T10:00:00Z");
+  assert(outputs[1]["last_seen_at"] == "2026-07-01T10:00:00Z");
+
+  doc.clear();
+  deserializeJson(doc, "{\"outputs\":[{\"id\":\"cached\",\"name\":\"Kitchen\",\"cached\":true,\"is_active\":true}]}");
+  outputs = PlaybackResponseParser::preferredOutputArray(doc.as<JsonVariantConst>());
+  assert(PlaybackResponseParser::outputIsCached(outputs[0]));
+  assert(PlaybackResponseParser::outputIsActive(outputs[0]));
+}
+
 static void testUnsupportedBackendCapabilityResponse() {
   JsonDocument doc;
   deserializeJson(doc, "{\"success\":false,\"error\":\"unsupported_backend_capability\",\"message\":\"Queue unsupported\"}");
@@ -1074,6 +1105,7 @@ int main() {
   testHomeAssistantStatusLocalOnlyContractNames();
   testBackendSummaryParsing();
   testOutputsPreferredOverLegacyDevices();
+  testCachedOutputsFromHomeAssistant();
   testUnsupportedBackendCapabilityResponse();
   testBackendQueueResponseShapes();
   testGamesMenuCount();

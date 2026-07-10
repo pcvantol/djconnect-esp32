@@ -62,6 +62,14 @@ inline JsonArrayConst preferredOutputArray(JsonVariantConst source) {
   return !outputs.isNull() ? outputs : deviceArray(source);
 }
 
+inline bool outputIsActive(JsonVariantConst output) {
+  return firstBool(output, "active", "is_active", false);
+}
+
+inline bool outputIsCached(JsonVariantConst output) {
+  return output["cached"].is<bool>() && output["cached"].as<bool>();
+}
+
 inline String backendErrorMessage(JsonVariantConst error, const String &fallback) {
   if (error.is<const char *>()) {
     return error.as<const char *>();

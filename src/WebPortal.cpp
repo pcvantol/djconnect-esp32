@@ -229,7 +229,7 @@ firmwareFine:"Firmware updates run automatically when DJConnect is paired with H
 loading:"Loading", playing:"Playing", paused:"Paused", noPlayback:"No playback", connected:"Connected", disconnected:"Disconnected",
 authorized:"Authorized", notAuthorized:"Not authorized", tokenSecondsLeft:"s left", disabled:"Disabled", on:"On", off:"Off", charging:"charging", full:"full",
 discharging:"discharging", paired:"Paired", pairingMode:"Pairing mode", pairingUnavailable:"Pairing info unavailable",
-none:"None", noOutputs:"No sound outputs", outputsFailed:"Sound outputs failed", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
+none:"None", noOutputs:"No sound outputs", outputsFailed:"Sound outputs failed", recentOutput:"Recent", noQueuedSongs:"No queued songs", noPlaylists:"No playlists",
 playlistsFailed:"Playlists failed", noLogs:"No logs yet", switchingOutput:"Switching output...", skipping:"Skipping...",
 goingBack:"Going back...", startingLiked:"Starting default playlist...", startingQueueItem:"Starting selected song...", selectPlaylist:"Select a playlist",
 startingPlaylist:"Starting playlist...", resumeLogs:"Resume logs", logsPaused:"Logs paused", logsLive:"Logs live",
@@ -266,7 +266,7 @@ firmwareFine:"Firmware update wordt automatisch uitgevoerd indien DJConnect is g
 loading:"Laden", playing:"Speelt", paused:"Gepauzeerd", noPlayback:"Geen playback", connected:"Verbonden", disconnected:"Niet verbonden",
 authorized:"Geautoriseerd", notAuthorized:"Niet geautoriseerd", tokenSecondsLeft:"s over", disabled:"Uitgeschakeld", on:"Aan", off:"Uit", charging:"laden", full:"vol",
 discharging:"ontladen", paired:"Gekoppeld", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformatie niet beschikbaar",
-none:"Geen", noOutputs:"Geen geluidsuitgangen", outputsFailed:"Geluidsuitgangen mislukt", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
+none:"Geen", noOutputs:"Geen geluidsuitgangen", outputsFailed:"Geluidsuitgangen mislukt", recentOutput:"Recent", noQueuedSongs:"Geen nummers in wachtrij", noPlaylists:"Geen afspeellijsten",
 playlistsFailed:"Afspeellijsten mislukt", noLogs:"Nog geen logs", switchingOutput:"Output wisselen...", skipping:"Overslaan...",
 goingBack:"Teruggaan...", startingLiked:"Standaard playlist starten...", startingQueueItem:"Gekozen nummer starten...", selectPlaylist:"Selecteer een afspeellijst",
 startingPlaylist:"Afspeellijst starten...", resumeLogs:"Logs hervatten", logsPaused:"Logs gepauzeerd", logsLive:"Logs live",
@@ -289,7 +289,7 @@ wifi:"WiFi", state:"Status", newWifiSsid:"Neue WiFi SSID", newWifiPassword:"Neue
 pairing:"Kopplung", pairCode:"Koppelcode", resetPairing:"Kopplung resetten", playback:"Musik", connection:"Verbindung", musicLastIssue:"Letzte Meldung", refreshPlayback:"Musikstatus aktualisieren",
 diagnostics:"Diagnose", screen:"Display", storage:"Speicher", restart:"Geraet neu starten", pauseLogs:"Logs pausieren", selectAll:"Alles waehlen", uploadFirmware:"Firmware hochladen", factoryReset:"Werksreset",
 loading:"Laden", playing:"Spielt", paused:"Pausiert", noPlayback:"Keine Wiedergabe", connected:"Verbunden", disconnected:"Getrennt", notAuthorized:"Nicht autorisiert", disabled:"Deaktiviert", on:"Ein", off:"Aus", charging:"laedt", full:"voll",
-paired:"Gekoppelt", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformation fehlt", none:"Keine", noOutputs:"Keine Audioausgaenge", outputsFailed:"Ausgaenge fehlgeschlagen", noQueuedSongs:"Keine Songs", noPlaylists:"Keine Playlists", noLogs:"Noch keine Logs",
+paired:"Gekoppelt", pairingMode:"Koppelmodus", pairingUnavailable:"Koppelinformation fehlt", none:"Keine", noOutputs:"Keine Audioausgaenge", outputsFailed:"Ausgaenge fehlgeschlagen", recentOutput:"Kuerzlich", noQueuedSongs:"Keine Songs", noPlaylists:"Keine Playlists", noLogs:"Noch keine Logs",
 switchingOutput:"Ausgang wechseln...", skipping:"Ueberspringen...", goingBack:"Zurueck...", startingLiked:"Standardliste starten...", startingQueueItem:"Titel starten...", selectPlaylist:"Playlist waehlen", startingPlaylist:"Playlist starten...", saving:"Speichern...", refreshing:"Aktualisieren...",
 restartConfirm:"DJConnect neu starten?", resetPairingConfirm:"Home Assistant Kopplung resetten und neu starten?", factoryResetConfirm:"DJConnect auf Werkseinstellungen setzen?", wifiSignal:"WiFi Signal", wifiDisconnected:"WiFi getrennt", ago:"her"
 },
@@ -304,7 +304,7 @@ wifi:"WiFi", state:"Etat", newWifiSsid:"Nouveau SSID WiFi", newWifiPassword:"Nou
 pairing:"Association", pairCode:"Code", resetPairing:"Reinit association", playback:"Musique", connection:"Connexion", musicLastIssue:"Dernier message", refreshPlayback:"Actualiser musique",
 diagnostics:"Diagnostic", screen:"Ecran", storage:"Stockage", restart:"Redemarrer appareil", pauseLogs:"Pause logs", selectAll:"Tout selectionner", uploadFirmware:"Envoyer firmware", factoryReset:"Reinit usine",
 loading:"Chargement", playing:"Lecture", paused:"Pause", noPlayback:"Pas de lecture", connected:"Connecte", disconnected:"Deconnecte", notAuthorized:"Non autorise", disabled:"Desactive", on:"Active", off:"Desactive", charging:"charge", full:"plein",
-paired:"Associe", pairingMode:"Mode association", pairingUnavailable:"Infos association indisponibles", none:"Aucun", noOutputs:"Aucune sortie", outputsFailed:"Sorties echouees", noQueuedSongs:"Aucun titre", noPlaylists:"Aucune playlist", noLogs:"Aucun log",
+paired:"Associe", pairingMode:"Mode association", pairingUnavailable:"Infos association indisponibles", none:"Aucun", noOutputs:"Aucune sortie", outputsFailed:"Sorties echouees", recentOutput:"Recent", noQueuedSongs:"Aucun titre", noPlaylists:"Aucune playlist", noLogs:"Aucun log",
 switchingOutput:"Changement sortie...", skipping:"Suivant...", goingBack:"Retour...", startingLiked:"Playlist defaut...", startingQueueItem:"Titre choisi...", selectPlaylist:"Choisir playlist", startingPlaylist:"Lancer playlist...", saving:"Enregistrement...", refreshing:"Actualisation...",
 restartConfirm:"Redemarrer DJConnect?", resetPairingConfirm:"Reinit association Home Assistant et redemarrer?", factoryResetConfirm:"Reinitialiser DJConnect?", wifiSignal:"Signal WiFi", wifiDisconnected:"WiFi deconnecte", ago:"avant"
 },
@@ -319,7 +319,7 @@ wifi:"WiFi", state:"Estado", newWifiSsid:"Nuevo SSID WiFi", newWifiPassword:"Nue
 pairing:"Vinculo", pairCode:"Codigo", resetPairing:"Restablecer vinculo", playback:"Musica", connection:"Conexion", musicLastIssue:"Ultimo aviso", refreshPlayback:"Actualizar musica",
 diagnostics:"Diagnostico", screen:"Pantalla", storage:"Almacenamiento", restart:"Reiniciar dispositivo", pauseLogs:"Pausar logs", selectAll:"Seleccionar todo", uploadFirmware:"Subir firmware", factoryReset:"Restablecer fabrica",
 loading:"Cargando", playing:"Reproduciendo", paused:"Pausado", noPlayback:"Sin reproduccion", connected:"Conectado", disconnected:"Desconectado", notAuthorized:"No autorizado", disabled:"Desactivado", on:"Encendido", off:"Apagado", charging:"cargando", full:"lleno",
-paired:"Vinculado", pairingMode:"Modo vinculo", pairingUnavailable:"Info vinculo no disponible", none:"Ninguno", noOutputs:"Sin salidas", outputsFailed:"Salidas fallidas", noQueuedSongs:"Sin canciones", noPlaylists:"Sin playlists", noLogs:"Sin logs",
+paired:"Vinculado", pairingMode:"Modo vinculo", pairingUnavailable:"Info vinculo no disponible", none:"Ninguno", noOutputs:"Sin salidas", outputsFailed:"Salidas fallidas", recentOutput:"Reciente", noQueuedSongs:"Sin canciones", noPlaylists:"Sin playlists", noLogs:"Sin logs",
 switchingOutput:"Cambiando salida...", skipping:"Saltando...", goingBack:"Volviendo...", startingLiked:"Iniciando playlist...", startingQueueItem:"Iniciando cancion...", selectPlaylist:"Elige playlist", startingPlaylist:"Iniciando playlist...", saving:"Guardando...", refreshing:"Actualizando...",
 restartConfirm:"Reiniciar DJConnect?", resetPairingConfirm:"Restablecer vinculo Home Assistant y reiniciar?", factoryResetConfirm:"Restablecer DJConnect?", wifiSignal:"Senal WiFi", wifiDisconnected:"WiFi desconectado", ago:"hace"
 }
@@ -947,7 +947,7 @@ continue;
 }
 const option = document.createElement("option");
 option.value = device.id;
-option.textContent = device.active ? `${device.name} *` : device.name;
+option.textContent = `${device.active ? "* " : ""}${device.name}${device.cached ? ` ${tr("recentOutput")}` : ""}`;
 option.selected = !!device.active;
 select.appendChild(option);
 }
@@ -1705,6 +1705,8 @@ void WebPortal::handleDevicesJson() {
     sendJsonEscapedContent(server_, device.name);
     server_.sendContent("\",\"active\":");
     server_.sendContent(device.active ? "true" : "false");
+    server_.sendContent(",\"cached\":");
+    server_.sendContent(device.cached ? "true" : "false");
     server_.sendContent(",\"supportsVolume\":");
     server_.sendContent(device.supportsVolume ? "true" : "false");
     server_.sendContent("}");
@@ -1839,11 +1841,13 @@ void WebPortal::handleTransferPost() {
   spotify_->refreshDevices(devices);
   String lowerRequested = deviceId;
   lowerRequested.toLowerCase();
+  bool requestedCached = false;
   for (size_t index = 0; index < devices.count; index++) {
     String lowerName = devices.devices[index].name;
     lowerName.toLowerCase();
     const bool iphoneAlias = lowerRequested == "iphone" && lowerName.indexOf("iphone") >= 0;
     if (devices.devices[index].id == deviceId || devices.devices[index].name == deviceId || iphoneAlias) {
+      requestedCached = devices.devices[index].cached;
       deviceId = devices.devices[index].id;
       break;
     }
@@ -1853,7 +1857,11 @@ void WebPortal::handleTransferPost() {
   if (!spotify_->transferPlayback(deviceId, true)) {
     AppLog.print("Web playback: transfer failed: ");
     AppLog.println(playback_ == nullptr || playback_->error.isEmpty() ? "unknown" : playback_->error);
-    server_.send(502, "text/plain", playback_ == nullptr || playback_->error.isEmpty() ? "Output switch failed" : playback_->error);
+    server_.send(
+        502,
+        "text/plain",
+        requestedCached ? localizedText("cached_output_retry_hint")
+                        : (playback_ == nullptr || playback_->error.isEmpty() ? "Output switch failed" : playback_->error));
     return;
   }
 
