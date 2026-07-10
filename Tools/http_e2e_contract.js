@@ -71,6 +71,7 @@ async function run() {
 
     const status = await post(baseURL, "/api/djconnect/v1/status", {
       ...identity(),
+      request_source: "device_status",
       ha_pairing_status: "paired",
       local_url: "http://djconnect-lilygo-t-embed-s3-ci.local",
       ha_local_url: baseURL,
@@ -93,32 +94,47 @@ async function run() {
       led_state: "on",
       sound_output: "None",
       settings: { language: "en", theme: "dark", log_level: "info" },
+      capabilities: {
+        profiles: true,
+        request_context: true,
+        private_sessions: true,
+      },
+      contract_versions: {
+        profile_context: 1,
+        client_contract_fixtures: 1,
+      },
     });
     assert(status.playback?.track_name === "Contract Track", "status response missing playback");
 
     const command = await post(baseURL, "/api/djconnect/v1/command", {
       ...identity(),
       payload_type: "command",
+      request_source: "device_command",
       firmware: "3.2.10",
       command: "status",
+      capabilities: { profiles: true, request_context: true, private_sessions: true },
     });
     assert(command.music_backend_available === true, "command missing backend summary");
 
     const queue = await post(baseURL, "/api/djconnect/v1/command", {
       ...identity(),
       payload_type: "command",
+      request_source: "device_command",
       firmware: "3.2.10",
       command: "queue",
       limit: 100,
+      capabilities: { profiles: true, request_context: true, private_sessions: true },
     });
     assert(queue.queue?.items?.length === 1, "queue contract failed");
 
     const playlists = await post(baseURL, "/api/djconnect/v1/command", {
       ...identity(),
       payload_type: "command",
+      request_source: "device_command",
       firmware: "3.2.10",
       command: "playlists",
       limit: 20,
+      capabilities: { profiles: true, request_context: true, private_sessions: true },
     });
     assert(playlists.playlists?.length === 1, "playlists contract failed");
 
@@ -132,6 +148,7 @@ async function run() {
       "x-djconnect-client-id": contractFixture.clientId,
       "x-djconnect-device-name": contractFixture.deviceName,
       "x-djconnect-client-type": contractFixture.clientType,
+      "x-djconnect-request-source": "voice",
     });
     assert(voice.statusCode === 200 && voice.body.text === "Contract DJ response", "voice contract failed");
 

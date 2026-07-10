@@ -78,6 +78,17 @@ function assertIdentity(body, route) {
   assert(identity.device_name === DEVICE_NAME || body.device_name === DEVICE_NAME, `${route} missing device_name`);
   assert(identity.client_type === CLIENT_TYPE || body.client_type === CLIENT_TYPE, `${route} missing client_type=esp32`);
   assert(body.device_type === undefined, `${route} must not send device_type`);
+  assert(body.profile_id === undefined, `${route} must not require ESP32 profile_id`);
+  assert(body.music_dna === undefined, `${route} must not send Music DNA`);
+  assert(body.recommendations === undefined, `${route} must not send recommendations`);
+  assert(body.ask_dj_history === undefined, `${route} must not send Ask DJ history`);
+}
+
+function assertProfilePlatformDiscovery(body, route) {
+  assert(body.capabilities?.profiles === true, `${route} missing profiles capability`);
+  assert(body.capabilities?.request_context === true, `${route} missing request_context capability`);
+  assert(body.capabilities?.private_sessions === true, `${route} missing private_sessions capability`);
+  assert(body.contract_versions?.profile_context === 1, `${route} missing profile_context contract version`);
 }
 
 function backendSummary() {
@@ -183,6 +194,16 @@ function resultForMessage(message) {
         commands: WS_ROUTES,
         features: { playback: true, esp32_status: true },
         fallbacks: { voice: "/api/djconnect/v1/voice", tts: "/api/djconnect/v1/tts/{id}.wav" },
+        capabilities: {
+          profiles: true,
+          explicit_profile_selection: false,
+          private_sessions: true,
+          request_context: true,
+        },
+        contract_versions: {
+          profile_context: 1,
+          client_contract_fixtures: 1,
+        },
       },
     };
   }
@@ -264,6 +285,8 @@ async function handleHTTPContractRoute(request, response, observed, baseURL) {
     const body = parseJSON(await readRequestBody(request), path);
     assertIdentity(body, path);
     assert(body.ha_pairing_status === "paired", "status missing paired state");
+    assert(body.request_source === "device_status", "status missing request_source=device_status");
+    assertProfilePlatformDiscovery(body, path);
     jsonResponse(response, 200, playbackResponse({ state: "online" }));
     return true;
   }
@@ -272,6 +295,9 @@ async function handleHTTPContractRoute(request, response, observed, baseURL) {
     const body = parseJSON(await readRequestBody(request), path);
     assertIdentity(body, path);
     assert(body.payload_type === "command", "command missing payload_type=command");
+    assert(body.request_source === "device_command", "command missing request_source=device_command");
+    assert(body.capabilities?.profiles === true, "command missing profiles capability");
+    assert(body.capabilities?.request_context === true, "command missing request_context capability");
     assert(typeof body.command === "string" && body.command.length > 0, "command missing command");
     const command = body.command;
     if (command === "queue") {
@@ -300,6 +326,7 @@ async function handleHTTPContractRoute(request, response, observed, baseURL) {
     assert(request.headers["x-djconnect-client-id"] === DEVICE_ID, "voice missing X-DJConnect-Client-ID");
     assert(request.headers["x-djconnect-device-name"] === DEVICE_NAME, "voice missing X-DJConnect-Device-Name");
     assert(request.headers["x-djconnect-client-type"] === CLIENT_TYPE, "voice missing X-DJConnect-Client-Type");
+    assert(request.headers["x-djconnect-request-source"] === "voice", "voice missing request source");
     const body = await readRequestBody(request);
     assert(body.length > 0, "voice missing body");
     jsonResponse(response, 200, {

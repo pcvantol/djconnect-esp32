@@ -291,6 +291,17 @@ Why:
 The ESP never stores Spotify OAuth or backend credentials. It sends generic
 commands to Home Assistant and receives generic playback state back.
 
+The ESP32 is the platform's Voice / Control Client, not an Intelligence Client.
+It is Profile-aware by sending `device_id`, `client_type:"esp32"`,
+`request_source` and capability/contract-version metadata on Home Assistant
+status, playback command and voice/PTT routes. Home Assistant resolves the
+Profile from that request context. The firmware does not send or store
+`profile_id`, Music DNA, recommendations, mood, Ask DJ history, response style
+or other profile-owned personal state. Canonical Profile Platform errors are
+handled as Home Assistant/Profile setup guidance and do not clear pairing; only
+auth/config pairing failures such as 401/403/404 or stale token errors return
+the ESP to pairing mode.
+
 Queue and playlist commands carry explicit positive integer limits at the client
 boundary. ESP32 queue requests use `limit=100`; ESP32 playlist requests use
 `limit=20` to preserve device responsiveness while staying below Spotify's

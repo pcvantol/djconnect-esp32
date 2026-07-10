@@ -260,6 +260,10 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
         AppLog.println("HA rejected payload: missing client_type=esp32");
         return false;
       }
+      if (Logic::isDjConnectProfilePlatformError(errorKey)) {
+        setProxyError(Logic::profilePlatformErrorMessage(errorKey, errorDoc["message"] | ""));
+        return false;
+      }
       if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
         tokenInvalidGrant_ = false;
         lastProxyFailureAt_ = millis();
@@ -314,6 +318,10 @@ bool SpotifyClient::proxyRequest(JsonDocument &doc, JsonDocument *response) {
         AppLog.println("HA rejected payload: missing client_type=esp32");
         return false;
       }
+      if (Logic::isDjConnectProfilePlatformError(errorKey)) {
+        setProxyError(Logic::profilePlatformErrorMessage(errorKey, (*response)["message"] | ""));
+        return false;
+      }
       if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
         tokenInvalidGrant_ = true;
       }
@@ -346,7 +354,12 @@ void SpotifyClient::addCommandIdentityFields(JsonDocument &request) const {
   request["device_name"] = device_->getDeviceName();
   request["client_type"] = device_->getClientType();
   request["payload_type"] = "command";
+  request["request_source"] = "device_command";
   request["firmware"] = device_->getFirmwareVersion();
+  JsonObject capabilities = request["capabilities"].to<JsonObject>();
+  capabilities["profiles"] = true;
+  capabilities["request_context"] = true;
+  capabilities["private_sessions"] = true;
 }
 
 int SpotifyClient::postProxyRequest(
