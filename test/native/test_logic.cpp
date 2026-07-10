@@ -138,13 +138,31 @@ static void testHomeAssistantStatusLocalOnlyContractNames() {
   JsonDocument status;
   status["device_id"] = "djconnect-lilygo-t-embed-s3-001122AABBCC";
   status["client_type"] = "esp32";
+  status["request_source"] = "device_status";
   status["ha_local_url"] = "http://192.168.1.10:8123";
   status["local_url"] = "http://djconnect-lilygo-t-embed-s3-001122AABBCC.local";
   status["firmware"] = "3.2.0";
   status["spotify_configured"] = false;
+  JsonObject capabilities = status["capabilities"].to<JsonObject>();
+  capabilities["profiles"] = true;
+  capabilities["request_context"] = true;
+  capabilities["private_sessions"] = true;
+  capabilities["profile_crud"] = false;
+  capabilities["profile_selection"] = false;
+  JsonObject contractVersions = status["contract_versions"].to<JsonObject>();
+  contractVersions["profile_context"] = 1;
   assert(status["client_type"] == "esp32");
+  assert(status["request_source"] == "device_status");
   assert(status["ha_local_url"] == "http://192.168.1.10:8123");
   assert(status["ha_remote_url"].isNull());
+  assert(status["profile_id"].isNull());
+  assert(status["music_dna"].isNull());
+  assert(status["ask_dj_history"].isNull());
+  assert(status["capabilities"]["profiles"] == true);
+  assert(status["capabilities"]["request_context"] == true);
+  assert(status["capabilities"]["profile_crud"] == false);
+  assert(status["capabilities"]["profile_selection"] == false);
+  assert(status["contract_versions"]["profile_context"] == 1);
 }
 
 static void testBackendSummaryParsing() {
@@ -278,6 +296,65 @@ static void testHomeAssistantClientTypeErrorContract() {
   assert(!Logic::isDjConnectInvalidClientType(""));
   assert(!Logic::isDjConnectInvalidClientType("invalid_token"));
   assert(!Logic::isHomeAssistantPairingInvalidStatus(400));
+}
+
+static void testProfilePlatformCanonicalErrors() {
+  assert(Logic::isDjConnectProfilePlatformError("profile_required"));
+  assert(Logic::isDjConnectProfilePlatformError("invalid_profile"));
+  assert(Logic::isDjConnectProfilePlatformError("device_not_mapped"));
+  assert(Logic::isDjConnectProfilePlatformError("profile_backend_missing"));
+  assert(Logic::isDjConnectProfilePlatformError("profile_music_account_missing"));
+  assert(Logic::isDjConnectProfilePlatformError("profile_backend_account_mismatch"));
+  assert(Logic::isDjConnectProfilePlatformError("profile_access_denied"));
+  assert(Logic::isDjConnectProfilePlatformError("private_session_restriction"));
+  assert(Logic::isDjConnectProfilePlatformError("invalid_request_context"));
+  assert(!Logic::isDjConnectProfilePlatformError("invalid_token"));
+  assert(!Logic::isDjConnectProfilePlatformError("not_configured"));
+  assert(!Logic::isHomeAssistantPairingInvalidError("device_not_mapped"));
+  assert(Logic::isDjConnectProfileMappingRequired("device_not_mapped"));
+  assert(std::strcmp(
+             Logic::profilePlatformErrorMessage("device_not_mapped"),
+             "Map this DJConnect device to a Profile in Home Assistant.") == 0);
+  assert(std::strcmp(
+             Logic::profilePlatformErrorMessage("profile_backend_missing"),
+             "Check the resolved DJConnect Profile music backend in Home Assistant.") == 0);
+  assert(std::strcmp(
+             Logic::profilePlatformErrorMessage("private_session_restriction"),
+             "This action is unavailable in a private session.") == 0);
+  assert(std::strcmp(
+             Logic::profilePlatformErrorMessage("device_not_mapped", "Custom HA message"),
+             "Custom HA message") == 0);
+}
+
+static void testEsp32ProfileAwareRequestEnvelopeStaysDeviceScoped() {
+  JsonDocument voice;
+  voice["device_id"] = "djconnect-lilygo-t-embed-s3-001122AABBCC";
+  voice["client_id"] = "djconnect-lilygo-t-embed-s3-001122AABBCC";
+  voice["device_name"] = "DJConnect LilyGO";
+  voice["client_type"] = "esp32";
+  voice["request_source"] = "voice";
+  assert(voice["client_type"] == "esp32");
+  assert(voice["request_source"] == "voice");
+  assert(voice["profile_id"].isNull());
+  assert(voice["private_session"].isNull());
+  assert(voice["music_dna"].isNull());
+  assert(voice["recommendations"].isNull());
+  assert(voice["ask_dj_history"].isNull());
+
+  JsonDocument command;
+  command["device_id"] = voice["device_id"];
+  command["client_id"] = voice["client_id"];
+  command["client_type"] = "esp32";
+  command["payload_type"] = "command";
+  command["request_source"] = "device_command";
+  JsonObject capabilities = command["capabilities"].to<JsonObject>();
+  capabilities["profiles"] = true;
+  capabilities["request_context"] = true;
+  capabilities["private_sessions"] = true;
+  assert(command["request_source"] == "device_command");
+  assert(command["profile_id"].isNull());
+  assert(command["capabilities"]["profiles"] == true);
+  assert(command["capabilities"]["request_context"] == true);
 }
 
 static void testImmediatePollTimestampConvention() {
@@ -1001,6 +1078,8 @@ int main() {
   testBackendQueueResponseShapes();
   testGamesMenuCount();
   testHomeAssistantClientTypeErrorContract();
+  testProfilePlatformCanonicalErrors();
+  testEsp32ProfileAwareRequestEnvelopeStaysDeviceScoped();
   testImmediatePollTimestampConvention();
   testSpotifyConfiguredForHomeAssistantStatus();
   testProgressEstimation();

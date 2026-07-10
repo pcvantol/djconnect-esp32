@@ -322,6 +322,47 @@ inline bool isDjConnectInvalidClientType(const char *error) {
   return error != nullptr && strcmp(error, "invalid_client_type") == 0;
 }
 
+inline bool isDjConnectProfilePlatformError(const char *error) {
+  return error != nullptr &&
+         (strcmp(error, "profile_required") == 0 ||
+          strcmp(error, "invalid_profile") == 0 ||
+          strcmp(error, "device_not_mapped") == 0 ||
+          strcmp(error, "profile_backend_missing") == 0 ||
+          strcmp(error, "profile_music_account_missing") == 0 ||
+          strcmp(error, "profile_backend_account_mismatch") == 0 ||
+          strcmp(error, "profile_access_denied") == 0 ||
+          strcmp(error, "private_session_restriction") == 0 ||
+          strcmp(error, "invalid_request_context") == 0);
+}
+
+inline bool isDjConnectProfileMappingRequired(const char *error) {
+  return error != nullptr &&
+         (strcmp(error, "profile_required") == 0 ||
+          strcmp(error, "device_not_mapped") == 0);
+}
+
+inline const char *profilePlatformErrorMessage(const char *error, const char *fallbackMessage = nullptr) {
+  if (fallbackMessage != nullptr && fallbackMessage[0] != '\0') {
+    return fallbackMessage;
+  }
+  if (isDjConnectProfileMappingRequired(error)) {
+    return "Map this DJConnect device to a Profile in Home Assistant.";
+  }
+  if (error != nullptr &&
+      (strcmp(error, "profile_backend_missing") == 0 ||
+       strcmp(error, "profile_music_account_missing") == 0 ||
+       strcmp(error, "profile_backend_account_mismatch") == 0)) {
+    return "Check the resolved DJConnect Profile music backend in Home Assistant.";
+  }
+  if (error != nullptr && strcmp(error, "private_session_restriction") == 0) {
+    return "This action is unavailable in a private session.";
+  }
+  if (isDjConnectProfilePlatformError(error)) {
+    return "Check the DJConnect Profile setup in Home Assistant.";
+  }
+  return "HA playback failed";
+}
+
 inline bool isNabuCasaCloudUrl(const char *url) {
   return url != nullptr && strstr(url, ".ui.nabu.casa") != nullptr;
 }

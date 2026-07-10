@@ -175,6 +175,7 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   request["ha_local_url"] = device_->getHaLocalUrl();
   request["state"] = "online";
   request["status"] = "online";
+  request["request_source"] = "device_status";
   request["ota_state"] = "idle";
   request["update_state"] = "idle";
   request["battery_percent"] = battery.percent;
@@ -223,6 +224,14 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
   screenObject["brightness_level"] = visualState.screenBrightnessLevel;
   JsonObject ledObject = request["led"].to<JsonObject>();
   ledObject["state"] = visualState.ledOn ? "on" : "off";
+  JsonObject capabilitiesObject = request["capabilities"].to<JsonObject>();
+  capabilitiesObject["profiles"] = true;
+  capabilitiesObject["request_context"] = true;
+  capabilitiesObject["private_sessions"] = true;
+  capabilitiesObject["profile_platform"] = true;
+  JsonObject contractVersionsObject = request["contract_versions"].to<JsonObject>();
+  contractVersionsObject["profile_context"] = 1;
+  contractVersionsObject["client_contract_fixtures"] = 1;
   request["playback_configured"] = playbackConfigured;
   request["spotify_configured"] = playbackConfigured;
   request["free_heap"] = ESP.getFreeHeap();
@@ -269,6 +278,11 @@ DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
     }
     if (Logic::isDjConnectInvalidClientType(errorKey)) {
       AppLog.println("HA rejected payload: missing client_type=esp32");
+      return StatusResult::Failed;
+    }
+    if (Logic::isDjConnectProfilePlatformError(errorKey)) {
+      AppLog.print("HA profile setup needed: ");
+      AppLog.println(Logic::profilePlatformErrorMessage(errorKey, response["message"] | ""));
       return StatusResult::Failed;
     }
     if (Logic::isDjConnectVersionMismatch(code, errorKey)) {

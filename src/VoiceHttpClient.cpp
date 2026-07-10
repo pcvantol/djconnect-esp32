@@ -336,6 +336,7 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
   doc["client_id"] = device_->getDeviceId();
   doc["device_name"] = device_->getDeviceName();
   doc["client_type"] = device_->getClientType();
+  doc["request_source"] = "voice";
   doc["text"] = recognizedText;
   String body;
   serializeJson(doc, body);
@@ -382,6 +383,8 @@ bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &m
     if (Logic::isDjConnectInvalidClientType(errorKey)) {
       AppLog.println("HA rejected payload: missing client_type=esp32");
       message = "HA rejected payload: missing client_type=esp32";
+    } else if (Logic::isDjConnectProfilePlatformError(errorKey)) {
+      message = Logic::profilePlatformErrorMessage(errorKey, errorMessage);
     } else if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
       updatePairingInvalidationForStatus(code);
       message = errorDoc["message"] | "Update DJConnect firmware/integration";
@@ -476,6 +479,7 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
   http.addHeader("X-DJConnect-Client-ID", device_->getDeviceId());
   http.addHeader("X-DJConnect-Device-Name", device_->getDeviceName());
   http.addHeader("X-DJConnect-Client-Type", device_->getClientType());
+  http.addHeader("X-DJConnect-Request-Source", "voice");
   AppLog.print("Voice WAV upload bytes=");
   AppLog.println(fileSize);
 
@@ -505,6 +509,8 @@ bool VoiceHttpClient::uploadWav(const String &path, String &message, String *aud
     if (Logic::isDjConnectInvalidClientType(errorKey)) {
       AppLog.println("HA rejected payload: missing client_type=esp32");
       message = "HA rejected payload: missing client_type=esp32";
+    } else if (Logic::isDjConnectProfilePlatformError(errorKey)) {
+      message = Logic::profilePlatformErrorMessage(errorKey, errorMessage);
     } else if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
       updatePairingInvalidationForStatus(code);
       message = errorDoc["message"] | "Update DJConnect firmware/integration";
