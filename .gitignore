@@ -14,8 +14,6 @@
 .vscode/launch.json
 .vscode/ipch/
 
-# Mac
-.DS_Store
 
 # Secrets/config
 secrets.h
@@ -27,3 +25,23 @@ __pycache__/
 
 # Generated release assets live in pcvantol/djconnect-firmware, not in source
 release/
+
+# DJConnect shared local metadata
+.DS_Store
+**/.DS_Store
+.AppleDouble
+**/.AppleDouble
+.LSOverride
+**/.LSOverride
+._*
+**/._*
+.Spotlight-V100/
+**/.Spotlight-V100/
+.Trashes/
+**/.Trashes/
+.fseventsd/
+**/.fseventsd/
+Thumbs.db
+**/Thumbs.db
+Desktop.ini
+**/Desktop.ini
