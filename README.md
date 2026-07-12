@@ -582,6 +582,19 @@ c++ -std=c++17 -Iinclude -I.pio/libdeps/t_embed_cc1101/ArduinoJson/src test/nati
 /tmp/djconnect_unit_tests
 ```
 
+Generate native Cobertura coverage for the host-testable firmware logic:
+
+```sh
+python3 -m pip install gcovr
+scripts/run_native_coverage.sh
+```
+
+The report is written to
+`release/native-coverage/djconnect-esp32-native-coverage.xml`. It intentionally
+measures the pure production logic headers exercised by `test_logic.cpp`; it
+does not claim host coverage for Arduino/ESP-IDF hardware modules. CI uploads
+the same Cobertura artifact.
+
 Run release-script checks:
 
 ```bash
