@@ -18,6 +18,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  software-assurance-governance:
+    name: Software Assurance governance
+    permissions:
+      contents: read
+    uses: pcvantol/djconnect/.github/workflows/software-assurance-governance.yml@b02217ab54ff5a93e9ba5ae406ac608f43ff8792
+    with:
+      execution_profile: balanced
+      owner: pcvantol/djconnect-esp32
+
   analyze:
     name: Analyze C/C++
     runs-on: ubuntu-latest
