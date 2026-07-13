@@ -21,7 +21,7 @@ jobs:
       owner: pcvantol/djconnect-esp32
 
   release-info:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, internal-release, qualification, firmware]
 
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -63,7 +63,7 @@ jobs:
 
   build-release:
     needs: release-info
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, internal-release, qualification, firmware]
 
     strategy:
       fail-fast: false
@@ -116,8 +116,8 @@ jobs:
           ASSET="${{ needs.release-info.outputs.lilygo_bin }}"
           FIRMWARE_DIR=".pio/build-release/${{ matrix.env }}/${{ matrix.env }}"
           cp "${FIRMWARE_DIR}/firmware.bin" "release/${{ matrix.env }}/${ASSET}"
-          SHA256=$(sha256sum "release/${{ matrix.env }}/${ASSET}" | awk '{print $1}')
-          SIZE=$(stat -c%s "release/${{ matrix.env }}/${ASSET}")
+          SHA256=$(shasum -a 256 "release/${{ matrix.env }}/${ASSET}" | awk '{print $1}')
+          SIZE=$(stat -f%z "release/${{ matrix.env }}/${ASSET}")
           echo "${SHA256}  ${ASSET}" > "release/${{ matrix.env }}/${ASSET}.sha256"
           cat > "release/${{ matrix.env }}/metadata.env" <<EOF
           BOARD=${{ matrix.env }}
@@ -138,7 +138,7 @@ jobs:
     needs:
       - release-info
       - build-release
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, internal-release, qualification, firmware]
 
     steps:
       - name: Checkout source

@@ -25,7 +25,8 @@ jobs:
       owner: pcvantol/djconnect-esp32
 
   native-tests:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, internal-release, qualification, firmware]
     timeout-minutes: 10
 
     steps:
@@ -75,7 +76,8 @@ jobs:
           if-no-files-found: error
 
   postman-collections:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, internal-release, qualification, firmware]
     timeout-minutes: 10
 
     steps:
@@ -94,7 +96,8 @@ jobs:
         run: python3 test/native/test_webportal_i18n.py
 
   ha-contract-e2e:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, internal-release, qualification, firmware]
     timeout-minutes: 10
 
     steps:
@@ -116,7 +119,8 @@ jobs:
         run: node Tools/validate_contract_redaction.js
 
   release-script:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, internal-release, qualification, firmware]
     timeout-minutes: 10
 
     steps:
@@ -135,7 +139,8 @@ jobs:
         run: ./release.sh 99.99.99 --dry-run
 
   platformio-build:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, internal-release, qualification, firmware]
     timeout-minutes: 45
 
     steps:
@@ -167,6 +172,32 @@ jobs:
 
       - name: Build LilyGO firmware
         run: pio run -e t_embed_cc1101
+
+      - name: Record runner qualification evidence
+        if: always()
+        env:
+          REQUIRED_RUNNER_ROLE: firmware
+        run: |
+          set -euo pipefail
+          mkdir -p runner-evidence
+          jq -n \
+            --arg runner_name "$RUNNER_NAME" \
+            --arg runner_os "$RUNNER_OS" \
+            --arg runner_arch "$RUNNER_ARCH" \
+            --arg required_role "$REQUIRED_RUNNER_ROLE" \
+            --arg git_sha "$GITHUB_SHA" \
+            --arg platformio "$(pio --version | head -n 1)" \
+            --arg python "$(python --version)" \
+            '{runner_name:$runner_name,runner_os:$runner_os,runner_arch:$runner_arch,required_role:$required_role,git_sha:$git_sha,platformio:$platformio,python:$python}' \
+            > runner-evidence/runner-evidence.json
+
+      - name: Upload runner qualification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: runner-evidence-firmware
+          path: runner-evidence/runner-evidence.json
+          if-no-files-found: error
 
   cleanup-workflow-runs:
     needs:
