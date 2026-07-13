@@ -1,0 +1,19 @@
+name: Post-Merge Release Evidence
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  reconcile:
+    uses: pcvantol/djconnect/.github/workflows/post-merge-release-evidence.yml@ea4872339ebe9e3ba6873cf87ca2d6c89aa100c4
+    with:
+      required_main_workflow: Firmware CI
+      coverage_artifact_name: esp32-native-cobertura-coverage
