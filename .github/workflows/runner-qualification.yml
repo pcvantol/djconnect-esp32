@@ -29,9 +29,9 @@ jobs:
             --arg runner_arch "$RUNNER_ARCH" \
             --arg required_role "$REQUIRED_RUNNER_ROLE" \
             --arg git_sha "$GITHUB_SHA" \
-            --arg platformio "$(pio --version | head -n 1)" \
+            --arg platformio_path "$(command -v pio)" \
             --arg python "$(python3 --version)" \
-            '{runner_name:$runner_name,runner_os:$runner_os,runner_arch:$runner_arch,required_role:$required_role,git_sha:$git_sha,platformio:$platformio,python:$python}' \
+            '{runner_name:$runner_name,runner_os:$runner_os,runner_arch:$runner_arch,required_role:$required_role,git_sha:$git_sha,platformio_path:$platformio_path,python:$python}' \
             > runner-evidence/runner-evidence.json
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
