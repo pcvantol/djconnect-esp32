@@ -1,0 +1,37 @@
+name: Owner Authorization
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: Exact repository in owner/name form.
+        required: true
+        type: string
+      pr_number:
+        description: Exact pull request number.
+        required: true
+        type: string
+      candidate_sha:
+        description: Exact current pull-request SHA.
+        required: true
+        type: string
+      branch:
+        description: Target branch.
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  authorize:
+    uses: pcvantol/djconnect/.github/workflows/owner-authorization.yml@d19f1af905b038841884a653380ad68576cf66a7
+    with:
+      repository: ${{ inputs.repository }}
+      pr_number: ${{ inputs.pr_number }}
+      candidate_sha: ${{ inputs.candidate_sha }}
+      branch: ${{ inputs.branch }}
+
