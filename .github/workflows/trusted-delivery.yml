@@ -7,10 +7,11 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  statuses: write
 
 jobs:
   qualification:
     name: Trusted Delivery qualification
-    uses: pcvantol/djconnect/.github/workflows/trusted-delivery-qualification.yml@5b235069a79f3f650e497a5b64a4bce4aeb1e031
+    uses: pcvantol/djconnect/.github/workflows/trusted-delivery-qualification.yml@e8dece248f30d6a0ae2399723b3d61b133d1563d
     with:
       owner_login: pcvantol
