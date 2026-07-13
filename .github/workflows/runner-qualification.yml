@@ -1,0 +1,41 @@
+name: Self-hosted runner qualification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - runner/**
+
+permissions:
+  contents: read
+
+jobs:
+  qualify-firmware-runner:
+    if: ${{ github.actor == github.repository_owner }}
+    runs-on: [self-hosted, internal-release, qualification, firmware]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Collect redacted runner evidence
+        env:
+          REQUIRED_RUNNER_ROLE: firmware
+        run: |
+          set -euo pipefail
+          mkdir -p runner-evidence
+          jq -n \
+            --arg runner_name "$RUNNER_NAME" \
+            --arg runner_os "$RUNNER_OS" \
+            --arg runner_arch "$RUNNER_ARCH" \
+            --arg required_role "$REQUIRED_RUNNER_ROLE" \
+            --arg git_sha "$GITHUB_SHA" \
+            --arg platformio "$(pio --version | head -n 1)" \
+            --arg python "$(python3 --version)" \
+            '{runner_name:$runner_name,runner_os:$runner_os,runner_arch:$runner_arch,required_role:$required_role,git_sha:$git_sha,platformio:$platformio,python:$python}' \
+            > runner-evidence/runner-evidence.json
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: runner-evidence-firmware
+          path: runner-evidence/runner-evidence.json
+          if-no-files-found: error
