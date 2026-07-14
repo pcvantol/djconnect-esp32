@@ -1,0 +1,46 @@
+name: ESP32 post-deployment smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha: {required: true, type: string}
+      manifest_id: {required: true, type: string}
+      artifact_id: {required: true, type: string}
+      artifact_sha256: {required: true, type: string}
+      target: {required: true, type: choice, options: [esp32_lilygo_t_embed_s3]}
+      platform_version: {required: true, type: string}
+      release_profile: {required: true, type: choice, options: [INTERNAL_RELEASE]}
+      deployment_workflow_run: {required: true, type: string}
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, macOS, ARM64, internal-release, private-network-deployment]
+    environment: private-network-deployment
+    steps:
+      - name: Validate immutable smoke request
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+          PLATFORM_VERSION: ${{ inputs.platform_version }}
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
+          DEPLOYMENT_WORKFLOW_RUN: ${{ inputs.deployment_workflow_run }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$CANDIDATE_SHA" | grep -Eq '^[0-9a-f]{40}$'
+          printf '%s' "$MANIFEST_ID" | grep -Eq '^release-[A-Za-z0-9._-]+$'
+          printf '%s' "$ARTIFACT_ID" | grep -Eq '^djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
+          printf '%s' "$ARTIFACT_SHA256" | grep -Eq '^[0-9a-f]{64}$'
+          test "$TARGET" = esp32_lilygo_t_embed_s3
+          printf '%s' "$PLATFORM_VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'
+          test "$RELEASE_PROFILE" = INTERNAL_RELEASE
+          printf '%s' "$DEPLOYMENT_WORKFLOW_RUN" | grep -Eq '^[0-9]+$'
+      - name: Refuse smoke without a verified deployment evidence source
+        run: |
+          echo "SMOKE_INCONCLUSIVE: no approved operational manifest or verified ESP32 deployment evidence source is available."
+          exit 1
