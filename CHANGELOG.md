@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## v3.3.0
+
+### Changed
+
+- Prepared the LilyGO T-Embed S3 firmware for the Platform Release 3.3
+  candidate, including the canonical release-governance and post-merge
+  verification workflow integration.
+- Added a fail-closed ESP32 deployment consumer and post-deployment smoke
+  workflow. Device deployment remains separately approval-gated and is not
+  performed as part of firmware artifact publication.
+
 ## v3.2.12
 
 ### Changed
