@@ -43,6 +43,22 @@ jobs:
           printf '%s' "$ARTIFACT_ID" | grep -Eq '^djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
           printf '%s' "$ARTIFACT_SHA256" | grep -Eq '^[0-9a-f]{64}$'
           printf '%s' "$PLATFORM_VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'
+      - name: Verify target deployment readiness
+        uses: pcvantol/djconnect/.github/actions/deployment-readiness-preflight@962609ad77668c615b00c88b22167ed6b20bffc3
+        with:
+          target: ${{ inputs.target }}
+          manifest_id: ${{ inputs.manifest_id }}
+          candidate_sha: ${{ inputs.candidate_sha }}
+          artifact_id: ${{ inputs.artifact_id }}
+          artifact_sha256: ${{ inputs.artifact_sha256 }}
+          expected_runner_os: macOS
+          expected_runner_arch: ARM64
+          required_configuration: HA_API_URL,HA_API_TOKEN,UPDATE_ENTITY_ID
+          smoke_contract: NOT_IMPLEMENTED
+        env:
+          HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
+          HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
+          UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
       - name: Refuse dispatch without an approved operational manifest source
         run: |
           echo "PRIVATE_NETWORK_DEPLOYMENT_NOT_AUTHORIZED: no approved current-main operational release manifest is available for this target."
