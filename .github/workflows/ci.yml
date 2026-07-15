@@ -19,7 +19,7 @@ jobs:
     name: Software Assurance governance
     permissions:
       contents: read
-    uses: pcvantol/djconnect/.github/workflows/software-assurance-governance.yml@6ff2be61d8cd4041ac4bf21ef622ef330a0bc14a
+    uses: pcvantol/djconnect/.github/workflows/software-assurance-governance.yml@04b78708bfed26f96dd6436ad4372a648920110e
     with:
       execution_profile: balanced
       owner: pcvantol/djconnect-esp32
