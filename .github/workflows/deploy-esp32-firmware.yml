@@ -14,6 +14,7 @@ on:
       release_profile: {required: true, type: choice, options: [INTERNAL_RELEASE]}
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -40,7 +41,7 @@ jobs:
           test "$RELEASE_PROFILE" = INTERNAL_RELEASE
           printf '%s' "$CANDIDATE_SHA" | grep -Eq '^[0-9a-f]{40}$'
           printf '%s' "$MANIFEST_ID" | grep -Eq '^release-[A-Za-z0-9._-]+$'
-          printf '%s' "$ARTIFACT_ID" | grep -Eq '^djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
+          printf '%s' "$ARTIFACT_ID" | grep -Eq '^release-asset:pcvantol/djconnect-firmware:v[0-9]+\.[0-9]+\.[0-9]+:djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
           printf '%s' "$ARTIFACT_SHA256" | grep -Eq '^[0-9a-f]{64}$'
           printf '%s' "$PLATFORM_VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'
       - name: Verify target deployment readiness
@@ -54,22 +55,78 @@ jobs:
           expected_runner_os: macOS
           expected_runner_arch: ARM64
           required_configuration: HA_API_URL,HA_API_TOKEN,UPDATE_ENTITY_ID
-          smoke_contract: NOT_IMPLEMENTED
+          smoke_contract: esp32-home-assistant-update-smoke-v1
         env:
           HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
           HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
           UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
-      - name: Refuse dispatch without an approved operational manifest source
+      - id: manifest
+        name: Require approved central operational manifest source
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
         run: |
-          echo "PRIVATE_NETWORK_DEPLOYMENT_NOT_AUTHORIZED: no approved current-main operational release manifest is available for this target."
-          exit 1
+          set -euo pipefail
+          manifest="$(mktemp)"
+          trap 'rm -f "$manifest"' EXIT
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/pcvantol/djconnect/main/docs/release/PLATFORM_3_3_CURRENT_MAIN_MANIFEST_PROPOSAL.json \
+            --output "$manifest"
+          test "$(jq -r '.status' "$manifest")" = APPROVED_DEPLOYMENT_DISPATCH_PENDING
+          test "$(jq -r '.approval.state' "$manifest")" = APPROVED
+          test "$(jq -r '.manifest_id' "$manifest")" = "$MANIFEST_ID"
+          test "$(jq -r '.release_profile' "$manifest")" = "$RELEASE_PROFILE"
+          release_version="$(jq -r --arg sha "$CANDIDATE_SHA" '.repositories[] | select(.repository == "pcvantol/djconnect-esp32" and .source_sha == $sha) | .version' "$manifest")"
+          printf '%s' "$release_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+          jq -e --arg target "$TARGET" --arg artifact "$ARTIFACT_ID" --arg sha "$ARTIFACT_SHA256" \
+            '.artifact_bindings[] | select(.target == $target and .artifact_id == $artifact and .artifact_sha256 == $sha)' \
+            "$manifest" >/dev/null
+          printf 'release_version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
+      - name: Verify exact Home Assistant Update entity scope
+        env:
+          HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
+          HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
+          UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
+          RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          state="$(curl --fail --silent --show-error --header "Authorization: Bearer $HA_API_TOKEN" "$HA_API_URL/api/states/$UPDATE_ENTITY_ID")"
+          test "$(jq -r '.entity_id' <<<"$state")" = "$UPDATE_ENTITY_ID"
+          test "$(jq -r '.attributes.latest_version // empty' <<<"$state")" = "$RELEASE_VERSION"
       - name: Request the exact Home Assistant Update entity install
         env:
           HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
           HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
           UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
-          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
         run: |
           set -euo pipefail
           test -n "$HA_API_URL" && test -n "$HA_API_TOKEN" && test -n "$UPDATE_ENTITY_ID"
-          curl --fail --silent --show-error --header "Authorization: Bearer $HA_API_TOKEN" --header 'Content-Type: application/json' --data "{\"entity_id\":\"$UPDATE_ENTITY_ID\",\"version\":\"$ARTIFACT_ID\"}" "$HA_API_URL/api/services/update/install"
+          curl --fail --silent --show-error --header "Authorization: Bearer $HA_API_TOKEN" --header 'Content-Type: application/json' --data "{\"entity_id\":\"$UPDATE_ENTITY_ID\",\"version\":\"$RELEASE_VERSION\"}" "$HA_API_URL/api/services/update/install" >/dev/null
+      - name: Publish redacted deployment evidence
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+          PLATFORM_VERSION: ${{ inputs.platform_version }}
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
+          RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
+          DEPLOYMENT_WORKFLOW_RUN: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          from datetime import UTC, datetime
+          import json, os
+          with open("esp32-deployment-evidence.json", "w", encoding="utf-8") as file:
+              json.dump({"schema_version": 1, "kind": "esp32_home_assistant_update_deployment", "repository": os.environ["GITHUB_REPOSITORY"], "candidate_sha": os.environ["CANDIDATE_SHA"], "manifest_id": os.environ["MANIFEST_ID"], "artifact_id": os.environ["ARTIFACT_ID"], "artifact_sha256": os.environ["ARTIFACT_SHA256"], "target": os.environ["TARGET"], "platform_version": os.environ["PLATFORM_VERSION"], "release_profile": os.environ["RELEASE_PROFILE"], "release_version": os.environ["RELEASE_VERSION"], "deployment_workflow_run": os.environ["DEPLOYMENT_WORKFLOW_RUN"], "deployment_result": "DEPLOYED_PENDING_SMOKE", "timestamp": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")}, file, sort_keys=True)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: esp32-deployment-evidence
+          path: esp32-deployment-evidence.json
+          if-no-files-found: error

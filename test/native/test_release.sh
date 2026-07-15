@@ -133,6 +133,17 @@ grep -q 'DJCONNECT_RELEASE_BUILD=1 -Os' .github/workflows/release-firmware.yml
 grep -q 'scripts/minify_webportal.py' README.md
 grep -q 'scripts/minify_webportal.py' AGENTS.md
 grep -q 'scripts/minify_webportal.py' DESIGN_DECISIONS.md
+grep -q 'Require approved central operational manifest source' .github/workflows/deploy-esp32-firmware.yml
+grep -q 'esp32-home-assistant-update-smoke-v1' .github/workflows/deploy-esp32-firmware.yml
+grep -q 'DJCONNECT_ESP_UPDATE_ENTITY_ID' .github/workflows/deploy-esp32-firmware.yml
+grep -q 'esp32-deployment-evidence' .github/workflows/deploy-esp32-firmware.yml
+grep -q 'Verify offered and installed firmware version through Home Assistant' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'esp32-deployment-evidence' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'esp32-smoke-evidence' .github/workflows/esp32-post-deployment-smoke.yml
+if grep -q 'PRIVATE_NETWORK_DEPLOYMENT_NOT_AUTHORIZED\|SMOKE_INCONCLUSIVE' .github/workflows/deploy-esp32-firmware.yml .github/workflows/esp32-post-deployment-smoke.yml; then
+  echo "ESP32 deployment consumers must not retain static refusal placeholders" >&2
+  exit 1
+fi
 grep -q 'pkg install -d "$PROJECT_DIR" -e "$environment"' scripts/update_build_dependencies.sh
 grep -q 'THIRD_PARTY_NOTICES.md and DESIGN_DECISIONS.md before publishing' scripts/update_build_dependencies.sh
 if grep -q 'GH_RELEASE_ARGS+=(.*"$RELEASE_DIR"/\\*)' release.sh; then
