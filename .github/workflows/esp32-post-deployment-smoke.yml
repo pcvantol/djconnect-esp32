@@ -13,6 +13,7 @@ on:
       deployment_workflow_run: {required: true, type: string}
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -34,13 +35,105 @@ jobs:
           set -euo pipefail
           printf '%s' "$CANDIDATE_SHA" | grep -Eq '^[0-9a-f]{40}$'
           printf '%s' "$MANIFEST_ID" | grep -Eq '^release-[A-Za-z0-9._-]+$'
-          printf '%s' "$ARTIFACT_ID" | grep -Eq '^djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
+          printf '%s' "$ARTIFACT_ID" | grep -Eq '^release-asset:pcvantol/djconnect-firmware:v[0-9]+\.[0-9]+\.[0-9]+:djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
           printf '%s' "$ARTIFACT_SHA256" | grep -Eq '^[0-9a-f]{64}$'
           test "$TARGET" = esp32_lilygo_t_embed_s3
           printf '%s' "$PLATFORM_VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'
           test "$RELEASE_PROFILE" = INTERNAL_RELEASE
           printf '%s' "$DEPLOYMENT_WORKFLOW_RUN" | grep -Eq '^[0-9]+$'
-      - name: Refuse smoke without a verified deployment evidence source
+      - id: manifest
+        name: Require approved central operational manifest source
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
         run: |
-          echo "SMOKE_INCONCLUSIVE: no approved operational manifest or verified ESP32 deployment evidence source is available."
-          exit 1
+          set -euo pipefail
+          manifest="$(mktemp)"
+          trap 'rm -f "$manifest"' EXIT
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/pcvantol/djconnect/main/docs/release/PLATFORM_3_3_CURRENT_MAIN_MANIFEST_PROPOSAL.json \
+            --output "$manifest"
+          test "$(jq -r '.status' "$manifest")" = APPROVED_DEPLOYMENT_DISPATCH_PENDING
+          test "$(jq -r '.approval.state' "$manifest")" = APPROVED
+          test "$(jq -r '.manifest_id' "$manifest")" = "$MANIFEST_ID"
+          test "$(jq -r '.release_profile' "$manifest")" = "$RELEASE_PROFILE"
+          release_version="$(jq -r --arg sha "$CANDIDATE_SHA" '.repositories[] | select(.repository == "pcvantol/djconnect-esp32" and .source_sha == $sha) | .version' "$manifest")"
+          printf '%s' "$release_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+          jq -e --arg target "$TARGET" --arg artifact "$ARTIFACT_ID" --arg sha "$ARTIFACT_SHA256" \
+            '.artifact_bindings[] | select(.target == $target and .artifact_id == $artifact and .artifact_sha256 == $sha)' \
+            "$manifest" >/dev/null
+          printf 'release_version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
+      - name: Download deployment evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: esp32-deployment-evidence
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.deployment_workflow_run }}
+          path: deployment-evidence
+      - name: Verify deployment evidence identity
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          evidence=deployment-evidence/esp32-deployment-evidence.json
+          test "$(jq -r '.candidate_sha' "$evidence")" = "$CANDIDATE_SHA"
+          test "$(jq -r '.manifest_id' "$evidence")" = "$MANIFEST_ID"
+          test "$(jq -r '.artifact_id' "$evidence")" = "$ARTIFACT_ID"
+          test "$(jq -r '.artifact_sha256' "$evidence")" = "$ARTIFACT_SHA256"
+          test "$(jq -r '.target' "$evidence")" = "$TARGET"
+          test "$(jq -r '.deployment_result' "$evidence")" = DEPLOYED_PENDING_SMOKE
+      - id: runtime
+        name: Verify offered and installed firmware version through Home Assistant
+        env:
+          HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
+          HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
+          UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
+          RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + 180))
+          while true; do
+            state="$(curl --fail --silent --show-error --header "Authorization: Bearer $HA_API_TOKEN" "$HA_API_URL/api/states/$UPDATE_ENTITY_ID")"
+            test "$(jq -r '.entity_id' <<<"$state")" = "$UPDATE_ENTITY_ID"
+            observed_version="$(jq -r '.attributes.installed_version // .state // empty' <<<"$state")"
+            offered_version="$(jq -r '.attributes.latest_version // empty' <<<"$state")"
+            if test "$observed_version" = "$RELEASE_VERSION" && test "$offered_version" = "$RELEASE_VERSION"; then
+              printf 'observed_version=%s\n' "$observed_version" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            test "$SECONDS" -lt "$deadline"
+            sleep 10
+          done
+      - name: Publish redacted smoke evidence
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+          PLATFORM_VERSION: ${{ inputs.platform_version }}
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
+          RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
+          OBSERVED_VERSION: ${{ steps.runtime.outputs.observed_version }}
+          DEPLOYMENT_WORKFLOW_RUN: ${{ inputs.deployment_workflow_run }}
+          SMOKE_WORKFLOW_RUN: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          from datetime import UTC, datetime
+          import json, os
+          with open("esp32-smoke-evidence.json", "w", encoding="utf-8") as file:
+              json.dump({"schema_version": 1, "kind": "post_deployment_smoke", "repository": os.environ["GITHUB_REPOSITORY"], "candidate_sha": os.environ["CANDIDATE_SHA"], "manifest_id": os.environ["MANIFEST_ID"], "artifact_id": os.environ["ARTIFACT_ID"], "artifact_sha256": os.environ["ARTIFACT_SHA256"], "target": os.environ["TARGET"], "platform_version": os.environ["PLATFORM_VERSION"], "release_profile": os.environ["RELEASE_PROFILE"], "expected_version": os.environ["RELEASE_VERSION"], "observed_version": os.environ["OBSERVED_VERSION"], "deployment_workflow_run": os.environ["DEPLOYMENT_WORKFLOW_RUN"], "smoke_workflow_run": os.environ["SMOKE_WORKFLOW_RUN"], "final_result": "SMOKE_PASSED", "timestamp": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")}, file, sort_keys=True)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: esp32-smoke-evidence
+          path: esp32-smoke-evidence.json
+          if-no-files-found: error
