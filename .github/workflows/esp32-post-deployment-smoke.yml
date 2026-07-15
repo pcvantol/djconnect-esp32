@@ -91,22 +91,48 @@ jobs:
           test "$(jq -r '.target' "$evidence")" = "$TARGET"
           test "$(jq -r '.deployment_result' "$evidence")" = DEPLOYED_PENDING_SMOKE
       - id: runtime
-        name: Verify offered and installed firmware version through Home Assistant
+        name: Verify installed firmware through Home Assistant and local device API
         env:
           HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
           HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
           UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
+          ESP_LOCAL_API_URL: ${{ secrets.DJCONNECT_ESP_LOCAL_API_URL }}
           RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
         run: |
           set -euo pipefail
-          deadline=$((SECONDS + 180))
+          test -n "$HA_API_URL"
+          test -n "$HA_API_TOKEN"
+          test -n "$UPDATE_ENTITY_ID"
+          test -n "$ESP_LOCAL_API_URL"
+          printf '%s' "$ESP_LOCAL_API_URL" | grep -Eq '^https?://[^/[:space:]]+/?$'
+          ESP_LOCAL_API_URL="${ESP_LOCAL_API_URL%/}"
+          # OTA installation, reboot, Home Assistant state refresh, and the local
+          # device web server must all converge before this smoke can pass.
+          deadline=$((SECONDS + 300))
           while true; do
-            state="$(curl --fail --silent --show-error --header "Authorization: Bearer $HA_API_TOKEN" "$HA_API_URL/api/states/$UPDATE_ENTITY_ID")"
-            test "$(jq -r '.entity_id' <<<"$state")" = "$UPDATE_ENTITY_ID"
-            observed_version="$(jq -r '.attributes.installed_version // .state // empty' <<<"$state")"
-            offered_version="$(jq -r '.attributes.latest_version // empty' <<<"$state")"
-            if test "$observed_version" = "$RELEASE_VERSION" && test "$offered_version" = "$RELEASE_VERSION"; then
+            state="$(curl --fail --silent --max-time 10 --header "Authorization: Bearer $HA_API_TOKEN" "$HA_API_URL/api/states/$UPDATE_ENTITY_ID" 2>/dev/null || true)"
+            device_info="$(curl --fail --silent --max-time 10 "$ESP_LOCAL_API_URL/api/device/info" 2>/dev/null || true)"
+            if jq -e --arg entity_id "$UPDATE_ENTITY_ID" '.entity_id == $entity_id' >/dev/null 2>&1 <<<"$state" \
+              && jq -e '.client_type == "esp32" and .transport == "local_only"' >/dev/null 2>&1 <<<"$device_info"; then
+              observed_version="$(jq -r '.attributes.installed_version // .state // empty' <<<"$state")"
+              offered_version="$(jq -r '.attributes.latest_version // empty' <<<"$state")"
+              local_firmware_version="$(jq -r '.firmware // empty' <<<"$device_info")"
+              local_version="$(jq -r '.version // empty' <<<"$device_info")"
+              local_app_version="$(jq -r '.app_version // empty' <<<"$device_info")"
+            else
+              observed_version=""
+              offered_version=""
+              local_firmware_version=""
+              local_version=""
+              local_app_version=""
+            fi
+            if test "$observed_version" = "$RELEASE_VERSION" \
+              && test "$offered_version" = "$RELEASE_VERSION" \
+              && test "$local_firmware_version" = "$RELEASE_VERSION" \
+              && test "$local_version" = "$RELEASE_VERSION" \
+              && test "$local_app_version" = "$RELEASE_VERSION"; then
               printf 'observed_version=%s\n' "$observed_version" >> "$GITHUB_OUTPUT"
+              printf 'local_device_version=%s\n' "$local_firmware_version" >> "$GITHUB_OUTPUT"
               break
             fi
             test "$SECONDS" -lt "$deadline"
@@ -123,6 +149,7 @@ jobs:
           RELEASE_PROFILE: ${{ inputs.release_profile }}
           RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
           OBSERVED_VERSION: ${{ steps.runtime.outputs.observed_version }}
+          LOCAL_DEVICE_VERSION: ${{ steps.runtime.outputs.local_device_version }}
           DEPLOYMENT_WORKFLOW_RUN: ${{ inputs.deployment_workflow_run }}
           SMOKE_WORKFLOW_RUN: ${{ github.run_id }}
         run: |
@@ -130,7 +157,7 @@ jobs:
           from datetime import UTC, datetime
           import json, os
           with open("esp32-smoke-evidence.json", "w", encoding="utf-8") as file:
-              json.dump({"schema_version": 1, "kind": "post_deployment_smoke", "repository": os.environ["GITHUB_REPOSITORY"], "candidate_sha": os.environ["CANDIDATE_SHA"], "manifest_id": os.environ["MANIFEST_ID"], "artifact_id": os.environ["ARTIFACT_ID"], "artifact_sha256": os.environ["ARTIFACT_SHA256"], "target": os.environ["TARGET"], "platform_version": os.environ["PLATFORM_VERSION"], "release_profile": os.environ["RELEASE_PROFILE"], "expected_version": os.environ["RELEASE_VERSION"], "observed_version": os.environ["OBSERVED_VERSION"], "deployment_workflow_run": os.environ["DEPLOYMENT_WORKFLOW_RUN"], "smoke_workflow_run": os.environ["SMOKE_WORKFLOW_RUN"], "final_result": "SMOKE_PASSED", "timestamp": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")}, file, sort_keys=True)
+              json.dump({"schema_version": 1, "kind": "post_deployment_smoke", "repository": os.environ["GITHUB_REPOSITORY"], "candidate_sha": os.environ["CANDIDATE_SHA"], "manifest_id": os.environ["MANIFEST_ID"], "artifact_id": os.environ["ARTIFACT_ID"], "artifact_sha256": os.environ["ARTIFACT_SHA256"], "target": os.environ["TARGET"], "platform_version": os.environ["PLATFORM_VERSION"], "release_profile": os.environ["RELEASE_PROFILE"], "expected_version": os.environ["RELEASE_VERSION"], "observed_version": os.environ["OBSERVED_VERSION"], "local_device_version": os.environ["LOCAL_DEVICE_VERSION"], "local_device_check": "PASS", "deployment_workflow_run": os.environ["DEPLOYMENT_WORKFLOW_RUN"], "smoke_workflow_run": os.environ["SMOKE_WORKFLOW_RUN"], "final_result": "SMOKE_PASSED", "timestamp": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")}, file, sort_keys=True)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

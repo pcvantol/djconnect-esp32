@@ -137,7 +137,11 @@ grep -q 'Require approved central operational manifest source' .github/workflows
 grep -q 'esp32-home-assistant-update-smoke-v1' .github/workflows/deploy-esp32-firmware.yml
 grep -q 'DJCONNECT_ESP_UPDATE_ENTITY_ID' .github/workflows/deploy-esp32-firmware.yml
 grep -q 'esp32-deployment-evidence' .github/workflows/deploy-esp32-firmware.yml
-grep -q 'Verify offered and installed firmware version through Home Assistant' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'Verify installed firmware through Home Assistant and local device API' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'DJCONNECT_ESP_LOCAL_API_URL' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q '/api/device/info' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'local_device_version' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'SECONDS + 300' .github/workflows/esp32-post-deployment-smoke.yml
 grep -q 'esp32-deployment-evidence' .github/workflows/esp32-post-deployment-smoke.yml
 grep -q 'esp32-smoke-evidence' .github/workflows/esp32-post-deployment-smoke.yml
 if grep -q 'PRIVATE_NETWORK_DEPLOYMENT_NOT_AUTHORIZED\|SMOKE_INCONCLUSIVE' .github/workflows/deploy-esp32-firmware.yml .github/workflows/esp32-post-deployment-smoke.yml; then
