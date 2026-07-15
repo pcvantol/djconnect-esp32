@@ -12,6 +12,6 @@ permissions:
 jobs:
   qualification:
     name: Trusted Delivery qualification
-    uses: pcvantol/djconnect/.github/workflows/trusted-delivery-qualification.yml@d19f1af905b038841884a653380ad68576cf66a7
+    uses: pcvantol/djconnect/.github/workflows/trusted-delivery-qualification.yml@04b78708bfed26f96dd6436ad4372a648920110e
     with:
       owner_login: pcvantol

@@ -68,7 +68,7 @@ jobs:
             "$manifest" >/dev/null
           printf 'release_version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
       - name: Download deployment evidence
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: esp32-deployment-evidence
           github-token: ${{ github.token }}
@@ -159,7 +159,7 @@ jobs:
           with open("esp32-smoke-evidence.json", "w", encoding="utf-8") as file:
               json.dump({"schema_version": 1, "kind": "post_deployment_smoke", "repository": os.environ["GITHUB_REPOSITORY"], "candidate_sha": os.environ["CANDIDATE_SHA"], "manifest_id": os.environ["MANIFEST_ID"], "artifact_id": os.environ["ARTIFACT_ID"], "artifact_sha256": os.environ["ARTIFACT_SHA256"], "target": os.environ["TARGET"], "platform_version": os.environ["PLATFORM_VERSION"], "release_profile": os.environ["RELEASE_PROFILE"], "expected_version": os.environ["RELEASE_VERSION"], "observed_version": os.environ["OBSERVED_VERSION"], "local_device_version": os.environ["LOCAL_DEVICE_VERSION"], "local_device_check": "PASS", "deployment_workflow_run": os.environ["DEPLOYMENT_WORKFLOW_RUN"], "smoke_workflow_run": os.environ["SMOKE_WORKFLOW_RUN"], "final_result": "SMOKE_PASSED", "timestamp": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")}, file, sort_keys=True)
           PY
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: esp32-smoke-evidence
           path: esp32-smoke-evidence.json
