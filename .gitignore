@@ -26,6 +26,9 @@ __pycache__/
 # Generated release assets live in pcvantol/djconnect-firmware, not in source
 release/
 
+# Local Technical Debt Engine evidence, baselines and qualifications
+/.tde/
+
 # DJConnect shared local metadata
 .DS_Store
 **/.DS_Store
