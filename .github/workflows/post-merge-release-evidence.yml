@@ -15,9 +15,10 @@ permissions:
 jobs:
   reconcile:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
-    uses: pcvantol/djconnect/.github/workflows/post-merge-release-evidence.yml@41c94f1ef9042059a3b2afd12c5066f65dcf0d7d
+    uses: pcvantol/djconnect/.github/workflows/post-merge-release-evidence.yml@4931f1371b53159d837968955a7b4972051bdcbe
     with:
-      policy_source_ref: dd02d6470f061e6e755e6fb47ae5331c34f89875
+      policy_source_ref: 4931f1371b53159d837968955a7b4972051bdcbe
       required_main_workflow: Firmware CI
+      required_check_contexts: '["Trusted Delivery qualification / Qualify trusted delivery"]'
       repository_role: active_source
       coverage_artifact_name: esp32-native-cobertura-coverage

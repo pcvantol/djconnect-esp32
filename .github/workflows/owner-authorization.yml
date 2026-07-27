@@ -28,10 +28,9 @@ permissions:
 
 jobs:
   authorize:
-    uses: pcvantol/djconnect/.github/workflows/owner-authorization.yml@04b78708bfed26f96dd6436ad4372a648920110e
+    uses: pcvantol/djconnect/.github/workflows/owner-authorization.yml@4931f1371b53159d837968955a7b4972051bdcbe
     with:
       repository: ${{ inputs.repository }}
       pr_number: ${{ inputs.pr_number }}
       candidate_sha: ${{ inputs.candidate_sha }}
       branch: ${{ inputs.branch }}
-
