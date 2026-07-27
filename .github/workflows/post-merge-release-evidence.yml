@@ -15,7 +15,7 @@ permissions:
 jobs:
   reconcile:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
-    uses: pcvantol/djconnect/.github/workflows/post-merge-release-evidence.ymlf2f18c4bc9401ac7f0fdf37728f19ee6d9c1e4
+    uses: pcvantol/djconnect/.github/workflows/post-merge-release-evidence.yml@90f2f18c4bc9401ac7f0fdf37728f19ee6d9c1e4
     with:
       policy_source_ref: 90f2f18c4bc9401ac7f0fdf37728f19ee6d9c1e4
       required_main_workflow: Firmware CI
