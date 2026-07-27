@@ -45,7 +45,7 @@ jobs:
           printf '%s' "$ARTIFACT_SHA256" | grep -Eq '^[0-9a-f]{64}$'
           printf '%s' "$PLATFORM_VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'
       - name: Verify target deployment readiness
-        uses: pcvantol/djconnect/.github/actions/deployment-readiness-preflight@962609ad77668c615b00c88b22167ed6b20bffc3
+        uses: pcvantol/djconnect/.github/actions/deployment-readiness-preflight@ebbb35f038a7a3c7d46c12660968bcd50eb67580
         with:
           target: ${{ inputs.target }}
           manifest_id: ${{ inputs.manifest_id }}
@@ -125,7 +125,7 @@ jobs:
           with open("esp32-deployment-evidence.json", "w", encoding="utf-8") as file:
               json.dump({"schema_version": 1, "kind": "esp32_home_assistant_update_deployment", "repository": os.environ["GITHUB_REPOSITORY"], "candidate_sha": os.environ["CANDIDATE_SHA"], "manifest_id": os.environ["MANIFEST_ID"], "artifact_id": os.environ["ARTIFACT_ID"], "artifact_sha256": os.environ["ARTIFACT_SHA256"], "target": os.environ["TARGET"], "platform_version": os.environ["PLATFORM_VERSION"], "release_profile": os.environ["RELEASE_PROFILE"], "release_version": os.environ["RELEASE_VERSION"], "deployment_workflow_run": os.environ["DEPLOYMENT_WORKFLOW_RUN"], "deployment_result": "DEPLOYED_PENDING_SMOKE", "timestamp": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")}, file, sort_keys=True)
           PY
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: esp32-deployment-evidence
           path: esp32-deployment-evidence.json
