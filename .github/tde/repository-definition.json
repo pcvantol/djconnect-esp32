@@ -1,0 +1,13 @@
+{
+  "identifier": "djconnect-esp32",
+  "name": "DJConnect ESP32",
+  "repositoryRoot": "../..",
+  "repositoryType": "source",
+  "primaryLanguage": "C++",
+  "defaultAssessmentProfile": "standard",
+  "metadata": {
+    "consumer": "DJConnect",
+    "rolloutPhase": "observe"
+  }
+}
+
