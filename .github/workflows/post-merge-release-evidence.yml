@@ -15,9 +15,9 @@ permissions:
 jobs:
   reconcile:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
-    uses: pcvantol/djconnect/.github/workflows/post-merge-release-evidence.yml@4931f1371b53159d837968955a7b4972051bdcbe
+    uses: pcvantol/djconnect/.github/workflows/post-merge-release-evidence.yml@ebbb35f038a7a3c7d46c12660968bcd50eb67580
     with:
-      policy_source_ref: 4931f1371b53159d837968955a7b4972051bdcbe
+      policy_source_ref: ebbb35f038a7a3c7d46c12660968bcd50eb67580
       required_main_workflow: Firmware CI
       required_check_contexts: '["Trusted Delivery qualification / Qualify trusted delivery"]'
       repository_role: active_source
