@@ -1,0 +1,112 @@
+name: TDE observe
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tde-observe-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  observe:
+    name: TDE observe (non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+
+      - name: Install published TDE runtime
+        run: |
+          python -m pip install --upgrade pip
+          for attempt in 1 2 3 4 5; do
+            if python -m pip install --no-cache-dir "technical-debt-engine-runtime==1.0.0"; then
+              break
+            fi
+            if [ "$attempt" = "5" ]; then
+              echo "The exact public TDE 1.0.0 distribution was unavailable after 5 attempts."
+              exit 1
+            fi
+            echo "TDE 1.0.0 is not yet visible on this PyPI index; retrying in 15 seconds."
+            sleep 15
+          done
+          mkdir -p "$RUNNER_TEMP/tde-tools"
+          curl --fail --silent --show-error --location \
+            https://github.com/AlDanial/cloc/releases/download/v2.10/cloc-2.10.pl \
+            --output "$RUNNER_TEMP/tde-tools/cloc"
+          echo "bf59272455172108072a0a106379f7509fd4349bdcfd85203bac038ccd286d83  $RUNNER_TEMP/tde-tools/cloc" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/tde-tools/cloc"
+          "$RUNNER_TEMP/tde-tools/cloc" --version
+          echo "$RUNNER_TEMP/tde-tools" >> "$GITHUB_PATH"
+
+      - name: Run TDE standard assessment in observe mode
+        id: tde
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p tde-observe
+          started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          started_seconds="$(date +%s)"
+
+          tde --version | tee tde-observe/runtime-version.txt
+
+          set +e
+          tde --format json --profile standard assess . > tde-observe/assessment.json
+          assessment_exit="$?"
+          tde --format json \
+            --repository-definition .github/tde/repository-definition.json \
+            qualify . > tde-observe/qualification.json
+          qualification_exit="$?"
+          set -e
+
+          completed_seconds="$(date +%s)"
+          duration_seconds="$((completed_seconds - started_seconds))"
+          capabilities="$(jq -r '.evidence.assessment.executedCapabilities | join(", ")' tde-observe/assessment.json 2>/dev/null || echo unavailable)"
+          assessment_decision="$(jq -r '.evidence.assessmentDecision.decision // "unavailable"' tde-observe/assessment.json 2>/dev/null || echo unavailable)"
+          qualification_status="$(jq -r '.repositoryQualification.qualificationStatus // "unavailable"' tde-observe/qualification.json 2>/dev/null || echo unavailable)"
+
+          {
+            echo "# TDE observe result"
+            echo
+            echo "- Runtime: \`technical-debt-engine-runtime==1.0.0\`"
+            echo "- Assessment profile: \`standard\`"
+            echo "- Executed capabilities: ${capabilities}"
+            echo "- Assessment decision: ${assessment_decision}"
+            echo "- Repository qualification: ${qualification_status}"
+            echo "- Assessment exit code: ${assessment_exit} (observed only)"
+            echo "- Qualification exit code: ${qualification_exit} (observed only)"
+            echo "- Duration: ${duration_seconds}s"
+            echo "- Started: ${started_at}"
+            echo "- Evidence artifact: \`tde-observe-evidence\`"
+          } | tee tde-observe/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish TDE observe evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: tde-observe-evidence
+          path: |
+            tde-observe/
+            .tde/evidence/
+            .tde/qualifications/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Preserve observe mode
+        if: always()
+        run: |
+          echo "TDE observation is intentionally non-blocking."
+          exit 0
