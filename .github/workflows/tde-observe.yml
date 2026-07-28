@@ -33,14 +33,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           for attempt in 1 2 3 4 5; do
-            if python -m pip install --no-cache-dir "technical-debt-engine-runtime==1.0.0"; then
+            if python -m pip install --no-cache-dir "technical-debt-engine-runtime==1.0.4"; then
               break
             fi
             if [ "$attempt" = "5" ]; then
-              echo "The exact public TDE 1.0.0 distribution was unavailable after 5 attempts."
+            echo "The exact public TDE 1.0.4 distribution was unavailable after 5 attempts."
               exit 1
             fi
-            echo "TDE 1.0.0 is not yet visible on this PyPI index; retrying in 15 seconds."
+            echo "TDE 1.0.4 is not yet visible on this PyPI index; retrying in 15 seconds."
             sleep 15
           done
           mkdir -p "$RUNNER_TEMP/tde-tools"
@@ -81,7 +81,7 @@ jobs:
           {
             echo "# TDE observe result"
             echo
-            echo "- Runtime: \`technical-debt-engine-runtime==1.0.0\`"
+            echo "- Runtime: \`technical-debt-engine-runtime==1.0.4\`"
             echo "- Assessment profile: \`standard\`"
             echo "- Executed capabilities: ${capabilities}"
             echo "- Assessment decision: ${assessment_decision}"
