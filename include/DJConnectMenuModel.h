@@ -65,59 +65,55 @@ constexpr size_t AboutItemCount = 9;
 constexpr size_t FixedSoundOutputCount = 1;
 constexpr size_t MaxVisibleOutputs = 6;
 
+struct FixedMenuItemCount {
+  UiScreen screen;
+  size_t count;
+};
+
+constexpr FixedMenuItemCount FixedMenuItemCounts[] = {
+    {UiScreen::Games, GamesItemCount},
+    {UiScreen::Help, HelpItemCount},
+    {UiScreen::RootMenu, RootMenuItemCount},
+    {UiScreen::Settings, SettingsItemCount},
+    {UiScreen::DimTimeout, DimTimeoutOptionCount},
+    {UiScreen::Brightness, BrightnessOptionCount},
+    {UiScreen::Language, LanguageOptionCount},
+    {UiScreen::Theme, ThemeOptionCount},
+    {UiScreen::LogLevel, LogLevelOptionCount},
+    {UiScreen::SpeakerVolume, SpeakerVolumeOptionCount},
+    {UiScreen::ShuffleMode, ShuffleOptionCount},
+    {UiScreen::RepeatMode, RepeatOptionCount},
+    {UiScreen::SleepTimeout, SleepTimeoutOptionCount},
+    {UiScreen::ChangeWifiConfirm, ConfirmOptionCount},
+    {UiScreen::ResetPairingConfirm, ConfirmOptionCount},
+    {UiScreen::HardResetConfirm, ConfirmOptionCount},
+    {UiScreen::About, AboutItemCount},
+};
+
 inline bool isMenuScreen(UiScreen screen) {
   return screen != UiScreen::NowPlaying;
 }
 
-inline size_t itemCount(UiScreen screen, const MenuCountInput &input) {
-  switch (screen) {
-    case UiScreen::AlbumArt:
-    case UiScreen::Queue:
-    case UiScreen::Logs:
-    case UiScreen::Pong:
-    case UiScreen::Asteroids:
-    case UiScreen::Flyer:
-    case UiScreen::MazeChase:
-    case UiScreen::NowPlaying:
-      return 0;
-    case UiScreen::Games:
-      return GamesItemCount;
-    case UiScreen::Help:
-      return HelpItemCount;
-    case UiScreen::Playlists:
-      return input.playlistsAvailable && input.playlistCount > 0 ? input.playlistCount : 1;
-    case UiScreen::SoundOutputs:
-      return FixedSoundOutputCount + (input.devicesAvailable && input.deviceCount > 0 ? (input.deviceCount < MaxVisibleOutputs ? input.deviceCount : MaxVisibleOutputs) : 0);
-    case UiScreen::RootMenu:
-      return RootMenuItemCount;
-    case UiScreen::Settings:
-      return SettingsItemCount;
-    case UiScreen::DimTimeout:
-      return DimTimeoutOptionCount;
-    case UiScreen::Brightness:
-      return BrightnessOptionCount;
-    case UiScreen::Language:
-      return LanguageOptionCount;
-    case UiScreen::Theme:
-      return ThemeOptionCount;
-    case UiScreen::LogLevel:
-      return LogLevelOptionCount;
-    case UiScreen::SpeakerVolume:
-      return SpeakerVolumeOptionCount;
-    case UiScreen::ShuffleMode:
-      return ShuffleOptionCount;
-    case UiScreen::RepeatMode:
-      return RepeatOptionCount;
-    case UiScreen::SleepTimeout:
-      return SleepTimeoutOptionCount;
-    case UiScreen::HardResetConfirm:
-    case UiScreen::ChangeWifiConfirm:
-    case UiScreen::ResetPairingConfirm:
-      return ConfirmOptionCount;
-    case UiScreen::About:
-      return AboutItemCount;
+inline size_t fixedItemCount(UiScreen screen) {
+  for (const FixedMenuItemCount &menuItem : FixedMenuItemCounts) {
+    if (menuItem.screen == screen) {
+      return menuItem.count;
+    }
   }
   return 0;
+}
+
+inline size_t itemCount(UiScreen screen, const MenuCountInput &input) {
+  if (screen == UiScreen::Playlists) {
+    return input.playlistsAvailable && input.playlistCount > 0 ? input.playlistCount : 1;
+  }
+  if (screen == UiScreen::SoundOutputs) {
+    const size_t visibleOutputs = input.devicesAvailable && input.deviceCount > 0
+        ? (input.deviceCount < MaxVisibleOutputs ? input.deviceCount : MaxVisibleOutputs)
+        : 0;
+    return FixedSoundOutputCount + visibleOutputs;
+  }
+  return fixedItemCount(screen);
 }
 
 inline uint32_t dimTimeoutValueMs(size_t index) {
