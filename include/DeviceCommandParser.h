@@ -2,6 +2,8 @@
 
 #include <ArduinoJson.h>
 
+#include <initializer_list>
+
 #include "DeviceCommandTypes.h"
 
 namespace DeviceCommandParser {
@@ -28,6 +30,15 @@ inline bool commandNameEquals(const char *rawName, const char *expected) {
     rawName++;
   }
   return *rawName == '\0';
+}
+
+inline bool commandNameEqualsAny(const char *rawName, std::initializer_list<const char *> expectedNames) {
+  for (const char *expected : expectedNames) {
+    if (commandNameEquals(rawName, expected)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 inline String firstString(JsonVariantConst payload, const char *primary, const char *secondary = nullptr, const char *tertiary = nullptr) {
@@ -81,71 +92,62 @@ inline DeviceCommand parse(JsonVariantConst payload) {
   DeviceCommand command;
   const char *name = payload["command"] | "";
   command.value = firstString(payload, "command");
-  if (commandNameEquals(name, "play") || commandNameEquals(name, "resume") || commandNameEquals(name, "media_play")) {
+  if (commandNameEqualsAny(name, {"play", "resume", "media_play"})) {
     command.type = DeviceCommandType::Play;
-  } else if (commandNameEquals(name, "pause") || commandNameEquals(name, "media_pause")) {
+  } else if (commandNameEqualsAny(name, {"pause", "media_pause"})) {
     command.type = DeviceCommandType::Pause;
-  } else if (commandNameEquals(name, "play_pause") ||
-             commandNameEquals(name, "toggle_play_pause") ||
-             commandNameEquals(name, "media_play_pause")) {
+  } else if (commandNameEqualsAny(name, {"play_pause", "toggle_play_pause", "media_play_pause"})) {
     command.type = DeviceCommandType::PlayPause;
-  } else if (commandNameEquals(name, "next") || commandNameEquals(name, "next_track") || commandNameEquals(name, "media_next_track")) {
+  } else if (commandNameEqualsAny(name, {"next", "next_track", "media_next_track"})) {
     command.type = DeviceCommandType::Next;
-  } else if (commandNameEquals(name, "previous") || commandNameEquals(name, "previous_track") || commandNameEquals(name, "media_previous_track")) {
+  } else if (commandNameEqualsAny(name, {"previous", "previous_track", "media_previous_track"})) {
     command.type = DeviceCommandType::Previous;
-  } else if (commandNameEquals(name, "status") || commandNameEquals(name, "refresh_status")) {
+  } else if (commandNameEqualsAny(name, {"status", "refresh_status"})) {
     command.type = DeviceCommandType::Status;
   } else if (commandNameEquals(name, "dj_response")) {
     command.type = DeviceCommandType::DjResponse;
     command.value = firstString(payload, "text");
     command.audioUrl = firstString(payload, "audio_url", "audioUrl");
-  } else if (commandNameEquals(name, "set_volume") || commandNameEquals(name, "volume")) {
+  } else if (commandNameEqualsAny(name, {"set_volume", "volume"})) {
     command.type = DeviceCommandType::Volume;
     command.numericValue = firstInt(payload, "value", "volume", 0);
-  } else if (commandNameEquals(name, "set_output") || commandNameEquals(name, "transfer_output")) {
+  } else if (commandNameEqualsAny(name, {"set_output", "transfer_output"})) {
     command.type = DeviceCommandType::TransferOutput;
     command.value = firstString(payload, "value", "output");
   } else if (commandNameEquals(name, "start_playlist")) {
     command.type = DeviceCommandType::StartPlaylist;
     command.value = firstString(payload, "value", "playlist", "uri");
-  } else if (commandNameEquals(name, "set_shuffle") || commandNameEquals(name, "shuffle")) {
+  } else if (commandNameEqualsAny(name, {"set_shuffle", "shuffle"})) {
     command.type = DeviceCommandType::Shuffle;
     command.numericValue = firstBool(payload, "value", "shuffle", false) ? 1 : 0;
-  } else if (commandNameEquals(name, "set_repeat") || commandNameEquals(name, "repeat")) {
+  } else if (commandNameEqualsAny(name, {"set_repeat", "repeat"})) {
     command.type = DeviceCommandType::Repeat;
     command.value = firstString(payload, "value", "repeat", "repeat_state");
-  } else if (commandNameEquals(name, "screen_brightness") || commandNameEquals(name, "set_brightness")) {
+  } else if (commandNameEqualsAny(name, {"screen_brightness", "set_brightness"})) {
     command.type = DeviceCommandType::ScreenBrightness;
     command.numericValue = firstInt(payload, "value", "brightness", 100);
-  } else if (commandNameEquals(name, "screen_dim_timeout") ||
-             commandNameEquals(name, "set_screen_timeout") ||
-             commandNameEquals(name, "set_dim_timeout")) {
+  } else if (commandNameEqualsAny(name, {"screen_dim_timeout", "set_screen_timeout", "set_dim_timeout"})) {
     command.type = DeviceCommandType::ScreenDimTimeout;
     command.numericValue = firstInt(payload, "value", "seconds", 60);
-  } else if (commandNameEquals(name, "turn_off_after") || commandNameEquals(name, "set_turn_off_after")) {
+  } else if (commandNameEqualsAny(name, {"turn_off_after", "set_turn_off_after"})) {
     command.type = DeviceCommandType::DeepSleepTimeout;
     command.numericValue = firstInt(payload, "value", "minutes", 5);
-  } else if (commandNameEquals(name, "speaker_volume") || commandNameEquals(name, "set_speaker_volume")) {
+  } else if (commandNameEqualsAny(name, {"speaker_volume", "set_speaker_volume"})) {
     command.type = DeviceCommandType::SpeakerVolume;
     command.numericValue = firstInt(payload, "value", "volume", 100);
-  } else if (commandNameEquals(name, "language") || commandNameEquals(name, "set_language")) {
+  } else if (commandNameEqualsAny(name, {"language", "set_language"})) {
     command.type = DeviceCommandType::Language;
     command.value = firstString(payload, "value", "language");
-  } else if (commandNameEquals(name, "theme") || commandNameEquals(name, "set_theme")) {
+  } else if (commandNameEqualsAny(name, {"theme", "set_theme"})) {
     command.type = DeviceCommandType::Theme;
     command.value = firstString(payload, "value", "theme");
-  } else if (commandNameEquals(name, "log_level") || commandNameEquals(name, "set_log_level")) {
+  } else if (commandNameEqualsAny(name, {"log_level", "set_log_level"})) {
     command.type = DeviceCommandType::LogLevel;
     command.value = firstString(payload, "value", "log_level");
-  } else if (commandNameEquals(name, "wake_word") ||
-             commandNameEquals(name, "set_wake_word") ||
-             commandNameEquals(name, "wake_word_enabled") ||
-             commandNameEquals(name, "set_wake_word_enabled")) {
+  } else if (commandNameEqualsAny(name, {"wake_word", "set_wake_word", "wake_word_enabled", "set_wake_word_enabled"})) {
     command.type = DeviceCommandType::WakeWord;
     command.numericValue = firstBool(payload, "value", "enabled", false) ? 1 : 0;
-  } else if (commandNameEquals(name, "stress_test") ||
-             commandNameEquals(name, "set_stress_test") ||
-             commandNameEquals(name, "monkey_test")) {
+  } else if (commandNameEqualsAny(name, {"stress_test", "set_stress_test", "monkey_test"})) {
     command.type = DeviceCommandType::StressTest;
     command.numericValue = firstBool(payload, "value", "enabled", true) ? 1 : 0;
   }
