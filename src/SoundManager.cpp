@@ -158,10 +158,6 @@ public:
     return configureSpeakerRate(hertz);
   }
 
-  bool SetBitsPerSample(int bits) override {
-    return AudioOutput::SetBitsPerSample(bits);
-  }
-
   bool SetChannels(int channels) override {
     return AudioOutput::SetChannels(channels);
   }
