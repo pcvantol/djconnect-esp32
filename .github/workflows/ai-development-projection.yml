@@ -1,0 +1,16 @@
+name: AI-development projection
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-projection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: python3 docs/ai-development/validate_projection.py --profile djconnect-esp32 --source-commit 4a39841a0c85b0e9962c85a74a3fd49d9803c13d --extension-identity DJCONNECT_ESP32_DEVELOPMENT_EXTENSION
