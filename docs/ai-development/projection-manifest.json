@@ -1,0 +1,20 @@
+{
+  "contracts": [
+    "AI_BOOTSTRAP_CONTRACT.md",
+    "HANDOFF_CONTRACT.md",
+    "PROMPT_INITIALIZATION_CONTRACT.md",
+    "BRANCH_WORKTREE_CONTRACT.md",
+    "VALIDATION_EVIDENCE_CONTRACT.md",
+    "TDE_INTEGRATION_CONTRACT.md",
+    "REPOSITORY_GOVERNANCE_CONTRACT.md",
+    "PROJECTION_CONTRACT.md"
+  ],
+  "extension_identity": "DJCONNECT_ESP32_DEVELOPMENT_EXTENSION",
+  "materializer_version": "1",
+  "profile": "djconnect-esp32",
+  "projection_digest": "34d04daa1668d5ee1288a22d77aa143fecf4e167cb7fdc443d4082cb3ed45d77",
+  "projection_file_digest": "17375a8b075d0766a6e072d3390fc08cc8fc4d1d1f4dedf7aada1898961ca7a5",
+  "schema_version": "1",
+  "source_commit": "4a39841a0c85b0e9962c85a74a3fd49d9803c13d",
+  "source_repo": "pcvantol/ai-development-contracts"
+}
