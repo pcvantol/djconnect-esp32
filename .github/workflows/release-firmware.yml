@@ -160,6 +160,11 @@ jobs:
           MIN_HA_INTEGRATION="${{ needs.release-info.outputs.min_ha_integration }}"
           MAX_HA_INTEGRATION="${{ needs.release-info.outputs.max_ha_integration }}"
           MANIFEST="${{ needs.release-info.outputs.manifest }}"
+          SOURCE_REPOSITORY="${GITHUB_REPOSITORY}"
+          SOURCE_SHA="$(git rev-parse HEAD)"
+
+          printf '%s' "${SOURCE_REPOSITORY}" | grep -Eq '^pcvantol/djconnect-esp32$'
+          printf '%s' "${SOURCE_SHA}" | grep -Eq '^[0-9a-f]{40}$'
 
           mkdir -p release
           cp artifacts/firmware-t_embed_cc1101/* release/
@@ -178,6 +183,8 @@ jobs:
             "version": "${VERSION}",
             "version_tag": "${VERSION_TAG}",
             "channel": "${CHANNEL}",
+            "source_repository": "${SOURCE_REPOSITORY}",
+            "source_sha": "${SOURCE_SHA}",
             "min_ha_integration": "${MIN_HA_INTEGRATION}",
             "max_ha_integration": "${MAX_HA_INTEGRATION}",
             "release_notes": "https://github.com/pcvantol/djconnect-firmware/releases/tag/${VERSION_TAG}",
