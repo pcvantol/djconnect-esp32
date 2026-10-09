@@ -44,7 +44,7 @@ human-readable third-party notice summary and trademark notices.
 - FastLED
   - Used for WS2812 LED-ring control.
   - PlatformIO dependency: `fastled/FastLED`
-  - Installed version: `3.10.3`.
+  - CI-resolved version for v4.0.0: `3.10.6`.
   - Source: `https://github.com/FastLED/FastLED`
   - License: MIT.
 
@@ -58,7 +58,7 @@ human-readable third-party notice summary and trademark notices.
 - ESP8266Audio
   - Used for WAV/MP3 playback helpers over I2S.
   - PlatformIO dependency: `earlephilhower/ESP8266Audio`
-  - Installed version: `1.9.9`.
+  - CI-resolved version for v4.0.0: `2.4.1` (`^2.4.1` requested).
   - Source: `https://github.com/earlephilhower/ESP8266Audio`
   - License: GPL-3.0 according to included `LICENSE`.
 
