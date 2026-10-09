@@ -58,7 +58,8 @@ human-readable third-party notice summary and trademark notices.
 - ESP8266Audio
   - Used for WAV/MP3 playback helpers over I2S.
   - PlatformIO dependency: `earlephilhower/ESP8266Audio`
-  - Installed version: `1.9.9`.
+  - Required version: `^2.4.1`; exact release versions are recorded in the CI
+    build-dependency reports.
   - Source: `https://github.com/earlephilhower/ESP8266Audio`
   - License: GPL-3.0 according to included `LICENSE`.
 
