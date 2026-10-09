@@ -12,6 +12,8 @@
 - Included the command-parser simplification and ESP8266Audio 2.4.1 update
   merged since v3.3.0, with the existing Home Assistant playback and voice
   boundaries preserved.
+- Resolved FastLED 3.10.6 through the existing release dependency-update
+  procedure and refreshed the dependency inventory from the CI report.
 - Added firmware source-repository and commit provenance to the published
   manifest, alongside the firmware SHA256 checksum.
 - Updated CI dependencies, protected delivery evidence and TDE observe

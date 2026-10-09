@@ -633,9 +633,9 @@ firmware dependencies are linked unless marked otherwise.
 | TFT_eSPI | `2.5.43` | MIT-derived / compatible notices in `license.txt` | `https://github.com/Bodmer/TFT_eSPI` | ST7789 TFT drawing and sprite framebuffer |
 | RotaryEncoder | `1.6.0` installed (`^1.5.3` requested) | BSD-style license | `http://www.mathertel.de/Arduino/RotaryEncoderLibrary.aspx` | LilyGO rotary encoder decoding |
 | ArduinoJson | `7.4.3` installed (`^7.4.2` requested) | MIT | `https://github.com/bblanchon/ArduinoJson` | JSON parsing and serialization |
-| FastLED | `3.10.3` installed (`^3.9.12` requested) | MIT | `https://github.com/FastLED/FastLED` | WS2812 LED-ring control |
+| FastLED | `3.10.6` CI-resolved for v4.0.0 (`^3.9.12` requested) | MIT | `https://github.com/FastLED/FastLED` | WS2812 LED-ring control |
 | TJpg_Decoder | `1.1.0` | FreeBSD-style for wrapper plus Tiny JPEG Decompressor terms | `https://github.com/Bodmer/TJpg_Decoder` | JPEG album-art decoding/rendering |
-| ESP8266Audio | `^2.4.1` requested; exact release version in CI build-dependency reports | GPL-3.0 according to included `LICENSE` | `https://github.com/earlephilhower/ESP8266Audio` | WAV/MP3 playback helpers over I2S |
+| ESP8266Audio | `2.4.1` CI-resolved for v4.0.0 (`^2.4.1` requested) | GPL-3.0 according to included `LICENSE` | `https://github.com/earlephilhower/ESP8266Audio` | WAV/MP3 playback helpers over I2S |
 | MicroTFLite | `1.0.4` | Apache-2.0 | `https://github.com/johnosbb/MicroTFLite` | TensorFlow Lite Micro runtime and microfrontend for wake-word inference |
 
 ### Arduino Core Libraries Used From Framework
@@ -685,7 +685,7 @@ PlatformIO but ignored by this firmware through `lib_ignore` in `platformio.ini`
 
 | Library | Version | License | Source URL | Status |
 | --- | --- | --- | --- | --- |
-| ArduinoBLE | `2.0.2` | LGPL-2.1 | `https://www.arduino.cc/en/Reference/ArduinoBLE` | Ignored by `lib_ignore`; firmware uses Arduino ESP32 BLE instead |
+| ArduinoBLE | `2.1.0` CI-resolved for v4.0.0 | LGPL-2.1 | `https://www.arduino.cc/en/Reference/ArduinoBLE` | Ignored by `lib_ignore`; firmware uses Arduino ESP32 BLE instead |
 | Arduino_LSM9DS1 | `1.1.1` | LGPL-2.1 | `https://github.com/arduino-libraries/Arduino_LSM9DS1` | Ignored by `lib_ignore`; not used |
 | Arduino_SpiNINA | `0.0.2` | MPL-2.0 | `http://www.arduino.cc/en/Reference/Arduino_SpiNINA` | Ignored by `lib_ignore`; not used |
 
