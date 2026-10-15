@@ -65,7 +65,7 @@ jobs:
           with open("platform-release-execution-evidence.json", "w", encoding="utf-8") as file:
               json.dump({"workflow": "platform-release-execution.yml", "workflow_run_id": os.environ["GITHUB_RUN_ID"], "repository": os.environ["GITHUB_REPOSITORY"], "candidate_sha": os.environ["CANDIDATE_SHA"], "platform_version": os.environ["PLATFORM_VERSION"], "action": os.environ["ACTION"], "artifact_hashes": {}, "deployment_result": "NOT_EXECUTED", "rollback": "PREPARED", "timestamp": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"), "status": "PASS"}, file, sort_keys=True)
           PY
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: platform-release-execution-evidence
           path: platform-release-execution-evidence.json
