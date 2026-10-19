@@ -32,7 +32,8 @@ Source base: `9523267d04b5e4eab2d2bfad56c5e2a38d1e0b03`.
 - Offline pinned generator `--check` and four asset-format tests: PASS.
 - Actual embedded HTML in Chromium with local fixture APIs: 20 cases, five languages × two themes × mobile/desktop, zero JavaScript page errors. Micro image decoded at 32px. See [browser records](brand-v2/browser-results.json) and adjacent PNGs.
 - Actual PROGMEM RGB565 sample previews: [bitmap sheet](brand-v2/framebuffer-bitmaps.png), reproducible with `scripts/preview_brand_v2.py`. This is a decoded bitmap/draw-size preview, not a physical capture. The second row applies existing panel inversion to the compensated light-mode array; the mark retains its blue/purple colors.
-- Final LilyGO `t_embed_cc1101` build including light compensation: PASS, 26.06 seconds; RAM 125,468/327,680 bytes (38.3%), flash 3,070,000/6,553,600 bytes (46.8%). Existing legacy-I2S dependency warnings remain.
+- Final LilyGO `t_embed_cc1101` build including light compensation and overlay-cache invalidation: PASS, 19.85 seconds; RAM 125,468/327,680 bytes (38.3%), flash 3,069,992/6,553,600 bytes (46.8%). Existing legacy-I2S dependency warnings remain.
+- Release-test branding checks now bind the producer manifest, four source PNGs and generated-output hashes instead of retired legacy examples. Full dry-run acceptance is checked by CI; the existing `release.sh` root guard requires a `.git` directory and rejects this managed worktree's `.git` file, so no local full dry-run PASS is claimed and no release-tool behavior was changed.
 
 ## Remaining gates
 

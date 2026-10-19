@@ -587,6 +587,10 @@ void DisplayManager::configurePowerSaving(uint8_t activeBrightnessPercent, uint3
 }
 
 void DisplayManager::setLightTheme(bool enabled) {
+  if (lightTheme_ != enabled) {
+    // The mark uses theme-specific compositing, so its cached overlay must redraw.
+    resetDjResponseOverlayCache();
+  }
   lightTheme_ = enabled;
   // On this ST7789 build the controller inversion flag is opposite to the
   // user-facing theme name: inversion on gives the normal dark palette.

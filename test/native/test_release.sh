@@ -58,12 +58,23 @@ if git ls-files --error-unmatch release/firmware_manifest.json >/dev/null 2>&1; 
 fi
 
 # Asset snapshots catch stale branding in the embedded display and web portal resources.
-echo "8b3f3962f3a842893cabad2f4903f9a76bdced467f1dc66ed7398db9b527308a  assets/esp_display/embedded/djconnect_icon_160x160.rgb565" | shasum -a 256 -c -
-echo "d10eb3ed736e2c704e998bdc8fde2e34852e684822139553f68fe91bcc45860b  assets/esp_display/embedded/djconnect_icon_170x170.rgb565" | shasum -a 256 -c -
-echo "c990edc52a6957ae399411a809819c394a1d829c13745f871ec2444a92c017e5  assets/esp_display/embedded/djconnect_splash_170x320.rgb565" | shasum -a 256 -c -
-echo "7ac9db165cb7d5578838bac5475524634cd070ceb44fbd69685cd1d6ba8e9f3c  assets/website/site.webmanifest" | shasum -a 256 -c -
-echo "97d1a6567cc3c61d8cdb4c2ca05ed37adfd6bdc112efeb90177c4bba7095f476  assets/website/icon-192.png" | shasum -a 256 -c -
-echo "34e667173f5fe834f9282d11ab5a1f4f5fa2225010388f50a6f5bf7d72e2d460  assets/website/favicon-32.png" | shasum -a 256 -c -
+echo "73cc408e10d88aa1fb8a1be2783b9c577aec398ce3dcd54c2f997ad1425984d2  assets/brand-v2/producer-manifest.json" | shasum -a 256 -c -
+python3 - <<'PY'
+import hashlib
+import json
+from pathlib import Path
+
+source = json.loads(Path("assets/brand-v2/producer-manifest.json").read_text())
+for size in (16, 32, 40, 256):
+    name = f"mark-{size}.png"
+    actual = hashlib.sha256(Path("assets/brand-v2", name).read_bytes()).hexdigest()
+    assert actual == source["files"][f"assets/djconnect/brand-v2/{name}"]["sha256"], name
+receipt = json.loads(Path("assets/brand-v2/consumer-manifest.json").read_text())
+assert receipt["producer_commit"] == "883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866"
+for name, expected in receipt["outputs"].items():
+    assert hashlib.sha256(Path(name).read_bytes()).hexdigest() == expected, name
+print("Pinned Brand V2 release inputs verified")
+PY
 
 # The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
 if rg -n --glob "!test/native/test_release.sh" --glob "!test/native/test_ha_contract_smoke.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
