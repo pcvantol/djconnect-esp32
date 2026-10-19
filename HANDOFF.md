@@ -1,5 +1,19 @@
 # DJConnect Firmware Handoff
 
+## Brand V2 candidate — 19 October 2026
+
+Current bounded work: [#62](https://github.com/pcvantol/djconnect-esp32/issues/62),
+source candidate [PR #63](https://github.com/pcvantol/djconnect-esp32/pull/63),
+branch `codex/esp32-brand-v2`, base `9523267d04b5e4eab2d2bfad56c5e2a38d1e0b03`.
+The pinned Core review candidate replaces corporate graphics across TFT and local
+portals, with headset-only micro marks and explicit dark/light compositing.
+See [exact pins, census and software evidence](docs/verification/BRAND_V2.md).
+Host tests, software browser previews and supported-board build passed. CI,
+independent review and protected Core producer acceptance are separate gates;
+physical display acceptance and any release/OTA remain open. No device was
+modified. The source candidate is not an installed firmware claim. The older
+firmware/version observations below retain their historical scope.
+
 ## Current State
 
 DJConnect is MIT-licensed ESP32-S3 firmware for the LilyGO T-Embed-CC1101. It is a Home Assistant paired playback remote with local display UI, rotary/top-button controls, LED-ring feedback, speaker cues, push-to-talk voice upload, web portal and Home Assistant pairing/OTA support.

@@ -101,6 +101,12 @@ def outputs() -> dict[str, bytes]:
         offset += len(blob)
     ico = struct.pack("<HHH", 0, 1, len(blobs)) + b"".join(entries) + b"".join(blobs)
     result["include/assets/djconnect_favicon_ico.h"] = header("DJCONNECT_FAVICON_ICO", ico)
+    web_manifest = {"name": "DJConnect", "short_name": "DJConnect",
+                    "description": "Your music. Your DJ.", "start_url": "/",
+                    "display": "standalone", "background_color": "#070812",
+                    "theme_color": "#6f6bff", "icons": [{"src": "/icon-192.png?v=4",
+                    "sizes": "192x192", "type": "image/png", "purpose": "any"}]}
+    result["include/assets/djconnect_site_webmanifest.h"] = header("DJCONNECT_SITE_WEBMANIFEST", (json.dumps(web_manifest, indent=2) + "\n").encode())
     receipt = {"producer_commit": PRODUCER, "producer_manifest_sha256": MANIFEST_SHA256,
                "qualification": "PINNED_REVIEW_CANDIDATE_NOT_PRODUCER_ACCEPTANCE",
                "framebuffer_composite": "RGBA over black (dark) or white with panel-inversion compensation (light); RGB565 big-endian",

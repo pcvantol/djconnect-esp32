@@ -47,6 +47,10 @@ class BrandTests(unittest.TestCase):
         portal = (ROOT / "src/WebPortal.cpp").read_text()
         self.assertIn('class="brand-icon" src="/icon-32.png?v=4"', portal)
         self.assertNotIn("Muziekbediening met karakter", portal)
+        manifest = json.loads(embedded("djconnect_site_webmanifest.h"))
+        self.assertEqual(manifest["icons"], [{"src": "/icon-192.png?v=4", "sizes": "192x192",
+                                            "type": "image/png", "purpose": "any"}])
+        self.assertEqual(manifest["description"], "Your music. Your DJ.")
 
     def test_framebuffer_transparency_is_composited(self):
         for name, size in (("DJConnectIcon160.h", 160), ("DJConnectMicro40.h", 40)):

@@ -12,7 +12,8 @@
     "include/assets/DJConnectMicro40.h": "8cf3064f4712a1525a3ad045fdea706dae037f1e41f28b32fac953c7ed3c3ece",
     "include/assets/djconnect_favicon_ico.h": "81b000999b0c2dfad76d7a8b74eb247cb413b39dc071077593157e33bd854035",
     "include/assets/djconnect_icon_192_png.h": "9ec76c834791ec5f777b3185ba48788e0acb49d98a5c7f8b16a409ef61e89e28",
-    "include/assets/djconnect_micro_32_png.h": "7304c3bba1a1f62c52248a256e0d0e269fb50226b9a6756488bceef8d9f7044b"
+    "include/assets/djconnect_micro_32_png.h": "7304c3bba1a1f62c52248a256e0d0e269fb50226b9a6756488bceef8d9f7044b",
+    "include/assets/djconnect_site_webmanifest.h": "8fb0181b1b79157bca807466cf416127dc2819088b0d3ee4cbf5aae76ac2c8ee"
   },
   "producer_commit": "883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866",
   "producer_manifest_sha256": "73cc408e10d88aa1fb8a1be2783b9c577aec398ce3dcd54c2f997ad1425984d2",
