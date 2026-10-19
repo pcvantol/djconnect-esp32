@@ -14,6 +14,7 @@
 #include "LogicHelpers.h"
 #include "TextHelpers.h"
 #include "assets/DJConnectIcon160.h"
+#include "assets/DJConnectMicro40.h"
 
 static constexpr uint16_t BrightYellow = 0xFFE0;
 static constexpr uint16_t BrightPurple = 0xB81F;
@@ -586,6 +587,7 @@ void DisplayManager::configurePowerSaving(uint8_t activeBrightnessPercent, uint3
 }
 
 void DisplayManager::setLightTheme(bool enabled) {
+  lightTheme_ = enabled;
   // On this ST7789 build the controller inversion flag is opposite to the
   // user-facing theme name: inversion on gives the normal dark palette.
   tft_.invertDisplay(!enabled);
@@ -1372,17 +1374,19 @@ void DisplayManager::drawSpotifyLogo(Canvas &canvas, int x, int y) {
 
 template <typename Canvas>
 void DisplayManager::drawDJConnectIcon(Canvas &canvas, int x, int y, int size) {
-  const int sourceSize = DJCONNECT_ICON_160_WIDTH;
+  const bool micro = size <= 40;
+  const int sourceSize = micro ? DJCONNECT_MICRO_40_RGB565_WIDTH : DJCONNECT_ICON_160_RGB565_WIDTH;
+  const uint8_t *pixels = micro
+      ? (lightTheme_ ? DJCONNECT_MICRO_40_RGB565_LIGHT : DJCONNECT_MICRO_40_RGB565)
+      : (lightTheme_ ? DJCONNECT_ICON_160_RGB565_LIGHT : DJCONNECT_ICON_160_RGB565);
   for (int dy = 0; dy < size; dy++) {
     const int sy = (dy * sourceSize) / size;
     for (int dx = 0; dx < size; dx++) {
       const int sx = (dx * sourceSize) / size;
       const uint32_t byteIndex = (static_cast<uint32_t>(sy) * sourceSize + sx) * 2;
-      const uint16_t color = (static_cast<uint16_t>(pgm_read_byte(&DJCONNECT_ICON_160_RGB565[byteIndex])) << 8) |
-                             pgm_read_byte(&DJCONNECT_ICON_160_RGB565[byteIndex + 1]);
-      if (color != TFT_BLACK) {
-        canvas.drawPixel(x + dx, y + dy, color);
-      }
+      const uint16_t color = (static_cast<uint16_t>(pgm_read_byte(&pixels[byteIndex])) << 8) |
+                             pgm_read_byte(&pixels[byteIndex + 1]);
+      canvas.drawPixel(x + dx, y + dy, color);
     }
   }
 }

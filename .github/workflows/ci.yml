@@ -93,6 +93,12 @@ jobs:
       - name: Validate web portal i18n
         run: python3 test/native/test_webportal_i18n.py
 
+      - name: Verify pinned Brand V2 firmware assets
+        run: |
+          python -m pip install -r scripts/brand-requirements.txt
+          python scripts/build_brand_v2.py --check
+          python test/native/test_brand_v2.py
+
   ha-contract-e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 10

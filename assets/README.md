@@ -1,23 +1,40 @@
-# DJConnect asset pack
+# DJConnect firmware branding
 
-Generated assets for the DJConnect Home Assistant integration, ESP32-S3/LILYGO display firmware, and responsive retina website/PWA.
+Brand V2 candidate source is pinned in `brand-v2/producer-manifest.json` to Core
+commit `883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866`. Producer usage rules are in
+`brand-v2/PRODUCER_USAGE.md`. This import does not assert protected producer or
+physical firmware acceptance. The exact invariant brand line is
+**Your music. Your DJ.**, including when controls use another language.
 
-## Home Assistant integration
-Use files from `ha_integration/` in or beside `custom_components/djconnect/` as needed:
+`mark-16/32/40.png` are unmodified transparent headset-only micro-icons;
+`mark-256.png` is the unmodified glass mark, transparent outside the rim.
+The original opaque master stays with the canonical producer and is never
+substituted for a transparent production variant.
 
-- `icon.png` — 256x256
-- `icon@2x.png` — 512x512
-- `logo.png` — 512x512
+Generate and verify offline with Python 3.14:
 
-## Website / PWA
-Use `website/` as your `/icons/` folder. Include the contents of `html-head-snippet.html` in your page `<head>`.
+```sh
+python3.14 -m venv /tmp/esp32-brand-build
+/tmp/esp32-brand-build/bin/python -m pip install -r scripts/brand-requirements.txt
+/tmp/esp32-brand-build/bin/python scripts/build_brand_v2.py
+/tmp/esp32-brand-build/bin/python scripts/build_brand_v2.py --check
+/tmp/esp32-brand-build/bin/python test/native/test_brand_v2.py
+```
 
-## ESP display
-For LILYGO T-Embed style displays:
+`esp_display/` contains transparent glass previews. Actual PROGMEM RGB565
+arrays composite alpha over black for dark mode and over white with panel
+inversion compensation for light mode. Draws at
+40px or less select the headset array; larger draws select glass. No runtime
+alpha decoder, network image request or extra heap buffer is added. The device
+light theme still uses whole-panel inversion; only the corporate mark compensates
+for that policy to retain its blue/purple colors.
 
-- `djconnect_icon_170x170.png` — full-width square icon
-- `djconnect_splash_170x320.png` — portrait splash for 170x320 display
-- `embedded/*.h` — C/C++ PROGMEM RGB565 big-endian byte arrays
-- `embedded/*.rgb565` — raw RGB565 big-endian binaries
+The portal's 28px header uses the canonical 32px headset PNG. ICO entries contain
+the exact canonical 16/32/40px PNGs. The existing 192px touch/PWA route uses a
+transparent glass mark. `consumer-manifest.json` records generated hashes.
+Explicit PNG framing/stored DEFLATE avoids architecture-specific encoder bytes.
 
-Example TFT usage depends on your display library. If your driver expects uint16_t pixels rather than bytes, convert the byte pairs to uint16_t or adapt the byte order.
+Unused old HA/website example packs, portrait splash and duplicate embedded
+display exports are retired. HA/public website branding belongs to its own
+repositories. Semantic music/playback glyphs, Persona/avatar and album art stay
+unchanged.

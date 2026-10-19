@@ -1,5 +1,13 @@
 # Third-Party Notices
 
+## Brand V2 build tooling
+
+Pillow 13.0.0 (MIT-CMU, as declared by its package metadata) is used only by
+`scripts/build_brand_v2.py` to read/resize the pinned DJConnect PNGs. It is not
+linked into firmware or served to clients. The build dependency is pinned in
+`scripts/brand-requirements.txt`; its license remains with its authors.
+
+
 DJConnect firmware is MIT-licensed open-source software. This file lists
 third-party software components used by the firmware build. Their licenses and
 copyrights remain with their respective authors.

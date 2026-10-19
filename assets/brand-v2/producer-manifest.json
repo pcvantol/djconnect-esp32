@@ -1,0 +1,553 @@
+{
+  "alpha_contours": {
+    "micro_max_size": 40,
+    "path": "tools/branding/contours.json",
+    "sha256": "30d60bea7b78411caff00b5356467ba2ed5b53b55301ebf2fc55cac8a0389d86",
+    "source_rgb_modified": false
+  },
+  "brand_name": "DJConnect",
+  "brand_version": "2.0.0",
+  "files": {
+    "assets/djconnect/brand-v2/glass-master.png": {
+      "alpha": true,
+      "bytes": 1527723,
+      "height": 1016,
+      "mode": "RGBA",
+      "role": "transparent-glass-source",
+      "sha256": "49531649f1d04b92dfd17396b2dfecb4fcf727fd050863f5d5f6da485eaad2ca",
+      "theme": "both",
+      "width": 1016
+    },
+    "assets/djconnect/brand-v2/headset-master.png": {
+      "alpha": true,
+      "bytes": 819663,
+      "height": 754,
+      "mode": "RGBA",
+      "role": "transparent-headset-source",
+      "sha256": "21a6273f273936574a7301e7d91c2b0513da66fe17534c258d67c675c0294adc",
+      "theme": "both",
+      "width": 754
+    },
+    "assets/djconnect/brand-v2/headset.svg": {
+      "bytes": 1093313,
+      "role": "raster-backed-headset-only",
+      "sha256": "4f4378ea89ec4cd1d68b70ff05edb85be444af861c3a25b52badf56967ef70ab",
+      "theme": "both"
+    },
+    "assets/djconnect/brand-v2/mark-1024.png": {
+      "alpha": true,
+      "bytes": 1536634,
+      "height": 1024,
+      "mode": "RGBA",
+      "role": "glass-mark",
+      "sha256": "bb45e8b7526bc5829583ae7c31a855690ecabc864861b53346c93bd879bb970c",
+      "theme": "both",
+      "width": 1024
+    },
+    "assets/djconnect/brand-v2/mark-128.png": {
+      "alpha": true,
+      "bytes": 43818,
+      "height": 128,
+      "mode": "RGBA",
+      "role": "glass-mark",
+      "sha256": "e0bacba07f65489f9aeee2ec47937c61913b830a00e2b89564242020d3fb869b",
+      "theme": "both",
+      "width": 128
+    },
+    "assets/djconnect/brand-v2/mark-16.png": {
+      "alpha": true,
+      "bytes": 1014,
+      "height": 16,
+      "mode": "RGBA",
+      "role": "headset-only",
+      "sha256": "852f439ec0401582dc56130053a5c775d2241a4810bdfadb20a18956ca62ee4e",
+      "theme": "both",
+      "width": 16
+    },
+    "assets/djconnect/brand-v2/mark-20.png": {
+      "alpha": true,
+      "bytes": 1518,
+      "height": 20,
+      "mode": "RGBA",
+      "role": "headset-only",
+      "sha256": "16647d02fde845f8da0afb55d216e5bb54fc98781e5a1130cf2013417ce44025",
+      "theme": "both",
+      "width": 20
+    },
+    "assets/djconnect/brand-v2/mark-24.png": {
+      "alpha": true,
+      "bytes": 2035,
+      "height": 24,
+      "mode": "RGBA",
+      "role": "headset-only",
+      "sha256": "6f9be60eae0c1c798528204edb694590a2d52a211a11662ab3c33c9055095c02",
+      "theme": "both",
+      "width": 24
+    },
+    "assets/djconnect/brand-v2/mark-256.png": {
+      "alpha": true,
+      "bytes": 138423,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "glass-mark",
+      "sha256": "4e91b019e423f8dd03b87aefc2e2fef04ecc6645f48f5bb8c431f94d2018da3e",
+      "theme": "both",
+      "width": 256
+    },
+    "assets/djconnect/brand-v2/mark-32.png": {
+      "alpha": true,
+      "bytes": 3371,
+      "height": 32,
+      "mode": "RGBA",
+      "role": "headset-only",
+      "sha256": "f0d4d066342e4319d26bab33fa526c933018b17e8cbab3a8d2135c3f85b8281d",
+      "theme": "both",
+      "width": 32
+    },
+    "assets/djconnect/brand-v2/mark-40.png": {
+      "alpha": true,
+      "bytes": 5023,
+      "height": 40,
+      "mode": "RGBA",
+      "role": "headset-only",
+      "sha256": "7d18021519e271c42bddd934a651c48f9d224330bde4cea52803d3576ea551f3",
+      "theme": "both",
+      "width": 40
+    },
+    "assets/djconnect/brand-v2/mark-512.png": {
+      "alpha": true,
+      "bytes": 464185,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "glass-mark",
+      "sha256": "b142f522acc67f3787078451cb4bff9e21de62b976350f3904a6e12503dbb114",
+      "theme": "both",
+      "width": 512
+    },
+    "assets/djconnect/brand-v2/mark-64.png": {
+      "alpha": true,
+      "bytes": 13838,
+      "height": 64,
+      "mode": "RGBA",
+      "role": "glass-mark",
+      "sha256": "b874c1339d816e90d103567bbbc860b3ca01729fa196a20e9340c5ea10995614",
+      "theme": "both",
+      "width": 64
+    },
+    "assets/djconnect/brand-v2/mark.svg": {
+      "bytes": 2037393,
+      "role": "raster-backed-mark",
+      "sha256": "ed3b94e04db29866c7fcda8a6556450cad5743d2c2a4bca4775c64c2eab772f7",
+      "theme": "both"
+    },
+    "assets/djconnect/brand-v2/preview.png": {
+      "alpha": false,
+      "bytes": 682387,
+      "height": 1560,
+      "mode": "RGB",
+      "role": "visual-review-contact-sheet",
+      "sha256": "25a31cfce5c56f1a2375c5773bdbbee66f0ef235a52320a35431fc87741b0593",
+      "width": 1360
+    },
+    "assets/djconnect/brand-v2/wordmark-compact-dark.png": {
+      "alpha": true,
+      "bytes": 437338,
+      "height": 448,
+      "mode": "RGBA",
+      "role": "wordmark-compact",
+      "sha256": "274651d74fd43774573d1ec8b720be3103886d555ae5c5aa1f78379b99c8d25f",
+      "theme": "dark",
+      "width": 1728
+    },
+    "assets/djconnect/brand-v2/wordmark-compact-dark.svg": {
+      "bytes": 2049250,
+      "height": 448,
+      "role": "raster-mark-outlined-wordmark-compact",
+      "sha256": "a110cd92764d3796a0849db218b34f18ab322b607014b320f7b1174d867a8575",
+      "theme": "dark",
+      "width": 1728
+    },
+    "assets/djconnect/brand-v2/wordmark-compact-light.png": {
+      "alpha": true,
+      "bytes": 437386,
+      "height": 448,
+      "mode": "RGBA",
+      "role": "wordmark-compact",
+      "sha256": "ef0f6a2ca7604301fdcdc00c9716634fc5d9169a756ae07ae294d7514307666e",
+      "theme": "light",
+      "width": 1728
+    },
+    "assets/djconnect/brand-v2/wordmark-compact-light.svg": {
+      "bytes": 2049250,
+      "height": 448,
+      "role": "raster-mark-outlined-wordmark-compact",
+      "sha256": "8886dcc8ee444facdfe9163d540b2361354a372c928205786a0eb221d17eaeec",
+      "theme": "light",
+      "width": 1728
+    },
+    "assets/djconnect/brand-v2/wordmark-primary-dark.png": {
+      "alpha": true,
+      "bytes": 566999,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "wordmark-primary",
+      "sha256": "2cf02b723af311ae507aede0640fff0468d4d24c18135d1482df3188a12f743e",
+      "theme": "dark",
+      "width": 2048
+    },
+    "assets/djconnect/brand-v2/wordmark-primary-dark.svg": {
+      "bytes": 2067896,
+      "height": 512,
+      "role": "raster-mark-outlined-wordmark-primary",
+      "sha256": "de89a94437c1383acbacc05e3fb09a176ea849c4132269024d97371a888d93e0",
+      "theme": "dark",
+      "width": 2048
+    },
+    "assets/djconnect/brand-v2/wordmark-primary-light.png": {
+      "alpha": true,
+      "bytes": 567084,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "wordmark-primary",
+      "sha256": "361e4faf8c1227dc4422722c37029428bdfd2a7c491f89a9759a3982ad4e3839",
+      "theme": "light",
+      "width": 2048
+    },
+    "assets/djconnect/brand-v2/wordmark-primary-light.svg": {
+      "bytes": 2067896,
+      "height": 512,
+      "role": "raster-mark-outlined-wordmark-primary",
+      "sha256": "ba928b78e9238055910a2af55d96214d568ab9f86eb30e680f77457c01be5f3c",
+      "theme": "light",
+      "width": 2048
+    },
+    "assets/djconnect/djconnect-icon-1024.png": {
+      "alpha": true,
+      "bytes": 1536634,
+      "height": 1024,
+      "mode": "RGBA",
+      "role": "mark-only-alias",
+      "sha256": "bb45e8b7526bc5829583ae7c31a855690ecabc864861b53346c93bd879bb970c",
+      "width": 1024
+    },
+    "assets/djconnect/djconnect-icon-256.png": {
+      "alpha": true,
+      "bytes": 138423,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "mark-only-alias",
+      "sha256": "4e91b019e423f8dd03b87aefc2e2fef04ecc6645f48f5bb8c431f94d2018da3e",
+      "width": 256
+    },
+    "assets/djconnect/djconnect-icon-512.png": {
+      "alpha": true,
+      "bytes": 464185,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "mark-only-alias",
+      "sha256": "b142f522acc67f3787078451cb4bff9e21de62b976350f3904a6e12503dbb114",
+      "width": 512
+    },
+    "assets/djconnect/djconnect-icon.svg": {
+      "bytes": 2037393,
+      "role": "raster-backed-mark-alias",
+      "sha256": "ed3b94e04db29866c7fcda8a6556450cad5743d2c2a4bca4775c64c2eab772f7"
+    },
+    "assets/djconnect/djconnect-logo-512x256.png": {
+      "alpha": true,
+      "bytes": 67881,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "legacy-size-wordmark-alias",
+      "sha256": "e88229e23c50c30c2e9cfd25ee2baed6144eb785fdfb6da6465741cd535c6115",
+      "width": 512
+    },
+    "assets/djconnect/djconnect-logo-dark.svg": {
+      "bytes": 2067896,
+      "role": "wordmark-primary-alias",
+      "sha256": "de89a94437c1383acbacc05e3fb09a176ea849c4132269024d97371a888d93e0",
+      "theme": "dark"
+    },
+    "assets/djconnect/djconnect-logo.svg": {
+      "bytes": 2067896,
+      "role": "wordmark-primary-alias",
+      "sha256": "ba928b78e9238055910a2af55d96214d568ab9f86eb30e680f77457c01be5f3c",
+      "theme": "light"
+    },
+    "assets/djconnect_icon.png": {
+      "alpha": true,
+      "bytes": 464185,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "mark-only-alias",
+      "sha256": "b142f522acc67f3787078451cb4bff9e21de62b976350f3904a6e12503dbb114",
+      "width": 512
+    },
+    "brands/custom_integrations/djconnect/dark_logo.png": {
+      "alpha": true,
+      "bytes": 196343,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "307bc96e435666b6089d9e16190d3b802a2367f60a56d3db4f77587122a137ca",
+      "theme": "dark",
+      "width": 1024
+    },
+    "brands/custom_integrations/djconnect/dark_logo@2x.png": {
+      "alpha": true,
+      "bytes": 566999,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "2cf02b723af311ae507aede0640fff0468d4d24c18135d1482df3188a12f743e",
+      "theme": "dark",
+      "width": 2048
+    },
+    "brands/custom_integrations/djconnect/icon.png": {
+      "alpha": true,
+      "bytes": 138423,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-mark-only",
+      "sha256": "4e91b019e423f8dd03b87aefc2e2fef04ecc6645f48f5bb8c431f94d2018da3e",
+      "theme": "both",
+      "width": 256
+    },
+    "brands/custom_integrations/djconnect/icon@2x.png": {
+      "alpha": true,
+      "bytes": 464185,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-mark-only",
+      "sha256": "b142f522acc67f3787078451cb4bff9e21de62b976350f3904a6e12503dbb114",
+      "theme": "both",
+      "width": 512
+    },
+    "brands/custom_integrations/djconnect/logo.png": {
+      "alpha": true,
+      "bytes": 194371,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "bf80e7900bcfc5ce267e51f2862f4bc49cac6fad4cb79ef5c6547d06d8b08938",
+      "theme": "light",
+      "width": 1024
+    },
+    "brands/custom_integrations/djconnect/logo@2x.png": {
+      "alpha": true,
+      "bytes": 567084,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "361e4faf8c1227dc4422722c37029428bdfd2a7c491f89a9759a3982ad4e3839",
+      "theme": "light",
+      "width": 2048
+    },
+    "brands/djconnect/dark_logo.png": {
+      "alpha": true,
+      "bytes": 196343,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "307bc96e435666b6089d9e16190d3b802a2367f60a56d3db4f77587122a137ca",
+      "theme": "dark",
+      "width": 1024
+    },
+    "brands/djconnect/dark_logo@2x.png": {
+      "alpha": true,
+      "bytes": 566999,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "2cf02b723af311ae507aede0640fff0468d4d24c18135d1482df3188a12f743e",
+      "theme": "dark",
+      "width": 2048
+    },
+    "brands/djconnect/icon.png": {
+      "alpha": true,
+      "bytes": 138423,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-mark-only",
+      "sha256": "4e91b019e423f8dd03b87aefc2e2fef04ecc6645f48f5bb8c431f94d2018da3e",
+      "theme": "both",
+      "width": 256
+    },
+    "brands/djconnect/icon@2x.png": {
+      "alpha": true,
+      "bytes": 464185,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-mark-only",
+      "sha256": "b142f522acc67f3787078451cb4bff9e21de62b976350f3904a6e12503dbb114",
+      "theme": "both",
+      "width": 512
+    },
+    "brands/djconnect/logo.png": {
+      "alpha": true,
+      "bytes": 194371,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "bf80e7900bcfc5ce267e51f2862f4bc49cac6fad4cb79ef5c6547d06d8b08938",
+      "theme": "light",
+      "width": 1024
+    },
+    "brands/djconnect/logo@2x.png": {
+      "alpha": true,
+      "bytes": 567084,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "361e4faf8c1227dc4422722c37029428bdfd2a7c491f89a9759a3982ad4e3839",
+      "theme": "light",
+      "width": 2048
+    },
+    "custom_components/djconnect/brand/dark_logo.png": {
+      "alpha": true,
+      "bytes": 196343,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "307bc96e435666b6089d9e16190d3b802a2367f60a56d3db4f77587122a137ca",
+      "theme": "dark",
+      "width": 1024
+    },
+    "custom_components/djconnect/brand/dark_logo@2x.png": {
+      "alpha": true,
+      "bytes": 566999,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "2cf02b723af311ae507aede0640fff0468d4d24c18135d1482df3188a12f743e",
+      "theme": "dark",
+      "width": 2048
+    },
+    "custom_components/djconnect/brand/icon.png": {
+      "alpha": true,
+      "bytes": 138423,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-mark-only",
+      "sha256": "4e91b019e423f8dd03b87aefc2e2fef04ecc6645f48f5bb8c431f94d2018da3e",
+      "theme": "both",
+      "width": 256
+    },
+    "custom_components/djconnect/brand/icon@2x.png": {
+      "alpha": true,
+      "bytes": 464185,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-mark-only",
+      "sha256": "b142f522acc67f3787078451cb4bff9e21de62b976350f3904a6e12503dbb114",
+      "theme": "both",
+      "width": 512
+    },
+    "custom_components/djconnect/brand/logo.png": {
+      "alpha": true,
+      "bytes": 194371,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "bf80e7900bcfc5ce267e51f2862f4bc49cac6fad4cb79ef5c6547d06d8b08938",
+      "theme": "light",
+      "width": 1024
+    },
+    "custom_components/djconnect/brand/logo@2x.png": {
+      "alpha": true,
+      "bytes": 567084,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "361e4faf8c1227dc4422722c37029428bdfd2a7c491f89a9759a3982ad4e3839",
+      "theme": "light",
+      "width": 2048
+    },
+    "custom_components/djconnect/dark_logo.png": {
+      "alpha": true,
+      "bytes": 196343,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "307bc96e435666b6089d9e16190d3b802a2367f60a56d3db4f77587122a137ca",
+      "theme": "dark",
+      "width": 1024
+    },
+    "custom_components/djconnect/dark_logo@2x.png": {
+      "alpha": true,
+      "bytes": 566999,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "2cf02b723af311ae507aede0640fff0468d4d24c18135d1482df3188a12f743e",
+      "theme": "dark",
+      "width": 2048
+    },
+    "custom_components/djconnect/icon.png": {
+      "alpha": true,
+      "bytes": 138423,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-mark-only",
+      "sha256": "4e91b019e423f8dd03b87aefc2e2fef04ecc6645f48f5bb8c431f94d2018da3e",
+      "theme": "both",
+      "width": 256
+    },
+    "custom_components/djconnect/icon@2x.png": {
+      "alpha": true,
+      "bytes": 464185,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-mark-only",
+      "sha256": "b142f522acc67f3787078451cb4bff9e21de62b976350f3904a6e12503dbb114",
+      "theme": "both",
+      "width": 512
+    },
+    "custom_components/djconnect/logo.png": {
+      "alpha": true,
+      "bytes": 194371,
+      "height": 256,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "bf80e7900bcfc5ce267e51f2862f4bc49cac6fad4cb79ef5c6547d06d8b08938",
+      "theme": "light",
+      "width": 1024
+    },
+    "custom_components/djconnect/logo@2x.png": {
+      "alpha": true,
+      "bytes": 567084,
+      "height": 512,
+      "mode": "RGBA",
+      "role": "ha-wordmark-primary",
+      "sha256": "361e4faf8c1227dc4422722c37029428bdfd2a7c491f89a9759a3982ad4e3839",
+      "theme": "light",
+      "width": 2048
+    }
+  },
+  "font": {
+    "license": "SIL-OFL-1.1",
+    "optical_size": 32,
+    "path": "tools/branding/fonts/InterVariable.ttf",
+    "release": "Inter 4.1",
+    "sha256": "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+    "tagline_weight": 450,
+    "title_weight": 600
+  },
+  "master": {
+    "alpha": false,
+    "height": 1254,
+    "mode": "RGB",
+    "path": "assets/djconnect/brand-v2/source/DJConnect-BrandV2-APPROVED-ORIGINAL-1254.png",
+    "sha256": "f05fcdf4602d9c63add7799469c64060a8f13e5efa66ad6c7b762fb8273ec89f",
+    "width": 1254
+  },
+  "qualification": "source candidate; native/installed acceptance and protected producer pin required",
+  "recipe_sha256": "9882975245bfc134c5c20824825729a523865cd43d839767497d7027e20d917e",
+  "schema_version": 1,
+  "source_handoff_zip_sha256": "a0deec308d82c812875f80c509983fab595dd9745b241c2e5f46ff58fbb11197",
+  "tagline_en": "Your music. Your DJ.",
+  "tools": {
+    "Pillow": "13.0.0",
+    "fonttools": "4.67.0"
+  }
+}

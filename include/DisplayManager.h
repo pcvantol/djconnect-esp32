@@ -133,6 +133,7 @@ public:
   uint16_t screenshotPixel565(int x, int y);
 
 private:
+  bool lightTheme_ = false;
   // Tracks one horizontal one-shot text marquee.
   struct TextMarqueeState {
     String observedText;

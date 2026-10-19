@@ -20,7 +20,7 @@
 namespace Config {
 static const char *const AppVersion = DJCONNECT_STRINGIFY(DJCONNECT_VERSION_TAG);
 static const char *const AppVersionNumber = DJCONNECT_STRINGIFY(DJCONNECT_VERSION);
-static const char *const AppTagline = "Muziekbediening met karakter";
+static const char *const AppTagline = "Your music. Your DJ.";
 static const char *const WebsiteUrl = "https://djconnect.dev";
 static const char *const DefaultHomeAssistantUrl = "http://homeassistant.local:8123";
 static const char *const BuildMarker =
