@@ -8,8 +8,11 @@ branch `codex/esp32-brand-v2`, base `9523267d04b5e4eab2d2bfad56c5e2a38d1e0b03`.
 The pinned Core review candidate replaces corporate graphics across TFT and local
 portals, with headset-only micro marks and explicit dark/light compositing.
 See [exact pins, census and software evidence](docs/verification/BRAND_V2.md).
-Host tests, software browser previews and supported-board build passed. CI,
-independent review and protected Core producer acceptance are separate gates;
+Host tests, software header previews and supported-board build passed. All
+technical CI checks passed on `6a39e4dc3913df42a85d66c7e10228cc9cd5be5b`.
+Core #1224 is protected merged as `7e14e5970b3f68d33d243ae6bab2b281fad59bb2`;
+all 28 brand blobs and six actual imports match the original pin. Final exact
+source authorization, final-candidate CI and protected delivery remain;
 physical display acceptance and any release/OTA remain open. No device was
 modified. The source candidate is not an installed firmware claim. The older
 firmware/version observations below retain their historical scope.
