@@ -1,0 +1,7 @@
+# ESP32 README wordmark Finalization
+
+Predecessor [PR #65](https://github.com/pcvantol/djconnect-esp32/pull/65) merged as `76a590d5c488a41155750d3eaf56f55300a0d9df` from reviewed candidate `0a859e6e2a1bd66b7b08ea6089dfb769ead58789`. Complete candidate/merge trees equal `9a1619981b70645de54eda3b1145c2e8734ba52d`. Independent read-only review and all source technical CI (including build and CodeQL) PASS; exact-source Owner Authorization success (not required by LOW_RISK classification).
+
+Source scope: exact supplied five-line picture block below existing README H1; Core producer pin `7e14e5970b3f68d33d243ae6bab2b281fad59bb2`, dark/light primary wordmark, width 640, alt DJConnect. All prior copy and all firmware source/artifacts remain unchanged. Separate distribution README source #27 and Finalization #28 were independently reviewed and protected merged; no whole-platform closure is inferred.
+
+This increment changes only four shared current-state/horizon records and this new immutable history entry. Required pre-push safeguards are four-record comparison, diff hygiene and canonical Core lifecycle regression (seven tests, read-only owning repo). Its own exact-SHA review, required CI and applicable authorization precede normal protected merge. Additional running checks are reported separately, not fabricated as PASS. Canonical editor WIP is retained; Workspace NOT_READY. Physical/installed acceptance and firmware release/flash/OTA remain separate, with no automatic settings successor.
