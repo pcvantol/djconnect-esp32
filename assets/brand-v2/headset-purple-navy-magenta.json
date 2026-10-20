@@ -1,0 +1,14 @@
+{
+  "kind": "owner-requested-local-display-derivative",
+  "source_master": "headset-master.png",
+  "source_sha256": "21a6273f273936574a7301e7d91c2b0513da66fe17534c258d67c675c0294adc",
+  "edit_input_file": "headset-purple-navy.png",
+  "edit_input_sha256": "0bd499012ec7c4164a9077f2bfeefe20a99a90d56d25d9423baaf5e97d7422f4",
+  "method": "built-in image_gen edit",
+  "intent": "Only circular rim recolored magenta; purple headphone, navy inner disc and multicolor waveform visually retained. Not pixel-identical source artwork.",
+  "file": "headset-purple-navy-magenta.png",
+  "sha256": "f69eb72b882f08c0dacbd3efa7e83165a56a01763aaa18e48557c03b65e11322",
+  "width": 1254,
+  "height": 1254,
+  "alpha": true
+}

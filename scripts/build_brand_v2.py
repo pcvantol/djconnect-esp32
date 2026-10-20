@@ -89,9 +89,12 @@ def outputs() -> dict[str, bytes]:
     if producer_headset.size != (headset_metadata["width"], headset_metadata["height"]) or producer_headset.getpixel((0, 0))[3] != 0:
         raise ValueError(f"unexpected dimensions/alpha: {name}")
     # Owner-requested local recolor; canonical producer artwork stays intact.
-    display_metadata = json.loads((SOURCE / "headset-purple-navy.json").read_bytes())
+    display_metadata = json.loads((SOURCE / "headset-purple-navy-magenta.json").read_bytes())
     if display_metadata["source_sha256"] != headset_metadata["sha256"]:
         raise ValueError("display derivative source differs from the pinned headset")
+    edit_input = (SOURCE / display_metadata["edit_input_file"]).read_bytes()
+    if hashlib.sha256(edit_input).hexdigest() != display_metadata["edit_input_sha256"]:
+        raise ValueError("display edit input differs from its committed receipt")
     blob = (SOURCE / display_metadata["file"]).read_bytes()
     if hashlib.sha256(blob).hexdigest() != display_metadata["sha256"]:
         raise ValueError("display palette asset differs from its committed receipt")
@@ -132,7 +135,7 @@ def outputs() -> dict[str, bytes]:
                "qualification": "PINNED_REVIEW_CANDIDATE_NOT_PRODUCER_ACCEPTANCE",
                "framebuffer_composite": "RGBA over black (dark) or white with panel-inversion compensation (light); RGB565 big-endian",
                "micro_max_size": 40,
-               "display_variant": "headset-purple-navy-all-sizes",
+               "display_variant": "headset-purple-navy-magenta-rim-all-sizes",
                "display_master": {"file": display_metadata["file"], "sha256": display_metadata["sha256"]},
                "producer_headset_source_sha256": headset_metadata["sha256"],
                "outputs": {name: hashlib.sha256(blob).hexdigest() for name, blob in sorted(result.items())}}

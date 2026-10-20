@@ -37,9 +37,9 @@ class BrandTests(unittest.TestCase):
                          "21a6273f273936574a7301e7d91c2b0513da66fe17534c258d67c675c0294adc")
         original = Image.open(io.BytesIO(source)).convert("RGBA")
         self.assertEqual(original.size, (754, 754))
-        palette = (ROOT / "assets/brand-v2/headset-purple-navy.png").read_bytes()
+        palette = (ROOT / "assets/brand-v2/headset-purple-navy-magenta.png").read_bytes()
         self.assertEqual(hashlib.sha256(palette).hexdigest(),
-                         "0bd499012ec7c4164a9077f2bfeefe20a99a90d56d25d9423baaf5e97d7422f4")
+                         "f69eb72b882f08c0dacbd3efa7e83165a56a01763aaa18e48557c03b65e11322")
         master = Image.open(io.BytesIO(palette)).convert("RGBA")
         self.assertEqual(master.size, (1254, 1254))
         for size in (64, 80, 96, 128, 160, 170):
@@ -92,7 +92,7 @@ class BrandTests(unittest.TestCase):
             self.assertEqual(light[:2], b"\0\0")  # Hardware inversion makes the transparent corner white.
             # Independently verify white-background alpha compositing and
             # panel inversion, including this asset's partially opaque pixels.
-            reference = Image.open(ROOT / "assets/brand-v2/headset-purple-navy.png").convert("RGBA")
+            reference = Image.open(ROOT / "assets/brand-v2/headset-purple-navy-magenta.png").convert("RGBA")
             reference = reference.resize((size, size), Image.Resampling.LANCZOS)
             white = Image.new("RGBA", reference.size, (255, 255, 255, 255))
             rgb = Image.alpha_composite(white, reference).convert("RGB")
