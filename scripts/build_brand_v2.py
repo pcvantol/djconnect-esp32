@@ -79,15 +79,25 @@ def outputs() -> dict[str, bytes]:
             raise ValueError(f"unexpected dimensions/alpha: {name}")
         images[size] = image
     # The device uses the owner's selected headset-only variant at every size.
-    # Resize the full-resolution producer master, never upscale a micro icon.
+    # Verify full-resolution producer provenance; never upscale a micro icon.
     name = "headset-master.png"
     blob = (SOURCE / name).read_bytes()
     headset_metadata = manifest["files"][f"assets/djconnect/brand-v2/{name}"]
     if hashlib.sha256(blob).hexdigest() != headset_metadata["sha256"]:
         raise ValueError(f"producer asset changed: {name}")
-    headset = Image.open(io.BytesIO(blob)).convert("RGBA")
-    if headset.size != (headset_metadata["width"], headset_metadata["height"]) or headset.getpixel((0, 0))[3] != 0:
+    producer_headset = Image.open(io.BytesIO(blob)).convert("RGBA")
+    if producer_headset.size != (headset_metadata["width"], headset_metadata["height"]) or producer_headset.getpixel((0, 0))[3] != 0:
         raise ValueError(f"unexpected dimensions/alpha: {name}")
+    # Owner-requested local recolor; canonical producer artwork stays intact.
+    display_metadata = json.loads((SOURCE / "headset-purple-navy.json").read_bytes())
+    if display_metadata["source_sha256"] != headset_metadata["sha256"]:
+        raise ValueError("display derivative source differs from the pinned headset")
+    blob = (SOURCE / display_metadata["file"]).read_bytes()
+    if hashlib.sha256(blob).hexdigest() != display_metadata["sha256"]:
+        raise ValueError("display palette asset differs from its committed receipt")
+    headset = Image.open(io.BytesIO(blob)).convert("RGBA")
+    if headset.size != (display_metadata["width"], display_metadata["height"]) or headset.getpixel((0, 0))[3] != 0:
+        raise ValueError("unexpected display palette dimensions/alpha")
     result = {}
     for size in (64, 80, 96, 128, 160, 170):
         image = headset.resize((size, size), Image.Resampling.LANCZOS)
@@ -95,8 +105,9 @@ def outputs() -> dict[str, bytes]:
         if size == 160:
             result["include/assets/DJConnectIcon160.h"] = header("DJCONNECT_ICON_160_RGB565", rgb565(image), size)
             result["include/assets/DJConnectIcon160.h"] += header("DJCONNECT_ICON_160_RGB565_LIGHT", rgb565(image, light=True), size)
-    result["include/assets/DJConnectMicro40.h"] = header("DJCONNECT_MICRO_40_RGB565", rgb565(images[40]), 40)
-    result["include/assets/DJConnectMicro40.h"] += header("DJCONNECT_MICRO_40_RGB565_LIGHT", rgb565(images[40], light=True), 40)
+    micro = headset.resize((40, 40), Image.Resampling.LANCZOS)
+    result["include/assets/DJConnectMicro40.h"] = header("DJCONNECT_MICRO_40_RGB565", rgb565(micro), 40)
+    result["include/assets/DJConnectMicro40.h"] += header("DJCONNECT_MICRO_40_RGB565_LIGHT", rgb565(micro, light=True), 40)
     web = images[256].resize((192, 192), Image.Resampling.LANCZOS)
     result["include/assets/djconnect_icon_192_png.h"] = header("DJCONNECT_ICON_192_PNG", encode(web))
     result["include/assets/djconnect_micro_32_png.h"] = header("DJCONNECT_MICRO_32_PNG", (SOURCE / "mark-32.png").read_bytes())
@@ -121,8 +132,9 @@ def outputs() -> dict[str, bytes]:
                "qualification": "PINNED_REVIEW_CANDIDATE_NOT_PRODUCER_ACCEPTANCE",
                "framebuffer_composite": "RGBA over black (dark) or white with panel-inversion compensation (light); RGB565 big-endian",
                "micro_max_size": 40,
-               "display_variant": "headset-only-all-sizes",
-               "display_master": {"file": "headset-master.png", "sha256": headset_metadata["sha256"]},
+               "display_variant": "headset-purple-navy-all-sizes",
+               "display_master": {"file": display_metadata["file"], "sha256": display_metadata["sha256"]},
+               "producer_headset_source_sha256": headset_metadata["sha256"],
                "outputs": {name: hashlib.sha256(blob).hexdigest() for name, blob in sorted(result.items())}}
     result["assets/brand-v2/consumer-manifest.json"] = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode()
     return result

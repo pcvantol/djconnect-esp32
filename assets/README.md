@@ -8,8 +8,12 @@ physical firmware acceptance. The exact invariant brand line is
 
 `mark-16/32/40.png` are unmodified transparent headset-only micro-icons;
 `mark-256.png` is the unmodified glass mark, transparent outside the rim.
-`headset-master.png` is the unmodified 754px producer source for larger device
-headphone marks; its SHA256 is checked against the same pinned manifest.
+`headset-master.png` is the unmodified 754px producer source; its SHA256 is
+checked against the same pinned manifest. `headset-purple-navy.png` is the
+owner-requested, imagegen-edited local display variant: purple headphones,
+dark navy circular body and the visually retained multicolor waveform. Its
+1254px master, source/output hashes and edit prompt are committed separately;
+it is not represented as byte-identical producer artwork.
 The original opaque master stays with the canonical producer and is never
 substituted for a transparent production variant.
 
@@ -24,13 +28,13 @@ python3.14 -m venv /tmp/esp32-brand-build
 ```
 
 `esp_display/` contains transparent headset-only previews at 64–170px, generated
-from the full-resolution headset master. This is the owner-requested device
-variant, superseding the larger glass treatment in the original Brand V2
-consumer qualification; the pinned producer artwork is not redrawn. Actual
+from the full-resolution purple/navy display master. This owner-requested
+local variant supersedes the earlier device glass/multicolor treatment. Actual
 PROGMEM RGB565 arrays composite alpha over black for dark mode and over white with panel
 inversion compensation for light mode. Draws at
-40px or less select the canonical micro headset array; larger draws select
-the 160px headset array. Every on-device corporate mark is now headset-only.
+40px or less select the recolored 40px headset array; larger draws select
+the matching 160px headset array. Both come from the same full-resolution
+palette variant. Every on-device corporate mark is headset-only.
 No runtime alpha decoder, network image request or extra heap buffer is added. The device
 light theme still uses whole-panel inversion; only the corporate mark compensates
 for that policy to retain its blue/purple colors.
