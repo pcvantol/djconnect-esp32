@@ -492,7 +492,7 @@ Home Assistant/playback status indicators:
 - Device statusbar: `H`, playback music-note icon.
 - Web header mirrors the same indicators.
 - LED ring may be red when critical connectivity is unhealthy; preserve existing priority rules with low-battery/setup/pairing animations.
-- Boot shows the DJConnect tagline `Muziekbediening met karakter` and website URL `https://djconnect.dev` for at least three seconds, then uses a calm startup rainbow lap. The About screen also shows the website URL and keeps legal notices compact. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
+- Boot shows the DJConnect tagline `Your music. Your DJ.` and website URL `https://djconnect.dev` for at least three seconds, then uses a calm startup rainbow lap. The About screen also shows the website URL and keeps legal notices compact. WiFi connect uses a green chase. Setup/AP uses a deeply fading rainbow breath. Home Assistant pairing uses a deeply fading blue breath. Turn off/deep sleep always plays a rainbow fade-out. Top-button soft reset plays a dedicated sound and bright white LED flashes before reboot.
 
 ## Volume Rules
 
@@ -552,7 +552,7 @@ Current web expectations:
 - Pairing info panel shows device ID, code, mDNS URL, service, firmware, model and local HA URL/status.
 - The Home Assistant pairing banner setup link must open in a new tab/window so the local ESP web portal remains loaded.
 - The web portal and captive/setup portal should keep the current DJConnect blue/purple brand styling from the icon/logo. Use blue/purple for headers, panels, primary buttons and pairing surfaces while keeping status colors semantically green/yellow/red.
-- The top web title bar shows `Muziekbediening met karakter`, firmware version and board device model. The status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Hide the battery icon when `battery.available` is false. Keep the IP address in the WiFi block, not in the top status bar.
+- The top web title bar shows `Your music. Your DJ.`, firmware version and board device model. The status bar is right-aligned and follows the device order: H, playback music-note icon, WiFi signal bars, CSS battery icon. Hide the battery icon when `battery.available` is false. Keep the IP address in the WiFi block, not in the top status bar.
 - The Home Assistant URL label in the web portal is `URL`, not `HA URL`.
 - Album art is shown when available.
 - Volume slider range is `0-60`.

@@ -1,0 +1,21 @@
+{
+  "framebuffer_composite": "RGBA over black (dark) or white with panel-inversion compensation (light); RGB565 big-endian",
+  "micro_max_size": 40,
+  "outputs": {
+    "assets/esp_display/djconnect_icon_128x128.png": "fe423f13ba11623b386e3e64e3794bd40f52cdbbf2b075617720d7f1277d9b9e",
+    "assets/esp_display/djconnect_icon_160x160.png": "2bddbda9a1ec8777e41e65a3cb74c575f85e2b76ef59d18a9e0f86f2f198b4a6",
+    "assets/esp_display/djconnect_icon_170x170.png": "714380a2f7ca6d0ace35e3c5241d2a891c5e37304e04ca8a4b630e534190f00e",
+    "assets/esp_display/djconnect_icon_64x64.png": "6e60376df3d8e5c5430bc49df7a9bfd3799b22d98b0d069078e9dd01dbd312bd",
+    "assets/esp_display/djconnect_icon_80x80.png": "46bb0a53b9baa22e17bbd5312571919fdeafd45746a1a3a1c8e95fe4f4cf9b98",
+    "assets/esp_display/djconnect_icon_96x96.png": "02fe0b6a26f7e03713b0450ffb39d11ca11a2159c9140613fc3e12227348bf87",
+    "include/assets/DJConnectIcon160.h": "ac6b3dd5116e528130869d92c0eb15aaa3362fc73dc2898cbfdf01df6e9cff30",
+    "include/assets/DJConnectMicro40.h": "8cf3064f4712a1525a3ad045fdea706dae037f1e41f28b32fac953c7ed3c3ece",
+    "include/assets/djconnect_favicon_ico.h": "81b000999b0c2dfad76d7a8b74eb247cb413b39dc071077593157e33bd854035",
+    "include/assets/djconnect_icon_192_png.h": "9ec76c834791ec5f777b3185ba48788e0acb49d98a5c7f8b16a409ef61e89e28",
+    "include/assets/djconnect_micro_32_png.h": "7304c3bba1a1f62c52248a256e0d0e269fb50226b9a6756488bceef8d9f7044b",
+    "include/assets/djconnect_site_webmanifest.h": "8fb0181b1b79157bca807466cf416127dc2819088b0d3ee4cbf5aae76ac2c8ee"
+  },
+  "producer_commit": "883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866",
+  "producer_manifest_sha256": "73cc408e10d88aa1fb8a1be2783b9c577aec398ce3dcd54c2f997ad1425984d2",
+  "qualification": "PINNED_REVIEW_CANDIDATE_NOT_PRODUCER_ACCEPTANCE"
+}

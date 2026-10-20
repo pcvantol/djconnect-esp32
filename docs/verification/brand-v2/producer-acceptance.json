@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "scope": "ESP32 Brand V2 producer-source reconciliation only",
+  "producer_candidate": "883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866",
+  "protected_producer_merge": "7e14e5970b3f68d33d243ae6bab2b281fad59bb2",
+  "producer_pr": "https://github.com/pcvantol/djconnect/pull/1224",
+  "accepted_brand_tree_identical_to_candidate": true,
+  "brand_files_compared": 28,
+  "imported_files_verified": {
+    "mark-16.png": {
+      "git_blob": "5052c1e761b9f46dac43f50577c666984bf551a8",
+      "sha256": "852f439ec0401582dc56130053a5c775d2241a4810bdfadb20a18956ca62ee4e"
+    },
+    "mark-32.png": {
+      "git_blob": "f0221daa879e8b80ec28d357904916330a9b221a",
+      "sha256": "f0d4d066342e4319d26bab33fa526c933018b17e8cbab3a8d2135c3f85b8281d"
+    },
+    "mark-40.png": {
+      "git_blob": "beaafc88950cf93a1d319d2d362fb4424c4b17eb",
+      "sha256": "7d18021519e271c42bddd934a651c48f9d224330bde4cea52803d3576ea551f3"
+    },
+    "mark-256.png": {
+      "git_blob": "744c6aeee958af71e2dada00690de1085fb30f61",
+      "sha256": "4e91b019e423f8dd03b87aefc2e2fef04ecc6645f48f5bb8c431f94d2018da3e"
+    },
+    "producer-manifest.json": {
+      "git_blob": "73f1b0e784dcc7f625d2651ca9b44310a300ee61",
+      "sha256": "73cc408e10d88aa1fb8a1be2783b9c577aec398ce3dcd54c2f997ad1425984d2"
+    },
+    "PRODUCER_USAGE.md": {
+      "git_blob": "e90e98dd36e9d756ec1e8927982687ef3e0f9bb4",
+      "sha256": "4df3a62141caa73f60fb243d06ec2c97b1422a35d102c95e1ece35b01a6dd7d1"
+    }
+  },
+  "consumer_review": "SEPARATE_REQUIRED",
+  "physical_display": "NOT_QUALIFIED",
+  "installed_or_release": "NOT_PERFORMED"
+}

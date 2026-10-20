@@ -26,6 +26,7 @@
 #include "ScopedWatchdogPause.h"
 #include "assets/djconnect_favicon_ico.h"
 #include "assets/djconnect_icon_192_png.h"
+#include "assets/djconnect_micro_32_png.h"
 
 #ifndef SPOTIFY_ALLOW_INSECURE_TLS
 #define SPOTIFY_ALLOW_INSECURE_TLS 0
@@ -726,6 +727,10 @@ void DJConnectApp::runCaptivePortal() {
     server.send_P(200, "image/x-icon", reinterpret_cast<const char *>(DJCONNECT_FAVICON_ICO), DJCONNECT_FAVICON_ICO_LEN);
   });
 
+  server.on("/icon-32.png", HTTP_GET, [&]() {
+    server.send_P(200, "image/png", reinterpret_cast<const char *>(DJCONNECT_MICRO_32_PNG), DJCONNECT_MICRO_32_PNG_LEN);
+  });
+
   server.on("/icon-192.png", HTTP_GET, [&]() {
     server.send_P(200, "image/png", reinterpret_cast<const char *>(DJCONNECT_ICON_192_PNG), DJCONNECT_ICON_192_PNG_LEN);
   });
@@ -896,18 +901,18 @@ String DJConnectApp::captivePortalPage(
   page += F("<meta name='application-name' content='DJConnect Setup ");
   page += escapedModel;
   page += F("'>");
-  page += F("<link rel='shortcut icon' href='/favicon.ico?v=3' sizes='any'>");
-  page += F("<link rel='icon' href='/favicon.ico?v=3' sizes='any'>");
-  page += F("<link rel='icon' type='image/png' sizes='192x192' href='/icon-192.png?v=3'>");
-  page += F("<link rel='apple-touch-icon' sizes='180x180' href='/apple-touch-icon.png?v=3'>");
-  page += F("<link rel='apple-touch-icon' sizes='192x192' href='/apple-touch-icon.png?v=3'>");
-  page += F("<link rel='apple-touch-icon-precomposed' sizes='180x180' href='/apple-touch-icon-precomposed.png?v=3'>");
-  page += F("<link rel='apple-touch-icon-precomposed' sizes='192x192' href='/apple-touch-icon-precomposed.png?v=3'>");
+  page += F("<link rel='shortcut icon' href='/favicon.ico?v=4' sizes='any'>");
+  page += F("<link rel='icon' href='/favicon.ico?v=4' sizes='any'>");
+  page += F("<link rel='icon' type='image/png' sizes='192x192' href='/icon-192.png?v=4'>");
+  page += F("<link rel='apple-touch-icon' sizes='180x180' href='/apple-touch-icon.png?v=4'>");
+  page += F("<link rel='apple-touch-icon' sizes='192x192' href='/apple-touch-icon.png?v=4'>");
+  page += F("<link rel='apple-touch-icon-precomposed' sizes='180x180' href='/apple-touch-icon-precomposed.png?v=4'>");
+  page += F("<link rel='apple-touch-icon-precomposed' sizes='192x192' href='/apple-touch-icon-precomposed.png?v=4'>");
   page += F("<title>DJConnect Setup ");
   page += escapedModel;
   page += F("</title><style>");
   page += F("*{box-sizing:border-box}body{margin:0;background:#080b0c;color:#f3f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}");
-  page += F("main{width:100%;max-width:520px;margin:0 auto;padding:18px}.brand{display:flex;align-items:center;gap:10px;margin:8px 0 4px}.brand img{width:42px;height:42px;border-radius:8px}h1{font-size:26px;margin:0}.model{display:block;color:#9aa6a2;font-size:13px;font-weight:700;margin-top:2px}p{color:#9aa6a2;line-height:1.4}");
+  page += F("main{width:100%;max-width:520px;margin:0 auto;padding:18px}.brand{display:flex;align-items:center;gap:10px;margin:8px 0 4px}.brand img{width:32px;height:32px;object-fit:contain}h1{font-size:26px;margin:0}.model{display:block;color:#9aa6a2;font-size:13px;font-weight:700;margin-top:2px}p{color:#9aa6a2;line-height:1.4}");
   page += F(".box{background:#111718;border:1px solid #233033;border-radius:8px;padding:14px;margin-top:14px}");
   page += F(".timeout{border:1px solid #4c3d17;background:#1a1608;color:#ffe28a;border-radius:8px;padding:10px 12px;margin:12px 0}");
   page += F(".msg{border-radius:8px;padding:10px 12px;margin:12px 0;background:");
@@ -915,7 +920,7 @@ String DJConnectApp::captivePortalPage(
   page += F("}label{display:grid;gap:6px;margin:12px 0;color:#a8b3af;font-size:13px}");
   page += F("input,button{display:block;width:100%;max-width:100%;min-height:44px;border-radius:8px;border:1px solid #233033;background:#0c1112;color:#f3f7f5;padding:9px 10px;font-size:16px}");
   page += F("button{background:#173721;border-color:#25593a;color:#baf7ca;font-weight:700;margin-top:8px}");
-  page += F("</style></head><body><main><div class='brand'><img src='/icon-192.png?v=3' alt=''><h1>DJConnect Setup<span class='model'>");
+  page += F("</style></head><body><main><div class='brand'><img src='/icon-32.png?v=4' alt=''><h1>DJConnect Setup<span class='model'>");
   page += escapedModel;
   page += F("</span></h1></div>");
   page += F("<p>");

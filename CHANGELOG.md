@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- Adopt the pinned Brand V2 glass/headphones review candidate for TFT, portal,
+  captive setup, browser icons and touch icons, with the invariant tagline
+  `Your music. Your DJ.`. Small marks use headset-only artwork.
+- Add offline hash-verified generation and retire unused legacy example packs.
+  Producer acceptance and physical display acceptance remain separate.
+
 ## v4.0.0
 
 ### Changed
