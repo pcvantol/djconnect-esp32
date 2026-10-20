@@ -1,0 +1,12 @@
+{
+  "kind": "owner-requested-local-display-derivative",
+  "source_master": "headset-master.png",
+  "source_sha256": "21a6273f273936574a7301e7d91c2b0513da66fe17534c258d67c675c0294adc",
+  "method": "built-in image_gen edit",
+  "intent": "Purple headphone, dark navy circular body; retain the visually colored waveform; no glass tile. Not a byte-identical producer asset.",
+  "file": "headset-purple-navy.png",
+  "sha256": "0bd499012ec7c4164a9077f2bfeefe20a99a90d56d25d9423baaf5e97d7422f4",
+  "width": 1254,
+  "height": 1254,
+  "alpha": true
+}

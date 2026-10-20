@@ -1,26 +1,27 @@
 {
   "display_master": {
-    "file": "headset-master.png",
-    "sha256": "21a6273f273936574a7301e7d91c2b0513da66fe17534c258d67c675c0294adc"
+    "file": "headset-purple-navy.png",
+    "sha256": "0bd499012ec7c4164a9077f2bfeefe20a99a90d56d25d9423baaf5e97d7422f4"
   },
-  "display_variant": "headset-only-all-sizes",
+  "display_variant": "headset-purple-navy-all-sizes",
   "framebuffer_composite": "RGBA over black (dark) or white with panel-inversion compensation (light); RGB565 big-endian",
   "micro_max_size": 40,
   "outputs": {
-    "assets/esp_display/djconnect_icon_128x128.png": "5110430b1257b6a7ddbd3ba01b42f565a369ad1d37b486e105baf57750cd7d3d",
-    "assets/esp_display/djconnect_icon_160x160.png": "e5f4fa324d691e52ac984670ac4c16929dad3a8256d9be70301f4775f25c1542",
-    "assets/esp_display/djconnect_icon_170x170.png": "84663b70560f19f196638f9dad9b51c991ecc4829c05fa2f017ac300e753238a",
-    "assets/esp_display/djconnect_icon_64x64.png": "6def929f77210e01c3cb661975b29c02eb12a8d22ac9cfd84de0c4a02edba435",
-    "assets/esp_display/djconnect_icon_80x80.png": "b2569e03f5d3497f0915cd9852141c1ae65e9731e9fa5c5d5a6aedb253901696",
-    "assets/esp_display/djconnect_icon_96x96.png": "1580be0a35ad1a58df158777357d158862fe8b615e17553d328066df77bb5d8a",
-    "include/assets/DJConnectIcon160.h": "b9554f496c004f29c93deb48f9ba601be7b516c640e5920ee11a208f2237c957",
-    "include/assets/DJConnectMicro40.h": "8cf3064f4712a1525a3ad045fdea706dae037f1e41f28b32fac953c7ed3c3ece",
+    "assets/esp_display/djconnect_icon_128x128.png": "663c1de028cd4b921de30d6f1e2b201c321b16cae8a4ab32445d5bb1581d1ed7",
+    "assets/esp_display/djconnect_icon_160x160.png": "c3af1ee6c23bacedb91f64fb28b1a69f826aad320134955af7eeb3d95918b142",
+    "assets/esp_display/djconnect_icon_170x170.png": "87819ed42cac91e35a73202a3276f2ff4056d9ee80b433ec2a8ff8c2985eb7fc",
+    "assets/esp_display/djconnect_icon_64x64.png": "3adeb3577d359b71c268c79fd730a30465338c01f55ff397a5b8a757f502cedb",
+    "assets/esp_display/djconnect_icon_80x80.png": "421faa8c4548b784109a77fa427fd404432d0e3aa1c5378efd45e452dc2193b9",
+    "assets/esp_display/djconnect_icon_96x96.png": "b3bac972dbbd04048fa91adf6e40a93e9dcb519a17f238814d5581b01d5e7d37",
+    "include/assets/DJConnectIcon160.h": "52be9cc20090409dc186173713801b80455ca4b3535755cfa7bdf206be1de94c",
+    "include/assets/DJConnectMicro40.h": "59843c40b286fc27224f5ed1e89450693fea8f6d7591482c0d3da67e09123199",
     "include/assets/djconnect_favicon_ico.h": "81b000999b0c2dfad76d7a8b74eb247cb413b39dc071077593157e33bd854035",
     "include/assets/djconnect_icon_192_png.h": "9ec76c834791ec5f777b3185ba48788e0acb49d98a5c7f8b16a409ef61e89e28",
     "include/assets/djconnect_micro_32_png.h": "7304c3bba1a1f62c52248a256e0d0e269fb50226b9a6756488bceef8d9f7044b",
     "include/assets/djconnect_site_webmanifest.h": "8fb0181b1b79157bca807466cf416127dc2819088b0d3ee4cbf5aae76ac2c8ee"
   },
   "producer_commit": "883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866",
+  "producer_headset_source_sha256": "21a6273f273936574a7301e7d91c2b0513da66fe17534c258d67c675c0294adc",
   "producer_manifest_sha256": "73cc408e10d88aa1fb8a1be2783b9c577aec398ce3dcd54c2f997ad1425984d2",
   "qualification": "PINNED_REVIEW_CANDIDATE_NOT_PRODUCER_ACCEPTANCE"
 }

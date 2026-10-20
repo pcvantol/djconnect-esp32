@@ -31,12 +31,17 @@ class BrandTests(unittest.TestCase):
         self.assertEqual(receipt["producer_commit"], "883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866")
         self.assertIn("NOT_PRODUCER_ACCEPTANCE", receipt["qualification"])
 
-    def test_large_display_marks_use_full_resolution_headset(self):
+    def test_display_marks_use_recolored_headset_master(self):
         source = (ROOT / "assets/brand-v2/headset-master.png").read_bytes()
         self.assertEqual(hashlib.sha256(source).hexdigest(),
                          "21a6273f273936574a7301e7d91c2b0513da66fe17534c258d67c675c0294adc")
-        master = Image.open(io.BytesIO(source)).convert("RGBA")
-        self.assertEqual(master.size, (754, 754))
+        original = Image.open(io.BytesIO(source)).convert("RGBA")
+        self.assertEqual(original.size, (754, 754))
+        palette = (ROOT / "assets/brand-v2/headset-purple-navy.png").read_bytes()
+        self.assertEqual(hashlib.sha256(palette).hexdigest(),
+                         "0bd499012ec7c4164a9077f2bfeefe20a99a90d56d25d9423baaf5e97d7422f4")
+        master = Image.open(io.BytesIO(palette)).convert("RGBA")
+        self.assertEqual(master.size, (1254, 1254))
         for size in (64, 80, 96, 128, 160, 170):
             actual = Image.open(ROOT / f"assets/esp_display/djconnect_icon_{size}x{size}.png")
             self.assertEqual(actual.tobytes(),
@@ -48,6 +53,11 @@ class BrandTests(unittest.TestCase):
         for r, g, b in rgb.get_flattened_data():
             expected.extend((((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)).to_bytes(2, "big"))
         self.assertEqual(embedded("DJConnectIcon160.h"), bytes(expected))
+        micro = master.resize((40, 40), Image.Resampling.LANCZOS)
+        rgb = Image.alpha_composite(Image.new("RGBA", micro.size, (0, 0, 0, 255)), micro).convert("RGB")
+        expected = b"".join((((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)).to_bytes(2, "big")
+                            for r, g, b in rgb.get_flattened_data())
+        self.assertEqual(embedded("DJConnectMicro40.h"), expected)
 
     def test_ico_contains_exact_micro_sources(self):
         data = embedded("djconnect_favicon_ico.h")
@@ -80,10 +90,15 @@ class BrandTests(unittest.TestCase):
             light = embedded(name, light=True)
             self.assertEqual(len(light), len(data))
             self.assertEqual(light[:2], b"\0\0")  # Hardware inversion makes the transparent corner white.
-            # The opaque neon center retains its color under panel inversion.
-            index = (size // 2 * size + size // 2) * 2
-            self.assertEqual(int.from_bytes(light[index:index + 2], "big") ^ 65535,
-                             int.from_bytes(data[index:index + 2], "big"))
+            # Independently verify white-background alpha compositing and
+            # panel inversion, including this asset's partially opaque pixels.
+            reference = Image.open(ROOT / "assets/brand-v2/headset-purple-navy.png").convert("RGBA")
+            reference = reference.resize((size, size), Image.Resampling.LANCZOS)
+            white = Image.new("RGBA", reference.size, (255, 255, 255, 255))
+            rgb = Image.alpha_composite(white, reference).convert("RGB")
+            expected = b"".join(((((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)) ^ 65535).to_bytes(2, "big")
+                                for r, g, b in rgb.get_flattened_data())
+            self.assertEqual(light, expected)
         display = (ROOT / "src/DisplayManager.cpp").read_text()
         self.assertIn("const bool micro = size <= 40;", display)
         self.assertNotIn("if (color != TFT_BLACK)", display)
