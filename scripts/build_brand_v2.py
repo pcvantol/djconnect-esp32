@@ -50,7 +50,7 @@ def encode(image: Image.Image) -> bytes:
 
 def rgb565(image: Image.Image, light: bool = False) -> bytes:
     # The framebuffer is opaque black. Composite explicitly; never drop alpha
-    # or treat black pixels as transparency (the glass interior can be black).
+    # or treat dark artwork pixels as transparency.
     background = Image.new("RGBA", image.size, (255, 255, 255, 255) if light else (0, 0, 0, 255))
     pixels = Image.alpha_composite(background, image).convert("RGB")
     result = bytearray()
@@ -78,9 +78,19 @@ def outputs() -> dict[str, bytes]:
         if image.size != (size, size) or image.getpixel((0, 0))[3] != 0:
             raise ValueError(f"unexpected dimensions/alpha: {name}")
         images[size] = image
+    # The device uses the owner's selected headset-only variant at every size.
+    # Resize the full-resolution producer master, never upscale a micro icon.
+    name = "headset-master.png"
+    blob = (SOURCE / name).read_bytes()
+    headset_metadata = manifest["files"][f"assets/djconnect/brand-v2/{name}"]
+    if hashlib.sha256(blob).hexdigest() != headset_metadata["sha256"]:
+        raise ValueError(f"producer asset changed: {name}")
+    headset = Image.open(io.BytesIO(blob)).convert("RGBA")
+    if headset.size != (headset_metadata["width"], headset_metadata["height"]) or headset.getpixel((0, 0))[3] != 0:
+        raise ValueError(f"unexpected dimensions/alpha: {name}")
     result = {}
     for size in (64, 80, 96, 128, 160, 170):
-        image = images[256].resize((size, size), Image.Resampling.LANCZOS)
+        image = headset.resize((size, size), Image.Resampling.LANCZOS)
         result[f"assets/esp_display/djconnect_icon_{size}x{size}.png"] = encode(image)
         if size == 160:
             result["include/assets/DJConnectIcon160.h"] = header("DJCONNECT_ICON_160_RGB565", rgb565(image), size)
@@ -111,6 +121,8 @@ def outputs() -> dict[str, bytes]:
                "qualification": "PINNED_REVIEW_CANDIDATE_NOT_PRODUCER_ACCEPTANCE",
                "framebuffer_composite": "RGBA over black (dark) or white with panel-inversion compensation (light); RGB565 big-endian",
                "micro_max_size": 40,
+               "display_variant": "headset-only-all-sizes",
+               "display_master": {"file": "headset-master.png", "sha256": headset_metadata["sha256"]},
                "outputs": {name: hashlib.sha256(blob).hexdigest() for name, blob in sorted(result.items())}}
     result["assets/brand-v2/consumer-manifest.json"] = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode()
     return result

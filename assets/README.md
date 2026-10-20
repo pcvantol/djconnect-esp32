@@ -8,6 +8,8 @@ physical firmware acceptance. The exact invariant brand line is
 
 `mark-16/32/40.png` are unmodified transparent headset-only micro-icons;
 `mark-256.png` is the unmodified glass mark, transparent outside the rim.
+`headset-master.png` is the unmodified 754px producer source for larger device
+headphone marks; its SHA256 is checked against the same pinned manifest.
 The original opaque master stays with the canonical producer and is never
 substituted for a transparent production variant.
 
@@ -21,11 +23,15 @@ python3.14 -m venv /tmp/esp32-brand-build
 /tmp/esp32-brand-build/bin/python test/native/test_brand_v2.py
 ```
 
-`esp_display/` contains transparent glass previews. Actual PROGMEM RGB565
-arrays composite alpha over black for dark mode and over white with panel
+`esp_display/` contains transparent headset-only previews at 64–170px, generated
+from the full-resolution headset master. This is the owner-requested device
+variant, superseding the larger glass treatment in the original Brand V2
+consumer qualification; the pinned producer artwork is not redrawn. Actual
+PROGMEM RGB565 arrays composite alpha over black for dark mode and over white with panel
 inversion compensation for light mode. Draws at
-40px or less select the headset array; larger draws select glass. No runtime
-alpha decoder, network image request or extra heap buffer is added. The device
+40px or less select the canonical micro headset array; larger draws select
+the 160px headset array. Every on-device corporate mark is now headset-only.
+No runtime alpha decoder, network image request or extra heap buffer is added. The device
 light theme still uses whole-panel inversion; only the corporate mark compensates
 for that policy to retain its blue/purple colors.
 

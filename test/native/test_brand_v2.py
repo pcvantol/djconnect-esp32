@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Pinned producer and encoded firmware format verification, no device claim."""
+import hashlib
 import importlib.util
 import io
 import json
@@ -29,6 +30,24 @@ class BrandTests(unittest.TestCase):
         receipt = json.loads((ROOT / "assets/brand-v2/consumer-manifest.json").read_text())
         self.assertEqual(receipt["producer_commit"], "883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866")
         self.assertIn("NOT_PRODUCER_ACCEPTANCE", receipt["qualification"])
+
+    def test_large_display_marks_use_full_resolution_headset(self):
+        source = (ROOT / "assets/brand-v2/headset-master.png").read_bytes()
+        self.assertEqual(hashlib.sha256(source).hexdigest(),
+                         "21a6273f273936574a7301e7d91c2b0513da66fe17534c258d67c675c0294adc")
+        master = Image.open(io.BytesIO(source)).convert("RGBA")
+        self.assertEqual(master.size, (754, 754))
+        for size in (64, 80, 96, 128, 160, 170):
+            actual = Image.open(ROOT / f"assets/esp_display/djconnect_icon_{size}x{size}.png")
+            self.assertEqual(actual.tobytes(),
+                             master.resize((size, size), Image.Resampling.LANCZOS).tobytes())
+        # Independently bind the actual large RGB565 array to the headset pixels.
+        rgba = master.resize((160, 160), Image.Resampling.LANCZOS)
+        rgb = Image.alpha_composite(Image.new("RGBA", rgba.size, (0, 0, 0, 255)), rgba).convert("RGB")
+        expected = bytearray()
+        for r, g, b in rgb.get_flattened_data():
+            expected.extend((((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)).to_bytes(2, "big"))
+        self.assertEqual(embedded("DJConnectIcon160.h"), bytes(expected))
 
     def test_ico_contains_exact_micro_sources(self):
         data = embedded("djconnect_favicon_ico.h")
