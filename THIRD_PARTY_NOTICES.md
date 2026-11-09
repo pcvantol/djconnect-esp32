@@ -52,7 +52,7 @@ human-readable third-party notice summary and trademark notices.
 - FastLED
   - Used for WS2812 LED-ring control.
   - PlatformIO dependency: `fastled/FastLED`
-  - CI-resolved version for v4.0.0: `3.10.6`.
+  - CI-resolved version for v4.0.1: `3.10.9`.
   - Source: `https://github.com/FastLED/FastLED`
   - License: MIT.
 
