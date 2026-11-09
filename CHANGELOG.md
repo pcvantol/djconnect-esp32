@@ -2,13 +2,20 @@
 
 ## Unreleased
 
+## v4.0.1
+
 ### Changed
 
-- Adopt the pinned Brand V2 glass/headphones review candidate for TFT, portal,
-  captive setup, browser icons and touch icons, with the invariant tagline
-  `Your music. Your DJ.`. Small marks use headset-only artwork.
-- Add offline hash-verified generation and retire unused legacy example packs.
-  Producer acceptance and physical display acceptance remain separate.
+- Adopt DJConnect Brand V2 across the device display, web portal, captive
+  setup and browser icons. The device uses a purple headset, dark-blue circle
+  and magenta rim with the original multicolor waveform.
+- Keep the tagline `Your music. Your DJ.` and verify generated artwork against
+  its pinned source.
+- Refresh build and CI dependencies, including FastLED 3.10.9 as resolved by
+  firmware CI.
+
+This LilyGO T-Embed S3 release remains compatible with Home Assistant
+integration 4.0.x.
 
 ## v4.0.0
 
