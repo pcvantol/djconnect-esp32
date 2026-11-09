@@ -10,7 +10,7 @@ Usage:
 Environment:
   PIO_BIN                 PlatformIO executable override.
   PIO_JOBS                PlatformIO build jobs per firmware environment, default 1.
-  FIRMWARE_RELEASE_REPO   GitHub release repo, default pcvantol/djconnect-firmware.
+  FIRMWARE_RELEASE_REPO   Override the GitHub release repo resolved by repository ID.
   --min-ha-integration    Override default X.Y.0 integration requirement derived from the release version.
   --max-ha-integration    Override default X.(Y+1).0 exclusive integration ceiling derived from the release version.
 EOF
@@ -232,7 +232,7 @@ fi
 RELEASE_BOARDS=(t_embed_cc1101)
 ASSET="$(asset_name_for t_embed_cc1101 "$VERSION")"
 RELEASE_DIR="release"
-FIRMWARE_RELEASE_REPO="${FIRMWARE_RELEASE_REPO:-pcvantol/djconnect-firmware}"
+FIRMWARE_RELEASE_REPO="${FIRMWARE_RELEASE_REPO:-}"
 PIO_BIN="${PIO_BIN:-/Users/pcvantol/.platformio/penv/bin/pio}"
 PIO_JOBS="${PIO_JOBS:-1}"
 [[ -x "$PIO_BIN" ]] || PIO_BIN="pio"
@@ -277,12 +277,16 @@ if [[ "$DRY_RUN" == "true" ]]; then
     echo "If GitHub Actions release publishing is configured, the pushed tag may publish public firmware assets."
   fi
   if [[ "$GH_RELEASE" == "true" ]]; then
-    echo "Would also create GitHub release in $FIRMWARE_RELEASE_REPO locally because --gh-release was passed."
+    echo "Would also create GitHub release in ${FIRMWARE_RELEASE_REPO:-the firmware distribution repository} locally because --gh-release was passed."
     if [[ "$CHANNEL" == "beta" ]]; then
       echo "Would mark the GitHub release as a prerelease."
     fi
   fi
   exit 0
+fi
+
+if [[ "$GH_RELEASE" == "true" && -z "$FIRMWARE_RELEASE_REPO" ]] && command -v gh >/dev/null 2>&1; then
+  FIRMWARE_RELEASE_REPO="$(bash scripts/resolve_firmware_release_repo.sh)"
 fi
 
 verify_head_based_on_remote_main "."
