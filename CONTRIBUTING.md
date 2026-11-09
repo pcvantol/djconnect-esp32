@@ -123,7 +123,7 @@ and tags use semantic versioning with a `vX.Y.Z` Git tag. Always run
 
 The release script builds the LilyGO T-Embed-CC1101 firmware asset, writes the
 firmware manifest, commits the source release, creates the tag and pushes it.
-Public OTA artifacts are published through `pcvantol/djconnect-firmware`; for
+Public OTA artifacts are published through the [firmware distribution repository](README.md#github-firmware-release). For
 maintainer-run releases, use `--publish-firmware-repo ../djconnect-firmware`
 and verify or create the public GitHub firmware release with only the LilyGO
 binary, its `.sha256` file and `firmware_manifest.json`. If the GitHub Actions

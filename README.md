@@ -486,9 +486,11 @@ During normal boot, the display shows the DJConnect tagline `Your music. Your DJ
 
 ## GitHub Firmware Release
 
-Release firmware can be prepared locally with `release.sh`. The public firmware repo `pcvantol/djconnect-firmware` also contains the release assets consumed by Home Assistant OTA.
+Release firmware can be prepared locally with `release.sh`. The public `djconnect-firmware` repository contains the release assets consumed by Home Assistant OTA. It is moving from `pcvantol/djconnect-firmware` to `djconnect-music-dj/djconnect-firmware`. The release workflow and local `--gh-release` command resolve the active owner using GitHub repository ID `1258610489`. Use `bash scripts/resolve_firmware_release_repo.sh` to look up the current address.
 
-The local release helper prepares a source release, injects the release version through PlatformIO build flags, verifies the current release commit is based on `origin/main`, updates/upgrades PlatformIO Core plus third-party project packages, dependencies and tools before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes the current release commit explicitly with `git push origin HEAD:main`. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. Public OTA assets live in `pcvantol/djconnect-firmware`; publish them with `--publish-firmware-repo ../djconnect-firmware` and create/verify the public GitHub release with only the LilyGO `.bin`, `.sha256` and manifest assets. If the source GitHub Action is configured and has release credentials, the pushed tag can also build and publish the public firmware release, but maintainer-run releases should verify the public release explicitly. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
+Before transferring the repository, confirm that `FIRMWARE_RELEASE_TOKEN` can publish releases under the destination organization. After the transfer, check that the resolver returns the new address and that existing release downloads still work through the old address. Deployment and smoke workflows accept artifact IDs under either owner and still require an exact match with the approved manifest.
+
+The local release helper prepares a source release, injects the release version through PlatformIO build flags, verifies the current release commit is based on `origin/main`, updates/upgrades PlatformIO Core plus third-party project packages, dependencies and tools before building, creates ignored local `release/djconnect-lilygo-t-embed-s3-vX.Y.Z.bin` and `release/firmware_manifest.json` artifacts, commits source metadata, tags and pushes the current release commit explicitly with `git push origin HEAD:main`. Release-cycle documentation updates must also refresh `CHAT_BOOTSTRAP.md` so future Codex chats start with the current release, handoff and verification context. Release builds define `DJCONNECT_RELEASE_BUILD=1` and compile with explicit size-oriented `-Os` flags. Link-time optimization is intentionally not enabled because the current Arduino ESP32 / ESP-IDF 5.3 toolchain fails to link the application with `-flto`. Public OTA assets live in the firmware distribution repository; publish them with `--publish-firmware-repo ../djconnect-firmware` and create/verify the public GitHub release with only the LilyGO `.bin`, `.sha256` and manifest assets. If the source GitHub Action is configured and has release credentials, the pushed tag can also build and publish the public firmware release, but maintainer-run releases should verify the public release explicitly. GitHub release notes are extracted from the matching `CHANGELOG.md` section for the release tag, so each release requires a populated `## vX.Y.Z` changelog entry before publishing.
 
 The embedded web portal lives in `src/WebPortal.cpp` as a PROGMEM raw literal.
 Run `python3 scripts/minify_webportal.py` after changing the portal markup,
@@ -512,14 +514,15 @@ redirect certificate chains.
 Beta firmware uses the same flow with `--channel beta` or a `vX.Y.Z-beta` tag. Beta assets are named `djconnect-lilygo-t-embed-s3-beta-vX.Y.Z.bin`, the manifest is `firmware_manifest_beta.json`, and the GitHub release is marked as a prerelease.
 
 Old public firmware releases, tags and workflow runs can be reviewed and pruned
-with the separate dry-run first cleanup helper. Use `--keep-runs` when you want
+with the separate dry-run first cleanup helper. Resolve the current repository before running it. Use `--keep-runs` when you want
 to keep more recent GitHub Actions history than release/tag history.
 
 ```sh
-scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --dry-run
-scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --execute --yes
-scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --keep-runs 5 --execute --yes
-scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --channel beta --keep 1 --dry-run
+firmware_repo="$(bash scripts/resolve_firmware_release_repo.sh)"
+scripts/cleanup_old_releases.sh --repo "$firmware_repo" --dry-run
+scripts/cleanup_old_releases.sh --repo "$firmware_repo" --keep 1 --execute --yes
+scripts/cleanup_old_releases.sh --repo "$firmware_repo" --keep 1 --keep-runs 5 --execute --yes
+scripts/cleanup_old_releases.sh --repo "$firmware_repo" --channel beta --keep 1 --dry-run
 ```
 
 ```bash

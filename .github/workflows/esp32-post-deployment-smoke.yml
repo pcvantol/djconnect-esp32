@@ -35,7 +35,7 @@ jobs:
           set -euo pipefail
           printf '%s' "$CANDIDATE_SHA" | grep -Eq '^[0-9a-f]{40}$'
           printf '%s' "$MANIFEST_ID" | grep -Eq '^release-[A-Za-z0-9._-]+$'
-          printf '%s' "$ARTIFACT_ID" | grep -Eq '^release-asset:pcvantol/djconnect-firmware:v[0-9]+\.[0-9]+\.[0-9]+:djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
+          printf '%s' "$ARTIFACT_ID" | grep -Eq '^release-asset:(pcvantol|djconnect-music-dj)/djconnect-firmware:v[0-9]+\.[0-9]+\.[0-9]+:djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
           printf '%s' "$ARTIFACT_SHA256" | grep -Eq '^[0-9a-f]{64}$'
           test "$TARGET" = esp32_lilygo_t_embed_s3
           printf '%s' "$PLATFORM_VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'
