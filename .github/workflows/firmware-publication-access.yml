@@ -1,0 +1,41 @@
+name: Verify firmware publication access
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  verify:
+    if: github.repository == 'pcvantol/djconnect-esp32' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check existing publisher access without writing
+        env:
+          GH_TOKEN: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+
+          repository="$(gh api repositories/1258610489 | jq -er '
+            select(.id == 1258610489 and .visibility == "public" and
+                   .permissions.push == true) | .full_name
+          ')"
+          case "$repository" in
+            pcvantol/djconnect-firmware)
+              # A separate organization repository proves access to the org,
+              # but cannot prove access to the future firmware repository.
+              gh api repositories/1315212123 | jq -e '
+                .id == 1315212123 and .visibility == "public" and
+                .full_name == "djconnect-music-dj/djconnect-pico" and
+                .permissions.push == true
+              '
+              echo "Pre-transfer: publisher has write access to firmware at source and to Pico in the destination organization."
+              ;;
+            djconnect-music-dj/djconnect-firmware)
+              echo "Post-transfer: publisher has write access to firmware in the destination organization."
+              ;;
+            *) exit 1 ;;
+          esac
