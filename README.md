@@ -486,7 +486,7 @@ During normal boot, the display shows the DJConnect tagline `Your music. Your DJ
 
 ## GitHub Firmware Release
 
-Release firmware can be prepared locally with `release.sh`. The public `djconnect-firmware` repository contains the release assets consumed by Home Assistant OTA. It is moving from `pcvantol/djconnect-firmware` to `djconnect-music-dj/djconnect-firmware`. The release workflow and local `--gh-release` command resolve the active owner using GitHub repository ID `1258610489`. Use `bash scripts/resolve_firmware_release_repo.sh` to look up the current address.
+Release firmware can be prepared locally with `release.sh`. The public [firmware releases](https://github.com/djconnect-music-dj/djconnect-firmware/releases) contain the assets consumed by Home Assistant OTA. The release workflow and local `--gh-release` command resolve the distribution repository using GitHub repository ID `1258610489`. Use `bash scripts/resolve_firmware_release_repo.sh` to look up the current address.
 
 Before transferring the repository, confirm that `FIRMWARE_RELEASE_TOKEN` can publish releases under the destination organization. After the transfer, check that the resolver returns the new address and that existing release downloads still work through the old address. Deployment and smoke workflows accept artifact IDs under either owner and still require an exact match with the approved manifest.
 
