@@ -3,7 +3,8 @@ name: Verify firmware publication access
 on:
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   verify:
@@ -11,31 +12,51 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check existing publisher access without writing
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5
+        with:
+          persist-credentials: false
+
+      - name: Resolve firmware distribution repository
+        id: distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repository="$(bash scripts/resolve_firmware_release_repo.sh)"
+          printf 'repository=%s\n' "$repository" >> "$GITHUB_OUTPUT"
+
+      - name: Check current personal publication access
+        if: steps.distribution.outputs.repository == 'pcvantol/djconnect-firmware'
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
-        shell: bash
         run: |
-          set -euo pipefail
           test -n "$GH_TOKEN"
+          gh api repositories/1258610489 | jq -e '
+            .id == 1258610489 and .visibility == "public" and
+            .full_name == "pcvantol/djconnect-firmware" and .permissions.push == true
+          '
 
-          repository="$(gh api repositories/1258610489 | jq -er '
-            select(.id == 1258610489 and .visibility == "public" and
-                   .permissions.push == true) | .full_name
-          ')"
-          case "$repository" in
-            pcvantol/djconnect-firmware)
-              # A separate organization repository proves access to the org,
-              # but cannot prove access to the future firmware repository.
-              gh api repositories/1315212123 | jq -e '
-                .id == 1315212123 and .visibility == "public" and
-                .full_name == "djconnect-music-dj/djconnect-pico" and
-                .permissions.push == true
-              '
-              echo "Pre-transfer: publisher has write access to firmware at source and to Pico in the destination organization."
-              ;;
-            djconnect-music-dj/djconnect-firmware)
-              echo "Post-transfer: publisher has write access to firmware in the destination organization."
-              ;;
-            *) exit 1 ;;
-          esac
+      - name: Create organization firmware publication token
+        if: steps.distribution.outputs.repository == 'djconnect-music-dj/djconnect-firmware'
+        id: publisher
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.FIRMWARE_PUBLISHER_CLIENT_ID }}
+          private-key: ${{ secrets.FIRMWARE_PUBLISHER_PRIVATE_KEY }}
+          owner: djconnect-music-dj
+          repositories: djconnect-firmware
+          permission-contents: write
+
+      - name: Check organization installation scope without publishing
+        if: steps.distribution.outputs.repository == 'djconnect-music-dj/djconnect-firmware'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.publisher.outputs.token }}
+        run: |
+          test -n "$GH_TOKEN"
+          gh api installation/repositories | jq -e '
+            .total_count == 1 and (.repositories | length) == 1 and
+            .repositories[0].id == 1258610489 and .repositories[0].visibility == "public" and
+            .repositories[0].full_name == "djconnect-music-dj/djconnect-firmware"
+          '
