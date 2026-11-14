@@ -525,6 +525,15 @@ Why:
   notice and dependency inventory updates explicit instead of relying on memory.
 - Reusing the changelog section for GitHub Releases keeps public release notes,
   OTA release metadata and repository history aligned.
+- The firmware publisher resolves the distribution repository by GitHub ID
+  `1258610489`. For the personal repository it uses the existing
+  `FIRMWARE_RELEASE_TOKEN`. For `djconnect-music-dj/djconnect-firmware` it
+  requires a dedicated GitHub App installation restricted to that repository.
+  Configure the App client ID as `FIRMWARE_PUBLISHER_CLIENT_ID` and its private
+  key as `FIRMWARE_PUBLISHER_PRIVATE_KEY` in the ESP32 source repository. The
+  workflow requests a short-lived installation token with Contents write
+  access. **Verify firmware publication access** checks the active credential
+  from source `main` without creating or modifying a release.
 
 ## Coding Style And Conventions
 
