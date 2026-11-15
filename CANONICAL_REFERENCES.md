@@ -2,7 +2,7 @@
 
 Status: repository-local canonical reference map
 
-Repository: `pcvantol/djconnect-esp32`
+Repository: `djconnect-music-dj/djconnect-esp32`
 
 This repository extends the DJConnect Platform Foundation. It does not redefine
 it.
@@ -74,7 +74,7 @@ Canonical foundation documents include:
 
 ## Local Technical Design Ownership
 
-- Canonical repository: `pcvantol/djconnect-esp32` for repository-specific technical
+- Canonical repository: `djconnect-music-dj/djconnect-esp32` for repository-specific technical
   design, implementation, build, release and test details.
 - Local responsibility: maintain implementation reality for ESP32 firmware implementation, constrained device UI, local device API, pairing, mDNS, OTA client behavior and firmware-local rendering.
 - May this repository modify it: yes, within its ownership boundary.

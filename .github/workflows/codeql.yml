@@ -25,7 +25,7 @@ jobs:
     uses: pcvantol/djconnect/.github/workflows/software-assurance-governance.yml@dd02d6470f061e6e755e6fb47ae5331c34f89875
     with:
       execution_profile: balanced
-      owner: pcvantol/djconnect-esp32
+      owner: djconnect-music-dj/djconnect-esp32
 
   analyze:
     name: Analyze C/C++
