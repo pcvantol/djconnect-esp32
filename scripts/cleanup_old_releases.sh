@@ -10,7 +10,7 @@ Deletes old GitHub releases, matching git tags and old workflow runs, keeping
 the newest semantic version releases and newest workflow runs by default.
 
 Options:
-  --repo OWNER/REPO       GitHub repository, for example pcvantol/djconnect-firmware.
+  --repo OWNER/REPO       GitHub repository, for example djconnect-music-dj/djconnect-firmware.
   --channel stable|beta|all
                           Release channel to prune. Default: stable.
   --keep N                Number of newest semver releases/tags to keep. Default: 1.
@@ -23,11 +23,11 @@ Options:
   -h, --help              Show this help.
 
 Examples:
-  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --dry-run
-  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --channel beta --dry-run
-  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 2 --execute
-  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --channel beta --keep 1 --execute
-  scripts/cleanup_old_releases.sh --repo pcvantol/djconnect-firmware --keep 1 --keep-runs 5 --execute
+  scripts/cleanup_old_releases.sh --repo djconnect-music-dj/djconnect-firmware --dry-run
+  scripts/cleanup_old_releases.sh --repo djconnect-music-dj/djconnect-firmware --channel beta --dry-run
+  scripts/cleanup_old_releases.sh --repo djconnect-music-dj/djconnect-firmware --keep 2 --execute
+  scripts/cleanup_old_releases.sh --repo djconnect-music-dj/djconnect-firmware --channel beta --keep 1 --execute
+  scripts/cleanup_old_releases.sh --repo djconnect-music-dj/djconnect-firmware --keep 1 --keep-runs 5 --execute
 
 Notes:
   - Requires GitHub CLI: gh auth login
