@@ -39,6 +39,11 @@ jobs:
           test "$EXECUTION_MODE" = execute
           test "$TARGET" = esp32_lilygo_t_embed_s3
           test "$RELEASE_PROFILE" = INTERNAL_RELEASE
+          test "$GITHUB_REPOSITORY_ID" = 1258611332
+          case "$GITHUB_REPOSITORY" in
+            pcvantol/djconnect-esp32|djconnect-music-dj/djconnect-esp32) ;;
+            *) echo "Unexpected DJConnect ESP32 source repository name." >&2; exit 1 ;;
+          esac
           printf '%s' "$CANDIDATE_SHA" | grep -Eq '^[0-9a-f]{40}$'
           printf '%s' "$MANIFEST_ID" | grep -Eq '^release-[A-Za-z0-9._-]+$'
           printf '%s' "$ARTIFACT_ID" | grep -Eq '^release-asset:(pcvantol|djconnect-music-dj)/djconnect-firmware:v[0-9]+\.[0-9]+\.[0-9]+:djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
@@ -80,7 +85,7 @@ jobs:
           test "$(jq -r '.approval.state' "$manifest")" = APPROVED
           test "$(jq -r '.manifest_id' "$manifest")" = "$MANIFEST_ID"
           test "$(jq -r '.release_profile' "$manifest")" = "$RELEASE_PROFILE"
-          release_version="$(jq -r --arg sha "$CANDIDATE_SHA" '.repositories[] | select(.repository == "pcvantol/djconnect-esp32" and .source_sha == $sha) | .version' "$manifest")"
+          release_version="$(jq -r --arg repo "$GITHUB_REPOSITORY" --arg sha "$CANDIDATE_SHA" '.repositories[] | select(.repository == $repo and .source_sha == $sha) | .version' "$manifest")"
           printf '%s' "$release_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
           jq -e --arg target "$TARGET" --arg artifact "$ARTIFACT_ID" --arg sha "$ARTIFACT_SHA256" \
             '.artifact_bindings[] | select(.target == $target and .artifact_id == $artifact and .artifact_sha256 == $sha)' \
