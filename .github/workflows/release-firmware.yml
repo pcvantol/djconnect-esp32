@@ -170,10 +170,9 @@ jobs:
           MIN_HA_INTEGRATION="${{ needs.release-info.outputs.min_ha_integration }}"
           MAX_HA_INTEGRATION="${{ needs.release-info.outputs.max_ha_integration }}"
           MANIFEST="${{ needs.release-info.outputs.manifest }}"
-          SOURCE_REPOSITORY="${GITHUB_REPOSITORY}"
+          SOURCE_REPOSITORY="$(bash scripts/verify_firmware_source_repo.sh)"
           SOURCE_SHA="$(git rev-parse HEAD)"
 
-          printf '%s' "${SOURCE_REPOSITORY}" | grep -Eq '^pcvantol/djconnect-esp32$'
           printf '%s' "${SOURCE_SHA}" | grep -Eq '^[0-9a-f]{40}$'
 
           mkdir -p release
