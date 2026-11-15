@@ -88,6 +88,11 @@ for name, expected in receipt["outputs"].items():
 print("Pinned Brand V2 release inputs verified")
 PY
 
+if ! grep -Fq '"https://api.github.com/repos/djconnect-music-dj/djconnect-firmware/releases/latest";' include/Config.h; then
+  echo "bootstrap OTA must use the canonical firmware release API" >&2
+  exit 1
+fi
+
 # The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
 if rg -n --glob "!test/native/test_release.sh" --glob "!test/native/test_ha_contract_smoke.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
   README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then

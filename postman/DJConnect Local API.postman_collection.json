@@ -46,7 +46,7 @@
     },
     {
       "key": "firmware_url",
-      "value": "https://github.com/pcvantol/djconnect-firmware/releases/download/v{{firmware_version}}/djconnect-lilygo-t-embed-s3-v{{firmware_version}}.bin",
+      "value": "https://github.com/djconnect-music-dj/djconnect-firmware/releases/download/v{{firmware_version}}/djconnect-lilygo-t-embed-s3-v{{firmware_version}}.bin",
       "type": "string"
     },
     {

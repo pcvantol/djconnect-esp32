@@ -155,7 +155,7 @@ Core data/security boundaries:
 - Current song is a menu screen and uses top-button back; it does not start PTT.
 - Up Next item playback requires a non-empty item URI, not a queue context. The ESP preserves queue `context_uri` from Home Assistant and uses it as a fallback when the latest playback snapshot has no context, but direct `spotify:track:*` and `spotify:episode:*` items remain startable without `context_uri`/`queue_context`. Queue display state accepts up to 100 items and is de-duplicated on the ESP before device/web rendering.
 - Web Up Next album art is URL pass-through only. The ESP does not download queue thumbnails; the browser lazy-loads them when the queue panel is visible.
-- Release binaries/manifests are generated locally under `release/` but ignored by git; published OTA assets live in `pcvantol/djconnect-firmware`.
+- Release binaries/manifests are generated locally under `release/` but ignored by git; published OTA assets live in `djconnect-music-dj/djconnect-firmware`.
 - Release manifests use a `firmwares` array only. There is no legacy single-device asset compatibility: LilyGO uses `djconnect-lilygo-t-embed-s3-vX.Y.Z.bin`, and HA compatibility is derived from firmware version `X.Y.Z` as `min_ha_integration:"X.Y.0"` plus exclusive `max_ha_integration:"X.(Y+1).0"`.
 - Local `dev` / `vdev` builds report OTA-comparable version `0.0.0` to Home Assistant/device API so published releases are seen as upgrades.
 - Bootstrap OTA is separate from normal HA OTA: it only runs before pairing, checks the public firmware release API, skips dev firmware, and reuses the normal OTA write/display/LED/sound path when a newer release is found.

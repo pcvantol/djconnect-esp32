@@ -455,7 +455,7 @@ Local development builds may display `vdev`, but Home Assistant/device API versi
 Pre-pairing bootstrap OTA:
 
 - Runs only after WiFi connects and before Home Assistant pairing setup when the device is not paired yet.
-- Checks the latest public firmware release through the GitHub Releases API for `pcvantol/djconnect-firmware`.
+- Checks the latest public firmware release through the GitHub Releases API for `djconnect-music-dj/djconnect-firmware`.
 - Must never auto-update local `dev` / `vdev` firmware. Dev builds are intentionally local and should only be replaced by explicit serial/web/HA update actions.
 - Must use TLS verification for the GitHub release/manifest check. Do not use `setInsecure()` for deciding whether an update exists.
 - Reuse `DJConnectOTA::performUpdate()` for the actual firmware write so display text, 100% brightness, purple LED-ring animation, speaker cues, SHA256 validation and reboot behavior remain consistent.
@@ -610,7 +610,7 @@ README should document:
 - Home Assistant owned playback backend provisioning.
 - Web portal capabilities.
 - Home Assistant command/status behavior.
-- OTA release flow through the GitHub repo `pcvantol/djconnect-firmware` using a git tag.
+- OTA release flow through the GitHub repo `djconnect-music-dj/djconnect-firmware` using a git tag.
 - Current build/upload/test commands.
 - Legal/trademark notice and reference to `THIRD_PARTY_NOTICES.md`.
 

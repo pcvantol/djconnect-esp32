@@ -131,7 +131,7 @@ static const char *const ProvisioningApSsid = "DJConnect Setup";
 // Playback backend credentials and API endpoints live in Home Assistant, not on the ESP.
 static const char *const LikedProxyPlaylistName = "DJConnect Default Playlist";
 static const char *const BootstrapFirmwareReleaseApiUrl =
-    "https://api.github.com/repos/pcvantol/djconnect-firmware/releases/latest";
+    "https://api.github.com/repos/djconnect-music-dj/djconnect-firmware/releases/latest";
 static const char *const BootstrapFirmwareManifestAsset = "firmware_manifest.json";
 
 // POSIX timezone rule for Europe/Amsterdam, including CET/CEST daylight saving changes.
