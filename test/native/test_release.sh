@@ -4,6 +4,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
+for source_repo in pcvantol/djconnect-esp32 djconnect-music-dj/djconnect-esp32; do
+  test "$(GITHUB_REPOSITORY_ID=1258611332 GITHUB_REPOSITORY="$source_repo" bash scripts/verify_firmware_source_repo.sh)" = "$source_repo"
+done
+if GITHUB_REPOSITORY_ID=1 GITHUB_REPOSITORY=djconnect-music-dj/djconnect-esp32 bash scripts/verify_firmware_source_repo.sh 2>/dev/null; then
+  echo "Firmware source check admitted the wrong repository ID" >&2
+  exit 1
+fi
+if GITHUB_REPOSITORY_ID=1258611332 GITHUB_REPOSITORY=other/djconnect-esp32 bash scripts/verify_firmware_source_repo.sh 2>/dev/null; then
+  echo "Firmware source check admitted an unknown owner" >&2
+  exit 1
+fi
+
 bash -n release.sh
 bash -n scripts/cleanup_old_releases.sh
 bash -n scripts/capture_device_screens.sh

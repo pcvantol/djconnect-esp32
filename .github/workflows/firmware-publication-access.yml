@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   verify:
-    if: github.repository == 'pcvantol/djconnect-esp32' && github.ref == 'refs/heads/main'
+    if: github.repository_id == '1258611332' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,6 +22,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          bash scripts/verify_firmware_source_repo.sh >/dev/null
           repository="$(bash scripts/resolve_firmware_release_repo.sh)"
           printf 'repository=%s\n' "$repository" >> "$GITHUB_OUTPUT"
 
