@@ -181,7 +181,8 @@ jobs:
       - ha-contract-e2e
       - release-script
       - platformio-build
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    # Preserve CI and release evidence; cleanup must not run automatically.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
