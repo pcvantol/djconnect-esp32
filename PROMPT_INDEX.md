@@ -28,7 +28,7 @@ Generation and platform phase remain canonical in `pcvantol/djconnect/PRODUCT_RO
 
 ## Rolling Horizon (Next 5 Planned)
 
-Canonical source: `pcvantol/djconnect/docs/roadmap/v1/lanes/DJC-ESP32.md` and owning planning register [#58](https://github.com/pcvantol/djconnect-esp32/issues/58). The completed README predecessor is excluded. `SETTINGS::ESP32::ADOPTION` remains Planned/NOT_ISSUED; no settings implementation or new capability is selected. No subsequent execution item or automatic successor is authorized by this Finalization; no empty slots are filled with recommendations.
+Canonical source: `pcvantol/djconnect/docs/roadmap/v1/lanes/DJC-ESP32.md` and owning planning register [#58](https://github.com/djconnect-music-dj/djconnect-esp32/issues/58). The completed README predecessor is excluded. `SETTINGS::ESP32::ADOPTION` remains Planned/NOT_ISSUED; no settings implementation or new capability is selected. No subsequent execution item or automatic successor is authorized by this Finalization; no empty slots are filled with recommendations.
 
 ## Blocked Items
 
