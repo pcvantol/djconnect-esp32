@@ -60,7 +60,7 @@ jobs:
           manifest="$(mktemp)"
           trap 'rm -f "$manifest"' EXIT
           curl --fail --silent --show-error --location \
-            https://raw.githubusercontent.com/pcvantol/djconnect/main/docs/release/PLATFORM_3_3_CURRENT_MAIN_MANIFEST_PROPOSAL.json \
+            https://raw.githubusercontent.com/djconnect-music-dj/djconnect/main/docs/release/PLATFORM_3_3_CURRENT_MAIN_MANIFEST_PROPOSAL.json \
             --output "$manifest"
           test "$(jq -r '.status' "$manifest")" = APPROVED_DEPLOYMENT_DISPATCH_PENDING
           test "$(jq -r '.approval.state' "$manifest")" = APPROVED
