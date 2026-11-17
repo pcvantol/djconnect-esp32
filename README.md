@@ -1,8 +1,8 @@
 # DJConnect Firmware
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/pcvantol/djconnect/7e14e5970b3f68d33d243ae6bab2b281fad59bb2/assets/djconnect/brand-v2/wordmark-primary-dark.png">
-  <img src="https://raw.githubusercontent.com/pcvantol/djconnect/7e14e5970b3f68d33d243ae6bab2b281fad59bb2/assets/djconnect/brand-v2/wordmark-primary-light.png" alt="DJConnect" width="640">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/djconnect-music-dj/djconnect/7e14e5970b3f68d33d243ae6bab2b281fad59bb2/assets/djconnect/brand-v2/wordmark-primary-dark.png">
+  <img src="https://raw.githubusercontent.com/djconnect-music-dj/djconnect/7e14e5970b3f68d33d243ae6bab2b281fad59bb2/assets/djconnect/brand-v2/wordmark-primary-light.png" alt="DJConnect" width="640">
 </picture>
 
 DJConnect. Your music. Your DJ.
@@ -85,7 +85,7 @@ Arduino ESP32 2.x / ESP-IDF 4.x compatibility is not maintained.
 
 ## Cross-Repo Sync Prompts
 
-Canonical prompts for syncing this firmware repo with the Home Assistant integration, Apple app, Raspberry Pi client and website/docs repos live only in `pcvantol/djconnect/SYNC_PROMPTS.md`. This firmware repo intentionally does not keep a local copy. When an ESP firmware change updates a cross-repo contract, make a follow-up change in `pcvantol/djconnect`.
+Canonical prompts for syncing this firmware repo with the Home Assistant integration, Apple app, Raspberry Pi client and website/docs repos live only in `djconnect-music-dj/djconnect/SYNC_PROMPTS.md`. This firmware repo intentionally does not keep a local copy. When an ESP firmware change updates a cross-repo contract, make a follow-up change in `djconnect-music-dj/djconnect`.
 
 ## Technical Design Decisions
 
@@ -101,10 +101,10 @@ Local setup, build, upload and release workflow details live in
 ## Product Roadmap
 
 Product ideas, killer features, production-release must-haves and premium
-feature candidates live only in `pcvantol/djconnect/PRODUCT_ROADMAP.md`. This
+feature candidates live only in `djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md`. This
 firmware repo intentionally does not keep a local copy. When an ESP firmware
 change introduces roadmap-relevant product scope, make a follow-up change in
-`pcvantol/djconnect`.
+`djconnect-music-dj/djconnect`.
 
 ## License
 
