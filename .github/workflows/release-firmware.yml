@@ -15,7 +15,7 @@ jobs:
     name: Software Assurance governance
     permissions:
       contents: read
-    uses: pcvantol/djconnect/.github/workflows/software-assurance-governance.yml@aabd5de46ae438478eb894707e5b1ea27aca8508
+    uses: djconnect-music-dj/djconnect-shared-workflows/.github/workflows/software-assurance-governance-aabd.yml@b4e6470be61fee895af0e13ca1a63f101f03d647
     with:
       execution_profile: release
       owner: djconnect-music-dj/djconnect-esp32
