@@ -72,10 +72,10 @@ Changes to protocols, endpoints, client types, pairing, OTA, Assist/STT/TTS,
 Spotify playback, branding or shared user-facing terminology must be coordinated
 with the rest of DJConnect.
 
-Coordinate Home Assistant integration changes with `pcvantol/djconnect`.
+Coordinate Home Assistant integration changes with `djconnect-music-dj/djconnect`.
 Coordinate client-visible behavior with the relevant app, firmware or web
 client repositories. If a change affects shared contracts or roadmap scope,
-update `SYNC_PROMPTS.md` and `PRODUCT_ROADMAP.md` in `pcvantol/djconnect`.
+update `SYNC_PROMPTS.md` and `PRODUCT_ROADMAP.md` in `djconnect-music-dj/djconnect`.
 
 ## Contribution Guidelines
 
@@ -111,7 +111,7 @@ Before opening a pull request:
 5. Note the impact on other DJConnect repositories.
 6. For release or cross-repo behavior changes, review this repo against the
    `DJ Announcement Output Sync` section in
-   `pcvantol/djconnect/SYNC_PROMPTS.md`. For ESP firmware, confirm the
+   `djconnect-music-dj/djconnect/SYNC_PROMPTS.md`. For ESP firmware, confirm the
    `/api/device/dj_response` path still uses `text` plus optional `audio_url`
    and does not adopt app announcement output modes.
 
