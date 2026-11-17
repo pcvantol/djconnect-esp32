@@ -49,8 +49,46 @@ jobs:
           printf '%s' "$ARTIFACT_ID" | grep -Eq '^release-asset:(pcvantol|djconnect-music-dj)/djconnect-firmware:v[0-9]+\.[0-9]+\.[0-9]+:djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
           printf '%s' "$ARTIFACT_SHA256" | grep -Eq '^[0-9a-f]{64}$'
           printf '%s' "$PLATFORM_VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'
+      - id: preflight_owned
+        name: Create an isolated canonical preflight path
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e .canonical-esp32-preflight
+          test ! -L .canonical-esp32-preflight
+          mkdir -m 700 .canonical-esp32-preflight
+          printf '%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$(id -u)" > .canonical-esp32-preflight/.owner
+      - id: canonical_preflight_source
+        name: Resolve canonical Core by immutable repository ID
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const expectedId = 1258575431;
+            const response = await github.request('GET /repositories/{repository_id}', {repository_id: expectedId});
+            const repo = response.data;
+            if (repo.id !== expectedId || repo.private !== false || !['pcvantol/djconnect', 'djconnect-music-dj/djconnect'].includes(repo.full_name)) {
+              throw new Error('Canonical Core identity is not authorized');
+            }
+            core.setOutput('repository', repo.full_name);
+      - name: Checkout exact canonical preflight
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ steps.canonical_preflight_source.outputs.repository }}
+          ref: ebbb35f038a7a3c7d46c12660968bcd50eb67580
+          path: .canonical-esp32-preflight/core
+          persist-credentials: false
+      - name: Verify exact canonical preflight bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .canonical-esp32-preflight/core rev-parse HEAD)" = ebbb35f038a7a3c7d46c12660968bcd50eb67580
+          config_result=0
+          credential_headers="$(git -C .canonical-esp32-preflight/core config --local --get-regexp '^http\..*\.extraheader$')" || config_result=$?
+          test "$config_result" = 1
+          test -z "$credential_headers"
+          printf '%s  %s\n' 8af709b8a6ddf29843562d4f1b09de0747204feb086eeebbb485d16f5423fd37 .canonical-esp32-preflight/core/.github/actions/deployment-readiness-preflight/action.yml | shasum -a 256 --check
       - name: Verify target deployment readiness
-        uses: pcvantol/djconnect/.github/actions/deployment-readiness-preflight@ebbb35f038a7a3c7d46c12660968bcd50eb67580
+        uses: ./.canonical-esp32-preflight/core/.github/actions/deployment-readiness-preflight
         with:
           target: ${{ inputs.target }}
           manifest_id: ${{ inputs.manifest_id }}
@@ -65,6 +103,18 @@ jobs:
           HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
           HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
           UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
+      - name: Remove only this job-owned preflight checkout
+        if: always() && steps.preflight_owned.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          owned="$GITHUB_WORKSPACE/.canonical-esp32-preflight"
+          test -d "$owned" && test ! -L "$owned"
+          test -f "$owned/.owner" && test ! -L "$owned/.owner"
+          test "$(cat "$owned/.owner")" = "$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT:$(id -u)"
+          test "$(stat -f '%u' "$owned")" = "$(id -u)"
+          test "$(cd "$owned" && pwd -P)" = "$owned"
+          rm -rf -- "$owned"
       - id: manifest
         name: Require approved central operational manifest source
         env:
