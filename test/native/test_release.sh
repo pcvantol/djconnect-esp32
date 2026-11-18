@@ -47,7 +47,7 @@ grep -q "djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md" DESIGN_DECISIONS.md
 grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
 for old_prompt in SYNC_PROMPTS.md PRODUCT_ROADMAP.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md IOS_MACOS_APP_HANDOFF.md APPLE_APP_SYNC_PROMPTS.md docs/SYNC_PROMPTS.md; do
   if [ -e "$old_prompt" ]; then
-    echo "shared sync prompts/roadmap are canonical only in pcvantol/djconnect; remove $old_prompt" >&2
+    echo "shared sync prompts/roadmap are canonical only in djconnect-music-dj/djconnect; remove $old_prompt" >&2
     exit 1
   fi
 done
