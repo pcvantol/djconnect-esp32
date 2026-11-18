@@ -217,8 +217,8 @@ Recommended next work:
 
 ## Cross-Repo Sync Prompts
 
-The canonical copy/paste prompts for syncing the Home Assistant integration, Apple app, ESP firmware, Raspberry Pi client and website/docs repos are maintained only in `pcvantol/djconnect/SYNC_PROMPTS.md`. This firmware repo intentionally does not keep a local copy. When a firmware change updates a shared contract, make a follow-up change in `pcvantol/djconnect`.
+The canonical copy/paste prompts for syncing the Home Assistant integration, Apple app, ESP firmware, Raspberry Pi client and website/docs repos are maintained only in `djconnect-music-dj/djconnect/SYNC_PROMPTS.md`. This firmware repo intentionally does not keep a local copy. When a firmware change updates a shared contract, make a follow-up change in `djconnect-music-dj/djconnect`.
 
 ## Product Roadmap
 
-The canonical product roadmap is maintained only in `pcvantol/djconnect/PRODUCT_ROADMAP.md`. This firmware repo intentionally does not keep a local copy. When firmware work changes roadmap-relevant product scope, make a follow-up change in `pcvantol/djconnect`.
+The canonical product roadmap is maintained only in `djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md`. This firmware repo intentionally does not keep a local copy. When firmware work changes roadmap-relevant product scope, make a follow-up change in `djconnect-music-dj/djconnect`.
