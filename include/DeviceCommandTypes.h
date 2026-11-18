@@ -1,0 +1,41 @@
+#pragma once
+
+#if __has_include(<Arduino.h>)
+#include <Arduino.h>
+#else
+#include <string>
+using String = std::string;
+#endif
+
+enum class DeviceCommandType {
+  None,
+  Play,
+  Pause,
+  PlayPause,
+  Next,
+  Previous,
+  Status,
+  Ota,
+  Volume,
+  TransferOutput,
+  StartPlaylist,
+  Shuffle,
+  Repeat,
+  DjResponse,
+  ScreenBrightness,
+  ScreenDimTimeout,
+  DeepSleepTimeout,
+  SpeakerVolume,
+  Language,
+  Theme,
+  LogLevel,
+  WakeWord,
+  StressTest,
+};
+
+struct DeviceCommand {
+  DeviceCommandType type = DeviceCommandType::None;
+  String value;
+  String audioUrl;
+  int numericValue = 0;
+};

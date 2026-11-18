@@ -1,0 +1,253 @@
+name: Release firmware
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-beta"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  software-assurance-governance:
+    name: Software Assurance governance
+    permissions:
+      contents: read
+    uses: djconnect-music-dj/djconnect-shared-workflows/.github/workflows/software-assurance-governance-aabd.yml@2a1c6fd2841b08630aee01402850f56840b50f70
+    with:
+      execution_profile: release
+      owner: djconnect-music-dj/djconnect-esp32
+
+  release-info:
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_tag: ${{ steps.version.outputs.version_tag }}
+      channel: ${{ steps.version.outputs.channel }}
+      min_ha_integration: ${{ steps.version.outputs.min_ha_integration }}
+      max_ha_integration: ${{ steps.version.outputs.max_ha_integration }}
+      lilygo_bin: ${{ steps.version.outputs.lilygo_bin }}
+      manifest: ${{ steps.version.outputs.manifest }}
+
+    steps:
+      - name: Extract version
+        id: version
+        run: |
+          RAW="${GITHUB_REF_NAME#v}"
+          CHANNEL="stable"
+          if [[ "${RAW}" == *-beta ]]; then
+            CHANNEL="beta"
+            VERSION="${RAW%-beta}"
+            VERSION_TAG="v${VERSION}-beta"
+            LILYGO_BIN="djconnect-lilygo-t-embed-s3-beta-v${VERSION}.bin"
+            MANIFEST="firmware_manifest_beta.json"
+          else
+            VERSION="${RAW}"
+            VERSION_TAG="v${VERSION}"
+            LILYGO_BIN="djconnect-lilygo-t-embed-s3-v${VERSION}.bin"
+            MANIFEST="firmware_manifest.json"
+          fi
+          IFS=. read -r MAJOR MINOR PATCH <<< "${VERSION}"
+          MIN_HA_INTEGRATION="${MAJOR}.${MINOR}.0"
+          MAX_HA_INTEGRATION="${MAJOR}.$((MINOR + 1)).0"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "min_ha_integration=$MIN_HA_INTEGRATION" >> "$GITHUB_OUTPUT"
+          echo "max_ha_integration=$MAX_HA_INTEGRATION" >> "$GITHUB_OUTPUT"
+          echo "lilygo_bin=$LILYGO_BIN" >> "$GITHUB_OUTPUT"
+          echo "manifest=$MANIFEST" >> "$GITHUB_OUTPUT"
+
+  build-release:
+    needs: release-info
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: t_embed_cc1101
+            device: lilygo-t-embed-s3
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade platformio
+
+      - name: Update build dependencies
+        run: |
+          mkdir -p "release/${{ matrix.env }}"
+          REPORT_DIR="release/${{ matrix.env }}" scripts/update_build_dependencies.sh "${{ matrix.env }}"
+
+      - name: Build firmware
+        run: |
+          VERSION="${{ needs.release-info.outputs.version }}"
+          VERSION_TAG="${{ needs.release-info.outputs.version_tag }}"
+          export DJCONNECT_BUILD_FLAGS="-DDJCONNECT_VERSION=${VERSION} -DDJCONNECT_VERSION_TAG=${VERSION_TAG} -DDJCONNECT_RELEASE_BUILD=1 -Os"
+          export PLATFORMIO_BUILD_DIR=".pio/build-release/${{ matrix.env }}"
+          pio run -e "${{ matrix.env }}"
+
+      - name: Verify embedded firmware version
+        run: |
+          VERSION="${{ needs.release-info.outputs.version }}"
+          VERSION_TAG="${{ needs.release-info.outputs.version_tag }}"
+          FIRMWARE_DIR=".pio/build-release/${{ matrix.env }}/${{ matrix.env }}"
+          if ! strings "${FIRMWARE_DIR}/firmware.elf" | grep -q "DJConnect ${VERSION_TAG} / ${VERSION} booting"; then
+            echo "${{ matrix.env }} firmware boot marker does not contain expected release version ${VERSION_TAG} / ${VERSION}" >&2
+            exit 1
+          fi
+          if strings "${FIRMWARE_DIR}/firmware.bin" | grep -Eq "(^|[^[:alnum:]])vdev([^[:alnum:]]|$)|DJConnect dev / dev booting"; then
+            echo "${{ matrix.env }} firmware binary still contains a dev version placeholder" >&2
+            exit 1
+          fi
+
+      - name: Prepare firmware artifact
+        run: |
+          ASSET="${{ needs.release-info.outputs.lilygo_bin }}"
+          FIRMWARE_DIR=".pio/build-release/${{ matrix.env }}/${{ matrix.env }}"
+          cp "${FIRMWARE_DIR}/firmware.bin" "release/${{ matrix.env }}/${ASSET}"
+          SHA256=$(sha256sum "release/${{ matrix.env }}/${ASSET}" | awk '{print $1}')
+          SIZE=$(stat -c%s "release/${{ matrix.env }}/${ASSET}")
+          echo "${SHA256}  ${ASSET}" > "release/${{ matrix.env }}/${ASSET}.sha256"
+          cat > "release/${{ matrix.env }}/metadata.env" <<EOF
+          BOARD=${{ matrix.env }}
+          DEVICE=${{ matrix.device }}
+          ASSET=${ASSET}
+          SHA256=${SHA256}
+          SIZE=${SIZE}
+          EOF
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: firmware-${{ matrix.env }}
+          path: release/${{ matrix.env }}/*
+          if-no-files-found: error
+
+  publish-release:
+    needs:
+      - release-info
+      - build-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5
+
+      - name: Resolve firmware distribution repository
+        id: distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repository="$(bash scripts/resolve_firmware_release_repo.sh)"
+          printf 'repository=%s\n' "$repository" >> "$GITHUB_OUTPUT"
+
+      - name: Download firmware artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: firmware-t_embed_cc1101
+          path: artifacts/firmware-t_embed_cc1101
+
+      - name: Prepare release assets
+        env:
+          FIRMWARE_RELEASE_REPO: ${{ steps.distribution.outputs.repository }}
+        run: |
+          VERSION="${{ needs.release-info.outputs.version }}"
+          VERSION_TAG="${{ needs.release-info.outputs.version_tag }}"
+          CHANNEL="${{ needs.release-info.outputs.channel }}"
+          MIN_HA_INTEGRATION="${{ needs.release-info.outputs.min_ha_integration }}"
+          MAX_HA_INTEGRATION="${{ needs.release-info.outputs.max_ha_integration }}"
+          MANIFEST="${{ needs.release-info.outputs.manifest }}"
+          SOURCE_REPOSITORY="$(bash scripts/verify_firmware_source_repo.sh)"
+          SOURCE_SHA="$(git rev-parse HEAD)"
+
+          printf '%s' "${SOURCE_SHA}" | grep -Eq '^[0-9a-f]{40}$'
+
+          mkdir -p release
+          cp artifacts/firmware-t_embed_cc1101/* release/
+
+          source artifacts/firmware-t_embed_cc1101/metadata.env
+          LILYGO_BOARD="$BOARD"
+          LILYGO_DEVICE="$DEVICE"
+          LILYGO_ASSET="$ASSET"
+          LILYGO_SHA256="$SHA256"
+          LILYGO_SIZE="$SIZE"
+
+          rm release/metadata.env
+
+          cat > "release/${MANIFEST}" <<EOF
+          {
+            "version": "${VERSION}",
+            "version_tag": "${VERSION_TAG}",
+            "channel": "${CHANNEL}",
+            "source_repository": "${SOURCE_REPOSITORY}",
+            "source_sha": "${SOURCE_SHA}",
+            "min_ha_integration": "${MIN_HA_INTEGRATION}",
+            "max_ha_integration": "${MAX_HA_INTEGRATION}",
+            "release_notes": "https://github.com/${FIRMWARE_RELEASE_REPO}/releases/tag/${VERSION_TAG}",
+            "firmwares": [
+              {
+                "board": "${LILYGO_BOARD}",
+                "device": "${LILYGO_DEVICE}",
+                "asset": "${LILYGO_ASSET}",
+                "url": "https://github.com/${FIRMWARE_RELEASE_REPO}/releases/download/${VERSION_TAG}/${LILYGO_ASSET}",
+                "sha256": "${LILYGO_SHA256}",
+                "size": ${LILYGO_SIZE}
+              }
+            ]
+          }
+          EOF
+
+      - name: Prepare release notes
+        run: |
+          scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md
+
+      - name: Create organization firmware publication token
+        if: steps.distribution.outputs.repository == 'djconnect-music-dj/djconnect-firmware'
+        id: publisher
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.FIRMWARE_PUBLISHER_CLIENT_ID }}
+          private-key: ${{ secrets.FIRMWARE_PUBLISHER_PRIVATE_KEY }}
+          owner: djconnect-music-dj
+          repositories: djconnect-firmware
+          permission-contents: write
+
+      - name: Require the publication credential for the resolved owner
+        shell: bash
+        env:
+          DISTRIBUTION: ${{ steps.distribution.outputs.repository }}
+          PERSONAL_TOKEN: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
+          ORGANIZATION_TOKEN: ${{ steps.publisher.outputs.token }}
+        run: |
+          if [[ "$DISTRIBUTION" == djconnect-music-dj/djconnect-firmware ]]; then
+            test -n "$ORGANIZATION_TOKEN"
+          else
+            test -n "$PERSONAL_TOKEN"
+          fi
+
+      - name: Publish GitHub Release to public firmware repo
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          repository: ${{ steps.distribution.outputs.repository }}
+          token: ${{ steps.distribution.outputs.repository == 'djconnect-music-dj/djconnect-firmware' && steps.publisher.outputs.token || secrets.FIRMWARE_RELEASE_TOKEN }}
+          tag_name: ${{ needs.release-info.outputs.version_tag }}
+          name: DJConnect Firmware ${{ needs.release-info.outputs.version_tag }}
+          prerelease: ${{ needs.release-info.outputs.channel == 'beta' }}
+          body_path: release-notes.md
+          files: |
+            release/${{ needs.release-info.outputs.lilygo_bin }}
+            release/${{ needs.release-info.outputs.lilygo_bin }}.sha256
+            release/${{ needs.release-info.outputs.manifest }}

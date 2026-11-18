@@ -1,0 +1,523 @@
+// Local ESP HTTP API used by the Home Assistant djconnect integration.
+#include "DJConnectApiServer.h"
+
+#include <ArduinoJson.h>
+#include <Arduino.h>
+#include <WiFi.h>
+#include <cstring>
+#include <memory>
+#include <new>
+
+#include "AppLog.h"
+#include "DeviceCommandParser.h"
+#include "DjResponseDebugLog.h"
+#include "I18n.h"
+#include "LogicHelpers.h"
+
+namespace {
+void writeLe16(uint8_t *buffer, uint16_t value) {
+  buffer[0] = static_cast<uint8_t>(value & 0xff);
+  buffer[1] = static_cast<uint8_t>((value >> 8) & 0xff);
+}
+
+void writeLe32(uint8_t *buffer, uint32_t value) {
+  buffer[0] = static_cast<uint8_t>(value & 0xff);
+  buffer[1] = static_cast<uint8_t>((value >> 8) & 0xff);
+  buffer[2] = static_cast<uint8_t>((value >> 16) & 0xff);
+  buffer[3] = static_cast<uint8_t>((value >> 24) & 0xff);
+}
+
+void rgb565ToBgr888(uint16_t color, uint8_t *out) {
+  const uint8_t r5 = static_cast<uint8_t>((color >> 11) & 0x1f);
+  const uint8_t g6 = static_cast<uint8_t>((color >> 5) & 0x3f);
+  const uint8_t b5 = static_cast<uint8_t>(color & 0x1f);
+  out[0] = static_cast<uint8_t>((b5 * 255) / 31);
+  out[1] = static_cast<uint8_t>((g6 * 255) / 63);
+  out[2] = static_cast<uint8_t>((r5 * 255) / 31);
+}
+} // namespace
+
+void DJConnectApiServer::begin(
+    WebServer &server,
+    DJConnectDevice &device,
+    DJConnectPairing &pairing,
+    DJConnectDiscovery &discovery,
+    DJConnectOTA &ota,
+    SpotifyClient &spotify,
+    DisplayManager &display,
+    LedRing &ledRing,
+    SoundManager &sound,
+    const BatteryState &battery,
+    const RuntimeDiagnostics &diagnostics,
+    void *callbackContext,
+    DjResponseCallback djResponseCallback,
+    LanguageProvisionedCallback languageProvisionedCallback,
+    DeviceCommandCallback deviceCommandCallback,
+    DirectPairCallback directPairCallback,
+    OtaPrepareCallback otaPrepareCallback,
+    DebugScreenCallback debugScreenCallback) {
+  if (running_) {
+    return;
+  }
+  server_ = &server;
+  device_ = &device;
+  pairing_ = &pairing;
+  discovery_ = &discovery;
+  ota_ = &ota;
+  spotify_ = &spotify;
+  display_ = &display;
+  ledRing_ = &ledRing;
+  sound_ = &sound;
+  battery_ = &battery;
+  diagnostics_ = &diagnostics;
+  callbackContext_ = callbackContext;
+  djResponseCallback_ = djResponseCallback;
+  languageProvisionedCallback_ = languageProvisionedCallback;
+  deviceCommandCallback_ = deviceCommandCallback;
+  directPairCallback_ = directPairCallback;
+  otaPrepareCallback_ = otaPrepareCallback;
+  debugScreenCallback_ = debugScreenCallback;
+
+  static const char *headers[] = {"Authorization"};
+  server_->collectHeaders(headers, 1);
+
+  server_->on("/api/device/info", HTTP_GET, [this]() { handleInfo(); });
+  server_->on("/api/device/pairing-info", HTTP_GET, [this]() { handlePairingInfo(); });
+  server_->on("/api/device/pair", HTTP_POST, [this]() { handlePair(); });
+  server_->on("/api/device/ota", HTTP_POST, [this]() { handleOta(); });
+  server_->on("/api/device/dj_response", HTTP_POST, [this]() { handleDjResponse(); });
+  server_->on("/api/device/command", HTTP_POST, [this]() { handleCommand(); });
+  server_->on("/api/device/reboot", HTTP_POST, [this]() { handleReboot(); });
+  server_->on("/api/device/forget", HTTP_POST, [this]() { handleForget(); });
+  server_->on("/api/device/screenshot.bmp", HTTP_GET, [this]() { handleScreenshot(); });
+  server_->on("/api/device/debug/screen", HTTP_POST, [this]() { handleDebugScreen(); });
+  running_ = true;
+  AppLog.println("Device API routes registered");
+}
+
+void DJConnectApiServer::loop() {
+  // Routes are served by the shared WebPortal WebServer instance.
+}
+
+bool DJConnectApiServer::isRunning() const {
+  return running_;
+}
+
+bool DJConnectApiServer::validateBearerToken(bool sendError) {
+  if (server_ == nullptr || device_ == nullptr || !device_->isPaired()) {
+    if (sendError && server_ != nullptr) {
+      server_->send(401, "application/json", "{\"error\":\"not paired\"}");
+    }
+    return false;
+  }
+  const String authorization = server_->header("Authorization");
+  const String expected = "Bearer " + device_->getDeviceToken();
+  const bool ok = authorization == expected;
+  if (!ok && sendError) {
+    server_->send(401, "application/json", "{\"error\":\"unauthorized\"}");
+  }
+  return ok;
+}
+
+void DJConnectApiServer::sendJson(int code, const String &payload) {
+  server_->send(code, "application/json", payload);
+}
+
+void DJConnectApiServer::handleInfo() {
+  JsonDocument doc;
+  doc["device_id"] = device_->getDeviceId();
+  doc["device_name"] = device_->getDeviceName();
+  doc["client_type"] = device_->getClientType();
+  doc["firmware"] = device_->getFirmwareVersion();
+  doc["version"] = device_->getFirmwareVersion();
+  doc["app_version"] = device_->getFirmwareVersion();
+  doc["model"] = device_->getModel();
+  doc["paired"] = device_->isPaired();
+  doc["ha_pairing_status"] = device_->isPaired() ? "paired" : "pending";
+  doc["local_url"] = device_->getLocalUrl();
+  doc["api"] = "/api/device";
+  doc["transport"] = "local_only";
+  JsonObject capabilities = doc["capabilities"].to<JsonObject>();
+  capabilities["profiles"] = true;
+  capabilities["request_context"] = true;
+  capabilities["private_sessions"] = true;
+  capabilities["profile_platform"] = true;
+  capabilities["profile_crud"] = false;
+  capabilities["profile_selection"] = false;
+  JsonObject contractVersions = doc["contract_versions"].to<JsonObject>();
+  contractVersions["profile_context"] = 1;
+  contractVersions["client_contract_fixtures"] = 1;
+  doc["playback_configured"] = device_->isPlaybackConfigured();
+  doc["assist_pipeline_id"] = device_->getAssistPipelineId();
+  doc["battery_percent"] = battery_ == nullptr ? -1 : battery_->percent;
+  doc["battery_mv"] = battery_ == nullptr ? 0 : battery_->voltageMv;
+  doc["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  doc["ha_local_url"] = device_->getHaLocalUrl();
+  doc["last_dj_text"] = diagnostics_ == nullptr ? "" : diagnostics_->lastDjText;
+  String payload;
+  serializeJson(doc, payload);
+  sendJson(200, payload);
+}
+
+void DJConnectApiServer::handlePairingInfo() {
+  device_->ensurePairingCode();
+  JsonDocument doc;
+  doc["success"] = true;
+  doc["device_id"] = device_->getDeviceId();
+  doc["device_name"] = device_->getDeviceName();
+  doc["client_type"] = device_->getClientType();
+  doc["pair_code"] = device_->getPairCode();
+  doc["pairing_code"] = device_->getPairCode();
+  doc["pairing_token"] = device_->getPairCode();
+  doc["paired"] = device_->isPaired();
+  doc["firmware"] = device_->getFirmwareVersion();
+  doc["version"] = device_->getFirmwareVersion();
+  doc["app_version"] = device_->getFirmwareVersion();
+  doc["local_url"] = device_->getLocalUrl();
+  doc["transport"] = "local_only";
+  JsonObject capabilities = doc["capabilities"].to<JsonObject>();
+  capabilities["profiles"] = true;
+  capabilities["request_context"] = true;
+  capabilities["private_sessions"] = true;
+  capabilities["profile_platform"] = true;
+  capabilities["profile_crud"] = false;
+  capabilities["profile_selection"] = false;
+  JsonObject contractVersions = doc["contract_versions"].to<JsonObject>();
+  contractVersions["profile_context"] = 1;
+  contractVersions["client_contract_fixtures"] = 1;
+  doc["pairing_path"] = "/api/device/pairing-info";
+  doc["pair_path"] = "/api/device/pair";
+  String payload;
+  serializeJson(doc, payload);
+  sendJson(200, payload);
+}
+
+void DJConnectApiServer::handlePair() {
+  JsonDocument doc;
+  if (deserializeJson(doc, server_->arg("plain"))) {
+    sendJson(400, "{\"error\":\"invalid json\"}");
+    return;
+  }
+  const String legacyHaUrlKey = String("ha") + "_" + "url";
+  if (!doc[legacyHaUrlKey].isNull()) {
+    sendJson(400, "{\"error\":\"legacy_url_unsupported\",\"message\":\"use ha_local_url\"}");
+    return;
+  }
+  const String deviceId = doc["device_id"] | "";
+  const String clientType = doc["client_type"] | "";
+  if (deviceId.isEmpty()) {
+    sendJson(400, "{\"error\":\"device id missing\",\"message\":\"device_id required\"}");
+    return;
+  }
+  if (!Logic::isDjConnectDeviceIdForModel(deviceId.c_str(), device_->getModel().c_str()) || deviceId != device_->getDeviceId()) {
+    sendJson(400, "{\"error\":\"device id invalid\",\"message\":\"device_id must match this DJConnect device\"}");
+    return;
+  }
+  if (clientType != device_->getClientType()) {
+    sendJson(400, "{\"error\":\"client type invalid\",\"message\":\"client_type must be esp32\"}");
+    return;
+  }
+  const String haLocalUrl = doc["ha_local_url"] | "";
+  const String deviceToken = doc["device_token"] | "";
+  const String assistPipelineId = doc["assist_pipeline_id"] | "";
+  String provisionedLanguage = doc["device_language"] | "";
+  if (provisionedLanguage.isEmpty()) {
+    provisionedLanguage = doc["language"] | "";
+  }
+  if (haLocalUrl.isEmpty()) {
+    sendJson(400, "{\"error\":\"ha local url missing\",\"message\":\"ha_local_url is required for ESP status and playback\"}");
+    return;
+  }
+  if (Logic::isNabuCasaCloudUrl(haLocalUrl.c_str())) {
+    sendJson(400, "{\"error\":\"ha local url invalid\",\"message\":\"ha_local_url must be a LAN URL, not Nabu Casa/cloud\"}");
+    return;
+  }
+
+  if (deviceToken.isEmpty()) {
+    sendJson(400, "{\"error\":\"device token missing\",\"message\":\"device_token required\"}");
+    return;
+  }
+
+  const bool samePairing =
+      device_->isPaired() &&
+      device_->getDeviceToken() == deviceToken &&
+      device_->getHaLocalUrl() == haLocalUrl;
+  if (!samePairing) {
+    device_->savePairing(deviceToken, haLocalUrl);
+  }
+  if (!assistPipelineId.isEmpty()) {
+    if (device_->getAssistPipelineId() != assistPipelineId) {
+      device_->saveAssistPipelineId(assistPipelineId);
+    }
+  }
+  const String normalizedLanguage = DJConnectDevice::normalizedLanguageCode(provisionedLanguage);
+  if (!normalizedLanguage.isEmpty() && normalizedLanguage != I18n::languageCode()) {
+    DJConnectDevice::saveProvisionedLanguage(normalizedLanguage);
+    if (languageProvisionedCallback_ != nullptr) {
+      languageProvisionedCallback_(callbackContext_, normalizedLanguage);
+    }
+  }
+  if (samePairing) {
+    AppLog.println("Home Assistant direct pairing unchanged");
+  } else {
+    AppLog.println("Home Assistant direct pairing stored: device_token=present");
+  }
+  if (discovery_ != nullptr) {
+    discovery_->updateTxtRecords();
+  }
+  if (!samePairing && directPairCallback_ != nullptr) {
+    directPairCallback_(callbackContext_);
+  }
+  JsonDocument response;
+  response["success"] = true;
+  response["device_id"] = device_->getDeviceId();
+  response["client_type"] = device_->getClientType();
+  response["paired"] = true;
+  response["ha_pairing_status"] = "paired";
+  String payload;
+  serializeJson(response, payload);
+  sendJson(200, payload);
+}
+
+void DJConnectApiServer::handleOta() {
+  if (!validateBearerToken()) {
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, server_->arg("plain"))) {
+    sendJson(400, "{\"error\":\"invalid json\"}");
+    return;
+  }
+
+  DJConnectOTARequest request;
+  request.url = doc["url"] | "";
+  request.sha256 = doc["sha256"] | "";
+  request.version = doc["version"] | "";
+  request.device = doc["device"] | "";
+
+  String message;
+  if (!ota_->canUpdate(battery_, message)) {
+    JsonDocument response;
+    response["success"] = false;
+    response["message"] = message;
+    String payload;
+    serializeJson(response, payload);
+    sendJson(409, payload);
+    return;
+  }
+
+  JsonDocument response;
+  response["success"] = true;
+  response["message"] = "OTA started";
+  response["target_version"] = request.version;
+  String payload;
+  serializeJson(response, payload);
+  sendJson(200, payload);
+
+  delay(100);
+  if (otaPrepareCallback_ != nullptr) {
+    otaPrepareCallback_(callbackContext_);
+  }
+  if (ota_->performUpdate(request, battery_, display_, ledRing_, sound_, message)) {
+    delay(500);
+    ESP.restart();
+  }
+  AppLog.print("OTA failed after response: ");
+  AppLog.println(message);
+}
+
+void DJConnectApiServer::handleDjResponse() {
+  if (!validateBearerToken()) {
+    return;
+  }
+
+  JsonDocument doc;
+  if (deserializeJson(doc, server_->arg("plain"))) {
+    sendJson(400, "{\"error\":\"invalid json\"}");
+    return;
+  }
+
+  String text = doc["text"] | "";
+  const String audioUrl = doc["audio_url"] | "";
+  text.trim();
+  if (text.isEmpty()) {
+    sendJson(400, "{\"error\":\"text missing\"}");
+    return;
+  }
+
+  AppLog.print("DJ response received chars=");
+  AppLog.println(text.length());
+  logDjResponseDebugText("device_api", text, audioUrl);
+  bool displayed = false;
+  bool spoken = false;
+  String audioType = audioUrl.isEmpty() ? "none" : "unknown";
+  if (djResponseCallback_ != nullptr) {
+    displayed = djResponseCallback_(callbackContext_, text, audioUrl, spoken, audioType);
+  }
+  if (!displayed) {
+    sendJson(500, "{\"success\":false,\"error\":\"dj response display failed\"}");
+    return;
+  }
+  JsonDocument response;
+  response["success"] = true;
+  response["spoken"] = spoken;
+  response["displayed"] = true;
+  response["audio_type"] = audioType;
+  if (!spoken) {
+    response["message"] = audioUrl.isEmpty()
+                              ? "DJ response displayed; no TTS audio supplied"
+                              : "DJ response displayed; audio could not be played";
+  }
+  String payload;
+  serializeJson(response, payload);
+  sendJson(spoken ? 200 : 202, payload);
+}
+
+void DJConnectApiServer::handleCommand() {
+  if (!validateBearerToken()) {
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, server_->arg("plain"))) {
+    sendJson(400, "{\"error\":\"invalid json\"}");
+    return;
+  }
+  const DeviceCommand command = DeviceCommandParser::parse(doc.as<JsonVariantConst>());
+  if (command.type == DeviceCommandType::None) {
+    sendJson(400, "{\"success\":false,\"error\":\"unknown command\"}");
+    return;
+  }
+  if (deviceCommandCallback_ == nullptr) {
+    sendJson(501, "{\"success\":false,\"error\":\"command handler unavailable\"}");
+    return;
+  }
+  String message;
+  const bool ok = deviceCommandCallback_(callbackContext_, command, message);
+  JsonDocument response;
+  response["success"] = ok;
+  response["message"] = message;
+  String payload;
+  serializeJson(response, payload);
+  sendJson(ok ? 200 : 502, payload);
+}
+
+void DJConnectApiServer::handleReboot() {
+  if (!validateBearerToken()) {
+    return;
+  }
+  sendJson(200, "{\"success\":true}");
+  delay(500);
+  ESP.restart();
+}
+
+void DJConnectApiServer::handleForget() {
+  if (!validateBearerToken()) {
+    return;
+  }
+  device_->clearPairing();
+  discovery_->updateTxtRecords();
+  sendJson(200, "{\"success\":true}");
+  delay(500);
+  ESP.restart();
+}
+
+void DJConnectApiServer::handleScreenshot() {
+  const bool devFirmware = device_ != nullptr && device_->getFirmwareVersion() == "0.0.0";
+  if (!devFirmware && !validateBearerToken()) {
+    return;
+  }
+  if (devFirmware && !validateBearerToken(false)) {
+    AppLog.println("Device screenshot: dev firmware allows unauthenticated capture");
+  }
+  if (display_ == nullptr) {
+    sendJson(503, "{\"success\":false,\"error\":\"display unavailable\"}");
+    return;
+  }
+
+  const int width = display_->screenshotWidth();
+  const int height = display_->screenshotHeight();
+  if (width <= 0 || height <= 0) {
+    sendJson(503, "{\"success\":false,\"error\":\"screenshot unavailable\"}");
+    return;
+  }
+
+  const size_t rowBytes = static_cast<size_t>(width) * 3;
+  const size_t rowStride = (rowBytes + 3) & ~static_cast<size_t>(3);
+  const uint32_t pixelBytes = static_cast<uint32_t>(rowStride * static_cast<size_t>(height));
+  const uint32_t fileSize = 54 + pixelBytes;
+
+  uint8_t header[54] = {};
+  header[0] = 'B';
+  header[1] = 'M';
+  writeLe32(header + 2, fileSize);
+  writeLe32(header + 10, 54);
+  writeLe32(header + 14, 40);
+  writeLe32(header + 18, static_cast<uint32_t>(width));
+  writeLe32(header + 22, static_cast<uint32_t>(height));
+  writeLe16(header + 26, 1);
+  writeLe16(header + 28, 24);
+  writeLe32(header + 34, pixelBytes);
+
+  std::unique_ptr<uint8_t[]> row(new (std::nothrow) uint8_t[rowStride]);
+  if (!row) {
+    sendJson(503, "{\"success\":false,\"error\":\"screenshot buffer unavailable\"}");
+    return;
+  }
+
+  server_->setContentLength(fileSize);
+  server_->send(200, "image/bmp", "");
+  WiFiClient client = server_->client();
+  client.write(header, sizeof(header));
+
+  for (int y = height - 1; y >= 0 && client.connected(); --y) {
+    memset(row.get(), 0, rowStride);
+    for (int x = 0; x < width; ++x) {
+      rgb565ToBgr888(display_->screenshotPixel565(x, y), row.get() + (static_cast<size_t>(x) * 3));
+    }
+    client.write(row.get(), rowStride);
+    if ((y & 0x0f) == 0) {
+      delay(0);
+    }
+  }
+  AppLog.print("Device screenshot served ");
+  AppLog.print(width);
+  AppLog.print("x");
+  AppLog.println(height);
+}
+
+void DJConnectApiServer::handleDebugScreen() {
+  const bool devFirmware = device_ != nullptr && device_->getFirmwareVersion() == "0.0.0";
+  if (!devFirmware && !validateBearerToken()) {
+    return;
+  }
+  if (devFirmware && !validateBearerToken(false)) {
+    AppLog.println("Device debug screen: dev firmware allows unauthenticated screen selection");
+  }
+  if (debugScreenCallback_ == nullptr) {
+    sendJson(501, "{\"success\":false,\"error\":\"debug screen handler unavailable\"}");
+    return;
+  }
+
+  String screenName = server_->arg("screen");
+  if (screenName.isEmpty()) {
+    JsonDocument doc;
+    if (!deserializeJson(doc, server_->arg("plain"))) {
+      screenName = doc["screen"] | "";
+    }
+  }
+  screenName.trim();
+  if (screenName.isEmpty()) {
+    sendJson(400, "{\"success\":false,\"error\":\"screen missing\"}");
+    return;
+  }
+
+  String message;
+  const bool ok = debugScreenCallback_(callbackContext_, screenName, message);
+  JsonDocument response;
+  response["success"] = ok;
+  response["screen"] = screenName;
+  response["message"] = message;
+  String payload;
+  serializeJson(response, payload);
+  sendJson(ok ? 200 : 404, payload);
+}

@@ -1,0 +1,581 @@
+// Sends recognized push-to-talk text to the DJConnect Home Assistant integration.
+#include "VoiceHttpClient.h"
+
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <LittleFS.h>
+#include <WiFi.h>
+#include <esp_task_wdt.h>
+
+#include "AppLog.h"
+#include "Config.h"
+#include "DjResponseDebugLog.h"
+#include "I18n.h"
+#include "LogicHelpers.h"
+#include "NetworkActivity.h"
+#include "ScopedWatchdogPause.h"
+
+namespace {
+using ActivityCallback = VoiceHttpClient::ActivityCallback;
+constexpr const char *HaVoicePath = "/api/djconnect/v1/voice";
+
+void notifyActivity(ActivityCallback callback, void *context) {
+  if (callback != nullptr) {
+    callback(context);
+  }
+}
+
+class ActivityFileStream : public Stream {
+public:
+  ActivityFileStream(fs::File &file, ActivityCallback callback, void *context)
+      : file_(file), callback_(callback), context_(context) {}
+
+  int available() override {
+    return file_.available();
+  }
+
+  int read() override {
+    const int value = file_.read();
+    notifyActivity(callback_, context_);
+    ScopedWatchdogPause::resetIfAttached();
+    return value;
+  }
+
+  int read(uint8_t *buffer, size_t size) {
+    const int readBytes = file_.read(buffer, size);
+    notifyActivity(callback_, context_);
+    ScopedWatchdogPause::resetIfAttached();
+    return readBytes;
+  }
+
+  int peek() override {
+    return file_.peek();
+  }
+
+  void flush() override {
+    file_.flush();
+  }
+
+  size_t write(uint8_t value) override {
+    (void)value;
+    return 0;
+  }
+
+private:
+  fs::File &file_;
+  ActivityCallback callback_ = nullptr;
+  void *context_ = nullptr;
+};
+
+String readHttpBodyWithWatchdog(HTTPClient &http, uint32_t timeoutMs, ActivityCallback callback = nullptr, void *context = nullptr) {
+  String body;
+  WiFiClient *stream = http.getStreamPtr();
+  if (stream == nullptr) {
+    return body;
+  }
+
+  const int contentLength = http.getSize();
+  if (contentLength > 0) {
+    body.reserve(contentLength);
+  }
+
+  uint32_t lastDataAt = millis();
+  int remaining = contentLength;
+  while (remaining != 0 && millis() - lastDataAt < timeoutMs) {
+    ScopedWatchdogPause::resetIfAttached();
+    const int available = stream->available();
+    if (available <= 0) {
+      notifyActivity(callback, context);
+      delay(1);
+      yield();
+      continue;
+    }
+
+    char buffer[193] = {};
+    const size_t want = contentLength > 0
+                            ? min(static_cast<int>(sizeof(buffer) - 1), remaining)
+                            : min(static_cast<int>(sizeof(buffer) - 1), available);
+    const int got = stream->readBytes(buffer, want);
+    notifyActivity(callback, context);
+    if (got <= 0) {
+      delay(1);
+      yield();
+      continue;
+    }
+    buffer[got] = '\0';
+    body += buffer;
+    lastDataAt = millis();
+    if (remaining > 0) {
+      remaining -= got;
+    }
+  }
+  ScopedWatchdogPause::resetIfAttached();
+  return body;
+}
+
+String compactHttpErrorBody(const String &body) {
+  String compact;
+  compact.reserve(min(static_cast<size_t>(body.length()), static_cast<size_t>(160)));
+  for (size_t i = 0; i < body.length() && compact.length() < 160; ++i) {
+    const char c = body.charAt(i);
+    if (c == '\r' || c == '\n' || c == '\t') {
+      if (!compact.endsWith(" ")) {
+        compact += ' ';
+      }
+    } else {
+      compact += c;
+    }
+  }
+  compact.trim();
+  return compact;
+}
+
+void logVoiceHttpErrorBody(const String &context, const String &body) {
+  const String compact = compactHttpErrorBody(body);
+  if (compact.isEmpty()) {
+    return;
+  }
+  AppLog.print(context);
+  AppLog.print(": ");
+  AppLog.println(compact);
+}
+
+void logVoiceHttpClientError(const String &context, int code) {
+  if (code >= 0) {
+    return;
+  }
+  AppLog.print(context);
+  AppLog.print(": ");
+  AppLog.println(HTTPClient::errorToString(code));
+}
+
+String firstStringValue(JsonVariantConst value,
+                        const char *key1,
+                        const char *key2 = nullptr,
+                        const char *key3 = nullptr,
+                        const char *key4 = nullptr) {
+  if (value.isNull()) {
+    return "";
+  }
+
+  if (value.is<JsonObjectConst>()) {
+    JsonObjectConst object = value.as<JsonObjectConst>();
+    const char *keys[] = {key1, key2, key3, key4};
+    for (const char *key : keys) {
+      if (key == nullptr) {
+        continue;
+      }
+      const char *direct = object[key] | "";
+      if (strlen(direct) > 0) {
+        return String(direct);
+      }
+    }
+    for (JsonPairConst pair : object) {
+      const String nested = firstStringValue(pair.value(), key1, key2, key3, key4);
+      if (!nested.isEmpty()) {
+        return nested;
+      }
+    }
+  } else if (value.is<JsonArrayConst>()) {
+    for (JsonVariantConst item : value.as<JsonArrayConst>()) {
+      const String nested = firstStringValue(item, key1, key2, key3, key4);
+      if (!nested.isEmpty()) {
+        return nested;
+      }
+    }
+  }
+
+  return "";
+}
+
+bool looksLikeDjAudioUrl(const String &value) {
+  if (value.isEmpty()) {
+    return false;
+  }
+  String lower = value;
+  lower.toLowerCase();
+  if (!(lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/api/"))) {
+    return false;
+  }
+  return lower.indexOf("/api/djconnect/v1/tts/") >= 0 ||
+         lower.indexOf("/api/tts") >= 0 ||
+         lower.endsWith(".mp3") ||
+         lower.endsWith(".wav") ||
+         lower.indexOf(".mp3?") >= 0 ||
+         lower.indexOf(".wav?") >= 0;
+}
+
+String firstDjAudioLikeUrl(JsonVariantConst value) {
+  if (value.isNull()) {
+    return "";
+  }
+
+  if (value.is<const char *>()) {
+    String candidate = value.as<const char *>();
+    candidate.trim();
+    return looksLikeDjAudioUrl(candidate) ? candidate : "";
+  }
+
+  if (value.is<String>()) {
+    String candidate = value.as<String>();
+    candidate.trim();
+    return looksLikeDjAudioUrl(candidate) ? candidate : "";
+  }
+
+  if (value.is<JsonObjectConst>()) {
+    for (JsonPairConst pair : value.as<JsonObjectConst>()) {
+      const String nested = firstDjAudioLikeUrl(pair.value());
+      if (!nested.isEmpty()) {
+        return nested;
+      }
+    }
+  } else if (value.is<JsonArrayConst>()) {
+    for (JsonVariantConst item : value.as<JsonArrayConst>()) {
+      const String nested = firstDjAudioLikeUrl(item);
+      if (!nested.isEmpty()) {
+        return nested;
+      }
+    }
+  }
+
+  return "";
+}
+
+void logVoiceResponseSummary(const String &source, const String &text, const String &audioUrl) {
+  AppLog.print(source);
+  AppLog.print(" DJ response: text_chars=");
+  AppLog.print(text.length());
+  AppLog.print(" audio_url=");
+  AppLog.println(audioUrl.isEmpty() ? "none" : "present");
+  if (audioUrl.isEmpty()) {
+    AppLog.println("HA returned no DJ response audio URL");
+  }
+}
+
+String firstDjResponseText(JsonDocument &doc) {
+  return firstStringValue(doc.as<JsonVariantConst>(),
+                          "text",
+                          "dj_text",
+                          "djText",
+                          "message");
+}
+
+String firstDjResponseAudioUrl(JsonDocument &doc) {
+  String audioUrl = firstStringValue(doc.as<JsonVariantConst>(),
+                                    "audio_url",
+                                    "audioUrl",
+                                    "tts_url",
+                                    "ttsUrl");
+  if (audioUrl.isEmpty()) {
+    audioUrl = firstStringValue(doc.as<JsonVariantConst>(),
+                                "tts",
+                                "audio",
+                                "speech_url",
+                                "speechUrl");
+  }
+  if (audioUrl.isEmpty()) {
+    audioUrl = firstStringValue(doc.as<JsonVariantConst>(),
+                                "media_url",
+                                "mediaUrl",
+                                "voice_url",
+                                "voiceUrl");
+  }
+  if (audioUrl.isEmpty()) {
+    audioUrl = firstDjAudioLikeUrl(doc.as<JsonVariantConst>());
+  }
+  audioUrl.trim();
+  return audioUrl;
+}
+
+}  // namespace
+
+void VoiceHttpClient::begin(DJConnectDevice &device) {
+  device_ = &device;
+}
+
+void VoiceHttpClient::setActivityCallback(ActivityCallback callback, void *context) {
+  activityCallback_ = callback;
+  activityContext_ = context;
+}
+
+bool VoiceHttpClient::sendStatus(bool recording, const String &state, const String &lastError) {
+  pairingInvalidated_ = false;
+  (void)recording;
+  (void)state;
+  (void)lastError;
+  return device_ != nullptr && device_->isPaired();
+}
+
+bool VoiceHttpClient::sendRecognizedText(const String &recognizedText, String &message, String *audioUrl) {
+  pairingInvalidated_ = false;
+  if (device_ == nullptr || !device_->isPaired()) {
+    message = "No HA pairing";
+    return false;
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    message = "WiFi disconnected";
+    return false;
+  }
+  const String token = device_->getDeviceToken();
+  const String url = endpoint(HaVoicePath);
+  if (token.isEmpty()) {
+    message = "No device token";
+    return false;
+  }
+  if (url.isEmpty()) {
+    message = "No HA URL";
+    return false;
+  }
+  if (!Logic::shouldSendRecognizedVoiceText(recognizedText.length())) {
+    message = "No speech recognized";
+    return false;
+  }
+
+  JsonDocument doc;
+  doc["device_id"] = device_->getDeviceId();
+  doc["client_id"] = device_->getDeviceId();
+  doc["device_name"] = device_->getDeviceName();
+  doc["client_type"] = device_->getClientType();
+  doc["request_source"] = "voice";
+  doc["text"] = recognizedText;
+  String body;
+  serializeJson(doc, body);
+
+  HTTPClient http;
+  NetworkActivity activity("voice_command", Config::VoiceCommandIoTimeoutMs);
+  NetworkActivity::configureHttp(http, Config::HttpConnectTimeoutMs, Config::VoiceCommandIoTimeoutMs);
+  if (!http.begin(url)) {
+    message = "Voice HTTP begin failed";
+    activity.finishError("begin failed");
+    return false;
+  }
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + token);
+  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Client-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Device-Name", device_->getDeviceName());
+  http.addHeader("X-DJConnect-Client-Type", device_->getClientType());
+  http.addHeader("X-DJConnect-Text", recognizedText);
+
+  AppLog.print("Voice text command chars=");
+  AppLog.println(recognizedText.length());
+  ScopedWatchdogPause::resetIfAttached();
+  int code = 0;
+  {
+    ScopedWatchdogPause watchdogPause;
+    code = http.POST(body);
+  }
+  ScopedWatchdogPause::resetIfAttached();
+  AppLog.print("Voice command response: ");
+  AppLog.println(code);
+  logVoiceHttpClientError("Voice command client error", code);
+  const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs, activityCallback_, activityContext_);
+  AppLog.print("Voice command response bytes=");
+  AppLog.println(response.length());
+  http.end();
+  activity.finish(code);
+  if (code < 200 || code >= 300) {
+    logVoiceHttpErrorBody("Voice command error body", response);
+    JsonDocument errorDoc;
+    const DeserializationError jsonError = deserializeJson(errorDoc, response);
+    const char *errorKey = jsonError ? "" : (errorDoc["error"] | "");
+    const char *errorMessage = jsonError ? "" : (errorDoc["message"] | "");
+    if (Logic::isDjConnectInvalidClientType(errorKey)) {
+      AppLog.println("HA rejected payload: missing client_type=esp32");
+      message = "HA rejected payload: missing client_type=esp32";
+    } else if (Logic::isDjConnectProfilePlatformError(errorKey)) {
+      message = Logic::profilePlatformErrorMessage(errorKey, errorMessage);
+    } else if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      updatePairingInvalidationForStatus(code);
+      message = errorDoc["message"] | "Update DJConnect firmware/integration";
+    } else if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
+      pairingInvalidated_ = true;
+      message = strlen(errorMessage) > 0 ? String(errorMessage) : I18n::text("voice_ha_auth_failed");
+    } else if (code == 404) {
+      updatePairingInvalidationForStatus(code);
+      message = I18n::text("voice_ha_endpoint_missing");
+    } else if (code == 401 || code == 403) {
+      updatePairingInvalidationForStatus(code);
+      message = I18n::text("voice_ha_auth_failed");
+    } else {
+      updatePairingInvalidationForStatus(code);
+      message = strlen(errorMessage) > 0 ? String(errorMessage) : "Voice HTTP " + String(code);
+    }
+    return false;
+  }
+
+  JsonDocument responseDoc;
+  if (!response.isEmpty()) {
+    const DeserializationError jsonError = deserializeJson(responseDoc, response);
+    if (jsonError) {
+      AppLog.print("Voice command JSON parse failed: ");
+      AppLog.println(jsonError.c_str());
+    } else {
+      const String responseText = firstDjResponseText(responseDoc);
+      const String responseAudioUrl = firstDjResponseAudioUrl(responseDoc);
+      if (audioUrl != nullptr) {
+        *audioUrl = responseAudioUrl;
+      }
+      logVoiceResponseSummary("Voice command", responseText, responseAudioUrl);
+      if (!responseText.isEmpty() || !responseAudioUrl.isEmpty()) {
+        logDjResponseDebugText("voice_text", responseText, responseAudioUrl);
+        logDjResponseFullText("voice_text", responseText);
+      }
+      if (!responseText.isEmpty()) {
+        message = responseText;
+        return true;
+      }
+    }
+  }
+  message = "Voice command sent";
+  return true;
+}
+
+bool VoiceHttpClient::uploadWav(const String &path, String &message, String *audioUrl) {
+  pairingInvalidated_ = false;
+  if (device_ == nullptr || !device_->isPaired()) {
+    message = "No HA pairing";
+    return false;
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    message = "WiFi disconnected";
+    return false;
+  }
+  const String token = device_->getDeviceToken();
+  const String url = endpoint(HaVoicePath);
+  if (token.isEmpty()) {
+    message = "No device token";
+    return false;
+  }
+  if (url.isEmpty()) {
+    message = "No HA URL";
+    return false;
+  }
+
+  fs::File file = LittleFS.open(path, "r");
+  if (!file) {
+    message = "Voice file open failed";
+    return false;
+  }
+  const size_t fileSize = file.size();
+  if (fileSize == 0 || fileSize > Config::VoiceMaxWavBytes) {
+    file.close();
+    message = "Audio too large";
+    return false;
+  }
+
+  HTTPClient http;
+  NetworkActivity activity("voice_wav_upload", Config::VoiceCommandIoTimeoutMs);
+  NetworkActivity::configureHttp(http, Config::HttpConnectTimeoutMs, Config::VoiceCommandIoTimeoutMs);
+  if (!http.begin(url)) {
+    file.close();
+    message = "Voice HTTP begin failed";
+    activity.finishError("begin failed");
+    return false;
+  }
+  http.addHeader("Content-Type", "audio/wav");
+  http.addHeader("Authorization", "Bearer " + token);
+  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Client-ID", device_->getDeviceId());
+  http.addHeader("X-DJConnect-Device-Name", device_->getDeviceName());
+  http.addHeader("X-DJConnect-Client-Type", device_->getClientType());
+  http.addHeader("X-DJConnect-Request-Source", "voice");
+  AppLog.print("Voice WAV upload bytes=");
+  AppLog.println(fileSize);
+
+  int code = 0;
+  {
+    ScopedWatchdogPause watchdogPause;
+    ActivityFileStream uploadStream(file, activityCallback_, activityContext_);
+    code = http.sendRequest("POST", &uploadStream, fileSize);
+  }
+  file.close();
+  ScopedWatchdogPause::resetIfAttached();
+  AppLog.print("Voice WAV response: ");
+  AppLog.println(code);
+  logVoiceHttpClientError("Voice WAV client error", code);
+  const String response = readHttpBodyWithWatchdog(http, Config::VoiceCommandIoTimeoutMs, activityCallback_, activityContext_);
+  AppLog.print("Voice WAV response bytes=");
+  AppLog.println(response.length());
+  http.end();
+  activity.finish(code);
+
+  if (code < 200 || code >= 300) {
+    logVoiceHttpErrorBody("Voice WAV error body", response);
+    JsonDocument errorDoc;
+    const DeserializationError jsonError = deserializeJson(errorDoc, response);
+    const char *errorKey = jsonError ? "" : (errorDoc["error"] | "");
+    const char *errorMessage = jsonError ? "" : (errorDoc["message"] | "");
+    if (Logic::isDjConnectInvalidClientType(errorKey)) {
+      AppLog.println("HA rejected payload: missing client_type=esp32");
+      message = "HA rejected payload: missing client_type=esp32";
+    } else if (Logic::isDjConnectProfilePlatformError(errorKey)) {
+      message = Logic::profilePlatformErrorMessage(errorKey, errorMessage);
+    } else if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      updatePairingInvalidationForStatus(code);
+      message = errorDoc["message"] | "Update DJConnect firmware/integration";
+    } else if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
+      pairingInvalidated_ = true;
+      message = strlen(errorMessage) > 0 ? String(errorMessage) : I18n::text("voice_ha_auth_failed");
+    } else if (code == 404) {
+      updatePairingInvalidationForStatus(code);
+      message = I18n::text("voice_ha_endpoint_missing");
+    } else if (code == 401 || code == 403) {
+      updatePairingInvalidationForStatus(code);
+      message = I18n::text("voice_ha_auth_failed");
+    } else {
+      updatePairingInvalidationForStatus(code);
+      message = strlen(errorMessage) > 0 ? String(errorMessage) : "Voice HTTP " + String(code);
+    }
+    return false;
+  }
+
+  JsonDocument responseDoc;
+  if (!response.isEmpty()) {
+    const DeserializationError jsonError = deserializeJson(responseDoc, response);
+    if (jsonError) {
+      AppLog.print("Voice WAV JSON parse failed: ");
+      AppLog.println(jsonError.c_str());
+    } else {
+      const String responseText = firstDjResponseText(responseDoc);
+      const String responseAudioUrl = firstDjResponseAudioUrl(responseDoc);
+      if (audioUrl != nullptr) {
+        *audioUrl = responseAudioUrl;
+      }
+      logVoiceResponseSummary("Voice WAV", responseText, responseAudioUrl);
+      if (!responseText.isEmpty() || !responseAudioUrl.isEmpty()) {
+        logDjResponseDebugText("voice_wav", responseText, responseAudioUrl);
+        logDjResponseFullText("voice_wav", responseText);
+      }
+      if (!responseText.isEmpty()) {
+        message = responseText;
+        return true;
+      }
+    }
+  }
+  message = "Voice command sent";
+  return true;
+}
+
+bool VoiceHttpClient::pairingInvalidated() const {
+  return pairingInvalidated_;
+}
+
+bool VoiceHttpClient::updatePairingInvalidationForStatus(int statusCode) {
+  pairingInvalidated_ = Logic::isHomeAssistantPairingInvalidStatus(statusCode);
+  return pairingInvalidated_;
+}
+
+String VoiceHttpClient::endpoint(const char *path) const {
+  if (device_ == nullptr) {
+    return "";
+  }
+  String base = device_->getHaLocalUrl();
+  if (base.isEmpty()) {
+    return "";
+  }
+  if (base.endsWith("/")) {
+    base.remove(base.length() - 1);
+  }
+  return base + path;
+}
