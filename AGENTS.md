@@ -7,14 +7,14 @@ For a clean Codex/AI-agent session in this repository, start here:
 `BOOTSTRAP_CODEX_SESSION.md`
 
 That local bootstrap points back to the canonical platform foundation in
-`pcvantol/djconnect` and then returns to the repository-specific rules in
+`djconnect-music-dj/djconnect` and then returns to the repository-specific rules in
 this file. This repository extends the DJConnect Platform Foundation. It
 does not redefine it.
 
 ## DJConnect Platform Foundation
 
 This repository follows the canonical DJConnect design foundation in
-`pcvantol/djconnect`.
+`djconnect-music-dj/djconnect`.
 
 Before product, protocol, UX, release, CI or cross-repo contract changes,
 consult:
@@ -95,14 +95,14 @@ Do not imply Spotify endorsement, sponsorship, certification, or affiliation.
 - `README.md`: user-facing English project documentation. Keep it in sync when behavior, setup, endpoints or release flow changes.
 - `DESIGN_DECISIONS.md`: reverse-engineered technical design decisions, code-level patterns, coding conventions and full dependency inventory. Keep it in sync for every release when architecture, style, board support, APIs, release flow or dependencies change.
 - Cross-repo product roadmap content is canonical only in
-  `pcvantol/djconnect/PRODUCT_ROADMAP.md`. Do not add a local
+  `djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md`. Do not add a local
   `PRODUCT_ROADMAP.md` copy to this firmware repo. If a firmware change updates
   roadmap-relevant product scope, update this repo and make a follow-up change
-  in `pcvantol/djconnect`.
-- Cross-repo sync prompts are canonical only in `pcvantol/djconnect/SYNC_PROMPTS.md`.
+  in `djconnect-music-dj/djconnect`.
+- Cross-repo sync prompts are canonical only in `djconnect-music-dj/djconnect/SYNC_PROMPTS.md`.
   Do not add a local `SYNC_PROMPTS.md` copy to this firmware repo. If a firmware
   change updates a shared contract, update this repo and make a follow-up
-  change in `pcvantol/djconnect`.
+  change in `djconnect-music-dj/djconnect`.
 - `THIRD_PARTY_NOTICES.md`: third-party dependency notices for firmware libraries and frameworks.
 
 ## Build And Test Commands
@@ -167,7 +167,7 @@ update `THIRD_PARTY_NOTICES.md` and `DESIGN_DECISIONS.md` before publishing.
 Release-cycle documentation updates may still refresh `CHAT_BOOTSTRAP.md` so
 release/handoff context remains discoverable when tooling expects that file.
 `CHAT_BOOTSTRAP.md` is not the clean-session bootstrap; clean Codex sessions use
-`pcvantol/djconnect/BOOTSTRAP_CODEX_SESSION.md` first.
+`djconnect-music-dj/djconnect/BOOTSTRAP_CODEX_SESSION.md` first.
 Release tooling must verify the release commit is based on `origin/main` and
 push the current release commit explicitly with `git push origin HEAD:main`
 instead of relying on a potentially stale local `main` branch.
