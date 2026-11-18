@@ -9,12 +9,12 @@ it.
 
 ## Platform Foundation
 
-- Canonical repository: `pcvantol/djconnect`
+- Canonical repository: `djconnect-music-dj/djconnect`
 - Canonical document: `FOUNDATION_INDEX.md`
 - Local responsibility: follow the platform foundation while implementing this
   repository's owned surface.
 - May this repository modify it: no, except by making an explicit coordinated
-  change in `pcvantol/djconnect`.
+  change in `djconnect-music-dj/djconnect`.
 
 Canonical foundation documents include:
 
@@ -38,27 +38,27 @@ Canonical foundation documents include:
 
 ## Verification Foundation
 
-- Canonical repository: `pcvantol/djconnect`
+- Canonical repository: `djconnect-music-dj/djconnect`
 - Canonical documents: `BOOTSTRAP_CODEX_VERIFICATION.md`,
   `docs/verification/00_VERIFICATION_VISION.md`,
   `docs/verification/01_VERIFICATION_ARCHITECTURE.md` and `PROMPT_INDEX.md`
 - Local responsibility: provide repository-owned targets, artifacts or evidence
   when a canonical verification phase asks for them.
 - May this repository modify it: no, except through an explicit canonical
-  verification phase in `pcvantol/djconnect`.
+  verification phase in `djconnect-music-dj/djconnect`.
 
 ## Meta Engineering Foundation
 
-- Canonical repository: `pcvantol/djconnect`
+- Canonical repository: `djconnect-music-dj/djconnect`
 - Canonical document: `docs/meta/README.md`
 - Local responsibility: follow the repository-first engineering memory model,
   AI collaboration model and phase completion protocol.
 - May this repository modify it: no, except by making an explicit coordinated
-  change in `pcvantol/djconnect`.
+  change in `djconnect-music-dj/djconnect`.
 
 ## Platform Prompt Index
 
-- Canonical repository: `pcvantol/djconnect`
+- Canonical repository: `djconnect-music-dj/djconnect`
 - Canonical document: `PROMPT_INDEX.md`
 - Local responsibility: keep only repository-local phase state in this
   repository's `PROMPT_INDEX.md`.
@@ -66,11 +66,11 @@ Canonical foundation documents include:
 
 ## Repository Ownership
 
-- Canonical repository: `pcvantol/djconnect`
+- Canonical repository: `djconnect-music-dj/djconnect`
 - Canonical document: `REPOSITORY_OWNERSHIP.md`
 - Local responsibility: stay within this repository's ownership boundary.
 - May this repository modify it: no, except by making an explicit coordinated
-  change in `pcvantol/djconnect`.
+  change in `djconnect-music-dj/djconnect`.
 
 ## Local Technical Design Ownership
 
@@ -85,6 +85,6 @@ Canonical foundation documents include:
 - Repository state: read `REPOSITORY_STATUS.md`.
 - Repository-local phase state: read `PROMPT_INDEX.md`.
 - Platform or verification work: read the canonical documents in
-  `pcvantol/djconnect` referenced above.
+  `djconnect-music-dj/djconnect` referenced above.
 
 `CHAT_BOOTSTRAP.md` is deprecated and is not a canonical entrypoint.

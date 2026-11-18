@@ -39,11 +39,11 @@ grep -q "DEVELOPMENT_ENVIRONMENT.md" CONTRIBUTING.md
 grep -q "embedded OTA TLS CA/certificate" README.md
 grep -q "GitHub OTA TLS CA/certificate bundle" AGENTS.md
 grep -q "djconnect-music-dj/djconnect/SYNC_PROMPTS.md" README.md
-grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" AGENTS.md
-grep -q "pcvantol/djconnect/SYNC_PROMPTS.md" DESIGN_DECISIONS.md
+grep -q "djconnect-music-dj/djconnect/SYNC_PROMPTS.md" AGENTS.md
+grep -q "djconnect-music-dj/djconnect/SYNC_PROMPTS.md" DESIGN_DECISIONS.md
 grep -q "djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md" README.md
-grep -q "pcvantol/djconnect/PRODUCT_ROADMAP.md" AGENTS.md
-grep -q "pcvantol/djconnect/PRODUCT_ROADMAP.md" DESIGN_DECISIONS.md
+grep -q "djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md" AGENTS.md
+grep -q "djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md" DESIGN_DECISIONS.md
 grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
 for old_prompt in SYNC_PROMPTS.md PRODUCT_ROADMAP.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md IOS_MACOS_APP_HANDOFF.md APPLE_APP_SYNC_PROMPTS.md docs/SYNC_PROMPTS.md; do
   if [ -e "$old_prompt" ]; then
