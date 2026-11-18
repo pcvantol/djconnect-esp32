@@ -15,9 +15,9 @@ permissions:
 jobs:
   reconcile:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
-    uses: djconnect-music-dj/djconnect-shared-workflows/.github/workflows/post-merge-release-evidence-487.yml@4559963eec59251278c7b0ae6418033d2de079f8
+    uses: djconnect-music-dj/djconnect-shared-workflows/.github/workflows/post-merge-release-evidence-org-487.yml@38018fb71005d09e2eb8a58277bd7bfc500c8528
     with:
-      policy_source_ref: 4877403ba6fc69881439e70d3048da13ecb5576b
+      policy_source_ref: e02b452ed799b82a05500efbaa5ee41f74a046ed
       required_main_workflow: Firmware CI
       required_check_contexts: '["Trusted Delivery qualification / Qualify trusted delivery"]'
       repository_role: active_source
