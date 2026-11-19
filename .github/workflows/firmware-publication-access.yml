@@ -26,20 +26,7 @@ jobs:
           repository="$(bash scripts/resolve_firmware_release_repo.sh)"
           printf 'repository=%s\n' "$repository" >> "$GITHUB_OUTPUT"
 
-      - name: Check current personal publication access
-        if: steps.distribution.outputs.repository == 'pcvantol/djconnect-firmware'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
-        run: |
-          test -n "$GH_TOKEN"
-          gh api repositories/1258610489 | jq -e '
-            .id == 1258610489 and .visibility == "public" and
-            .full_name == "pcvantol/djconnect-firmware" and .permissions.push == true
-          '
-
       - name: Create organization firmware publication token
-        if: steps.distribution.outputs.repository == 'djconnect-music-dj/djconnect-firmware'
         id: publisher
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
@@ -50,7 +37,6 @@ jobs:
           permission-contents: write
 
       - name: Check organization installation scope without publishing
-        if: steps.distribution.outputs.repository == 'djconnect-music-dj/djconnect-firmware'
         shell: bash
         env:
           GH_TOKEN: ${{ steps.publisher.outputs.token }}

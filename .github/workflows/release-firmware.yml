@@ -15,7 +15,7 @@ jobs:
     name: Software Assurance governance
     permissions:
       contents: read
-    uses: djconnect-music-dj/djconnect-shared-workflows/.github/workflows/software-assurance-governance-aabd.yml@2a1c6fd2841b08630aee01402850f56840b50f70
+    uses: djconnect-music-dj/djconnect-shared-workflows/.github/workflows/software-assurance-governance-aabd.yml@4025a68add8ba98f1f2e0307d7f3998e45c0d9ef
     with:
       execution_profile: release
       owner: djconnect-music-dj/djconnect-esp32
@@ -215,7 +215,6 @@ jobs:
           scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md
 
       - name: Create organization firmware publication token
-        if: steps.distribution.outputs.repository == 'djconnect-music-dj/djconnect-firmware'
         id: publisher
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
@@ -225,24 +224,16 @@ jobs:
           repositories: djconnect-firmware
           permission-contents: write
 
-      - name: Require the publication credential for the resolved owner
-        shell: bash
+      - name: Require organization publication credential
         env:
-          DISTRIBUTION: ${{ steps.distribution.outputs.repository }}
-          PERSONAL_TOKEN: ${{ secrets.FIRMWARE_RELEASE_TOKEN }}
           ORGANIZATION_TOKEN: ${{ steps.publisher.outputs.token }}
-        run: |
-          if [[ "$DISTRIBUTION" == djconnect-music-dj/djconnect-firmware ]]; then
-            test -n "$ORGANIZATION_TOKEN"
-          else
-            test -n "$PERSONAL_TOKEN"
-          fi
+        run: test -n "$ORGANIZATION_TOKEN"
 
       - name: Publish GitHub Release to public firmware repo
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           repository: ${{ steps.distribution.outputs.repository }}
-          token: ${{ steps.distribution.outputs.repository == 'djconnect-music-dj/djconnect-firmware' && steps.publisher.outputs.token || secrets.FIRMWARE_RELEASE_TOKEN }}
+          token: ${{ steps.publisher.outputs.token }}
           tag_name: ${{ needs.release-info.outputs.version_tag }}
           name: DJConnect Firmware ${{ needs.release-info.outputs.version_tag }}
           prerelease: ${{ needs.release-info.outputs.channel == 'beta' }}

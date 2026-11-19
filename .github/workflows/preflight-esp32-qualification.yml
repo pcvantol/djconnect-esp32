@@ -29,18 +29,18 @@ jobs:
         with:
           script: |
             const expectedId = 1258575431;
-            const allowed = ['pcvantol/djconnect', 'djconnect-music-dj/djconnect'];
+            const allowed = ['djconnect-music-dj/djconnect'];
             function valid(repo) {
               return repo.id === expectedId && repo.private === false && allowed.includes(repo.full_name);
             }
             for (const repo of [
               {id: expectedId, private: false, full_name: allowed[0]},
-              {id: expectedId, private: false, full_name: allowed[1]},
             ]) if (!valid(repo)) throw new Error('Expected Core identity rejected');
             for (const repo of [
               {id: 1, private: false, full_name: allowed[0]},
               {id: expectedId, private: true, full_name: allowed[0]},
               {id: expectedId, private: false, full_name: 'other/djconnect'},
+              {id: expectedId, private: false, full_name: 'pcvantol/djconnect'},
             ]) if (valid(repo)) throw new Error('Unexpected Core identity accepted');
             const response = await github.request('GET /repositories/{repository_id}', {repository_id: expectedId});
             if (!valid(response.data)) throw new Error('Canonical Core identity is not authorized');

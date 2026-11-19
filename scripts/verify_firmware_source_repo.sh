@@ -6,7 +6,7 @@ if [[ "${GITHUB_REPOSITORY_ID:-}" != 1258611332 ]]; then
   exit 1
 fi
 case "${GITHUB_REPOSITORY:-}" in
-  pcvantol/djconnect-esp32|djconnect-music-dj/djconnect-esp32)
+  djconnect-music-dj/djconnect-esp32)
     printf '%s\n' "$GITHUB_REPOSITORY"
     ;;
   *)
