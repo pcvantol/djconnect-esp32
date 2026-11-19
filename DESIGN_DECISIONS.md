@@ -664,7 +664,7 @@ firmware dependencies are linked unless marked otherwise.
 | ArduinoJson | `7.4.3` installed (`^7.4.2` requested) | MIT | `https://github.com/bblanchon/ArduinoJson` | JSON parsing and serialization |
 | FastLED | `3.10.9` CI-resolved for v4.0.1 (`^3.9.12` requested) | MIT | `https://github.com/FastLED/FastLED` | WS2812 LED-ring control |
 | TJpg_Decoder | `1.1.0` | FreeBSD-style for wrapper plus Tiny JPEG Decompressor terms | `https://github.com/Bodmer/TJpg_Decoder` | JPEG album-art decoding/rendering |
-| ESP8266Audio | `2.4.1` CI-resolved for v4.0.0 (`^2.4.1` requested) | GPL-3.0 according to included `LICENSE` | `https://github.com/earlephilhower/ESP8266Audio` | WAV/MP3 playback helpers over I2S |
+| ESP8266Audio | `2.4.1` CI-resolved for v4.0.0; `2.4.3` for v4.1.0 preparation (`^2.4.1` requested) | GPL-3.0 according to included `LICENSE` | `https://github.com/earlephilhower/ESP8266Audio` | WAV/MP3 playback helpers over I2S |
 | MicroTFLite | `1.0.4` | Apache-2.0 | `https://github.com/johnosbb/MicroTFLite` | TensorFlow Lite Micro runtime and microfrontend for wake-word inference |
 
 ### Arduino Core Libraries Used From Framework

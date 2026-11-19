@@ -6,6 +6,7 @@
 
 ### Changed
 
+- Record ESP8266Audio 2.4.3 as resolved by firmware CI for this release preparation.
 - Prepare the DJConnect 4.1.0 firmware release line. Release builds continue to
   receive their version through explicit build flags; development builds remain
   `dev` until a release is built.

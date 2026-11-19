@@ -67,6 +67,7 @@ human-readable third-party notice summary and trademark notices.
   - Used for WAV/MP3 playback helpers over I2S.
   - PlatformIO dependency: `earlephilhower/ESP8266Audio`
   - CI-resolved version for v4.0.0: `2.4.1` (`^2.4.1` requested).
+  - CI-resolved version for the v4.1.0 preparation: `2.4.3` (`^2.4.1` requested).
   - Source: `https://github.com/earlephilhower/ESP8266Audio`
   - License: GPL-3.0 according to included `LICENSE`.
 
