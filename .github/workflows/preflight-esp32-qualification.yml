@@ -1,0 +1,151 @@
+name: ESP32 synthetic preflight transition qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: Qualify pinned preflight on ESP32 runner without deployment
+    if: github.ref == 'refs/heads/main' && github.actor == 'pcvantol'
+    runs-on: [self-hosted, macOS, ARM64, internal-release, private-network-deployment, firmware, esp32]
+    timeout-minutes: 10
+    steps:
+      - id: owned
+        name: Require a clean, unused qualification path
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_OS" = macOS && test "$RUNNER_ARCH" = ARM64
+          test ! -e .esp32-preflight-proof
+          test ! -L .esp32-preflight-proof
+          mkdir -m 700 .esp32-preflight-proof
+          printf '%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$(id -u)" > .esp32-preflight-proof/.owner
+      - id: core
+        name: Resolve canonical Core by immutable repository ID
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const expectedId = 1258575431;
+            const allowed = ['djconnect-music-dj/djconnect'];
+            function valid(repo) {
+              return repo.id === expectedId && repo.private === false && allowed.includes(repo.full_name);
+            }
+            for (const repo of [
+              {id: expectedId, private: false, full_name: allowed[0]},
+            ]) if (!valid(repo)) throw new Error('Expected Core identity rejected');
+            for (const repo of [
+              {id: 1, private: false, full_name: allowed[0]},
+              {id: expectedId, private: true, full_name: allowed[0]},
+              {id: expectedId, private: false, full_name: 'other/djconnect'},
+              {id: expectedId, private: false, full_name: 'pcvantol/djconnect'},
+            ]) if (valid(repo)) throw new Error('Unexpected Core identity accepted');
+            const response = await github.request('GET /repositories/{repository_id}', {repository_id: expectedId});
+            if (!valid(response.data)) throw new Error('Canonical Core identity is not authorized');
+            core.setOutput('repository', response.data.full_name);
+
+      - name: Checkout exact canonical preflight
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ steps.core.outputs.repository }}
+          ref: ebbb35f038a7a3c7d46c12660968bcd50eb67580
+          path: .esp32-preflight-proof/core
+          persist-credentials: false
+
+      - name: Verify exact preflight bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .esp32-preflight-proof/core rev-parse HEAD)" = ebbb35f038a7a3c7d46c12660968bcd50eb67580
+          test -z "$(git -C .esp32-preflight-proof/core config --local --get-regexp '^http\..*\.extraheader$' || true)"
+          printf '%s  %s\n' 8af709b8a6ddf29843562d4f1b09de0747204feb086eeebbb485d16f5423fd37 .esp32-preflight-proof/core/.github/actions/deployment-readiness-preflight/action.yml | shasum -a 256 --check
+
+      - id: valid
+        name: Accept complete synthetic input
+        uses: ./.esp32-preflight-proof/core/.github/actions/deployment-readiness-preflight
+        with:
+          target: esp32_lilygo_t_embed_s3
+          manifest_id: release-synthetic
+          candidate_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          artifact_id: synthetic-artifact
+          artifact_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          expected_runner_os: macOS
+          expected_runner_arch: ARM64
+          required_configuration: HA_API_URL,HA_API_TOKEN,UPDATE_ENTITY_ID
+          smoke_contract: esp32-home-assistant-update-smoke-v1
+        env:
+          HA_API_URL: synthetic-value
+          HA_API_TOKEN: synthetic-value
+          UPDATE_ENTITY_ID: synthetic-value
+
+      - id: invalid_manifest
+        name: Reject invalid synthetic manifest
+        continue-on-error: true
+        uses: ./.esp32-preflight-proof/core/.github/actions/deployment-readiness-preflight
+        with:
+          target: esp32_lilygo_t_embed_s3
+          manifest_id: invalid
+          candidate_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          artifact_id: synthetic-artifact
+          artifact_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          expected_runner_os: macOS
+          expected_runner_arch: ARM64
+          smoke_contract: esp32-home-assistant-update-smoke-v1
+
+      - id: invalid_digest
+        name: Reject invalid synthetic artifact digest
+        continue-on-error: true
+        uses: ./.esp32-preflight-proof/core/.github/actions/deployment-readiness-preflight
+        with:
+          target: esp32_lilygo_t_embed_s3
+          manifest_id: release-synthetic
+          candidate_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          artifact_id: synthetic-artifact
+          artifact_sha256: invalid
+          expected_runner_os: macOS
+          expected_runner_arch: ARM64
+          smoke_contract: esp32-home-assistant-update-smoke-v1
+
+      - id: missing_configuration
+        name: Reject missing synthetic configuration
+        continue-on-error: true
+        uses: ./.esp32-preflight-proof/core/.github/actions/deployment-readiness-preflight
+        with:
+          target: esp32_lilygo_t_embed_s3
+          manifest_id: release-synthetic
+          candidate_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          artifact_id: synthetic-artifact
+          artifact_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          expected_runner_os: macOS
+          expected_runner_arch: ARM64
+          required_configuration: DJC_QUALIFICATION_MISSING_VALUE
+          smoke_contract: esp32-home-assistant-update-smoke-v1
+
+      - name: Verify fail-closed outcomes
+        if: always()
+        env:
+          VALID_RESULT: ${{ steps.valid.outcome }}
+          MANIFEST_RESULT: ${{ steps.invalid_manifest.outcome }}
+          DIGEST_RESULT: ${{ steps.invalid_digest.outcome }}
+          CONFIG_RESULT: ${{ steps.missing_configuration.outcome }}
+        run: |
+          set -euo pipefail
+          test "$VALID_RESULT" = success
+          test "$MANIFEST_RESULT" = failure
+          test "$DIGEST_RESULT" = failure
+          test "$CONFIG_RESULT" = failure
+
+      - name: Remove only this job-owned proof directory
+        if: always() && steps.owned.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          owned="$GITHUB_WORKSPACE/.esp32-preflight-proof"
+          test -d "$owned" && test ! -L "$owned"
+          test -f "$owned/.owner" && test ! -L "$owned/.owner"
+          test "$(cat "$owned/.owner")" = "$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT:$(id -u)"
+          test "$(stat -f '%u' "$owned")" = "$(id -u)"
+          test "$(cd "$owned" && pwd -P)" = "$owned"
+          rm -rf -- "$owned"

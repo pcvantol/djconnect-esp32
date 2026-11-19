@@ -1,0 +1,3 @@
+capabilities:
+  coverage:
+    path: release/native-coverage/djconnect-esp32-native-coverage.xml

@@ -1,0 +1,187 @@
+name: Deploy ESP32 firmware through Home Assistant Update entity
+
+on:
+  workflow_dispatch:
+    inputs:
+      action: {required: true, type: choice, options: [deployment]}
+      candidate_sha: {required: true, type: string}
+      execution_mode: {required: true, type: choice, options: [execute]}
+      manifest_id: {required: true, type: string}
+      artifact_id: {required: true, type: string}
+      artifact_sha256: {required: true, type: string}
+      target: {required: true, type: choice, options: [esp32_lilygo_t_embed_s3]}
+      platform_version: {required: true, type: string}
+      release_profile: {required: true, type: choice, options: [INTERNAL_RELEASE]}
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, macOS, ARM64, internal-release, private-network-deployment]
+    environment: private-network-deployment
+    steps:
+      - name: Validate manifest-bound OTA request
+        env:
+          ACTION: ${{ inputs.action }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          EXECUTION_MODE: ${{ inputs.execution_mode }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+          PLATFORM_VERSION: ${{ inputs.platform_version }}
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
+        run: |
+          set -euo pipefail
+          test "$ACTION" = deployment
+          test "$EXECUTION_MODE" = execute
+          test "$TARGET" = esp32_lilygo_t_embed_s3
+          test "$RELEASE_PROFILE" = INTERNAL_RELEASE
+          test "$GITHUB_REPOSITORY_ID" = 1258611332
+          case "$GITHUB_REPOSITORY" in
+            djconnect-music-dj/djconnect-esp32) ;;
+            *) echo "Unexpected DJConnect ESP32 source repository name." >&2; exit 1 ;;
+          esac
+          printf '%s' "$CANDIDATE_SHA" | grep -Eq '^[0-9a-f]{40}$'
+          printf '%s' "$MANIFEST_ID" | grep -Eq '^release-[A-Za-z0-9._-]+$'
+          printf '%s' "$ARTIFACT_ID" | grep -Eq '^release-asset:(pcvantol|djconnect-music-dj)/djconnect-firmware:v[0-9]+\.[0-9]+\.[0-9]+:djconnect-lilygo-t-embed-s3(-beta)?-v[0-9]+\.[0-9]+\.[0-9]+\.bin$'
+          printf '%s' "$ARTIFACT_SHA256" | grep -Eq '^[0-9a-f]{64}$'
+          printf '%s' "$PLATFORM_VERSION" | grep -Eq '^[0-9]+\.[0-9]+$'
+      - id: preflight_owned
+        name: Create an isolated canonical preflight path
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e .canonical-esp32-preflight
+          test ! -L .canonical-esp32-preflight
+          mkdir -m 700 .canonical-esp32-preflight
+          printf '%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$(id -u)" > .canonical-esp32-preflight/.owner
+      - id: canonical_preflight_source
+        name: Resolve canonical Core by immutable repository ID
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const expectedId = 1258575431;
+            const response = await github.request('GET /repositories/{repository_id}', {repository_id: expectedId});
+            const repo = response.data;
+            if (repo.id !== expectedId || repo.private !== false || !['djconnect-music-dj/djconnect'].includes(repo.full_name)) {
+              throw new Error('Canonical Core identity is not authorized');
+            }
+            core.setOutput('repository', repo.full_name);
+      - name: Checkout exact canonical preflight
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ steps.canonical_preflight_source.outputs.repository }}
+          ref: ebbb35f038a7a3c7d46c12660968bcd50eb67580
+          path: .canonical-esp32-preflight/core
+          persist-credentials: false
+      - name: Verify exact canonical preflight bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .canonical-esp32-preflight/core rev-parse HEAD)" = ebbb35f038a7a3c7d46c12660968bcd50eb67580
+          config_result=0
+          credential_headers="$(git -C .canonical-esp32-preflight/core config --local --get-regexp '^http\..*\.extraheader$')" || config_result=$?
+          test "$config_result" = 1
+          test -z "$credential_headers"
+          printf '%s  %s\n' 8af709b8a6ddf29843562d4f1b09de0747204feb086eeebbb485d16f5423fd37 .canonical-esp32-preflight/core/.github/actions/deployment-readiness-preflight/action.yml | shasum -a 256 --check
+      - name: Verify target deployment readiness
+        uses: ./.canonical-esp32-preflight/core/.github/actions/deployment-readiness-preflight
+        with:
+          target: ${{ inputs.target }}
+          manifest_id: ${{ inputs.manifest_id }}
+          candidate_sha: ${{ inputs.candidate_sha }}
+          artifact_id: ${{ inputs.artifact_id }}
+          artifact_sha256: ${{ inputs.artifact_sha256 }}
+          expected_runner_os: macOS
+          expected_runner_arch: ARM64
+          required_configuration: HA_API_URL,HA_API_TOKEN,UPDATE_ENTITY_ID
+          smoke_contract: esp32-home-assistant-update-smoke-v1
+        env:
+          HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
+          HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
+          UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
+      - name: Remove only this job-owned preflight checkout
+        if: always() && steps.preflight_owned.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          owned="$GITHUB_WORKSPACE/.canonical-esp32-preflight"
+          test -d "$owned" && test ! -L "$owned"
+          test -f "$owned/.owner" && test ! -L "$owned/.owner"
+          test "$(cat "$owned/.owner")" = "$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT:$(id -u)"
+          test "$(stat -f '%u' "$owned")" = "$(id -u)"
+          test "$(cd "$owned" && pwd -P)" = "$owned"
+          rm -rf -- "$owned"
+      - id: manifest
+        name: Require approved central operational manifest source
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
+        run: |
+          set -euo pipefail
+          manifest="$(mktemp)"
+          trap 'rm -f "$manifest"' EXIT
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/djconnect-music-dj/djconnect/main/docs/release/PLATFORM_3_3_CURRENT_MAIN_MANIFEST_PROPOSAL.json \
+            --output "$manifest"
+          test "$(jq -r '.status' "$manifest")" = APPROVED_DEPLOYMENT_DISPATCH_PENDING
+          test "$(jq -r '.approval.state' "$manifest")" = APPROVED
+          test "$(jq -r '.manifest_id' "$manifest")" = "$MANIFEST_ID"
+          test "$(jq -r '.release_profile' "$manifest")" = "$RELEASE_PROFILE"
+          release_version="$(jq -r --arg repo "$GITHUB_REPOSITORY" --arg sha "$CANDIDATE_SHA" '.repositories[] | select(.repository == $repo and .source_sha == $sha) | .version' "$manifest")"
+          printf '%s' "$release_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+          jq -e --arg target "$TARGET" --arg artifact "$ARTIFACT_ID" --arg sha "$ARTIFACT_SHA256" \
+            '.artifact_bindings[] | select(.target == $target and .artifact_id == $artifact and .artifact_sha256 == $sha)' \
+            "$manifest" >/dev/null
+          printf 'release_version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
+      - name: Verify exact Home Assistant Update entity scope
+        env:
+          HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
+          HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
+          UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
+          RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          state="$(curl --fail --silent --show-error --header "Authorization: Bearer $HA_API_TOKEN" "$HA_API_URL/api/states/$UPDATE_ENTITY_ID")"
+          test "$(jq -r '.entity_id' <<<"$state")" = "$UPDATE_ENTITY_ID"
+          test "$(jq -r '.attributes.latest_version // empty' <<<"$state")" = "$RELEASE_VERSION"
+      - name: Request the exact Home Assistant Update entity install
+        env:
+          HA_API_URL: ${{ secrets.DJCONNECT_HA_SMOKE_API_URL }}
+          HA_API_TOKEN: ${{ secrets.DJCONNECT_HA_SMOKE_API_TOKEN }}
+          UPDATE_ENTITY_ID: ${{ secrets.DJCONNECT_ESP_UPDATE_ENTITY_ID }}
+          RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          test -n "$HA_API_URL" && test -n "$HA_API_TOKEN" && test -n "$UPDATE_ENTITY_ID"
+          curl --fail --silent --show-error --header "Authorization: Bearer $HA_API_TOKEN" --header 'Content-Type: application/json' --data "{\"entity_id\":\"$UPDATE_ENTITY_ID\",\"version\":\"$RELEASE_VERSION\"}" "$HA_API_URL/api/services/update/install" >/dev/null
+      - name: Publish redacted deployment evidence
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          TARGET: ${{ inputs.target }}
+          PLATFORM_VERSION: ${{ inputs.platform_version }}
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
+          RELEASE_VERSION: ${{ steps.manifest.outputs.release_version }}
+          DEPLOYMENT_WORKFLOW_RUN: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          from datetime import UTC, datetime
+          import json, os
+          with open("esp32-deployment-evidence.json", "w", encoding="utf-8") as file:
+              json.dump({"schema_version": 1, "kind": "esp32_home_assistant_update_deployment", "repository": os.environ["GITHUB_REPOSITORY"], "candidate_sha": os.environ["CANDIDATE_SHA"], "manifest_id": os.environ["MANIFEST_ID"], "artifact_id": os.environ["ARTIFACT_ID"], "artifact_sha256": os.environ["ARTIFACT_SHA256"], "target": os.environ["TARGET"], "platform_version": os.environ["PLATFORM_VERSION"], "release_profile": os.environ["RELEASE_PROFILE"], "release_version": os.environ["RELEASE_VERSION"], "deployment_workflow_run": os.environ["DEPLOYMENT_WORKFLOW_RUN"], "deployment_result": "DEPLOYED_PENDING_SMOKE", "timestamp": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")}, file, sort_keys=True)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: esp32-deployment-evidence
+          path: esp32-deployment-evidence.json
+          if-no-files-found: error

@@ -1,0 +1,225 @@
+{
+  "scope": "Actual embedded HTML in Chromium with local fixture APIs; not live ESP32",
+  "records": [
+    {
+      "width": 390,
+      "theme": "dark",
+      "locale": "en",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-dark-en.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "locale": "nl",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-dark-nl.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "locale": "de",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-dark-de.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "locale": "fr",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-dark-fr.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "locale": "es",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-dark-es.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "en",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-light-en.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "nl",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-light-nl.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "de",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-light-de.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "fr",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-light-fr.png",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "es",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-390-light-es.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "dark",
+      "locale": "en",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-dark-en.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "dark",
+      "locale": "nl",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-dark-nl.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "dark",
+      "locale": "de",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-dark-de.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "dark",
+      "locale": "fr",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-dark-fr.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "dark",
+      "locale": "es",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-dark-es.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "light",
+      "locale": "en",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-light-en.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "light",
+      "locale": "nl",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-light-nl.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "light",
+      "locale": "de",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-light-de.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "light",
+      "locale": "fr",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-light-fr.png",
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "theme": "light",
+      "locale": "es",
+      "image": {
+        "width": 32,
+        "src": "/icon-32.png?v=4"
+      },
+      "screenshot": "portal-1024-light-es.png",
+      "errors": []
+    }
+  ]
+}

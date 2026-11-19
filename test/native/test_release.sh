@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
+
+test "$(GITHUB_REPOSITORY_ID=1258611332 GITHUB_REPOSITORY=djconnect-music-dj/djconnect-esp32 bash scripts/verify_firmware_source_repo.sh)" = djconnect-music-dj/djconnect-esp32
+if GITHUB_REPOSITORY_ID=1258611332 GITHUB_REPOSITORY=pcvantol/djconnect-esp32 bash scripts/verify_firmware_source_repo.sh 2>/dev/null; then
+  echo "Firmware source check admitted the old owner" >&2; exit 1
+fi
+if GITHUB_REPOSITORY_ID=1 GITHUB_REPOSITORY=djconnect-music-dj/djconnect-esp32 bash scripts/verify_firmware_source_repo.sh 2>/dev/null; then
+  echo "Firmware source check admitted the wrong repository ID" >&2
+  exit 1
+fi
+if GITHUB_REPOSITORY_ID=1258611332 GITHUB_REPOSITORY=other/djconnect-esp32 bash scripts/verify_firmware_source_repo.sh 2>/dev/null; then
+  echo "Firmware source check admitted an unknown owner" >&2
+  exit 1
+fi
+
+bash test/native/test_release_repo_identity.sh
+
+bash -n release.sh
+bash -n scripts/cleanup_old_releases.sh
+bash -n scripts/capture_device_screens.sh
+bash -n scripts/extract_release_changelog.sh
+bash -n scripts/update_build_dependencies.sh
+bash -n test/native/test_ha_contract_smoke.sh
+python3 -m py_compile scripts/minify_webportal.py
+python3 -m py_compile test/native/test_postman_collections.py
+python3 -m py_compile test/native/test_webportal_i18n.py
+test/native/test_ha_contract_smoke.sh
+python3 test/native/test_postman_collections.py
+python3 test/native/test_webportal_i18n.py
+test -s DESIGN_DECISIONS.md
+test -s DEVELOPMENT_ENVIRONMENT.md
+grep -q "Technical Design Decisions" DESIGN_DECISIONS.md
+grep -q "Frameworks, Libraries And Third-Party Dependencies" DESIGN_DECISIONS.md
+grep -q "Release Maintenance Rule" DESIGN_DECISIONS.md
+grep -q "Development Environment" DEVELOPMENT_ENVIRONMENT.md
+grep -q "DEVELOPMENT_ENVIRONMENT.md" README.md
+grep -q "DEVELOPMENT_ENVIRONMENT.md" CONTRIBUTING.md
+grep -q "embedded OTA TLS CA/certificate" README.md
+grep -q "GitHub OTA TLS CA/certificate bundle" AGENTS.md
+grep -q "djconnect-music-dj/djconnect/SYNC_PROMPTS.md" README.md
+grep -q "djconnect-music-dj/djconnect/SYNC_PROMPTS.md" AGENTS.md
+grep -q "djconnect-music-dj/djconnect/SYNC_PROMPTS.md" DESIGN_DECISIONS.md
+grep -q "djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md" README.md
+grep -q "djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md" AGENTS.md
+grep -q "djconnect-music-dj/djconnect/PRODUCT_ROADMAP.md" DESIGN_DECISIONS.md
+grep -q "GitHub OTA CA/certificate bundle" DESIGN_DECISIONS.md
+for old_prompt in SYNC_PROMPTS.md PRODUCT_ROADMAP.md HA_SYNC_PROMPT.md ESP_SYNC_PROMPT.md IOS_MACOS_APP_HANDOFF.md APPLE_APP_SYNC_PROMPTS.md docs/SYNC_PROMPTS.md; do
+  if [ -e "$old_prompt" ]; then
+    echo "shared sync prompts/roadmap are canonical only in djconnect-music-dj/djconnect; remove $old_prompt" >&2
+    exit 1
+  fi
+done
+release_notes_output="$(scripts/extract_release_changelog.sh v3.1.21 CHANGELOG.md)"
+echo "$release_notes_output" | grep -q "Stability and web portal polish release"
+echo "$release_notes_output" | grep -q "Delayed automatic playback polling after boot/pairing"
+if echo "$release_notes_output" | grep -q "## v3.1.20"; then
+  echo "release changelog extraction included the next release heading" >&2
+  exit 1
+fi
+grep -q 'DefaultHomeAssistantUrl = "http://homeassistant.local:8123"' include/Config.h
+grep -q "DefaultHomeAssistantUrl" src/DisplayManager.cpp
+grep -q "http://homeassistant.local:8123" README.md
+
+# Repository hygiene: generated release assets must stay out of source control.
+git check-ignore -q release/djconnect-lilygo-t-embed-s3-v3.0.0.bin
+if git ls-files --error-unmatch release/firmware_manifest.json >/dev/null 2>&1; then
+  echo "release artifacts must not be tracked in the source repo" >&2
+  exit 1
+fi
+
+# Asset snapshots catch stale branding in the embedded display and web portal resources.
+echo "73cc408e10d88aa1fb8a1be2783b9c577aec398ce3dcd54c2f997ad1425984d2  assets/brand-v2/producer-manifest.json" | shasum -a 256 -c -
+python3 - <<'PY'
+import hashlib
+import json
+from pathlib import Path
+
+source = json.loads(Path("assets/brand-v2/producer-manifest.json").read_text())
+for size in (16, 32, 40, 256):
+    name = f"mark-{size}.png"
+    actual = hashlib.sha256(Path("assets/brand-v2", name).read_bytes()).hexdigest()
+    assert actual == source["files"][f"assets/djconnect/brand-v2/{name}"]["sha256"], name
+receipt = json.loads(Path("assets/brand-v2/consumer-manifest.json").read_text())
+assert receipt["producer_commit"] == "883cb9f3ff9de8ec7f5ae4c5f04f852e0d8bd866"
+for name, expected in receipt["outputs"].items():
+    assert hashlib.sha256(Path(name).read_bytes()).hexdigest() == expected, name
+print("Pinned Brand V2 release inputs verified")
+PY
+
+if ! grep -Fq '"https://api.github.com/repos/djconnect-music-dj/djconnect-firmware/releases/latest";' include/Config.h; then
+  echo "bootstrap OTA must use the canonical firmware release API" >&2
+  exit 1
+fi
+
+# The DJConnect rebrand should not regress to old product names or old 2.x firmware assets.
+if rg -n --glob "!test/native/test_release.sh" --glob "!test/native/test_ha_contract_smoke.sh" "SpotifyDJ|spotifydj|spotify_dj|SPOTIFYDJ|Spotify DJ|spotify-dj|/api/spotify_dj|X-SpotifyDJ|set_play_mode|\bha_url\b|djconnect-[0-9A-Fa-f]{12}" \
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  echo "old product/endpoint reference found" >&2
+  exit 1
+fi
+
+if rg -n --glob "!test/native/test_release.sh" "spotifydj-device|releases/download/v2\.[0-9]+\.[0-9]+|tag/v2\.[0-9]+\.[0-9]+|Release .*v2\.[0-9]+\.[0-9]+|firmware v2\.[0-9]+\.[0-9]+" \
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  echo "old 2.x firmware release reference found" >&2
+  exit 1
+fi
+
+if rg -n --glob "!test/native/test_release.sh" "djconnect-device-v|djconnect-device-esp32-s3-box-3|\"asset\": \"djconnect-device|\"url\": \"https://github.com/pcvantol/djconnect-firmware/releases/download/.*/djconnect-device" \
+  README.md DESIGN_DECISIONS.md CHANGELOG.md AGENTS.md HANDOFF.md TODO.md LICENSE THIRD_PARTY_NOTICES.md src include test postman .github release.sh scripts; then
+  echo "old single-device firmware asset reference found" >&2
+  exit 1
+fi
+
+dry_run_output="$(./release.sh 98.76.54 --dry-run)"
+echo "$dry_run_output" | grep -q "version: 98.76.54"
+echo "$dry_run_output" | grep -q "tag:     v98.76.54"
+echo "$dry_run_output" | grep -q "channel: stable"
+echo "$dry_run_output" | grep -q "min HA:  98.76.0"
+echo "$dry_run_output" | grep -q "max HA:  <98.77.0"
+echo "$dry_run_output" | grep -q "djconnect-lilygo-t-embed-s3-v98.76.54.bin"
+echo "$dry_run_output" | grep -q "Would fetch origin/main and verify the source release commit is based on the remote release base."
+echo "$dry_run_output" | grep -q "Would update and upgrade PlatformIO Core, global packages/tools and project packages"
+echo "$dry_run_output" | grep -q "Would write release/build-dependencies.diff and require THIRD_PARTY_NOTICES.md / DESIGN_DECISIONS.md review"
+echo "$dry_run_output" | grep -q "Would build t_embed_cc1101 with isolated PLATFORMIO_BUILD_DIR root"
+echo "$dry_run_output" | grep -q "DJCONNECT_VERSION=98.76.54 / DJCONNECT_VERSION_TAG=v98.76.54"
+echo "$dry_run_output" | grep -q "Would commit, tag and push the current source release commit explicitly to origin/main."
+echo "$dry_run_output" | grep -q "If GitHub Actions release publishing is configured, the pushed tag may publish public firmware assets."
+
+publish_dry_run_output="$(./release.sh 98.76.59 --publish-firmware-repo ../djconnect-firmware --dry-run)"
+echo "$publish_dry_run_output" | grep -q "Would publish assets to firmware repo path: ../djconnect-firmware."
+echo "$publish_dry_run_output" | grep -q "Would fetch origin/main and verify the public firmware release commit is based on the remote release base."
+echo "$publish_dry_run_output" | grep -q "Would update the public firmware repo; verify or create the GitHub firmware release after publish."
+grep -q '"$RELEASE_DIR/$LILYGO_ASSET"' release.sh
+grep -q '"$RELEASE_DIR/$MANIFEST"' release.sh
+grep -q 'git fetch origin main' release.sh
+grep -q 'git merge-base --is-ancestor origin/main HEAD' release.sh
+grep -q 'git push origin HEAD:main' release.sh
+if grep -q 'git push origin main' release.sh; then
+  echo "release.sh must push the current release commit with HEAD:main, not a potentially stale local main branch" >&2
+  exit 1
+fi
+grep -q 'scripts/update_build_dependencies.sh "${RELEASE_BOARDS\[@\]}"' release.sh
+grep -q 'scripts/update_build_dependencies.sh "${{ matrix.env }}"' .github/workflows/release-firmware.yml
+grep -q 'REPORT_DIR=release/ci-native scripts/update_build_dependencies.sh t_embed_cc1101' .github/workflows/ci.yml
+grep -q 'REPORT_DIR=release/ci-platformio scripts/update_build_dependencies.sh t_embed_cc1101' .github/workflows/ci.yml
+grep -q 'build-dependencies-ci-native' .github/workflows/ci.yml
+grep -q 'build-dependencies-ci-platformio' .github/workflows/ci.yml
+grep -q 'scripts/extract_release_changelog.sh "${{ needs.release-info.outputs.version_tag }}" CHANGELOG.md > release-notes.md' .github/workflows/release-firmware.yml
+grep -q 'body_path: release-notes.md' .github/workflows/release-firmware.yml
+grep -q 'release/${{ needs.release-info.outputs.lilygo_bin }}' .github/workflows/release-firmware.yml
+grep -q 'release/${{ needs.release-info.outputs.manifest }}' .github/workflows/release-firmware.yml
+if grep -q '^[[:space:]]*release/\*$' .github/workflows/release-firmware.yml; then
+  echo "GitHub release workflow must not publish every generated release artifact" >&2
+  exit 1
+fi
+grep -q 'scripts/extract_release_changelog.sh "$TAG" CHANGELOG.md > "$RELEASE_NOTES_FILE"' release.sh
+grep -q -- '--notes-file "$RELEASE_NOTES_FILE"' release.sh
+grep -q 'DJCONNECT_RELEASE_BUILD=1 -Os' release.sh
+grep -q 'DJCONNECT_RELEASE_BUILD=1 -Os' .github/workflows/release-firmware.yml
+grep -q 'scripts/minify_webportal.py' README.md
+grep -q 'scripts/minify_webportal.py' AGENTS.md
+grep -q 'scripts/minify_webportal.py' DESIGN_DECISIONS.md
+grep -q 'Require approved central operational manifest source' .github/workflows/deploy-esp32-firmware.yml
+grep -q 'esp32-home-assistant-update-smoke-v1' .github/workflows/deploy-esp32-firmware.yml
+grep -q 'DJCONNECT_ESP_UPDATE_ENTITY_ID' .github/workflows/deploy-esp32-firmware.yml
+grep -q 'esp32-deployment-evidence' .github/workflows/deploy-esp32-firmware.yml
+grep -q 'Verify installed firmware through Home Assistant and local device API' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'DJCONNECT_ESP_LOCAL_API_URL' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q '/api/device/info' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'local_device_version' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'SECONDS + 300' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'esp32-deployment-evidence' .github/workflows/esp32-post-deployment-smoke.yml
+grep -q 'esp32-smoke-evidence' .github/workflows/esp32-post-deployment-smoke.yml
+if grep -q 'PRIVATE_NETWORK_DEPLOYMENT_NOT_AUTHORIZED\|SMOKE_INCONCLUSIVE' .github/workflows/deploy-esp32-firmware.yml .github/workflows/esp32-post-deployment-smoke.yml; then
+  echo "ESP32 deployment consumers must not retain static refusal placeholders" >&2
+  exit 1
+fi
+grep -q 'pkg install -d "$PROJECT_DIR" -e "$environment"' scripts/update_build_dependencies.sh
+grep -q 'THIRD_PARTY_NOTICES.md and DESIGN_DECISIONS.md before publishing' scripts/update_build_dependencies.sh
+if grep -q 'GH_RELEASE_ARGS+=(.*"$RELEASE_DIR"/\\*)' release.sh; then
+  echo "GitHub release upload must not glob every local release artifact" >&2
+  exit 1
+fi
+
+set +e
+invalid_output="$(./release.sh 98.76 --dry-run 2>&1)"
+invalid_status=$?
+set -e
+
+if [[ "$invalid_status" -eq 0 ]]; then
+  echo "invalid version unexpectedly succeeded" >&2
+  exit 1
+fi
+echo "$invalid_output" | grep -q "version must be semantic"
+
+beta_output="$(./release.sh 98.76.55 --channel beta --dry-run)"
+echo "$beta_output" | grep -q "version: 98.76.55"
+echo "$beta_output" | grep -q "tag:     v98.76.55-beta"
+echo "$beta_output" | grep -q "channel: beta"
+echo "$beta_output" | grep -q "min HA:  98.76.0"
+echo "$beta_output" | grep -q "max HA:  <98.77.0"
+echo "$beta_output" | grep -q "djconnect-lilygo-t-embed-s3-beta-v98.76.55.bin"
+echo "$beta_output" | grep -q "firmware_manifest_beta.json"
+
+beta_prerelease_output="$(./release.sh 98.76.57 --channel beta --gh-release --dry-run)"
+echo "$beta_prerelease_output" | grep -q "Would mark the GitHub release as a prerelease"
+
+beta_tag_output="$(./release.sh v98.76.56-beta --dry-run)"
+echo "$beta_tag_output" | grep -q "tag:     v98.76.56-beta"
+echo "$beta_tag_output" | grep -q "channel: beta"
+
+override_output="$(./release.sh 98.76.58 --min-ha-integration 98.76.2 --max-ha-integration 98.77.3 --dry-run)"
+echo "$override_output" | grep -q "min HA:  98.76.2"
+echo "$override_output" | grep -q "max HA:  <98.77.3"
+
+fake_gh_dir="$(mktemp -d)"
+trap 'rm -rf "$fake_gh_dir"' EXIT
+cat > "$fake_gh_dir/gh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+args="$*"
+if [[ "$1 $2" == "release list" ]]; then
+  if [[ "$args" == *"-beta"* ]]; then
+    printf 'v1.0.0-beta\tfalse\ttrue\n'
+    printf 'v1.1.0-beta\tfalse\ttrue\n'
+  else
+    printf 'v1.0.0\tfalse\tfalse\n'
+    printf 'v1.1.0\tfalse\tfalse\n'
+  fi
+elif [[ "$1" == "api" ]]; then
+  if [[ "$args" == *"-beta"* ]]; then
+    printf 'v1.0.0-beta\n'
+    printf 'v1.1.0-beta\n'
+  else
+    printf 'v1.0.0\n'
+    printf 'v1.1.0\n'
+  fi
+elif [[ "$1 $2" == "run list" ]]; then
+  printf '100\t2026-01-02T00:00:00Z\tcompleted\tsuccess\tmain\tRelease firmware\n'
+  printf '99\t2026-01-01T00:00:00Z\tcompleted\tsuccess\tmain\tRelease firmware\n'
+else
+  echo "unexpected fake gh call: $*" >&2
+  exit 1
+fi
+EOF
+chmod +x "$fake_gh_dir/gh"
+cleanup_beta_output="$(PATH="$fake_gh_dir:$PATH" scripts/cleanup_old_releases.sh --repo owner/repo --channel beta --keep 1 --dry-run)"
+echo "$cleanup_beta_output" | grep -q "Channel: beta"
+echo "$cleanup_beta_output" | grep -q "v1.1.0-beta"
+echo "$cleanup_beta_output" | grep -q "v1.0.0-beta"
+
+echo "release script tests passed"

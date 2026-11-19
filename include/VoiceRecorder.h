@@ -1,0 +1,43 @@
+// Push-to-talk microphone recorder for the onboard PDM microphone.
+#pragma once
+
+#include <Arduino.h>
+
+class VoiceRecorder {
+public:
+  bool begin();
+  bool start();
+  bool startRaw();
+  bool readPcmChunk(uint8_t *buffer, size_t capacity, size_t &bytesRead);
+  bool readMonitorChunk(uint8_t *buffer, size_t capacity, size_t &bytesRead);
+  bool update();
+  bool stop();
+  bool stopRaw();
+  bool abort();
+
+  bool isRecording() const;
+  bool isReady() const;
+  uint32_t elapsedMs() const;
+  uint16_t currentRms() const;
+  size_t wavSize() const;
+  String wavPath() const;
+  String error() const;
+
+private:
+  static void recordTaskEntry(void *parameter);
+  void recordLoop();
+  bool waitForRecordTask(uint32_t timeoutMs);
+  void writePlaceholderHeader();
+  bool rewriteWavHeader();
+
+  bool ready_ = false;
+  bool recording_ = false;
+  volatile bool stopRequested_ = false;
+  volatile bool taskRunning_ = false;
+  bool taskFailed_ = false;
+  TaskHandle_t recordTask_ = nullptr;
+  uint32_t startedAt_ = 0;
+  volatile uint16_t currentRms_ = 0;
+  size_t dataBytes_ = 0;
+  String error_;
+};

@@ -1,0 +1,308 @@
+// Home Assistant pairing and periodic status posting for DJConnect.
+#include "DJConnectPairing.h"
+
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <WiFi.h>
+
+#include "AppLog.h"
+#include "Config.h"
+#include "I18n.h"
+#include "LogicHelpers.h"
+#include "NetworkActivity.h"
+#include "ScopedWatchdogPause.h"
+namespace {
+constexpr const char *HaPairPath = "/api/djconnect/v1/pair";
+constexpr const char *HaStatusPath = "/api/djconnect/v1/status";
+
+String joinUrl(const String &base, const char *path) {
+  if (base.endsWith("/")) {
+    return base.substring(0, base.length() - 1) + path;
+  }
+  return base + path;
+}
+
+String jsonString(JsonVariantConst payload, const char *primary, const char *fallback = nullptr) {
+  String value = payload[primary] | "";
+  if (value.isEmpty() && fallback != nullptr) {
+    value = payload[fallback] | "";
+  }
+  value.trim();
+  return value;
+}
+}  // namespace
+
+void DJConnectPairing::begin(DJConnectDevice &device, DJConnectDiscovery *discovery) {
+  device_ = &device;
+  discovery_ = discovery;
+}
+
+void DJConnectPairing::setLanguageProvisionedCallback(
+    void (*callback)(void *context, const String &languageCode),
+    void *context) {
+  languageProvisionedCallback_ = callback;
+  languageProvisionedContext_ = context;
+}
+
+void DJConnectPairing::applyProvisionedLanguage(JsonVariantConst payload) {
+  if (!payload.is<JsonObjectConst>()) {
+    return;
+  }
+  String language = payload["device_language"] | "";
+  if (language.isEmpty()) {
+    language = payload["language"] | "";
+  }
+  const String normalized = DJConnectDevice::normalizedLanguageCode(language);
+  if (normalized.isEmpty()) {
+    return;
+  }
+  if (normalized == I18n::languageCode()) {
+    return;
+  }
+  if (DJConnectDevice::saveProvisionedLanguage(normalized) &&
+      languageProvisionedCallback_ != nullptr) {
+    languageProvisionedCallback_(languageProvisionedContext_, normalized);
+  }
+}
+
+bool DJConnectPairing::pairWithHomeAssistant(const String &haUrl) {
+  if (device_ == nullptr || haUrl.isEmpty()) {
+    return false;
+  }
+  device_->ensurePairingCode();
+
+  JsonDocument request;
+  request["device_id"] = device_->getDeviceId();
+  request["client_id"] = device_->getDeviceId();
+  request["device_name"] = device_->getDeviceName();
+  request["client_type"] = device_->getClientType();
+  request["pair_code"] = device_->getPairCode();
+  request["firmware"] = device_->getFirmwareVersion();
+  request["model"] = device_->getModel();
+  request["local_url"] = device_->getLocalUrl();
+  request["language"] = I18n::languageCode();
+
+  String body;
+  serializeJson(request, body);
+
+  HTTPClient http;
+  NetworkActivity activity("ha_pair", Config::HttpLongIoTimeoutMs);
+  NetworkActivity::configureLongHttp(http);
+  const String url = joinUrl(haUrl, HaPairPath);
+  if (!http.begin(url)) {
+    AppLog.println("HA pair HTTP begin failed");
+    activity.finishError("begin failed");
+    return false;
+  }
+  http.addHeader("Content-Type", "application/json");
+  int code = 0;
+  String payload;
+  {
+    ScopedWatchdogPause watchdogPause;
+    code = http.POST(body);
+    payload = http.getString();
+  }
+  ScopedWatchdogPause::resetIfAttached();
+  http.end();
+  activity.finish(code);
+
+  AppLog.print("HA pair response: ");
+  AppLog.println(code);
+  if (code != 200 && code != 201) {
+    return false;
+  }
+
+  JsonDocument response;
+  if (deserializeJson(response, payload)) {
+    AppLog.println("HA pair JSON failed");
+    return false;
+  }
+  const bool success = response["success"] | false;
+  const char *deviceToken = response["device_token"] | "";
+  const char *assistPipelineId = response["assist_pipeline_id"] | "";
+  if (!success || strlen(deviceToken) == 0) {
+    AppLog.println("HA pair missing token");
+    return false;
+  }
+
+  const String localUrl = jsonString(response.as<JsonVariantConst>(), "ha_local_url");
+  if (localUrl.isEmpty()) {
+    AppLog.println("HA pair missing required LAN ha_local_url");
+    return false;
+  }
+  if (Logic::isNabuCasaCloudUrl(localUrl.c_str())) {
+    AppLog.println("HA pair rejected: ha_local_url is a cloud URL");
+    return false;
+  }
+  device_->savePairing(deviceToken, localUrl);
+  if (strlen(assistPipelineId) > 0) {
+    device_->saveAssistPipelineId(assistPipelineId);
+  }
+  applyProvisionedLanguage(response.as<JsonVariantConst>());
+  if (discovery_ != nullptr) {
+    discovery_->updateTxtRecords();
+  }
+  device_->displayPaired();
+  return true;
+}
+
+DJConnectPairing::StatusResult DJConnectPairing::sendStatusToHA(
+    const BatteryState &battery,
+    bool playbackConfigured,
+    const DeviceSettingsStatus &settings,
+    const VisualState &visualState,
+    const String &soundOutput) {
+  if (device_ == nullptr || !device_->isPaired()) {
+    return StatusResult::Skipped;
+  }
+  const String haUrl = device_->getHaLocalUrl();
+  const String token = device_->getDeviceToken();
+  if (token.isEmpty()) {
+    return StatusResult::Skipped;
+  }
+  if (haUrl.isEmpty()) {
+    AppLog.println("HA status unavailable: local HA URL missing");
+    return StatusResult::Failed;
+  }
+
+  JsonDocument request;
+  request["device_id"] = device_->getDeviceId();
+  request["client_id"] = device_->getDeviceId();
+  request["device_name"] = device_->getDeviceName();
+  request["client_type"] = device_->getClientType();
+  request["ha_pairing_status"] = "paired";
+  request["local_url"] = device_->getLocalUrl();
+  request["ha_local_url"] = device_->getHaLocalUrl();
+  request["state"] = "online";
+  request["status"] = "online";
+  request["request_source"] = "device_status";
+  request["ota_state"] = "idle";
+  request["update_state"] = "idle";
+  request["battery_percent"] = battery.percent;
+  request["battery_mv"] = battery.voltageMv;
+  request["charging"] = battery.charging || battery.full;
+  request["wifi_rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  request["firmware"] = device_->getFirmwareVersion();
+  request["language"] = I18n::languageCode();
+  request["device_language"] = I18n::languageCode();
+  request["theme"] = settings.theme;
+  request["log_level"] = settings.logLevel;
+  request["brightness"] = settings.screenBrightnessPercent;
+  request["screen_brightness"] = settings.screenBrightnessPercent;
+  request["screen_brightness_percent"] = settings.screenBrightnessPercent;
+  request["screen_dim_timeout"] = settings.screenOffTimeoutMs;
+  request["screen_dim_timeout_ms"] = settings.screenOffTimeoutMs;
+  request["screen_off_timeout_ms"] = settings.screenOffTimeoutMs;
+  request["turn_off_after"] = settings.turnOffAfterMs;
+  request["turn_off_after_ms"] = settings.turnOffAfterMs;
+  request["cue_volume"] = settings.speakerVolumePercent;
+  request["speaker_volume"] = settings.speakerVolumePercent;
+  request["speaker_volume_percent"] = settings.speakerVolumePercent;
+  request["wake_word_enabled"] = settings.wakeWordEnabled;
+  request["wake_word"] = settings.wakeWordEnabled;
+  request["screen_state"] = visualState.screenOn ? "on" : "off";
+  request["screen_brightness_level"] = visualState.screenBrightnessLevel;
+  request["led_state"] = visualState.ledOn ? "on" : "off";
+  request["sound_output"] = soundOutput;
+  JsonObject settingsObject = request["settings"].to<JsonObject>();
+  settingsObject["screen_brightness_percent"] = settings.screenBrightnessPercent;
+  settingsObject["brightness"] = settings.screenBrightnessPercent;
+  settingsObject["screen_brightness"] = settings.screenBrightnessPercent;
+  settingsObject["screen_dim_timeout_ms"] = settings.screenOffTimeoutMs;
+  settingsObject["screen_off_timeout_ms"] = settings.screenOffTimeoutMs;
+  settingsObject["turn_off_after_ms"] = settings.turnOffAfterMs;
+  settingsObject["cue_volume"] = settings.speakerVolumePercent;
+  settingsObject["speaker_volume"] = settings.speakerVolumePercent;
+  settingsObject["speaker_volume_percent"] = settings.speakerVolumePercent;
+  settingsObject["language"] = settings.language;
+  settingsObject["theme"] = settings.theme;
+  settingsObject["log_level"] = settings.logLevel;
+  settingsObject["wake_word_enabled"] = settings.wakeWordEnabled;
+  settingsObject["wake_word"] = settings.wakeWordEnabled;
+  JsonObject screenObject = request["screen"].to<JsonObject>();
+  screenObject["state"] = visualState.screenOn ? "on" : "off";
+  screenObject["brightness_level"] = visualState.screenBrightnessLevel;
+  JsonObject ledObject = request["led"].to<JsonObject>();
+  ledObject["state"] = visualState.ledOn ? "on" : "off";
+  JsonObject capabilitiesObject = request["capabilities"].to<JsonObject>();
+  capabilitiesObject["profiles"] = true;
+  capabilitiesObject["request_context"] = true;
+  capabilitiesObject["private_sessions"] = true;
+  capabilitiesObject["profile_platform"] = true;
+  JsonObject contractVersionsObject = request["contract_versions"].to<JsonObject>();
+  contractVersionsObject["profile_context"] = 1;
+  contractVersionsObject["client_contract_fixtures"] = 1;
+  request["playback_configured"] = playbackConfigured;
+  request["spotify_configured"] = playbackConfigured;
+  request["free_heap"] = ESP.getFreeHeap();
+  request["uptime"] = millis();
+  request["uptime_ms"] = millis();
+
+  String body;
+  serializeJson(request, body);
+
+  HTTPClient http;
+  NetworkActivity activity("ha_status", Config::HttpIoTimeoutMs);
+  NetworkActivity::configureDefaultHttp(http);
+  const String url = joinUrl(haUrl, HaStatusPath);
+  if (!http.begin(url)) {
+    AppLog.println("HA status HTTP begin failed");
+    activity.finishError("begin failed");
+    return StatusResult::Failed;
+  }
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + token);
+  http.addHeader("X-DJConnect-Device-ID", device_->getDeviceId());
+  int code = 0;
+  String payload;
+  {
+    ScopedWatchdogPause watchdogPause;
+    code = http.POST(body);
+    if (code > 0) {
+      payload = http.getString();
+    }
+  }
+  ScopedWatchdogPause::resetIfAttached();
+  http.end();
+  activity.finish(code);
+
+  AppLog.print("HA status response: ");
+  AppLog.println(code);
+  if (!payload.isEmpty()) {
+    JsonDocument response;
+    const DeserializationError error = deserializeJson(response, payload);
+    const char *errorKey = error ? "" : (response["error"] | "");
+    if (code < 200 || code >= 300) {
+      AppLog.print("HA status error: ");
+      AppLog.println(errorKey[0] == '\0' ? payload : String(errorKey));
+    }
+    if (Logic::isDjConnectInvalidClientType(errorKey)) {
+      AppLog.println("HA rejected payload: missing client_type=esp32");
+      return StatusResult::Failed;
+    }
+    if (Logic::isDjConnectProfilePlatformError(errorKey)) {
+      AppLog.print("HA profile setup needed: ");
+      AppLog.println(Logic::profilePlatformErrorMessage(errorKey, response["message"] | ""));
+      return StatusResult::Failed;
+    }
+    if (Logic::isDjConnectVersionMismatch(code, errorKey)) {
+      AppLog.print("HA version mismatch: HA ");
+      AppLog.print(response["ha_version"] | response["ha_major_minor"] | "?");
+      AppLog.print(" firmware ");
+      AppLog.println(response["firmware"] | response["firmware_major_minor"] | device_->getFirmwareVersion().c_str());
+      return StatusResult::VersionMismatch;
+    }
+    if (Logic::isHomeAssistantPairingInvalidError(errorKey)) {
+      AppLog.println("HA pairing appears invalid");
+      return StatusResult::PairingInvalid;
+    }
+    if (code >= 200 && code < 300) {
+      applyProvisionedLanguage(response.as<JsonVariantConst>());
+    }
+  }
+  if (Logic::isHomeAssistantPairingInvalidStatus(code)) {
+    AppLog.println("HA pairing appears invalid");
+    return StatusResult::PairingInvalid;
+  }
+  return code >= 200 && code < 300 ? StatusResult::Ok : StatusResult::Failed;
+}

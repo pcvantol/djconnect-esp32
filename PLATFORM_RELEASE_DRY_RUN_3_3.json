@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "kind": "platform_release_build_injection_dry_run",
+  "platform_version": "3.3",
+  "repository_version": "3.3.0",
+  "build_flags": "-DDJCONNECT_VERSION=3.3.0 -DDJCONNECT_VERSION_TAG=v3.3.0 -DDJCONNECT_RELEASE_BUILD=1",
+  "release_mode": "dry_run",
+  "publication": "forbidden",
+  "state": "planned"
+}
